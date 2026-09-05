@@ -1,6 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import { memo, type CSSProperties, type ReactNode } from "react";
 
-import { flattenScene, type SlideScene } from "../scene";
+import { flattenScene, type SceneNode, type SlideScene } from "../scene";
 import { ElementContent, positionStyle } from "./elements";
 
 /**
@@ -93,28 +93,15 @@ export function SlideView({
         />
       ) : null}
 
-      {nodes.map((node) => {
-        // `visible: false` is excluded from render AND from export, which is why
-        // a fade-in must start from opacity 0 instead (doc 02 §8.2).
-        if (node.flags.hidden) return null;
-
-        return (
-          <div
-            key={node.id}
-            data-element-id={node.id}
-            data-layer={node.layer}
-            data-role={node.semanticRole}
-            style={positionStyle(node, paintIndex.get(node.id) ?? 0, mode === "editor")}
-            aria-label={node.a11y.label}
-            role={node.a11y.role === "presentation" ? "presentation" : undefined}
-          >
-            {/* A group draws no content of its own — its children are separate
-                scene nodes — but its wrapper still carries fill, stroke and
-                radius, which is how a styled card renders at all. */}
-            <ElementContent node={node} resolveAssetUrl={resolveAssetUrl} />
-          </div>
-        );
-      })}
+      {nodes.map((node) => (
+        <SceneNodeView
+          key={node.id}
+          node={node}
+          zIndex={paintIndex.get(node.id) ?? 0}
+          mode={mode}
+          resolveAssetUrl={resolveAssetUrl}
+        />
+      ))}
 
       {showGuides && mode !== "export" && scene.safeArea ? (
         <div
@@ -138,6 +125,52 @@ export function SlideView({
     </div>
   );
 }
+
+/**
+ * One scene node, memoized on the node's identity (doc 04 §31.2).
+ *
+ * This is the single most load-bearing performance decision in the renderer. A
+ * drag rebuilds the scene's node array every frame, but only the dragged node is
+ * a new object — every other node is the same reference it was last frame. React
+ * therefore skips them, and a 120-object slide costs one element's work per
+ * frame instead of a hundred and twenty.
+ *
+ * Memoizing on deep equality of props would give up all of it: the comparison
+ * would cost more than the render it avoids. The scene builder's discipline of
+ * preserving node identity for untouched nodes is what makes the shallow
+ * comparison correct, so the two have to change together.
+ */
+const SceneNodeView = memo(function SceneNodeView({
+  node,
+  zIndex,
+  mode,
+  resolveAssetUrl,
+}: {
+  node: SceneNode;
+  zIndex: number;
+  mode: RenderMode;
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+}): ReactNode {
+  // `visible: false` is excluded from render AND from export, which is why a
+  // fade-in must start from opacity 0 instead (doc 02 §8.2).
+  if (node.flags.hidden) return null;
+
+  return (
+    <div
+      data-element-id={node.id}
+      data-layer={node.layer}
+      data-role={node.semanticRole}
+      style={positionStyle(node, zIndex, mode === "editor")}
+      aria-label={node.a11y.label}
+      role={node.a11y.role === "presentation" ? "presentation" : undefined}
+    >
+      {/* A group draws no content of its own — its children are separate scene
+          nodes — but its wrapper still carries fill, stroke and radius, which is
+          how a styled card renders at all. */}
+      <ElementContent node={node} resolveAssetUrl={resolveAssetUrl} />
+    </div>
+  );
+});
 
 export interface ScaledSlideProps extends SlideViewProps {
   /** Rendered width in CSS pixels. Height follows from the slide aspect ratio. */

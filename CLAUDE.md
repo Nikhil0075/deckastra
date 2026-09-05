@@ -45,6 +45,23 @@ Renderer-specific, from `packages/renderer/`:
 ```bash
 UPDATE_BASELINES=1 npx vitest run tests/baseline.test.ts   # after a deliberate visual change
 PREVIEW_OUT=/tmp/p.html npx vitest run tests/preview.test.tsx   # contact sheet of every fixture slide
+PIXELS=1 npm run test:pixels                               # real Chromium, byte-compared PNGs
+PIXELS=1 UPDATE_PIXELS=1 npm run test:pixels               # re-record this platform's pixel baseline
+```
+
+The slower gates are opt-in so `npm test` stays fast, and each needs something
+the fast suite does not:
+
+```bash
+npx playwright install chromium          # once, for the pixel and e2e suites
+
+# The drag budget, measured in a real browser. Needs both dev servers up.
+E2E=1 npm run test:e2e --workspace @deckastra/web
+
+# The database the product deploys on. Needs the compose Postgres.
+docker compose -f infrastructure/docker/docker-compose.yml up -d postgres
+POSTGRES_TEST_URL=postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra \
+  python -m pytest apps/api -q
 ```
 
 Cross-language contract check (needs `pip install -r requirements-dev.txt`):
@@ -85,13 +102,14 @@ vertical slice runnable without an API key, so the composer, renderer and presen
 mode work on a fresh clone and in CI without spending money. Keep it working, and
 keep its decks visibly labelled as stub-composed.
 
-**Container layout is not resolved in the scene build yet** (pipeline stage 6).
-`packages/layout-engine` implements it — `resolveContainer`, constraint solving
-with cycle detection, measurement and fit — but the renderer does not call it.
-Until it does,
-a child's advisory `x`/`y` is what positions it, so the composer bakes container
-padding into those coordinates — correct now, and still correct once the container
-starts laying out.
+**Container layout runs in the scene build** (pipeline stage 6). A group with a
+`containerLayout` positions its children through `layoutChildren`, and their own
+`x`/`y` become advisory — kept in the document so pulling a child out restores a
+sensible position, ignored while the container lays out (doc 02 §16.2).
+
+The consequence for anything that emits a container: padding must be declared on
+the layout, not baked into child coordinates. A card whose padding lived only in
+those coordinates goes flush the moment the container takes over.
 
 ### One path mutates a document
 
@@ -205,10 +223,15 @@ Three things there that look incidental and are not:
 - **Groups paint their own fill, stroke and radius** via `positionStyle`, because
   a group draws no content of its own — its children are separate scene nodes.
 
-Text measurement is estimated in the scene builder and flagged
-`metricsEstimated: true`. `packages/layout-engine` provides a real `DomMeasurer`,
-but the scene builder does not consume it yet — wiring it in is still open, and
-is the same slot the estimate occupies today.
+### Text is measured in the browser and estimated in Node
+
+`buildDocumentScene` takes a `TextMeasurer`. The app passes `browserMeasurer()`,
+which puts the real string in a real off-screen element and reads the line boxes
+back; Node has no DOM, so it falls back to the estimator and flags
+`metricsEstimated: true` so an export knows it is looking at a guess.
+
+Both paths quantize font size the same way, so a document that shrank to 93px in
+Node does not shrink to 93.0001 in the browser and produce a spurious diff.
 
 The estimator wraps by **word**, with a per-character width table calibrated so
 its weighted mean is 1.0 for ordinary prose. Both parts are load-bearing:
@@ -247,6 +270,22 @@ many, a dangling edge is dropped and named, an uncurated icon draws its own name
   included in the render digest. Without that, a snapshot failure caused by a
   missing face is indistinguishable from a code regression.
 
+### In-place text editing
+
+The model half is in `packages/editor/src/text-editing.ts` and the surface is
+`apps/web/components/TextEditor.tsx`. Three rules there are not negotiable:
+
+- **The DOM is never the document.** The user types into a browser-owned tree; on
+  commit that tree is read back into blocks and spans and handed over as a patch.
+  There is no path where the editable writes the document.
+- **An IME composition defers the commit.** Reading mid-composition writes half a
+  character. That is not an edge case in Japanese, Chinese or Korean — it is
+  every word.
+- **Paste is an allowlist, not a denylist.** Pasted HTML is markup someone else
+  wrote arriving in a document other people will open. Only blocks, the marks the
+  schema has, and links with a permitted scheme survive; a denylist is always one
+  trick behind.
+
 ### The visual-regression gate
 
 `packages/renderer/baselines/*.digest.txt` are committed scene digests for the
@@ -254,10 +293,19 @@ three seed decks, compared by `tests/baseline.test.ts` on every run. The digest
 is readable on purpose — a hash says something changed, these lines say which
 node moved and how.
 
-It digests the **scene**, not pixels, so it cannot see a bug that lives purely in
-the React emit step or in the browser's painting of it. Those need the headless
-render service (Phase 8). Regenerate only after reading the diff: a baseline
-updated reflexively is a gate that has been turned off while still looking on.
+It digests the **scene**, not pixels. `tests/pixels.test.ts` covers the rest:
+real Chromium, PNGs compared byte for byte — twice in a row, and across a page
+reload, which discards the caches a same-page second shot would leave warm. It
+carries a negative control (a 1px nudge must change the hash) so the gate cannot
+quietly stop being able to see anything.
+
+Pixel baselines are **per platform**, because font rasterisation is. A platform
+with no recorded baseline reports that and still enforces the determinism
+properties; failing for a reason nobody on that OS can act on is how a gate gets
+switched off.
+
+Regenerate either baseline only after reading the diff: one updated reflexively
+is a gate that has been turned off while still looking on.
 
 ### The semantic pass is where brand rules become real
 
@@ -295,6 +343,10 @@ Two more that are easy to undo:
   interval *between* frames, not the duration of the handler: a handler that
   takes 3ms but forces a synchronous layout costs 40ms of frame time, and only
   the interval sees it.
+- **Pointermove is coalesced into one rAF callback**, and scene nodes are
+  memoized on identity. Together those are what keep a drag on a 120-object slide
+  from dropping frames; both are prescribed by doc 04 §31.2 and neither is
+  optional.
 - **The renderer's element boxes are `pointer-events: none` except in
   `mode="editor"`.** The editor resolves selection from `data-element-id` on
   exactly those boxes, so making them inert everywhere leaves nothing on the
@@ -337,8 +389,19 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 - Authorization resolves `User → Workspace → Project → Presentation` through `resolve_presentation_access`, by **membership and role**, never by `owner_id`. A missing resource and a forbidden one both return 404: a 403 on something you cannot see confirms it exists.
 - Risk tier is computed server-side from the operations. Never accept one from a caller.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
+- The schema is **not** dialect-neutral: `JsonColumn` is JSONB on PostgreSQL and
+  JSON everywhere else. `test_postgres.py` compiles the DDL for both dialects
+  with no server, and runs the migration, a document round-trip and the
+  optimistic-concurrency guard against a real server when `POSTGRES_TEST_URL` is
+  set. CI sets it, so every push exercises the engine that actually deploys.
 - Performance budgets are data (`perf.ts` `BUDGETS`), transcribed from doc 04
   §31.1. Changing a number there means changing the spec.
+- **The drag budget is judged as dropped frames, not milliseconds.** §31.1 says
+  "<16ms p95", which cannot be read literally against a frame *interval*: on a
+  60Hz display a perfectly smooth drag measures 16.67ms, so the budget would be
+  unreachable by any code, and on a 144Hz display it would pass while visibly
+  stuttering. `checkFrameBudget` compares against the display cadence the sampler
+  observes instead.
 - `.gitattributes` forces LF. Both drift gates compare generated files against their committed form, and the generators emit LF; a CRLF checkout fails them on a clean tree.
 
 ## Tooling deviations from doc 05

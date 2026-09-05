@@ -6,9 +6,11 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "../src/scene";
 import {
   BUDGETS,
+  DROPPED_FRAME_ALLOWANCE,
   FrameSampler,
   Stopwatch,
   checkBudget,
+  checkFrameBudget,
   formatBudget,
   type PhaseTiming,
 } from "../src/perf";
@@ -135,6 +137,72 @@ describe("frame sampling", () => {
 
   it("has nothing to say before it has samples", () => {
     expect(new FrameSampler().stats()).toBeUndefined();
+  });
+
+  it("infers the display's cadence rather than assuming 60Hz", () => {
+    // The drag budget is judged against the screen the user actually has. A
+    // hardcoded 16ms would fail every drag on a 60Hz display and pass every drag
+    // on a 144Hz one, which is backwards.
+    const sixty = new FrameSampler();
+    for (let i = 0; i < 100; i += 1) sixty.record(16.7);
+    expect(sixty.stats()!.displayIntervalMs).toBeCloseTo(16.7, 1);
+
+    const oneForty = new FrameSampler();
+    for (let i = 0; i < 100; i += 1) oneForty.record(6.9);
+    expect(oneForty.stats()!.displayIntervalMs).toBeCloseTo(6.9, 1);
+  });
+
+  it("does not mistake one short interval for the display's cadence", () => {
+    const sampler = new FrameSampler();
+    sampler.record(0.4);
+    for (let i = 0; i < 99; i += 1) sampler.record(16.7);
+    // Taking the minimum would report 0.4ms and call every frame dropped.
+    expect(sampler.stats()!.displayIntervalMs).toBeCloseTo(16.7, 1);
+    expect(sampler.stats()!.dropped).toBe(0);
+  });
+});
+
+describe("the drag budget", () => {
+  it("passes a drag that keeps up with a 60Hz display", () => {
+    // 16.67ms is what a perfectly smooth drag looks like at 60Hz. Read literally
+    // against the spec's "<16ms p95" it would fail, which is why the budget is
+    // judged as dropped frames instead.
+    const sampler = new FrameSampler();
+    for (let i = 0; i < 120; i += 1) sampler.record(16.7);
+
+    const verdict = checkFrameBudget(sampler.stats()!);
+    expect(verdict.withinBudget).toBe(true);
+    expect(verdict.summary).toContain("60Hz");
+    expect(verdict.summary).toContain("0.0% dropped");
+  });
+
+  it("fails a drag that drops frames", () => {
+    const sampler = new FrameSampler();
+    for (let i = 0; i < 80; i += 1) sampler.record(16.7);
+    for (let i = 0; i < 20; i += 1) sampler.record(33.4);
+
+    const verdict = checkFrameBudget(sampler.stats()!);
+    expect(verdict.dropped).toBeGreaterThan(DROPPED_FRAME_ALLOWANCE);
+    expect(verdict.withinBudget).toBe(false);
+  });
+
+  it("tolerates ordinary jitter", () => {
+    // A frame that runs 20% long is not a dropped frame, and a gate that says it
+    // is gets switched off.
+    const sampler = new FrameSampler();
+    for (let i = 0; i < 100; i += 1) sampler.record(i % 5 === 0 ? 19 : 16.7);
+    expect(checkFrameBudget(sampler.stats()!).withinBudget).toBe(true);
+  });
+
+  it("holds a 144Hz display to a 144Hz standard", () => {
+    const sampler = new FrameSampler();
+    for (let i = 0; i < 90; i += 1) sampler.record(6.9);
+    for (let i = 0; i < 10; i += 1) sampler.record(13.8);
+
+    // Every one of those intervals is under the spec's literal 16ms, and ten
+    // percent of them are dropped frames.
+    expect(sampler.stats()!.p95).toBeLessThan(BUDGETS.dragFrame!.ms);
+    expect(checkFrameBudget(sampler.stats()!).withinBudget).toBe(false);
   });
 });
 

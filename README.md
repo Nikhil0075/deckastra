@@ -11,11 +11,11 @@ one property rather than a regeneration of the whole slide.
 
 **Status: Phase 4.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
-direct-manipulation editor. Every MVP element type now draws for real — charts,
-diagrams, tables, highlighted code and icons are laid out deterministically from
-the document rather than standing in as placeholders — and present mode has a
-presenter view with notes, a timer and a second-screen window. In-place text
-editing is not built yet.
+direct-manipulation editor with in-place text editing. Every MVP element type
+draws for real — charts, diagrams, tables, highlighted code and icons are laid
+out deterministically from the document rather than standing in as placeholders
+— and present mode has a presenter view with notes, a timer and a second-screen
+window.
 
 ---
 
@@ -29,7 +29,8 @@ packages/renderer/              document -> IntermediateScene -> DOM/SVG
                                 charts, diagrams, icons, fonts, highlighting,
                                 the semantic validation pass, render digests
 packages/layout-engine/         text measurement, container layout, constraints
-packages/editor/                selection, hit testing, transforms, snapping, clipboard, keys
+packages/editor/                selection, hit testing, transforms, snapping,
+                                clipboard, keys, rich-text editing and paste sanitization
 apps/api/                       FastAPI: generation, persistence, versioned history
 apps/web/                       prompt box, deck preview, editor, present mode
 docs/                           the six specification documents
@@ -187,6 +188,24 @@ Python validation, MCP tool schemas, external tooling
 The Python service validates documents against the *generated artifact*, not
 against a translated copy of the model. There is no second definition, so there is
 nothing to drift. CI fails if the committed artifact is stale.
+
+---
+
+## What is actually verified
+
+Claims in a README are cheap; these are the ones with a gate behind them.
+
+| Claim | Gate |
+| --- | --- |
+| A patch and its inverse round-trip | Property test over 400 generated patches |
+| Both patch appliers agree | Byte-identical conformance suite, TypeScript vs Python |
+| The scene is a pure function of the document | Committed scene digests for three seed decks |
+| The same slide renders identically twice, and after a reload | Real Chromium, PNGs compared byte for byte |
+| A drag stays smooth on a 120-object slide | Measured in a real browser: no dropped frames against the display's own cadence |
+| Editor state never reaches the document | Assertion on a saved document |
+| A deck is buildable with no AI | The animation seed deck rebuilt through editor operations alone |
+| Migrations match the models, on the engine that deploys | Alembic run against PostgreSQL in CI |
+| Pasted HTML cannot carry a script or a `javascript:` link | Parsed with a real HTML parser and asserted |
 
 ---
 

@@ -38,6 +38,8 @@ import {
 } from "@deckastra/editor";
 
 import { browserMeasurer } from "../lib/measurer";
+import { checkFrameBudget } from "@deckastra/renderer";
+
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { EditorCanvas } from "./EditorCanvas";
 import { PresentMode } from "./PresentMode";
@@ -61,7 +63,7 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
   // Last drag's frame times. Shown rather than logged: doc 04 §31.5 is explicit
   // that an untracked budget regresses quietly, and this is the smallest thing
   // that makes the drag budget observable while telemetry is Phase 9.
-  const [frames, setFrames] = useState<{ p95: number; over: boolean; count: number }>();
+  const [frames, setFrames] = useState<{ summary: string; over: boolean }>();
   const [canvasWidth, setCanvasWidth] = useState(880);
 
   const slide = doc.slides[slideIndex];
@@ -383,10 +385,10 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
             borderBottom: "1px solid var(--border)",
             fontVariantNumeric: "tabular-nums",
           }}
-          title="Frame time during the last drag, p95. Budget is 16ms (doc 04 §31.1)."
+          title="Frame timing during the last drag. The budget (doc 04 §31.1) is met when the work fits inside frames the compositor was going to paint anyway."
         >
-          Last drag: {frames.p95}ms p95 over {frames.count} frames
-          {frames.over ? " — over the 16ms budget" : ""}
+          Last drag: {frames.summary}
+          {frames.over ? " — dropping frames" : ""}
         </div>
       ) : null}
 
@@ -416,9 +418,10 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
           <EditorCanvas
             editor={editor}
             width={canvasWidth}
-            onFrameStats={(budget, stats) =>
-              setFrames({ p95: stats.p95, over: !budget.withinBudget, count: stats.count })
-            }
+            onFrameStats={(stats) => {
+              const verdict = checkFrameBudget(stats);
+              setFrames({ summary: verdict.summary, over: !verdict.withinBudget });
+            }}
           />
         </div>
 

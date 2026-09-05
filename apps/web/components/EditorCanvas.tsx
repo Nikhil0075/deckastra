@@ -8,8 +8,8 @@ import type {
   RichTextDocument,
   Transform,
 } from "@deckastra/presentation-schema";
-import { FrameSampler, buildDocumentScene, checkBudget, flattenScene } from "@deckastra/renderer";
-import type { BudgetResult, FrameStats } from "@deckastra/renderer";
+import { FrameSampler, buildDocumentScene, flattenScene } from "@deckastra/renderer";
+import type { FrameStats } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { setProperty, resolveElementById } from "@deckastra/presentation-core";
 import {
@@ -61,7 +61,7 @@ export interface EditorCanvasProps {
    * Reported rather than logged, so the number reaches a place a person can see
    * it. An untracked budget regresses quietly.
    */
-  onFrameStats?: (budget: BudgetResult, frames: FrameStats) => void;
+  onFrameStats?: (frames: FrameStats) => void;
 }
 
 type Gesture =
@@ -303,8 +303,8 @@ export function EditorCanvas({
 
   // ------------------------------------------------------------- pointer move
 
-  const onPointerMove = useCallback(
-    (event: React.PointerEvent) => {
+  const handleMove = useCallback(
+    (event: { clientX: number; clientY: number }) => {
       if (gesture.kind === "none") return;
       const world = toWorld(event);
 
@@ -398,9 +398,55 @@ export function EditorCanvas({
     [doc, gesture, gridEnabled, offsetOf, scale, selection.primaryId, spatial, toWorld],
   );
 
+  /**
+   * One layout pass per frame, not one per event (doc 04 §31.2).
+   *
+   * Chromium can deliver several pointermove events between two frames, and
+   * doing the snap search and the draft rebuild for each of them is work the user
+   * can never see — the browser paints once either way. Keeping only the latest
+   * position and acting on it in a rAF callback is what pulls the drag under the
+   * 16ms budget on a busy slide.
+   */
+  const pendingMove = useRef<{ clientX: number; clientY: number } | null>(null);
+  const moveFrame = useRef<number | null>(null);
+
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent) => {
+      // The React event is pooled-adjacent and must not be read in a later
+      // frame; only the two numbers that matter are kept.
+      pendingMove.current = { clientX: event.clientX, clientY: event.clientY };
+
+      if (moveFrame.current !== null) return;
+      moveFrame.current = requestAnimationFrame(() => {
+        moveFrame.current = null;
+        const latest = pendingMove.current;
+        pendingMove.current = null;
+        if (latest) handleMove(latest);
+      });
+    },
+    [handleMove],
+  );
+
+  useEffect(
+    () => () => {
+      if (moveFrame.current !== null) cancelAnimationFrame(moveFrame.current);
+    },
+    [],
+  );
+
   // --------------------------------------------------------------- pointer up
 
   const onPointerUp = useCallback(() => {
+    // Flush a queued move first: ending the gesture on a frame-old position
+    // would drop the last few pixels of every drag.
+    if (moveFrame.current !== null) {
+      cancelAnimationFrame(moveFrame.current);
+      moveFrame.current = null;
+    }
+    const queued = pendingMove.current;
+    pendingMove.current = null;
+    if (queued) handleMove(queued);
+
     if (gesture.kind === "marquee") {
       const rect = normalize(gesture.origin, gesture.current);
       // A click with no movement is not a marquee.
@@ -443,13 +489,13 @@ export function EditorCanvas({
 
     sampler.current.stop();
     const frames = sampler.current.stats();
-    if (frames && frames.count > 8) onFrameStats?.(checkBudget("dragFrame", frames.p95), frames);
+    if (frames && frames.count > 8) onFrameStats?.(frames);
 
     spatial.clearExclusions();
     setDraft(new Map());
     setGuides([]);
     setGesture({ kind: "none" });
-  }, [apply, doc, draft, gesture, index, onFrameStats, setSelection, spatial]);
+  }, [apply, doc, draft, gesture, handleMove, index, onFrameStats, setSelection, spatial]);
 
   if (!slide || !slideScene) return null;
 

@@ -14,12 +14,13 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --exclude tests/pixels.test.ts",
+    "test:watch": "vitest",
+    "test:pixels": "vitest run tests/pixels.test.ts"
   },
   "dependencies": {
-    "@deckastra/presentation-schema": "*",
-    "@deckastra/layout-engine": "*"
+    "@deckastra/layout-engine": "*",
+    "@deckastra/presentation-schema": "*"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "playwright": "^1.63.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.2",

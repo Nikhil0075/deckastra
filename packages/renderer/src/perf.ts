@@ -86,6 +86,23 @@ export interface FrameStats {
   worst: number;
   /** Frames over the budget's p95, as a fraction. */
   overBudget: number;
+  /**
+   * The display's own frame interval, estimated from the fastest frames.
+   *
+   * Needed because doc 04 §31.1's "<16ms p95" cannot be read literally against a
+   * frame *interval*: on a 60Hz display an interval of 16.67ms is what a
+   * perfectly smooth drag looks like, so the budget would be unreachable by any
+   * code. The number the budget is really about is whether frames are being
+   * dropped, and that can only be judged against the display's cadence.
+   */
+  displayIntervalMs: number;
+  /**
+   * Fraction of intervals long enough to be a dropped frame.
+   *
+   * This is the honest reading of the drag budget: a drag is within budget when
+   * the work fits in the frame the compositor was going to paint anyway.
+   */
+  dropped: number;
 }
 
 /**
@@ -146,6 +163,12 @@ export class FrameSampler {
       return Math.round(sorted[Math.max(0, index)]! * 100) / 100;
     };
 
+    // The tenth percentile rather than the minimum: one anomalously short
+    // interval — a coalesced callback, a clock wobble — would otherwise be
+    // mistaken for the display's cadence and make everything look dropped.
+    const displayIntervalMs = at(0.1);
+    const dropThreshold = displayIntervalMs * DROPPED_FRAME_RATIO;
+
     return {
       count: sorted.length,
       p50: at(0.5),
@@ -154,8 +177,51 @@ export class FrameSampler {
       worst: Math.round(sorted.at(-1)! * 100) / 100,
       overBudget:
         Math.round((sorted.filter((value) => value > budget.ms).length / sorted.length) * 1000) / 1000,
+      displayIntervalMs,
+      dropped:
+        Math.round(
+          (sorted.filter((value) => value > dropThreshold).length / sorted.length) * 1000,
+        ) / 1000,
     };
   }
+}
+
+/**
+ * How much longer than one display frame an interval must be to count as
+ * dropped. 1.5 sits comfortably between one frame and two, so ordinary jitter
+ * does not register and a genuinely missed frame always does.
+ */
+export const DROPPED_FRAME_RATIO = 1.5;
+
+/** No more than this fraction of frames may be dropped for a drag to pass. */
+export const DROPPED_FRAME_ALLOWANCE = 0.05;
+
+/**
+ * Judge a gesture against the drag budget.
+ *
+ * Separate from `checkBudget` because a frame budget is not a stopwatch reading:
+ * it asks whether the work fit inside frames the compositor was already going to
+ * paint. Comparing a frame interval to a fixed millisecond number instead would
+ * fail every drag on a 60Hz display and pass every drag on a 144Hz one, which is
+ * the opposite of what the budget is for.
+ */
+export function checkFrameBudget(stats: FrameStats): {
+  withinBudget: boolean;
+  dropped: number;
+  displayIntervalMs: number;
+  summary: string;
+} {
+  const withinBudget = stats.dropped <= DROPPED_FRAME_ALLOWANCE;
+  const hz = Math.round(1000 / Math.max(stats.displayIntervalMs, 0.01));
+
+  return {
+    withinBudget,
+    dropped: stats.dropped,
+    displayIntervalMs: stats.displayIntervalMs,
+    summary:
+      `${stats.p95}ms p95 over ${stats.count} frames at ~${hz}Hz, ` +
+      `${(stats.dropped * 100).toFixed(1)}% dropped`,
+  };
 }
 
 // ------------------------------------------------------------------ budgets

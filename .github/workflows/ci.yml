@@ -59,6 +59,76 @@ jobs:
           git diff --exit-code -- packages/presentation-schema/fixtures \
             || (echo "::error::Fixtures are stale. Run the fixture build and commit the result." && exit 1)
 
+  # Real Chromium, so it catches what the scene digest structurally cannot: a bug
+  # confined to the emit step or to the browser's painting of it. Separate from
+  # the TypeScript job because it needs a browser download, and the fast gate
+  # should stay fast.
+  pixels:
+    name: Pixel regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Enforces the determinism properties on every platform: identical PNGs
+      # twice, identical after a reload, and a negative control proving the gate
+      # can see a change. The committed per-platform hash baseline is compared
+      # only where one exists — font rasterisation differs between platforms, and
+      # failing for a reason nobody on this OS can act on is how a gate gets
+      # switched off.
+      - name: Pixel determinism and baselines
+        run: PIXELS=1 npm run test:pixels --workspace @deckastra/renderer
+
+  # The database the product actually deploys on. The schema is not
+  # dialect-neutral — `JsonColumn` resolves to JSONB here and to JSON everywhere
+  # else — so a migration that has only ever run on SQLite is a migration that
+  # has not been tested. This is where that stops being true.
+  postgres:
+    name: PostgreSQL
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # The same image as the compose file, so CI and local development are
+        # testing the same engine.
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: deckastra
+          POSTGRES_PASSWORD: deckastra_local
+          POSTGRES_DB: deckastra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deckastra"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt pytest
+
+      # The whole API suite, not just the PostgreSQL-specific file: everything
+      # that touches the store should be exercised against the real engine, and
+      # the tests that do not care are cheap.
+      - name: API tests against PostgreSQL
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra
+        run: python -m pytest apps/api -q
+
   cross-language:
     name: Schema contract (Python)
     runs-on: ubuntu-latest

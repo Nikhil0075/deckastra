@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --exclude \"tests/**/*.e2e.test.ts\"",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run tests/drag-budget.e2e.test.ts"
   },
   "dependencies": {
     "@deckastra/presentation-schema": "*",
@@ -18,6 +19,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@deckastra/layout-engine": "*",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.10.2",
@@ -25,8 +27,8 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.7.0",
     "jsdom": "^25.0.1",
+    "playwright": "^1.63.0",
     "typescript": "^5.7.2",
-    "vitest": "^3.2.7",
-    "@deckastra/layout-engine": "*"
+    "vitest": "^3.2.7"
   }
 }
