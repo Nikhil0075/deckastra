@@ -57,6 +57,13 @@ export interface ApplyOptions {
 
 export interface EditorApi {
   document: PresentationDocument;
+  /**
+   * Adopt a document the server produced, for a change applied server-side.
+   *
+   * Deliberately not `apply`: an agent change is already a transaction with its
+   * own inverse, and re-applying it locally would create a second one.
+   */
+  adoptDocument: (document: PresentationDocument, versionId: string) => void;
   slideIndex: number;
   setSlideIndex: (index: number) => void;
   selection: SelectionState;
@@ -287,8 +294,31 @@ export function useEditor(input: UseEditorInput): EditorApi {
     [slide],
   );
 
+  /**
+   * Replace the document with one the server produced.
+   *
+   * For an agent change, which is applied server-side and comes back whole. It
+   * deliberately does *not* go through `apply`: the change is already a
+   * transaction with its own inverse, and re-applying it locally would create a
+   * second one. The history entry it belongs to is the server's.
+   *
+   * The version pointer moves with it, or the next autosave would send a stale
+   * `expected_version_id` and get a 409 the user did nothing to deserve.
+   */
+  const adoptDocument = useCallback(
+    (next: PresentationDocument, nextVersionId: string) => {
+      versionId.current = nextVersionId;
+      setDocument(next);
+      setSelection((current) =>
+        remapSelection(current, new Set(idsIn(next)), new Map()),
+      );
+    },
+    [],
+  );
+
   return {
     document,
+    adoptDocument,
     slideIndex,
     setSlideIndex,
     selection,

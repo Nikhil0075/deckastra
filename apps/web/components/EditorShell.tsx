@@ -40,6 +40,8 @@ import {
 import { browserMeasurer } from "../lib/measurer";
 import { checkFrameBudget } from "@deckastra/renderer";
 
+import { AskPanel } from "./AskPanel";
+
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { EditorCanvas } from "./EditorCanvas";
 import { PresentMode } from "./PresentMode";
@@ -430,6 +432,8 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
           selectedElement={selected?.element}
           onReorder={reorder}
           onToggle={toggleFlag}
+          presentationId={props.presentationId}
+          token={props.token}
         />
       </div>
     </div>
@@ -603,11 +607,15 @@ function SidePanel({
   selectedElement,
   onReorder,
   onToggle,
+  presentationId,
+  token,
 }: {
   editor: ReturnType<typeof useEditor>;
   selectedElement?: PresentationElement;
   onReorder: (direction: "forward" | "backward" | "front" | "back") => void;
   onToggle: (flag: "locked" | "visible") => void;
+  presentationId: string;
+  token: string;
 }) {
   const { document: doc, slideIndex, selection, setSelection } = editor;
   const slide = doc.slides[slideIndex];
@@ -713,6 +721,19 @@ function SidePanel({
           <li style={{ fontSize: 12, color: "var(--fg-subtle)" }}>No changes yet.</li>
         ) : null}
       </ol>
+
+      {/* Journey C. Placed at the bottom of the panel the user is already
+          looking at while they have something selected, rather than in a modal
+          that hides the thing they are asking about. */}
+      <div style={{ margin: "16px -16px -16px" }}>
+        <AskPanel
+          presentationId={presentationId}
+          token={token}
+          selectedIds={selection.selectedIds}
+          slideId={slide?.id}
+          onApplied={editor.adoptDocument}
+        />
+      </div>
     </aside>
   );
 }

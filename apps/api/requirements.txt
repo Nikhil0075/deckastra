@@ -1,7 +1,4 @@
 # Deckastra API.
-#
-# LangGraph and the agent stack arrive in Phase 5; adding them now would be
-# scaffolding for code that does not exist yet.
 
 anthropic>=1.4,<2
 fastapi>=0.115,<1
@@ -15,3 +12,15 @@ alembic>=1.13,<2
 # psycopg 3. The sync driver is deliberate: FastAPI runs sync endpoints in a
 # thread pool, and async buys nothing until there is measured pool pressure.
 psycopg[binary]>=3.2,<4
+
+# The agent system (Phase 5).
+#
+# LangGraph owns the graph, the conditional edges and the checkpointer. The agent
+# logic deliberately does not depend on it: nodes are plain functions over a
+# TypedDict, so they are testable without building a graph and the framework
+# stays replaceable.
+langgraph>=0.6,<1
+# Durable checkpoints in Postgres, ephemeral progress in Redis (doc 05 §25 vs
+# doc 03 §19 — resolved in favour of both, each for what it is good at).
+langgraph-checkpoint-postgres>=2.0,<3
+redis>=5.0,<7

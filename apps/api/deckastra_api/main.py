@@ -21,7 +21,12 @@ from .compose import compose_document
 from .db.models import Project, User, Workspace, WorkspaceMember
 from .db.session import database_url, get_session
 from .ids import new_id
-from .models import GenerateRequest, GenerateResponse
+from .models import GenerateRequest, GenerateResponse, GenerationDiagnostics
+from deckastra_agents import ProjectMemory
+from deckastra_agents.router import MODELS as router_models
+
+from . import agent_service, agent_store
+from .agent_routes import router as agent_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
 from .story import StoryGenerationError, api_key_available, generate_story_plan
@@ -44,6 +49,7 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+app.include_router(agent_router)
 
 
 @app.get("/health")
@@ -117,6 +123,16 @@ def dev_session(
     }
 
 
+def _empty_document(request: GenerateRequest) -> dict[str, Any]:
+    """A minimal document for a run that is creating a deck rather than editing one.
+
+    The graph's tools read the current document, and a new deck has none. An
+    empty shell is more honest than passing `None` and making every tool handle
+    the absence.
+    """
+    return {"metadata": {"title": request.instruction[:80]}, "slides": []}
+
+
 @app.post("/v1/generate", response_model=GenerateResponse)
 def generate(
     request: GenerateRequest,
@@ -148,13 +164,86 @@ def generate(
             # exists.
             raise HTTPException(status_code=404, detail="No such project.")
 
-    try:
-        plan, diagnostics = generate_story_plan(request)
-    except StoryGenerationError as exc:
-        # 502, not 500: the failure is upstream, and the message is the useful part.
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    # The agent graph, not a single-shot chain (doc 03 §4). The Orchestrator
+    # routes, the Story Architect writes, the Layout Agent checks the fit, the
+    # Critic reviews — and the composer still makes every geometric decision.
+    #
+    # `use_graph=False` falls back to the Phase 1 path. It exists because the
+    # graph is new and the single-shot chain is the thing that has been working;
+    # a flag that lets an operator go back is cheaper than a rollback.
+    run_row = agent_store.start_run(
+        session,
+        project_id=project_id,
+        presentation_id=None,
+        created_by=principal.user_id,
+        intent=request.instruction[:500],
+    )
 
-    document = compose_document(plan, instruction=request.instruction)
+    if request.use_graph:
+        try:
+            outcome = agent_service.run_deck_generation(
+                request,
+                run_id=run_row.id,
+                user_id=principal.user_id,
+                project_id=project_id,
+                presentation_id="",
+                document=_empty_document(request),
+                memory=ProjectMemory(
+                    agent_store.SqlMemoryStore(session, principal.user_id), project_id
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001 - reported with its reason, not a bare 500
+            logger.exception("Agent run failed")
+            agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
+            raise HTTPException(status_code=502, detail=f"The agent run failed: {exc}") from exc
+
+        result = outcome.result
+        agent_store.finish_run(
+            session,
+            run_row,
+            status=result.status,
+            stage=result.state.get("current_stage"),
+            warnings=result.warnings,
+            errors=result.errors,
+            budget=result.budget,
+        )
+
+        if result.status not in {"completed", "awaiting_approval"} or not outcome.operations:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": "The agent run did not produce a deck.",
+                    "errors": result.errors,
+                    "warnings": result.warnings,
+                },
+            )
+
+        # The graph already composed the document; composing it again from the
+        # plan would be a second implementation of the same step, free to differ.
+        document = outcome.document
+        if document is None:
+            raise HTTPException(
+                status_code=502, detail="The agent run produced no document."
+            )
+
+        diagnostics = GenerationDiagnostics(
+            source="model" if outcome.source == "model" else "stub",
+            model=router_models.get("planning", "") if outcome.source == "model" else "",
+            duration_ms=int(result.budget.get("elapsed_seconds", 0) * 1000),
+            input_tokens=0,
+            output_tokens=result.budget.get("used_tokens", 0),
+            warnings=list(result.warnings),
+        )
+    else:
+        try:
+            plan, diagnostics = generate_story_plan(request)
+        except StoryGenerationError as exc:
+            # 502, not 500: the failure is upstream, and the message is the useful part.
+            agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        agent_store.finish_run(session, run_row, status="completed", stage="story")
+        document = compose_document(plan, instruction=request.instruction)
 
     try:
         errors = validate_document(document)
@@ -181,9 +270,13 @@ def generate(
         source="agent" if diagnostics.source == "model" else "system",
     )
 
+    run_row.presentation_id = stored.presentation_id
+    session.flush()
+
     return GenerateResponse(
         presentation_id=stored.presentation_id,
         version_id=stored.version_id,
         document=stored.document,
         diagnostics=diagnostics,
+        run_id=run_row.id,
     )

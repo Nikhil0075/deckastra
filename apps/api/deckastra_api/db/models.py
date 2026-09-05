@@ -254,10 +254,96 @@ class TransactionRow(Base, TimestampMixin):
     created_by: Mapped[str] = mapped_column(String(64), nullable=False)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # A proposal that nobody answered must not sit pending forever: doc 02 §31.6
+    # gives one a 24h life, after which it expires rather than silently applying
+    # or silently vanishing. Null for anything that was never a proposal.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The run that produced it, so an agent change can be traced to its events,
+    # its budget and its sources.
+    run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+
     presentation: Mapped[Presentation] = relationship(back_populates="transactions")
 
 
+class AgentRunRow(Base, TimestampMixin):
+    """One agent run (doc 03 §19).
+
+    Separate from `transactions` because a run and a change are not the same
+    thing: a run may end in no change at all (a clarification, a refusal, a
+    rejected proposal), and a change may be reverted long after its run is
+    finished. Keeping them apart is what lets the agent inspector show *why*
+    something was proposed even when it was not applied.
+
+    The state itself lives in LangGraph's checkpoint tables. This row is the
+    index: what the run was for, where it got to, and what it spent.
+    """
+
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('running', 'awaiting_approval', 'completed', 'failed', 'exhausted', 'cancelled')",
+            name="ck_agent_run_status",
+        ),
+        Index("ix_agent_runs_presentation", "presentation_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="running")
+    stage: Mapped[str | None] = mapped_column(String(32))
+    intent: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Ids and short strings only. Doc 03 §19: large artifacts are referenced, not
+    # stored — a slide preview in here is a slide preview in every query.
+    scope_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
+    warnings_json: Mapped[list[Any] | None] = mapped_column(JsonColumn)
+    errors_json: Mapped[list[Any] | None] = mapped_column(JsonColumn)
+    budget_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
+
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AgentMemoryRow(Base, TimestampMixin):
+    """Within-project agent memory (gap register doc 03 S2).
+
+    Scoped to a project, never to an organisation — doc 03 §27 defers
+    cross-organisation memory, and one workspace's rejected layout is not
+    evidence about another's.
+
+    Only decisions are stored, never content: "the user dismissed a style issue",
+    not what the slide said. A memory of content is a copy of the document that
+    drifts from it.
+    """
+
+    __tablename__ = "agent_memory"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('accepted_layout', 'rejected_proposal', 'dismissed_issue', 'preference')",
+            name="ck_agent_memory_kind",
+        ),
+        Index("ix_agent_memory_project", "project_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject: Mapped[str] = mapped_column(String(128), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(String(64))
+
+
 __all__ = [
+    "AgentMemoryRow",
+    "AgentRunRow",
     "Base",
     "JsonColumn",
     "Presentation",

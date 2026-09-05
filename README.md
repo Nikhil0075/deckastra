@@ -9,13 +9,17 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 4.** A prompt becomes a real deck you can present in a browser,
+**Status: Phase 5.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
 direct-manipulation editor with in-place text editing. Every MVP element type
 draws for real — charts, diagrams, tables, highlighted code and icons are laid
 out deterministically from the document rather than standing in as placeholders
 — and present mode has a presenter view with notes, a timer and a second-screen
 window.
+
+Generation now runs a real agent graph rather than a single-shot chain, and you
+can select something on a slide, ask for a change in words, and see what it would
+do before it happens.
 
 ---
 
@@ -31,6 +35,8 @@ packages/renderer/              document -> IntermediateScene -> DOM/SVG
 packages/layout-engine/         text measurement, container layout, constraints
 packages/editor/                selection, hit testing, transforms, snapping,
                                 clipboard, keys, rich-text editing and paste sanitization
+agents/                         the LangGraph agent system: nodes, contracts,
+                                tool registry, budgets, memory, model routing
 apps/api/                       FastAPI: generation, persistence, versioned history
 apps/web/                       prompt box, deck preview, editor, present mode
 docs/                           the six specification documents
@@ -191,6 +197,41 @@ nothing to drift. CI fails if the committed artifact is stale.
 
 ---
 
+## How the agents work
+
+```
+Orchestrator → Research → Story → [you approve] → Creative → Layout → Critic
+                            ↑                                            |
+                            +-------------- revise ----------------------+
+                                                                         |
+                                            proposal → you decide → transaction
+```
+
+The rule underneath all of it: **agents manipulate intent and structured
+operations, not pixels.** An agent says "this slide should be a metrics layout"
+or "this element's text should read X"; deterministic code turns that into
+geometry and into a patch. So a generated slide cannot overlap, and an AI edit is
+the same kind of object as a human one — one transaction, with an inverse, in the
+same history.
+
+Four boundaries make that hold rather than merely intend it:
+
+- **No agent writes to the store.** They produce operations and hand them over.
+- **No agent can call a tool it did not declare** — the registry hands each agent
+  a narrowed view rather than checking a list.
+- **Everything an agent did not write is enveloped as data.** A README that says
+  "ignore your instructions" is content to be described, not a command; the
+  envelope escapes its own delimiter so the content cannot break out of it.
+- **Risk is computed from the operations, server-side.** A small change applies;
+  anything larger waits for a person, expires in 24 hours if nobody answers, and
+  is re-validated against the current deck when they do.
+
+Without an API key the whole path still runs on a deterministic stub — the graph,
+the routing, the checkpoint, the proposal lifecycle — and every deck and edit it
+produces says plainly that no model was involved.
+
+---
+
 ## What is actually verified
 
 Claims in a README are cheap; these are the ones with a gate behind them.
@@ -206,6 +247,11 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | A deck is buildable with no AI | The animation seed deck rebuilt through editor operations alone |
 | Migrations match the models, on the engine that deploys | Alembic run against PostgreSQL in CI |
 | Pasted HTML cannot carry a script or a `javascript:` link | Parsed with a real HTML parser and asserted |
+| Retrieved content cannot escape its envelope and become instruction | Closing tags inside content are neutralised; asserted |
+| An agent cannot call a tool it did not declare, or one it lacks permission for | Asserted against the registry |
+| An agent edit stays inside the user's selection | An out-of-scope edit is dropped and reported |
+| A generation can pause for approval and resume in another process | Run against a real LangGraph PostgreSQL checkpointer |
+| An AI change is one transaction, undoable on its own | Journey C, end to end in a browser |
 
 ---
 

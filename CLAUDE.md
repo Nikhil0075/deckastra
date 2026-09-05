@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 4 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 5 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `agents/`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -17,6 +17,7 @@ npm install
 pip install -r requirements-dev.txt -r apps/api/requirements.txt
 
 npm test                # all workspaces
+python -m pytest apps/api agents -q   # the API and the agent system
 npm run typecheck
 npm run schema:emit     # regenerate generated/
 npm run schema:drift    # CI gate: fail if generated/ is stale
@@ -83,8 +84,14 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 ### Generation: the model proposes intent, code composes geometry
 
 ```
-prompt → StoryPlan (model, JSON-schema constrained) → composer → .mydeck → renderer
+prompt → Orchestrator → Research → Story → [human checkpoint] → Creative → Layout → Critic
+                                                                                      ↓
+                                              composer → .mydeck → renderer ← proposal
 ```
+
+The graph is Phase 5 (`agents/`). `GenerateRequest.use_graph` still selects the
+Phase 1 single-shot chain — the flag exists so an operator can go back without a
+rollback, not as a permanent fork.
 
 `apps/api/deckastra_api/models.py` defines `StoryPlan`: narrative, copy, and a
 **layout name from a closed set**. It carries no coordinates, font sizes or
@@ -110,6 +117,59 @@ sensible position, ignored while the container lays out (doc 02 §16.2).
 The consequence for anything that emits a container: padding must be declared on
 the layout, not baked into child coordinates. A card whose padding lived only in
 those coordinates goes flush the moment the container takes over.
+
+### The agent system
+
+`agents/` is a top-level package, not a subpackage of the API. Doc 05 §17 says
+agent implementations should not know database details, and separate trees is
+what makes that checkable — an agent importing `deckastra_api` is an obvious
+mistake in the diff. The cost is a path bootstrap, which lives in
+`deckastra_api/__init__.py` so no entry point has to set `PYTHONPATH` correctly.
+
+Five rules hold the design together. Each is structural, because a rule that
+depends on every future agent remembering it lasts until the next agent:
+
+- **Agents never write.** They produce operations; `proposals.py` decides whether
+  those apply now or wait for a human. There is no route that would let an agent
+  bypass it.
+- **Agents cannot call an undeclared tool.** `ToolRegistry.for_agent` returns a
+  *narrowed* registry rather than checking a list, so it is a property of the
+  object graph.
+- **Retrieved content is enveloped at the tool boundary**, not per agent.
+- **Risk is computed server-side from the operations** (doc 02 §31.7). A
+  caller-declared tier is a caller-controlled security boundary.
+- **Nothing an agent emits carries geometry.** The Creative Director names a
+  theme token; a literal colour is rejected and replaced, with a warning.
+
+Nodes are plain `(state, ctx)` functions and nothing in `agents/` imports
+LangGraph except `graph.py`. That is doc 03 §24's argument about model providers,
+applied to the graph library: a node is testable by calling it, and the framework
+stays replaceable.
+
+**The state is a TypedDict, and LangGraph merges only the keys it declares.** An
+undeclared key is silently dropped between nodes and the routing then falls
+through to its default as though the node had said nothing. If a node starts
+returning something new, declare it in `state.py` in the same change.
+
+### Budgets degrade; ceilings stop
+
+`budgets.py` holds the numbers doc 03 left unstated (gap S1). The distinction
+that shapes it: a **token or wall-clock ceiling raises**, because past it the run
+is spending money or a user's patience on something they did not agree to. A
+**revision budget returns False**, because past it the run still has something
+worth handing over — so the Critic accepts the best draft and attaches the
+unresolved issues (gap S3). A user can act on an attached issue; they can do
+nothing with a run that never finished.
+
+### The proposal lifecycle
+
+An agent change becomes a *pending* transaction unless the risk tier says it can
+apply now. Low risk applies immediately on purpose: making someone approve a typo
+fix trains them to approve without reading, which is worse than not asking.
+
+A proposal expires after 24 hours and is **re-validated on approval** against the
+document as it stands. Between proposing and approving the deck may have moved,
+and applying blind would apply a patch to something the approver never saw.
 
 ### One path mutates a document
 
@@ -388,6 +448,14 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 - Relative imports inside packages are **extensionless** (`from "./scene"`), matching `moduleResolution: "Bundler"`. Turbopack does not map `.js` → `.ts`, so extensions break the web build.
 - Authorization resolves `User → Workspace → Project → Presentation` through `resolve_presentation_access`, by **membership and role**, never by `owner_id`. A missing resource and a forbidden one both return 404: a 403 on something you cannot see confirms it exists.
 - Risk tier is computed server-side from the operations. Never accept one from a caller.
+- Content an agent did not write goes through `envelope()` — and the envelope
+  escapes the delimiter, because content that can close its own tag continues
+  outside it, where the model reads it as the operator talking. Detection of an
+  injection attempt **warns and never filters**: the envelope is what makes it
+  safe, and a filter would block a legitimate deck about prompt injection.
+- Durable checkpoints need PostgreSQL. LangGraph has no SQLite saver, so a run on
+  the local database cannot pause — `agent_service._checkpointer` returns None
+  and says so, rather than letting a checkpoint silently do nothing.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
 - The schema is **not** dialect-neutral: `JsonColumn` is JSONB on PostgreSQL and
   JSON everywhere else. `test_postgres.py` compiles the DDL for both dialects

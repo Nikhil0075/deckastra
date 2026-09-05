@@ -124,6 +124,9 @@ jobs:
       # The whole API suite, not just the PostgreSQL-specific file: everything
       # that touches the store should be exercised against the real engine, and
       # the tests that do not care are cheap.
+      # Includes the story-checkpoint tests, which need a durable LangGraph
+      # checkpointer and therefore only run here. A pause that cannot be resumed
+      # in another process is not a pause.
       - name: API tests against PostgreSQL
         env:
           POSTGRES_TEST_URL: postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra
@@ -167,6 +170,13 @@ jobs:
       # replays operations server-side; this is what keeps them from drifting.
       - name: API tests
         run: python -m pytest apps/api/tests -q
+
+      # The agent system runs against the deterministic stub client, so it needs
+      # no API key and spends nothing. What it checks is the part that is ours:
+      # the routing, the envelope, the tool boundaries, the budgets and the
+      # proposal lifecycle.
+      - name: Agent tests
+        run: python -m pytest agents -q
 
       # The models and the migration are two descriptions of one schema, so they
       # drift: someone adds a column, create_all() picks it up, every test passes,

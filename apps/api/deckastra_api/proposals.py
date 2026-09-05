@@ -1,0 +1,311 @@
+"""The proposal lifecycle (doc 02 §31.6, doc 01 §11.2).
+
+An agent's change does not happen because the agent decided it should. It becomes
+a *pending* transaction, a human sees what it would do, and only then does it
+apply. That is proposal-before-apply, and it is a property of this module rather
+than of an agent's good behaviour — an agent that wanted to bypass it has nothing
+to call.
+
+Four rules, each of which exists because the alternative is a real failure:
+
+- **Risk is computed here, from the operations** (doc 02 §31.7). A caller-declared
+  tier is a caller-controlled security boundary.
+- **A low-risk change applies immediately.** Asking a human to approve a typo fix
+  trains them to approve without reading, which is worse than not asking.
+- **A proposal expires after 24 hours** and is re-validated on approval. The
+  document moves; a patch approved against a week-old preview would apply to
+  something the user never saw.
+- **Approving re-runs validation, not just the patch.** A patch can still apply
+  cleanly and produce an invalid document.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from . import store
+from .db.models import TransactionRow
+from .ids import new_id
+from .patch import PatchError, apply_patch
+from .risk import assess_risk
+from .schema import validate_document
+
+#: Doc 02 §31.6. Long enough to come back after a meeting, short enough that a
+#: forgotten proposal does not apply against a document that has moved on.
+PROPOSAL_TTL = timedelta(hours=24)
+
+
+class ProposalError(RuntimeError):
+    """A proposal could not be created, approved or rejected, with the reason."""
+
+    def __init__(self, message: str, *, code: str = "E300") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    """Normalise a timestamp read back from SQLite, which drops the timezone."""
+    if value is None:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def create_proposal(
+    session: Session,
+    *,
+    presentation_id: str,
+    operations: list[dict[str, Any]],
+    intent: str,
+    created_by: str,
+    run_id: str | None = None,
+    agent_id: str | None = None,
+    reason: str | None = None,
+    confidence: float | None = None,
+    source_ids: list[str] | None = None,
+    user_instruction: str | None = None,
+) -> dict[str, Any]:
+    """Record an agent's change, applying it now or parking it for approval.
+
+    Returns what the caller needs to answer the request: the transaction, whether
+    it applied, and — when it did not — the document it *would* produce, so the
+    editor can show a preview without a second round trip.
+    """
+    loaded = store.load_presentation(session, presentation_id)
+    assessment = assess_risk(operations)
+
+    # Dry run first, always. A proposal that cannot apply is not a proposal, and
+    # discovering that at approval time wastes the user's decision.
+    try:
+        preview, inverse = apply_patch(loaded.document, operations)
+    except PatchError as error:
+        raise ProposalError(f"The proposed change does not apply: {error}", code=error.code) from error
+
+    errors = validate_document(preview)
+    if errors:
+        raise ProposalError(
+            "The proposed change would produce an invalid document: " + "; ".join(errors[:3]),
+            code="E001",
+        )
+
+    if not assessment.requires_approval:
+        result = store.commit_transaction(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            inverse_operations=inverse,
+            document=preview,
+            parent_version_id=loaded.version_id,
+            expected_version_id=loaded.version_id,
+            intent=intent,
+            source="agent",
+            created_by=created_by,
+            agent_id=agent_id,
+            reason=reason,
+            confidence=confidence,
+            risk_tier=assessment.tier,
+            user_instruction=user_instruction,
+            label=intent[:200],
+        )
+        transaction = session.get(TransactionRow, result.transaction_id)
+        if transaction is not None and run_id:
+            transaction.run_id = run_id
+        session.flush()
+
+        return {
+            "transaction_id": result.transaction_id,
+            "status": "applied",
+            "risk_tier": assessment.tier,
+            "reasons": assessment.reasons,
+            "version_id": result.version_id,
+            "document": result.document,
+            "preview": None,
+            "expires_at": None,
+        }
+
+    transaction = TransactionRow(
+        id=new_id("txn"),
+        presentation_id=presentation_id,
+        status="pending",
+        parent_version_id=loaded.version_id,
+        result_version_id=None,
+        source="agent",
+        agent_id=agent_id,
+        intent=intent,
+        operations_json=operations,
+        inverse_operations_json=inverse,
+        reason=reason,
+        confidence=confidence,
+        source_ids_json=source_ids,
+        risk_tier=assessment.tier,
+        created_by=created_by,
+        user_instruction=user_instruction,
+        expires_at=_now() + PROPOSAL_TTL,
+        run_id=run_id,
+    )
+    session.add(transaction)
+    session.flush()
+
+    return {
+        "transaction_id": transaction.id,
+        "status": "pending",
+        "risk_tier": assessment.tier,
+        "reasons": assessment.reasons,
+        "version_id": loaded.version_id,
+        "document": None,
+        # The preview is returned, not stored. Storing it would be storing a
+        # second copy of the document that goes stale the moment anything changes.
+        "preview": preview,
+        "expires_at": transaction.expires_at.isoformat(),
+    }
+
+
+def expire_stale(session: Session, presentation_id: str) -> int:
+    """Mark overdue proposals expired. Called before any read of the pending list.
+
+    Lazily rather than on a schedule: a background sweeper is a second thing to
+    deploy and monitor, and the only moment staleness matters is when someone
+    looks.
+    """
+    now = _now()
+    stale = (
+        session.query(TransactionRow)
+        .filter(
+            TransactionRow.presentation_id == presentation_id,
+            TransactionRow.status == "pending",
+        )
+        .all()
+    )
+
+    expired = 0
+    for transaction in stale:
+        deadline = _aware(transaction.expires_at)
+        if deadline is not None and deadline <= now:
+            transaction.status = "expired"
+            expired += 1
+
+    if expired:
+        session.flush()
+    return expired
+
+
+def pending(session: Session, presentation_id: str) -> list[TransactionRow]:
+    expire_stale(session, presentation_id)
+    return (
+        session.query(TransactionRow)
+        .filter(
+            TransactionRow.presentation_id == presentation_id,
+            TransactionRow.status == "pending",
+        )
+        .order_by(TransactionRow.created_at.asc())
+        .all()
+    )
+
+
+def approve(
+    session: Session, *, presentation_id: str, transaction_id: str, approved_by: str
+) -> dict[str, Any]:
+    """Apply a pending proposal, re-validating against the document as it is now.
+
+    The re-validation is the point. Between proposal and approval the document may
+    have moved — another edit, another agent, another person. Applying blind would
+    apply a patch to something the approver never saw.
+    """
+    transaction = session.get(TransactionRow, transaction_id)
+    if transaction is None or transaction.presentation_id != presentation_id:
+        raise ProposalError("No such proposal.", code="E404")
+
+    if transaction.status != "pending":
+        raise ProposalError(
+            f"This proposal is {transaction.status}, not pending.", code="E409"
+        )
+
+    deadline = _aware(transaction.expires_at)
+    if deadline is not None and deadline <= _now():
+        transaction.status = "expired"
+        session.flush()
+        raise ProposalError(
+            "This proposal expired. Ask for the change again against the current deck.",
+            code="E410",
+        )
+
+    loaded = store.load_presentation(session, presentation_id)
+
+    try:
+        document, inverse = apply_patch(loaded.document, transaction.operations_json)
+    except PatchError as error:
+        # Refused rather than half-applied: the alternative is a document in a
+        # state nobody asked for (doc 04 §29.3).
+        raise ProposalError(
+            "This change no longer applies — the deck has changed since it was "
+            f"proposed. ({error})",
+            code=error.code,
+        ) from error
+
+    errors = validate_document(document)
+    if errors:
+        raise ProposalError(
+            "Applying this change would produce an invalid document: " + "; ".join(errors[:3]),
+            code="E001",
+        )
+
+    result = store.commit_transaction(
+        session,
+        presentation_id=presentation_id,
+        operations=transaction.operations_json,
+        inverse_operations=inverse,
+        document=document,
+        parent_version_id=loaded.version_id,
+        expected_version_id=loaded.version_id,
+        intent=transaction.intent,
+        source="agent",
+        created_by=approved_by,
+        agent_id=transaction.agent_id,
+        reason=transaction.reason,
+        confidence=transaction.confidence,
+        risk_tier=transaction.risk_tier,
+        user_instruction=transaction.user_instruction,
+        label=transaction.intent[:200],
+    )
+
+    # The pending row records that it was approved and points at the applied one.
+    # Deleting it would lose the fact that a human said yes, which is the part
+    # worth keeping.
+    transaction.status = "applied"
+    transaction.result_version_id = result.version_id
+    transaction.applied_at = _now()
+    session.flush()
+
+    return {
+        "transaction_id": result.transaction_id,
+        "proposal_id": transaction.id,
+        "version_id": result.version_id,
+        "document": result.document,
+        "risk_tier": transaction.risk_tier or "medium",
+    }
+
+
+def reject(
+    session: Session, *, presentation_id: str, transaction_id: str, reason: str | None = None
+) -> TransactionRow:
+    transaction = session.get(TransactionRow, transaction_id)
+    if transaction is None or transaction.presentation_id != presentation_id:
+        raise ProposalError("No such proposal.", code="E404")
+
+    if transaction.status != "pending":
+        raise ProposalError(f"This proposal is {transaction.status}, not pending.", code="E409")
+
+    transaction.status = "rejected"
+    if reason:
+        # Appended rather than overwritten: the agent's reason for proposing and
+        # the human's reason for declining are different facts, and the second
+        # one is what the Critic should learn from.
+        transaction.reason = f"{transaction.reason or ''}\nRejected: {reason}".strip()
+    session.flush()
+    return transaction

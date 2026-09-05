@@ -88,6 +88,12 @@ class GenerateRequest(BaseModel):
     tone: str = ""
     """Where to put the deck. Defaults to the caller's first project."""
     project_id: str | None = None
+    #: Run the Phase 5 agent graph rather than the Phase 1 single-shot chain.
+    #:
+    #: Default on. The flag exists so an operator can go back without a rollback
+    #: — the single-shot chain is the thing that has been working, and a graph is
+    #: a lot of new moving parts to make unavoidable on day one.
+    use_graph: bool = True
 
 
 class GenerationDiagnostics(BaseModel):
@@ -118,3 +124,6 @@ class GenerateResponse(BaseModel):
     version_id: str
     document: dict
     diagnostics: GenerationDiagnostics
+    #: The agent run that produced it. Lets a client subscribe to its events and
+    #: lets the agent inspector show why each slide is the way it is.
+    run_id: str | None = None
