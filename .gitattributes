@@ -1,0 +1,35 @@
+# Normalize line endings to LF everywhere.
+#
+# Not cosmetic. Two CI gates compare generated files against their committed form
+# — `npm run schema:drift` and the fixture-drift check — and the generators emit
+# LF. Without this, a Windows checkout converts those files to CRLF and both gates
+# fail on a clean tree, which trains everyone to ignore them.
+
+* text=auto eol=lf
+
+# Binary formats git must not touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.mp4 binary
+*.mov binary
+*.mp3 binary
+*.wav binary
+*.pptx binary
+*.mydeck binary
+
+# Generated. Collapsed in diffs and excluded from language statistics — reviewing
+# a 141 KB regenerated JSON Schema line by line is not a use of anyone's time; the
+# drift gate is what actually checks it.
+packages/presentation-schema/generated/** linguist-generated=true
+packages/presentation-schema/fixtures/*.mydeck.json linguist-generated=true
+package-lock.json linguist-generated=true
