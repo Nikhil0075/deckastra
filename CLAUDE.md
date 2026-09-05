@@ -28,6 +28,8 @@ npm run dev:web         # Next on :3000
 npm run db:migrate      # alembic upgrade head
 npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
+python -m pytest agents -q          # the agent graph, against the stub client
+python -m pytest integrations -q    # ignore rules, ranking, chunking, GitHub
 ```
 
 The API needs a database. `DATABASE_URL=sqlite:///deckastra.db` works for local
@@ -426,6 +428,64 @@ Union parse failures are expanded via `ELEMENT_SCHEMA_BY_TYPE` before being repo
 ### No expression language, anywhere
 
 A `.mydeck` file must be safe to email. Data bindings use a fixed transform allowlist (`BindingTransformSchema`), binding targets use a path allowlist (`isAllowedBindingTarget` — unrestricted paths would let a binding rewrite `id`, `type` or `children`), and component parameters wire to concrete template paths rather than substituting into strings. Assets carry an opaque `storageKey`, never a signed URL; signed URLs are minted at render time.
+
+### Repository grounding runs on bytes, never on execution
+
+`integrations/` reads repositories; `apps/api` indexes, searches and cites them.
+The pipeline is `tree → ignore → rank → read the top N → chunk → index`, and the
+step that makes it viable is **read only what ranked** — deciding from the tree
+alone is the difference between seconds and an hour.
+
+Five things there are load-bearing:
+
+- **No repository code is executed**, and that includes `git`:
+  `LocalDirectorySource` parses `.git/HEAD` as a file. A rule with an exception
+  is not a rule.
+- **`ignore.py` runs before the ranking.** A path that will never be indexed must
+  not occupy a slot in it, and `looks_like_secret` is the one check that must
+  never be relaxed — an embedded private key is a private key in a database.
+- **Retrieval declares which kind it is.** `default_embedder()` returns `None`
+  without a key and the index falls back to BM25 (`lexical.py`), labelling itself
+  `embedding_model="bm25"`, `embedding_semantic=False`, which the UI surfaces.
+  The previous hashing "embedder" was deleted rather than kept as a fallback: 1024
+  hashed dimensions are mostly collisions, and a search that confidently returns
+  the wrong file is worse than one that admits it matches words.
+- **`staleness()` has three states and "unknown" is not "fresh".** A working
+  directory with no commit, or a repository whose head cannot be read, lands
+  there. Reporting it as up to date is how a deck silently drifts from `main`.
+- **Losing access deletes content.** `apply_webhook` removes the chunks on an
+  uninstall, a suspension or a repository deletion. An index that outlives its
+  permission is data we are no longer allowed to hold.
+
+Provenance lives in the document (`provenance.py`, doc 02 §30) as
+`owner/repo#path:12-48`, attached to the element carrying the claim — not to the
+slide, because the schema targets an element. A slide that cites nothing gets no
+record: the absence is information.
+
+The webhook is the only unauthenticated endpoint in the product. It verifies
+HMAC-SHA256 over the **raw body** (re-serialising the JSON changes the bytes),
+**no configured secret means reject**, and a rejection returns 401 with nothing
+in it — a detailed error is an oracle for guessing the secret.
+
+### The stub planner is repository-aware, and that is deliberate
+
+When research retrieved repository chunks, `stub_repository_story_plan` writes
+the deck out of those chunks and cites them. It is not decoration: without it,
+the entire provenance path — records, the sources endpoint, the UI panel — would
+be unreachable in CI and only exercised by hand with an API key. The citations
+are true because the slides quote the blocks that were actually retrieved.
+`StubClient.register` therefore accepts a callable, so a stub answer can depend
+on what the prompt actually contains.
+
+### One session per request, committed before the response
+
+`session_middleware` in `db/session.py`, not a `Depends` with `yield`. FastAPI
+runs a yield-dependency's teardown *after* the response is sent, so a client that
+reads a write's response and immediately issues the next request beats the
+commit. That is not hypothetical — connect-a-repository and index-it are two
+calls the UI makes back to back, and the second returned 404 until this moved.
+`get_session` reads the session off `request.state` and falls back to
+`session_scope()` when there is no middleware.
 
 ## Fixtures
 

@@ -9,7 +9,7 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 5.** A prompt becomes a real deck you can present in a browser,
+**Status: Phase 6.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
 direct-manipulation editor with in-place text editing. Every MVP element type
 draws for real — charts, diagrams, tables, highlighted code and icons are laid
@@ -17,9 +17,14 @@ out deterministically from the document rather than standing in as placeholders
 — and present mode has a presenter view with notes, a timer and a second-screen
 window.
 
-Generation now runs a real agent graph rather than a single-shot chain, and you
-can select something on a slide, ask for a change in words, and see what it would
-do before it happens.
+Generation runs a real agent graph rather than a single-shot chain, and you can
+select something on a slide, ask for a change in words, and see what it would do
+before it happens.
+
+You can also point it at a repository. Deckastra indexes the source — never
+executing any of it — writes a deck from what it retrieved, and records which
+file and which lines each claim came from, so you can click any slide and read
+its sources.
 
 ---
 
@@ -37,8 +42,11 @@ packages/editor/                selection, hit testing, transforms, snapping,
                                 clipboard, keys, rich-text editing and paste sanitization
 agents/                         the LangGraph agent system: nodes, contracts,
                                 tool registry, budgets, memory, model routing
+integrations/                   repository sources: ignore rules, importance
+                                ranking, chunking, the GitHub App and its webhooks
 apps/api/                       FastAPI: generation, persistence, versioned history
-apps/web/                       prompt box, deck preview, editor, present mode
+apps/web/                       prompt box, repository picker, deck preview with
+                                per-slide sources, editor, present mode
 docs/                           the six specification documents
 infrastructure/database/        Alembic migrations
 infrastructure/docker/          Postgres + pgvector, Redis, MinIO
@@ -228,7 +236,51 @@ Four boundaries make that hold rather than merely intend it:
 
 Without an API key the whole path still runs on a deterministic stub — the graph,
 the routing, the checkpoint, the proposal lifecycle — and every deck and edit it
-produces says plainly that no model was involved.
+produces says plainly that no model was involved. Pointed at a repository, the
+stub writes its deck out of the chunks that were actually retrieved and cites
+them, so the grounding path is exercised for real rather than simulated.
+
+---
+
+## Grounding a deck in a repository
+
+```
+tree → ignore → rank → read the top N → chunk → index → search → cite
+```
+
+Connect a repository and Deckastra reads it — **never executes it**, not even
+`git`: the local adapter parses `.git/HEAD` as a file. What it reads is decided
+from the tree alone, because fetching every file to decide whether to fetch it is
+the cost the ranking exists to avoid, and every ranked file carries the reason it
+scored what it did.
+
+Four decisions worth knowing:
+
+- **Nothing that looks like a secret is ever indexed.** An embedding of a private
+  key is a private key in a database, and a retrieved chunk of one ends up in a
+  prompt.
+- **Retrieval is honest about what it is.** With an embedding key it is semantic;
+  without one it is BM25, and the UI says so — a lexical index finds `psycopg`
+  but not "how do we connect to the database". A weak semantic search that
+  returns plausible nonsense is worse than an honest lexical one.
+- **"Unknown" is not "up to date".** A push marks the index stale; a source whose
+  commit cannot be read reports that it cannot be judged. Both are shown on the
+  repository row, because a deck drifting from `main` is wrong in a way the
+  slides cannot show.
+- **Access withdrawn means content deleted.** An uninstall, a suspension or a
+  removed repository deletes the chunks indexed from it. An index that outlives
+  its permission is data we are no longer allowed to hold.
+
+Provenance is written into the document rather than a side table (doc 02 §30), as
+`owner/repo#path:12-48` — the form that turns into a link mechanically. Click a
+slide and you get the files, the line ranges and the excerpts its claims came
+from; a slide that cites nothing says so, because that absence is information.
+
+GitHub access is a GitHub App with `contents: read` and `metadata: read`, not a
+user token, and installation tokens are short-lived. The webhook is the only
+unauthenticated endpoint in the product: it is verified over the raw body with
+HMAC-SHA256, a missing secret fails closed, and a rejection says nothing but
+"rejected".
 
 ---
 
@@ -252,6 +304,11 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | An agent edit stays inside the user's selection | An out-of-scope edit is dropped and reported |
 | A generation can pause for approval and resume in another process | Run against a real LangGraph PostgreSQL checkpointer |
 | An AI change is one transaction, undoable on its own | Journey C, end to end in a browser |
+| A secret or a vendored dependency is never indexed | Asserted on a tree containing both, through the search endpoint |
+| An unsigned or wrongly signed webhook is refused | HMAC over the raw body; a re-serialised body is asserted to fail |
+| Losing access to a repository deletes what was indexed from it | Chunk count asserted to be zero after the event |
+| One workspace cannot search or cite another's repository | Asserted on the search, index and generate paths |
+| A grounded slide names the file and lines it came from | Journey B, end to end in a browser |
 
 ---
 

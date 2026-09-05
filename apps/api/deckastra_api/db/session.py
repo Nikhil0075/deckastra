@@ -9,11 +9,13 @@ connection-pool pressure, which there is not.
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from typing import Any
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.requests import Request
 
 from .models import Base
 
@@ -79,10 +81,48 @@ def session_scope() -> Iterator[Session]:
         session.close()
 
 
-def get_session() -> Iterator[Session]:
-    """FastAPI dependency."""
-    with session_scope() as session:
+async def session_middleware(request: Request, call_next: Callable[[Request], Any]) -> Any:
+    """One session per request, committed *before* the response is sent.
+
+    This is a middleware rather than a dependency with `yield` for one reason.
+    FastAPI runs a yield-dependency's teardown after the response has gone out,
+    so a client that reads a write's response and immediately issues the next
+    request can beat the commit and be told the row does not exist. That is not
+    theoretical: connecting a repository and indexing it are two calls a UI makes
+    back to back, and the second returned 404 until this moved.
+
+    Rolling back on a 4xx or 5xx keeps the previous behaviour, where an exception
+    discarded the partial write.
+    """
+    session = get_sessionmaker()()
+    request.state.db = session
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        session.rollback()
+        raise
+    else:
+        if response.status_code < 400:
+            session.commit()
+        else:
+            session.rollback()
+        return response
+    finally:
+        session.close()
+
+
+def get_session(request: Request) -> Iterator[Session]:
+    """FastAPI dependency: the session the middleware opened for this request."""
+    session: Session | None = getattr(request.state, "db", None)
+    if session is not None:
         yield session
+        return
+
+    # No middleware — a test calling a router directly, or an ASGI path that does
+    # not go through it. Owning the transaction here keeps that case correct.
+    with session_scope() as fallback:
+        yield fallback
 
 
 def create_all() -> None:

@@ -88,6 +88,10 @@ class GenerateRequest(BaseModel):
     tone: str = ""
     """Where to put the deck. Defaults to the caller's first project."""
     project_id: str | None = None
+    #: Repositories to ground the deck in (Journey B). Resolved against the
+    #: caller's workspace server-side; an id from elsewhere is silently dropped
+    #: rather than becoming a source.
+    repository_ids: list[str] = Field(default_factory=list, max_length=10)
     #: Run the Phase 5 agent graph rather than the Phase 1 single-shot chain.
     #:
     #: Default on. The flag exists so an operator can go back without a rollback

@@ -178,6 +178,17 @@ jobs:
       - name: Agent tests
         run: python -m pytest agents -q
 
+      # The indexing side of Journey B: the ignore rules, the ranking, the
+      # chunker, the GitHub App's JWT and the webhook signature. No network and
+      # no credentials — the signature tests generate their own key, and the
+      # source adapter reads a temporary directory.
+      #
+      # A gate rather than a nicety: the ignore rules are what stop a private key
+      # being embedded into a database, and the signature check is the product's
+      # only unauthenticated trust boundary.
+      - name: Integration tests
+        run: python -m pytest integrations -q
+
       # The models and the migration are two descriptions of one schema, so they
       # drift: someone adds a column, create_all() picks it up, every test passes,
       # and the deployed database is missing it.

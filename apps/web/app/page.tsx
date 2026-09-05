@@ -6,14 +6,18 @@ import { ScaledSlide } from "@deckastra/renderer/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { PresentMode } from "../components/PresentMode";
+import { RepositoryPanel } from "../components/RepositoryPanel";
+import { SourcesPanel } from "../components/SourcesPanel";
 import { browserMeasurer } from "../lib/measurer";
 import { getSession } from "../lib/session";
 
 /**
- * Phase 1 shell: prompt in, deck out, present.
+ * The generation surface: prompt in, deck out, present or edit.
  *
- * Deliberately plain. The editor is Phase 3, and building chrome around a
- * document model that cannot yet be edited would be scaffolding for its own sake.
+ * Deliberately plain — the real chrome is the editor. What it does carry is the
+ * two things a user cannot judge a generated deck without: which repositories it
+ * was grounded in and how current their indexes are (`RepositoryPanel`), and
+ * which files each slide was written from (`SourcesPanel`).
  */
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -50,6 +54,7 @@ export default function Home() {
   const [presenting, setPresenting] = useState(false);
   const [generationMode, setGenerationMode] = useState<"model" | "stub" | null>(null);
   const [presentationId, setPresentationId] = useState<string | null>(null);
+  const [repositoryIds, setRepositoryIds] = useState<string[]>([]);
 
   // Ask the API up front whether it has a key, so the user learns their deck will
   // be stub-composed *before* they wait for it rather than after.
@@ -80,6 +85,7 @@ export default function Home() {
           instruction,
           audience,
           slide_count: slideCount,
+          repository_ids: repositoryIds,
         }),
       });
 
@@ -123,14 +129,16 @@ export default function Home() {
             marginBottom: 12,
           }}
         >
-          Deckastra · Phase 1
+          Deckastra
         </div>
         <h1 style={{ fontSize: 44, margin: "0 0 10px", letterSpacing: -1 }}>
           Turn an idea into a deck
         </h1>
         <p style={{ color: "var(--fg-muted)", margin: 0, fontSize: 17, maxWidth: 640 }}>
           A model writes the narrative and picks a layout. Deterministic code places
-          every object. Everything you see is a real editable element, not an image.
+          every object. Everything you see is a real editable element, not an image —
+          and when you ground a deck in a repository, every claim names the file it
+          came from.
         </p>
       </header>
 
@@ -205,6 +213,8 @@ export default function Home() {
         </div>
       </section>
 
+      <RepositoryPanel selected={repositoryIds} onSelectionChange={setRepositoryIds} />
+
       {status.phase === "generating" ? (
         <p style={{ color: "var(--fg-muted)", marginTop: 28 }}>
           Designing the narrative, then composing slides…
@@ -222,6 +232,7 @@ export default function Home() {
         <Deck
           scene={scene}
           diagnostics={status.diagnostics}
+          presentationId={presentationId}
           onPresent={() => setPresenting(true)}
           onEdit={presentationId ? () => { window.location.href = `/edit/${presentationId}`; } : undefined}
         />
@@ -233,11 +244,13 @@ export default function Home() {
 function Deck({
   scene,
   diagnostics,
+  presentationId,
   onPresent,
   onEdit,
 }: {
   scene: DocumentScene;
   diagnostics: Diagnostics;
+  presentationId: string | null;
   onPresent: () => void;
   onEdit?: () => void;
 }) {
@@ -307,6 +320,19 @@ function Deck({
           </button>
         ))}
       </div>
+
+      {/* The exit criterion for Journey B: click a slide, see its sources. Open
+          by default — provenance nobody opens is provenance nobody checks. */}
+      {presentationId && current ? (
+        <details open style={{ marginTop: 4 }}>
+          <summary style={{ cursor: "pointer", color: "var(--fg-subtle)", fontSize: 14 }}>
+            Sources for this slide
+          </summary>
+          <div style={{ marginTop: 12 }}>
+            <SourcesPanel presentationId={presentationId} slideId={current.slideId} />
+          </div>
+        </details>
+      ) : null}
 
       <details style={{ marginTop: 20, color: "var(--fg-muted)", fontSize: 14 }}>
         <summary style={{ cursor: "pointer", color: "var(--fg-subtle)" }}>

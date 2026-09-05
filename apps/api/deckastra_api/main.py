@@ -19,14 +19,15 @@ from . import store
 from .auth import Principal, current_principal, issue_dev_token
 from .compose import compose_document
 from .db.models import Project, User, Workspace, WorkspaceMember
-from .db.session import database_url, get_session
+from .db.session import database_url, get_session, session_middleware
 from .ids import new_id
 from .models import GenerateRequest, GenerateResponse, GenerationDiagnostics
 from deckastra_agents import ProjectMemory
 from deckastra_agents.router import MODELS as router_models
 
-from . import agent_service, agent_store
+from . import agent_service, agent_store, provenance, repository_service
 from .agent_routes import router as agent_router
+from .repository_routes import router as repository_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
 from .story import StoryGenerationError, api_key_available, generate_story_plan
@@ -39,17 +40,23 @@ app = FastAPI(
     description="Documents, transactions and versioned history.",
 )
 
+# Added before CORS so CORS ends up the outer layer: a preflight is answered
+# without opening a database session, and every response — including an error —
+# still carries its CORS headers.
+app.middleware("http")(session_middleware)
+
 # Locked to localhost rather than "*" — a permissive default here survives into
 # production because nothing ever visibly breaks.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
 app.include_router(v1_router)
 app.include_router(agent_router)
+app.include_router(repository_router)
 
 
 @app.get("/health")
@@ -179,6 +186,18 @@ def generate(
         intent=request.instruction[:500],
     )
 
+    # Journey B: a deck grounded in a repository. Resolved for this workspace
+    # rather than trusted from the request — a repository id from another
+    # workspace must not become a source, and `resolve_many` is where that is
+    # enforced rather than assumed.
+    repositories = [
+        repository
+        for repository in repository_service.resolve_many(
+            session, membership.workspace_id, request.repository_ids
+        )
+        if repository.index_status == "ready"
+    ]
+
     if request.use_graph:
         try:
             outcome = agent_service.run_deck_generation(
@@ -191,6 +210,8 @@ def generate(
                 memory=ProjectMemory(
                     agent_store.SqlMemoryStore(session, principal.user_id), project_id
                 ),
+                session=session,
+                repositories=repositories,
             )
         except Exception as exc:  # noqa: BLE001 - reported with its reason, not a bare 500
             logger.exception("Agent run failed")
@@ -225,6 +246,17 @@ def generate(
             raise HTTPException(
                 status_code=502, detail="The agent run produced no document."
             )
+
+        # Doc 02 §30: provenance lives in the document, not a side table, so a
+        # user can click a claim and see which file produced it — and so that
+        # survives export and duplication.
+        research = outcome.result.state.get("research") or {}
+        story_plan = outcome.result.state.get("story_plan") or {}
+        records = provenance.records_for_document(
+            document, story_plan, research.get("sources") or []
+        )
+        if records:
+            document = provenance.attach(document, records)
 
         diagnostics = GenerationDiagnostics(
             source="model" if outcome.source == "model" else "stub",

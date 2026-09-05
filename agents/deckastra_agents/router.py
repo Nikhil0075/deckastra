@@ -183,6 +183,14 @@ class StubClient:
         self.calls: list[ModelRequest] = []
 
     def register(self, task_type: str, payload: Any) -> None:
+        """Register the answer for a task type.
+
+        `payload` may be a callable taking the `ModelRequest`. That is not a
+        convenience: some stub answers have to depend on what was actually
+        retrieved — a repository-grounded plan cannot cite sources it was written
+        before seeing — and a callable is how the stub reads the same prompt the
+        real model would.
+        """
         self._answers[task_type] = payload
 
     def complete(self, request: ModelRequest, budget: RunBudget) -> ModelResponse:
@@ -193,7 +201,8 @@ class StubClient:
                 "Register one, or run with a real API key."
             )
 
-        text = json.dumps(self._answers[request.task_type])
+        answer = self._answers[request.task_type]
+        text = json.dumps(answer(request) if callable(answer) else answer)
         # Charged so budget accounting is exercised on the stub path too.
         budget.spend_tokens(len(request.system) // 4, len(text) // 4)
         return ModelResponse(text=text, model="stub", output_tokens=len(text) // 4)

@@ -36,8 +36,12 @@ from deckastra_agents.events import Emitter, RedisEmitter, fan_out
 from deckastra_agents.router import api_key_available
 from deckastra_agents.runner import resume_generation, run_generation
 from deckastra_agents.tools.presentation import register_presentation_tools
+from deckastra_agents.tools.repository import register_repository_tools
+from sqlalchemy.orm import Session
 
+from . import retrieval
 from .compose import compose_document
+from .db.models import Repository
 from .models import GenerateRequest, StoryPlan
 from .patch import PatchError, apply_patch
 from .risk import assess_risk
@@ -49,7 +53,9 @@ logger = logging.getLogger("deckastra.agents")
 # ------------------------------------------------------------------ stubbing
 
 
-def _stub_answers(request: GenerateRequest) -> StubClient:
+def _stub_answers(
+    request: GenerateRequest, repositories: list[Repository] | None = None
+) -> StubClient:
     """A deterministic client that walks the whole graph without credentials.
 
     Not a test mock — it is what keeps the agent path exercisable on a fresh
@@ -57,33 +63,64 @@ def _stub_answers(request: GenerateRequest) -> StubClient:
     the proposal lifecycle all run, and only the model's judgement is missing.
     Its decks say so in the UI.
     """
-    from .stub import stub_story_plan
+    from .stub import parse_sources, stub_repository_story_plan, stub_story_plan
 
     plan = stub_story_plan(request)
     client = StubClient()
 
+    # One task type, two callers: the Orchestrator asks first and the Research
+    # Agent asks second, so the answer carries both shapes. A stub that answered
+    # only the first would make the research stage look like a model failure.
     client.register(
         "fast",
         {
             "intent": "create_deck",
-            "stages": ["story", "creative", "layout", "critic"],
+            "stages": (
+                ["research", "story", "creative", "layout", "critic"]
+                if repositories
+                else ["story", "creative", "layout", "critic"]
+            ),
             "scope_kind": "deck",
-            "needs_research": False,
+            "needs_research": bool(repositories),
             "reasoning": "A new deck, composed by the deterministic planner.",
             "clarification_needed": "",
-        },
-    )
-    client.register(
-        "planning",
-        {
-            **plan.model_dump(mode="json"),
-            "narrative_arc": "Opens with the brief, works through it, closes on the point.",
-            "embedded_instructions_found": False,
-            "slides": [
-                {**slide, "source_ids": []} for slide in plan.model_dump(mode="json")["slides"]
+            # The brief first. A lexical index answers the user's own words far
+            # better than three generic questions, and a stub that ignores what
+            # was asked produces a deck about the wrong part of the repository.
+            "questions": [
+                request.instruction[:200],
+                "architecture overview",
+                "how is it structured",
+                "what is it built with",
             ],
+            "focus": "An overview of the connected repository.",
         },
     )
+    generic = {
+        **plan.model_dump(mode="json"),
+        "narrative_arc": "Opens with the brief, works through it, closes on the point.",
+        "embedded_instructions_found": False,
+        "slides": [
+            {**slide, "source_ids": []} for slide in plan.model_dump(mode="json")["slides"]
+        ],
+    }
+
+    def planning(model_request: Any) -> dict[str, Any]:
+        """The story answer, chosen from what the prompt actually contains.
+
+        A callable rather than a fixed payload because a grounded deck cannot be
+        written before the retrieval that grounds it. When the Research Agent
+        found repository chunks, they are in this prompt, and the stub writes a
+        deck out of them that cites them truthfully. When it found nothing, the
+        generic deck is the honest answer.
+        """
+        text = "\n".join(
+            str(message.get("content", "")) for message in model_request.messages
+        )
+        sources = parse_sources(text)
+        return stub_repository_story_plan(request, sources) if sources else generic
+
+    client.register("planning", planning)
     client.register(
         "structured",
         {
@@ -199,6 +236,92 @@ def build_registry(document_provider: Callable[[], dict[str, Any]]) -> ToolRegis
     return registry
 
 
+def add_repository_tools(
+    registry: ToolRegistry,
+    session: Session,
+    repositories: list[Repository],
+) -> None:
+    """Give a registry access to a workspace's indexed repositories.
+
+    The permission is granted here, on a registry built for one run against
+    repositories already resolved for that workspace. An agent never names a
+    repository id it was not given, and a repository from another workspace never
+    reaches this list — which is what keeps one customer's private code out of
+    another's deck.
+    """
+    if not repositories:
+        return
+
+    ids = [repository.id for repository in repositories]
+    by_id = {repository.id: repository for repository in repositories}
+
+    def profile() -> list[dict[str, Any]]:
+        return [retrieval.repository_summary(repository) for repository in repositories]
+
+    def search(query: str, limit: int) -> list[dict[str, Any]]:
+        return [
+            {
+                "path": hit.path,
+                "start_line": hit.start_line,
+                "end_line": hit.end_line,
+                "language": hit.language,
+                "content": hit.content,
+                "similarity": hit.similarity,
+                "reference": hit.reference,
+                "why_selected": hit.selection_reason,
+            }
+            for hit in retrieval.search(session, ids, query, limit=limit)
+        ]
+
+    def read_file(repository_id: str, path: str) -> dict[str, Any]:
+        """Reassembled from indexed chunks, not re-fetched from the host.
+
+        Two reasons. A file that was never indexed is a file the ignore rules
+        excluded — a lockfile, a binary, something that looked like a secret —
+        and re-fetching it would route around that decision. And an agent asking
+        for a file should not be able to make the server call GitHub.
+        """
+        from .db.models import RepositoryChunk
+
+        target_ids = [repository_id] if repository_id in by_id else ids
+
+        chunks = (
+            session.query(RepositoryChunk)
+            .filter(
+                RepositoryChunk.repository_id.in_(target_ids),
+                RepositoryChunk.path == path,
+            )
+            .order_by(RepositoryChunk.start_line.asc())
+            .all()
+        )
+
+        if not chunks:
+            return {"path": path, "content": "", "found": False, "truncated": False}
+
+        # Chunks overlap by design, so a naive join would repeat lines.
+        lines: list[str] = []
+        next_line = 1
+        for chunk in chunks:
+            body = chunk.content.splitlines()
+            skip = max(0, next_line - chunk.start_line)
+            lines.extend(body[skip:])
+            next_line = max(next_line, chunk.end_line + 1)
+
+        text = "\n".join(lines)
+        truncated = len(text) > 40_000
+        return {
+            "path": path,
+            "content": text[:40_000],
+            "found": True,
+            "truncated": truncated,
+        }
+
+    registry._permissions.add("repository.read")
+    register_repository_tools(
+        registry, profile=profile, search=search, read_file=read_file
+    )
+
+
 def _composer(
     request: GenerateRequest, produced: dict[str, Any]
 ) -> Callable[[dict[str, Any], dict[str, Any]], list[dict[str, Any]]]:
@@ -252,6 +375,8 @@ def run_deck_generation(
     memory: ProjectMemory | None = None,
     budget: RunBudget | None = None,
     human_checkpoint: bool = False,
+    session: Session | None = None,
+    repositories: list[Repository] | None = None,
 ) -> AgentOutcome:
     """Run the graph for a whole-deck generation."""
     state_document = document
@@ -259,13 +384,17 @@ def run_deck_generation(
     def provider() -> dict[str, Any]:
         return state_document
 
-    client = default_client() if api_key_available() else _stub_answers(request)
+    client = default_client() if api_key_available() else _stub_answers(request, repositories)
     emitter = _emitter(run_id)
     produced: dict[str, Any] = {}
 
+    registry = build_registry(provider)
+    if session is not None and repositories:
+        add_repository_tools(registry, session, repositories)
+
     run = AgentRun(
         client=client,
-        registry=build_registry(provider),
+        registry=registry,
         compose=_composer(request, produced),
         budget=budget or RunBudget(),
         memory=memory,
