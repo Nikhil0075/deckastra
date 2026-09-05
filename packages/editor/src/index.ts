@@ -16,6 +16,7 @@
  */
 
 export * from "./selection";
+export * from "./text-editing";
 export * from "./transform";
 export * from "./snapping";
 export * from "./spatial-index";

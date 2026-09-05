@@ -37,6 +37,7 @@ import {
   type ClipboardPayload,
 } from "@deckastra/editor";
 
+import { browserMeasurer } from "../lib/measurer";
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { EditorCanvas } from "./EditorCanvas";
 import { PresentMode } from "./PresentMode";
@@ -65,7 +66,8 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
 
   const slide = doc.slides[slideIndex];
   const index = useMemo(() => buildIndex(nodes), [nodes]);
-  const scene = useMemo(() => buildDocumentScene(doc), [doc]);
+  const measurer = browserMeasurer();
+  const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
 
   const order = useMemo(() => nodes.map((node) => node.id), [nodes]);
 

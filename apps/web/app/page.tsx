@@ -6,6 +6,7 @@ import { ScaledSlide } from "@deckastra/renderer/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { PresentMode } from "../components/PresentMode";
+import { browserMeasurer } from "../lib/measurer";
 import { getSession } from "../lib/session";
 
 /**
@@ -61,7 +62,7 @@ export default function Home() {
 
   const scene: DocumentScene | null = useMemo(() => {
     if (status.phase !== "ready") return null;
-    return buildDocumentScene(status.document);
+    return buildDocumentScene(status.document, { measurer: browserMeasurer() });
   }, [status]);
 
   async function generate() {

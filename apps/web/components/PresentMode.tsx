@@ -5,6 +5,7 @@ import type { DocumentScene } from "@deckastra/renderer";
 import { resolveTransition, transitionStylesheet } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 
+import { PresentChannel } from "../lib/presentSync";
 import { PresenterView } from "./PresenterView";
 
 /**
@@ -33,11 +34,6 @@ export interface PresentModeProps {
 
 const IDLE_MS = 2500;
 
-interface SyncMessage {
-  type: "index" | "hello" | "bye";
-  index?: number;
-}
-
 export function PresentMode({
   scene,
   onExit,
@@ -54,7 +50,10 @@ export function PresentMode({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const channel = useRef<BroadcastChannel | null>(null);
+  const channel = useRef<PresentChannel | null>(null);
+  // Read by the channel's handlers, which outlive any one render.
+  const indexRef = useRef(initialSlide);
+  const slideCountRef = useRef(scene.slides.length);
   const popout = useRef<Window | null>(null);
   const startedAt = useRef(Date.now());
 
@@ -69,10 +68,13 @@ export function PresentMode({
   );
   const stylesheet = useMemo(() => transitionStylesheet(transitions), [transitions]);
 
+  indexRef.current = index;
+  slideCountRef.current = scene.slides.length;
+
   const setIndexSynced = useCallback((next: number | ((current: number) => number)) => {
     setIndex((current) => {
       const resolved = typeof next === "function" ? next(current) : next;
-      channel.current?.postMessage({ type: "index", index: resolved } satisfies SyncMessage);
+      channel.current?.post(resolved);
       return resolved;
     });
   }, []);
@@ -97,39 +99,25 @@ export function PresentMode({
   // ---------------------------------------------------------------- syncing
 
   useEffect(() => {
-    if (!channelName || typeof BroadcastChannel === "undefined") return;
+    if (!channelName) return;
 
-    const bus = new BroadcastChannel(channelName);
+    // Reads position and length through refs so the channel is opened once for
+    // the whole talk: reopening it on every slide change would drop messages.
+    const bus = new PresentChannel(channelName, {
+      // Applied, never re-broadcast — two windows echoing each other never settle.
+      onIndex: setIndex,
+      currentIndex: () => indexRef.current,
+      slideCount: () => slideCountRef.current,
+    });
+
+    bus.open();
     channel.current = bus;
 
-    bus.onmessage = (event: MessageEvent<SyncMessage>) => {
-      const message = event.data;
-      if (message.type === "index" && typeof message.index === "number") {
-        // Clamped, because the two windows load the deck independently and can
-        // legitimately hold different lengths — the presenter window reads the
-        // saved deck while this one may carry unsaved edits. An unclamped index
-        // lands past the end and blanks the projector mid-talk.
-        setIndex(Math.max(0, Math.min(slides.length - 1, message.index)));
-      } else if (message.type === "hello") {
-        bus.postMessage({ type: "index", index } satisfies SyncMessage);
-      } else if (message.type === "bye" && !presenterOnly) {
-        popout.current = null;
-      }
-    };
-
-    // Ask whoever is already presenting where they are, so a window that opens
-    // late lands on the right slide instead of slide 1.
-    bus.postMessage({ type: "hello" } satisfies SyncMessage);
-
     return () => {
-      bus.postMessage({ type: "bye" } satisfies SyncMessage);
       bus.close();
       channel.current = null;
     };
-    // `index` is deliberately not a dependency: reopening the channel on every
-    // slide change would drop messages mid-talk.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName, presenterOnly, slides.length]);
+  }, [channelName]);
 
   const openPresenterWindow = useCallback(() => {
     if (!channelName) return;
@@ -137,7 +125,7 @@ export function PresentMode({
     popout.current = window.open(url, "deckastra-presenter", "width=1200,height=800");
     // Hand the new window the current position immediately; its own "hello"
     // covers the case where this message arrives before it is listening.
-    channel.current?.postMessage({ type: "index", index } satisfies SyncMessage);
+    channel.current?.post(index);
   }, [channelName, index]);
 
   // --------------------------------------------------------------- keyboard

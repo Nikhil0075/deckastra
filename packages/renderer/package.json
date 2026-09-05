@@ -9,14 +9,17 @@
     ".": "./src/index.ts",
     "./react": "./src/react/index.tsx"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@deckastra/presentation-schema": "*"
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/layout-engine": "*"
   },
   "peerDependencies": {
     "react": ">=18",

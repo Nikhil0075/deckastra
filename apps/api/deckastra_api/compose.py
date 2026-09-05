@@ -311,11 +311,13 @@ def _layout_metrics(plan: SlidePlan) -> list[dict[str, Any]]:
     if not metrics:
         return elements
 
-    # Container-layout resolution is pipeline stage 6 and lands in Phase 3. Until
-    # then a child's advisory x/y is what actually positions it, so the padding is
-    # baked into those coordinates: the card looks right today, and it still looks
-    # right once the container starts laying out (doc 02 §16.2 keeps advisory
-    # positions precisely so pulling a child out restores a sensible spot).
+    # The container lays out (pipeline stage 6), so these coordinates are advisory
+    # and the renderer positions children from `containerLayout` instead. They are
+    # still emitted deliberately: doc 02 §16.2 keeps advisory positions so that
+    # pulling a card out of the row restores a sensible spot rather than dropping
+    # it at the origin. Padding is declared on the layout, which is what actually
+    # applies it — a card whose padding lived only in these coordinates would go
+    # flush the moment the container took over.
     pad = 32
     value_h = 110
     label_h = 64

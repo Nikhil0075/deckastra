@@ -12,18 +12,18 @@ background -
 transition fade
 el_01JB8Z9K2QW4RN7F3X01000900 | text | headline | z=0 | b=120,120,1200,100 | m=1,0,0,1,120,120 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=32
 el_01JB8Z9K2QW4RN7F3X01001100 | group | - | z=1 | b=120,340,1680,240 | m=1,0,0,1,120,340 | fill=- | stroke=- | opacity=1 | a11y=group/5001 | group
-el_01JB8Z9K2QW4RN7F3X01001200 | group | - | z=1.0 | b=120,340,380,240 | m=1,0,0,1,120,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5002 | group
-el_01JB8Z9K2QW4RN7F3X01001300 | text | metric | z=1.0.0 | b=120,340,316,100 | m=1,0,0,1,120,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/303 | text size=72 lines=1 chars=5
-el_01JB8Z9K2QW4RN7F3X01001500 | text | caption | z=1.0.1 | b=120,456,316,56 | m=1,0,0,1,120,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1404 | text size=18 lines=1 chars=25
-el_01JB8Z9K2QW4RN7F3X01001700 | group | - | z=1.1 | b=524,340,380,240 | m=1,0,0,1,524,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5005 | group
-el_01JB8Z9K2QW4RN7F3X01001800 | text | metric | z=1.1.0 | b=524,340,316,100 | m=1,0,0,1,524,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/306 | text size=72 lines=1 chars=4
-el_01JB8Z9K2QW4RN7F3X01002000 | text | caption | z=1.1.1 | b=524,456,316,56 | m=1,0,0,1,524,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1407 | text size=18 lines=1 chars=19
-el_01JB8Z9K2QW4RN7F3X01002200 | group | - | z=1.2 | b=928,340,380,240 | m=1,0,0,1,928,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5008 | group
-el_01JB8Z9K2QW4RN7F3X01002300 | text | metric | z=1.2.0 | b=928,340,316,100 | m=1,0,0,1,928,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/309 | text size=72 lines=1 chars=5
-el_01JB8Z9K2QW4RN7F3X01002500 | text | caption | z=1.2.1 | b=928,456,316,56 | m=1,0,0,1,928,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1410 | text size=18 lines=1 chars=18
-el_01JB8Z9K2QW4RN7F3X01002700 | group | - | z=1.3 | b=1332,340,380,240 | m=1,0,0,1,1332,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5011 | group
-el_01JB8Z9K2QW4RN7F3X01002800 | text | metric | z=1.3.0 | b=1332,340,316,100 | m=1,0,0,1,1332,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/312 | text size=72 lines=1 chars=5
-el_01JB8Z9K2QW4RN7F3X01003000 | text | caption | z=1.3.1 | b=1332,456,316,56 | m=1,0,0,1,1332,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1413 | text size=18 lines=1 chars=20
+el_01JB8Z9K2QW4RN7F3X01001200 | group | - | z=1.0 | b=120,340,402,240 | m=1,0,0,1,120,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5002 | group
+el_01JB8Z9K2QW4RN7F3X01001300 | text | metric | z=1.0.0 | b=152,372,316,100 | m=1,0,0,1,152,372 | fill=- | stroke=- | opacity=1 | a11y=paragraph/303 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01001500 | text | caption | z=1.0.1 | b=152,488,316,56 | m=1,0,0,1,152,488 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1404 | text size=18 lines=1 chars=25
+el_01JB8Z9K2QW4RN7F3X01001700 | group | - | z=1.1 | b=546,340,402,240 | m=1,0,0,1,546,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5005 | group
+el_01JB8Z9K2QW4RN7F3X01001800 | text | metric | z=1.1.0 | b=578,372,316,100 | m=1,0,0,1,578,372 | fill=- | stroke=- | opacity=1 | a11y=paragraph/306 | text size=72 lines=1 chars=4
+el_01JB8Z9K2QW4RN7F3X01002000 | text | caption | z=1.1.1 | b=578,488,316,56 | m=1,0,0,1,578,488 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1407 | text size=18 lines=1 chars=19
+el_01JB8Z9K2QW4RN7F3X01002200 | group | - | z=1.2 | b=972,340,402,240 | m=1,0,0,1,972,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5008 | group
+el_01JB8Z9K2QW4RN7F3X01002300 | text | metric | z=1.2.0 | b=1004,372,316,100 | m=1,0,0,1,1004,372 | fill=- | stroke=- | opacity=1 | a11y=paragraph/309 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01002500 | text | caption | z=1.2.1 | b=1004,488,316,56 | m=1,0,0,1,1004,488 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1410 | text size=18 lines=1 chars=18
+el_01JB8Z9K2QW4RN7F3X01002700 | group | - | z=1.3 | b=1398,340,402,240 | m=1,0,0,1,1398,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5011 | group
+el_01JB8Z9K2QW4RN7F3X01002800 | text | metric | z=1.3.0 | b=1430,372,316,100 | m=1,0,0,1,1430,372 | fill=- | stroke=- | opacity=1 | a11y=paragraph/312 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01003000 | text | caption | z=1.3.1 | b=1430,488,316,56 | m=1,0,0,1,1430,488 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1413 | text size=18 lines=1 chars=20
 slide sld_01JB8Z9K2QW4RN7F3X01003800 1920x1080
 background -
 transition fade

@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { PresentationDocument, Rect, Transform } from "@deckastra/presentation-schema";
-import { FrameSampler, buildDocumentScene, checkBudget } from "@deckastra/renderer";
+import type {
+  PresentationDocument,
+  Rect,
+  RichTextDocument,
+  Transform,
+} from "@deckastra/presentation-schema";
+import { FrameSampler, buildDocumentScene, checkBudget, flattenScene } from "@deckastra/renderer";
 import type { BudgetResult, FrameStats } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { setProperty, resolveElementById } from "@deckastra/presentation-core";
@@ -28,6 +33,8 @@ import {
   type SnapLine,
 } from "@deckastra/editor";
 
+import { browserMeasurer } from "../lib/measurer";
+import { TextEditor } from "./TextEditor";
 import type { EditorApi } from "../lib/useEditor";
 
 /**
@@ -105,7 +112,11 @@ export function EditorCanvas({
 
   const scale = width / doc.viewport.width;
 
-  const scene = useMemo(() => buildDocumentScene(doc), [doc]);
+  // Measured, not estimated: the editor has a DOM, so it uses it. A headline
+  // the estimator thinks fits on two lines and the browser breaks onto three
+  // overflows onto whatever is beneath it (doc 04 §6.4).
+  const measurer = browserMeasurer();
+  const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
   const slideScene = scene.slides[slideIndex];
 
   const index = useMemo(() => buildIndex(nodes), [nodes]);
@@ -163,6 +174,9 @@ export function EditorCanvas({
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
       if (event.button !== 0) return;
+      // A pointer-down anywhere while editing commits the edit; the editable's
+      // own blur handles it, and starting a drag underneath would fight it.
+      if (selection.editingTextId) return;
       const world = toWorld(event);
 
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-element-id]");
@@ -216,13 +230,21 @@ export function EditorCanvas({
         const resolved = resolveClickTarget(index, hitId, {
           isolationGroupId: current.isolationGroupId,
         });
-        // Already at the leaf — nothing left to step into.
-        if (!resolved || resolved === hitId) return current;
+
+        // At the leaf. On a text element that means editing it — the thing a
+        // double-click means everywhere else in the product.
+        if (!resolved || resolved === hitId) {
+          const found = resolveElementById(doc, hitId);
+          if (found?.element.type === "text" && found.element.locked !== true) {
+            return { ...current, selectedIds: [hitId], primaryId: hitId, editingTextId: hitId };
+          }
+          return current;
+        }
 
         return { ...enterGroup(current, resolved), selectedIds: [hitId], primaryId: hitId };
       });
     },
-    [index, setSelection],
+    [doc, index, setSelection],
   );
 
   const onHandleDown = useCallback(
@@ -440,6 +462,40 @@ export function EditorCanvas({
   );
 
   const liveBounds = draftBounds(draft, offsetOf) ?? bounds?.rect;
+
+  /**
+   * The text element being edited in place, with everything the editable needs
+   * to sit exactly on top of it.
+   *
+   * Read from the scene rather than the document because the scene has the
+   * resolved typography and the laid-out box — inside a container those are not
+   * the element's own values, and an editable positioned from the document would
+   * sit in the wrong place.
+   */
+  const editing = (() => {
+    const id = selection.editingTextId;
+    if (!id) return undefined;
+
+    const node = flattenScene(slideScene).find((candidate) => candidate.id === id);
+    const found = resolveElementById(doc, id);
+    if (!node || !found || node.renderPayload.kind !== "text") return undefined;
+
+    const payload = node.renderPayload;
+    return {
+      id,
+      content: (found.element as { content: RichTextDocument }).content,
+      typography: payload.typography,
+      align: payload.align,
+      verticalAlign: payload.verticalAlign,
+      padding: payload.padding,
+      rect: {
+        x: node.bounds.x * scale,
+        y: node.bounds.y * scale,
+        width: node.bounds.width * scale,
+        height: node.bounds.height * scale,
+      },
+    };
+  })();
   const singleRotation =
     selection.selectedIds.length === 1
       ? (transformOf(selection.selectedIds[0]!)?.rotation ?? 0)
@@ -478,7 +534,7 @@ export function EditorCanvas({
         }}
       >
         <SlideView
-          scene={applyDraft(slideScene, draft)}
+          scene={applyDraft(slideScene, draft, editing?.id)}
           mode="editor"
           showGuides={showGuides}
         />
@@ -522,7 +578,7 @@ export function EditorCanvas({
             })()
           : null}
 
-        {liveBounds ? (
+        {liveBounds && !editing ? (
           <SelectionOverlay
             rect={liveBounds}
             rotation={singleRotation}
@@ -533,6 +589,24 @@ export function EditorCanvas({
           />
         ) : null}
       </div>
+
+      {editing ? (
+        <TextEditor
+          key={editing.id}
+          value={editing.content}
+          typography={editing.typography}
+          rect={editing.rect}
+          scale={scale}
+          align={editing.align}
+          verticalAlign={editing.verticalAlign}
+          padding={editing.padding}
+          onCommit={(next) => {
+            apply(setProperty(doc, editing.id, "content", next), { label: "Edit text" });
+            setSelection((current) => ({ ...current, editingTextId: undefined }));
+          }}
+          onCancel={() => setSelection((current) => ({ ...current, editingTextId: undefined }))}
+        />
+      ) : null}
     </div>
   );
 }
@@ -641,13 +715,21 @@ function handleCursor(handle: HandleId): string {
 function applyDraft(
   scene: ReturnType<typeof buildDocumentScene>["slides"][number],
   draft: ReadonlyMap<string, Transform>,
+  /** Hidden while its text is being edited in place — otherwise the rendered
+   *  glyphs sit under the editable's and everything looks doubled. */
+  editingId?: string,
 ): ReturnType<typeof buildDocumentScene>["slides"][number] {
-  if (draft.size === 0) return scene;
+  if (draft.size === 0 && !editingId) return scene;
 
   const patch = (nodes: typeof scene.nodes): typeof scene.nodes =>
     nodes.map((node) => {
-      const override = draft.get(node.id);
       const children = node.children ? patch(node.children) : undefined;
+
+      if (node.id === editingId) {
+        return { ...node, flags: { ...node.flags, hidden: true }, ...(children ? { children } : {}) };
+      }
+
+      const override = draft.get(node.id);
       if (!override) return children ? { ...node, children } : node;
 
       const dx = override.x - node.localTransform.e;

@@ -7,6 +7,7 @@ import { buildDocumentScene } from "@deckastra/renderer";
 
 import { EditorShell } from "../../../components/EditorShell";
 import { PresentMode } from "../../../components/PresentMode";
+import { browserMeasurer } from "../../../lib/measurer";
 import { getSession } from "../../../lib/session";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -92,7 +93,7 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
   if (params.get("presenter") === "1") {
     return (
       <PresentMode
-        scene={buildDocumentScene(state.document)}
+        scene={buildDocumentScene(state.document, { measurer: browserMeasurer() })}
         onExit={() => window.close()}
         presenterOnly
         channelName={params.get("channel") ?? `deckastra-present-${presentationId}`}

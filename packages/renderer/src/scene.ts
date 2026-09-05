@@ -19,6 +19,7 @@ import {
   type TextMeasurer,
   type TextMetrics,
 } from "./text-metrics";
+import { resolveContainer, type LayoutBox } from "@deckastra/layout-engine";
 import { buildChartPayload, type ChartPayload } from "./charts";
 import { buildDiagramPayload, type DiagramPayload } from "./diagram";
 
@@ -412,10 +413,28 @@ function buildNode(
   parentZPath: number[],
   siblingIndex: number,
   ctx: BuildContext,
+  /**
+   * Position and size assigned by the parent container (stage 6).
+   *
+   * Present only when the parent lays out. The element's own `x`/`y` become
+   * advisory in that case (doc 02 §16.2) — kept in the document so that pulling
+   * the child out of the container restores a sensible position, ignored here.
+   */
+  placement?: LayoutBox,
 ): SceneNode {
-  const local = localMatrix(element.transform);
+  const transform = placement
+    ? {
+        ...element.transform,
+        x: placement.x,
+        y: placement.y,
+        width: placement.width,
+        height: placement.height,
+      }
+    : element.transform;
+
+  const local = localMatrix(transform);
   const world = multiply(parentWorld, local);
-  const { width, height } = element.transform;
+  const { width, height } = transform;
 
   const bounds = transformedBounds(world, width, height);
   const localBounds: Rect = { x: 0, y: 0, width, height };
@@ -456,7 +475,7 @@ function buildNode(
     resolvedStyle,
     layer: layerFor(element.type),
     zPath,
-    renderPayload: buildPayload(element, ctx, flags),
+    renderPayload: buildPayload(element, ctx, flags, transform),
     a11y: {
       role: a11yRole(element.type, element.semanticRole),
       label: element.metadata?.altText ?? element.name,
@@ -466,20 +485,65 @@ function buildNode(
   };
 
   if (isGroup(element)) {
-    node.children = element.children.map((child, i) => buildNode(child, world, zPath, i, ctx));
+    const placements = layoutChildren(element, transform, ctx);
+    node.children = element.children.map((child, i) =>
+      buildNode(child, world, zPath, i, ctx, placements?.get(child.id)),
+    );
   }
 
   ctx.nodes.push(node);
   return node;
 }
 
+/**
+ * Container layout — pipeline stage 6 (doc 04 §6.1, §15.3).
+ *
+ * This is the mechanism that keeps generated content robust: four KPI cards
+ * emitted as a horizontal container survive a longer label, while the same four
+ * emitted as absolute boxes overlap. It is why the Layout Agent is told to emit
+ * a container for anything repeated (doc 04 §15.4).
+ *
+ * Returns `undefined` for a group with no container, or a `free` one — the
+ * common case, and the one where a child's own coordinates are authoritative.
+ * Returning a map of identity placements instead would work but would make every
+ * plain group pay for a layout pass it does not need.
+ */
+function layoutChildren(
+  element: PresentationElement,
+  transform: { width: number; height: number },
+  ctx: BuildContext,
+): Map<string, LayoutBox> | undefined {
+  if (!isGroup(element)) return undefined;
+
+  const layout = element.containerLayout;
+  if (!layout || layout.type === "free" || element.children.length === 0) return undefined;
+
+  const result = resolveContainer({
+    layout,
+    box: { width: transform.width, height: transform.height },
+    // Natural size is the child's own box. Once text measurement feeds this —
+    // a child that grows with its content — the container reflows around it
+    // without anything here changing.
+    children: element.children.map((child) => ({
+      id: child.id,
+      width: child.transform.width,
+      height: child.transform.height,
+    })),
+    baseGap: ctx.theme.source.spacing.base,
+  });
+
+  return new Map(result.children.map((box) => [box.id, box]));
+}
+
 function buildPayload(
   element: PresentationElement,
   ctx: BuildContext,
   flags: SceneFlags,
+  /** The laid-out box, which differs from `element.transform` inside a container. */
+  transform: { width: number; height: number },
 ): RenderPayload {
   const { theme } = ctx;
-  const { width, height } = element.transform;
+  const { width, height } = transform;
 
   switch (element.type) {
     case "text": {
