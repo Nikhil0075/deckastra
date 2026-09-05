@@ -1,0 +1,8 @@
+# Python tooling for Phase 0.
+#
+# The API service and its own dependencies (FastAPI, LangGraph, SQLAlchemy,
+# Alembic) arrive in Phase 1. Everything here exists to let Python validate the
+# same `.mydeck` contract the TypeScript packages enforce, so the two cannot
+# disagree about what a valid document is.
+
+jsonschema>=4.23,<5

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deckastra patch operation",
+  "description": "Generated from @deckastra/presentation-schema v1.1.0. Do not edit by hand — run \"npm run schema:emit\" instead. The Zod definitions in src/ are normative.",
+  "x-schema-version": "1.1.0",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "add"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "value": {}
+      },
+      "required": [
+        "op",
+        "path",
+        "value"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "remove"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "op",
+        "path"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "replace"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "value": {}
+      },
+      "required": [
+        "op",
+        "path",
+        "value"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "move"
+        },
+        "from": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "op",
+        "from",
+        "path"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "copy"
+        },
+        "from": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        }
+      },
+      "required": [
+        "op",
+        "from",
+        "path"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "test"
+        },
+        "path": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "value": {}
+      },
+      "required": [
+        "op",
+        "path",
+        "value"
+      ]
+    }
+  ],
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^\\/.*"
+    }
+  }
+}

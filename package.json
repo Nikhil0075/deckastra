@@ -1,0 +1,27 @@
+{
+  "name": "deckastra",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Deckastra — an AI-native presentation studio. Agents propose, deterministic engines compose, humans stay in control.",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "schema:emit": "npm run schema:emit --workspace @deckastra/presentation-schema",
+    "schema:drift": "npm run schema:drift --workspace @deckastra/presentation-schema"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

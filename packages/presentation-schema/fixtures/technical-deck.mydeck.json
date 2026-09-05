@@ -1,0 +1,1312 @@
+{
+  "schemaVersion": "1.1.0",
+  "id": "doc_01JB8Z9K2QW4RN7F3X01006700",
+  "metadata": {
+    "title": "Deckastra Architecture Review",
+    "language": "en",
+    "presentationType": "technical",
+    "audience": "Engineers joining the project",
+    "objective": "Explain the document model and why AI edits stay reviewable",
+    "estimatedDurationSeconds": 600,
+    "description": "The standing fixture for renderer, editor and export tests."
+  },
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "unit": "px",
+    "aspectRatio": "16:9",
+    "safeArea": {
+      "top": 80,
+      "right": 120,
+      "bottom": 80,
+      "left": 120
+    }
+  },
+  "theme": {
+    "id": "thm_01JB8Z9K2QW4RN7F3X01000000",
+    "name": "Neo Technical",
+    "description": "Dark editorial layout with luminous technical accents.",
+    "mode": "dark",
+    "colors": {
+      "background": "#0B0F14",
+      "surface": "#121821",
+      "surfaceAlt": "#1A222E",
+      "overlay": "#000000B3",
+      "foreground": "#E8EEF5",
+      "foregroundMuted": "#9FB0C3",
+      "foregroundSubtle": "#6B7C90",
+      "accent": "#4CC2FF",
+      "accentForeground": "#04121C",
+      "accentMuted": "#1E5F80",
+      "secondary": "#A78BFA",
+      "secondaryForeground": "#150C2E",
+      "border": "#243141",
+      "borderStrong": "#35485D",
+      "divider": "#1C2530",
+      "success": "#3DDC97",
+      "warning": "#F2C14E",
+      "danger": "#FF6B6B",
+      "info": "#4CC2FF",
+      "chartSeries": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "chartPositive": "#3DDC97",
+      "chartNegative": "#FF6B6B",
+      "chartNeutral": "#6B7C90"
+    },
+    "typography": {
+      "display": {
+        "fontFamily": "Inter",
+        "fontSize": 96,
+        "fontWeight": 700,
+        "lineHeight": 1.05,
+        "letterSpacing": -2
+      },
+      "h1": {
+        "fontFamily": "Inter",
+        "fontSize": 64,
+        "fontWeight": 700,
+        "lineHeight": 1.1,
+        "letterSpacing": -1
+      },
+      "h2": {
+        "fontFamily": "Inter",
+        "fontSize": 44,
+        "fontWeight": 600,
+        "lineHeight": 1.15
+      },
+      "h3": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 600,
+        "lineHeight": 1.2
+      },
+      "body": {
+        "fontFamily": "Inter",
+        "fontSize": 24,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "bodySmall": {
+        "fontFamily": "Inter",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "caption": {
+        "fontFamily": "Inter",
+        "fontSize": 16,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "quote": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 400,
+        "fontStyle": "italic",
+        "lineHeight": 1.35
+      },
+      "code": {
+        "fontFamily": "JetBrains Mono",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.5
+      },
+      "metric": {
+        "fontFamily": "Inter",
+        "fontSize": 88,
+        "fontWeight": 700,
+        "lineHeight": 1,
+        "fontFeatures": [
+          "tnum"
+        ]
+      },
+      "scaleRatio": 1.25
+    },
+    "spacing": {
+      "base": 8,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 32,
+      "xl": 64,
+      "xxl": 96,
+      "slideMargin": {
+        "top": 80,
+        "right": 120,
+        "bottom": 80,
+        "left": 120
+      }
+    },
+    "radii": {
+      "none": 0,
+      "sm": 4,
+      "md": 12,
+      "lg": 24,
+      "full": 9999
+    },
+    "shadows": {
+      "none": [],
+      "sm": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 1,
+          "blur": 3,
+          "color": "#00000059"
+        }
+      ],
+      "md": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 6,
+          "blur": 18,
+          "color": "#00000073"
+        }
+      ],
+      "lg": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 18,
+          "blur": 48,
+          "color": "#00000099"
+        }
+      ]
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": 24,
+      "margin": 120,
+      "baseUnit": 8,
+      "baselineGrid": 8
+    },
+    "chart": {
+      "series": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "gridlineColor": "#1C2530",
+      "axisColor": "#6B7C90",
+      "showGridlines": true,
+      "barCornerRadius": 4,
+      "lineWidth": 3,
+      "pointSize": 6
+    },
+    "diagram": {
+      "nodeFill": {
+        "type": "solid",
+        "color": "token:colors.surface"
+      },
+      "nodeStroke": {
+        "paint": {
+          "type": "solid",
+          "color": "token:colors.border"
+        },
+        "width": 1
+      },
+      "nodeRadius": 12,
+      "nodePadding": {
+        "top": 16,
+        "right": 20,
+        "bottom": 16,
+        "left": 20
+      },
+      "roleStyles": {
+        "service": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          }
+        },
+        "datastore": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surfaceAlt"
+          }
+        },
+        "external": {
+          "fill": {
+            "type": "none"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.borderStrong"
+            },
+            "width": 1,
+            "dash": [
+              6,
+              4
+            ]
+          }
+        }
+      }
+    },
+    "imagery": {
+      "treatment": "none",
+      "defaultCornerRadius": 12
+    },
+    "motion": {
+      "personality": "technical",
+      "defaultEntrance": "fadeUp",
+      "defaultDurationMs": 400,
+      "defaultEasing": "emphasized",
+      "staggerMs": 70,
+      "reducedMotionFallback": "fade",
+      "maxSlideDurationMs": 2500
+    },
+    "contrastPairs": [
+      {
+        "foreground": "colors.foreground",
+        "background": "colors.background",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.accentForeground",
+        "background": "colors.accent",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.foregroundMuted",
+        "background": "colors.background",
+        "minimumRatio": 3
+      }
+    ],
+    "brandRules": [
+      {
+        "id": "type-sizes",
+        "kind": "must-not",
+        "scope": "typography",
+        "statement": "Use no more than three type sizes on a single slide.",
+        "check": {
+          "type": "maxFontSizesPerSlide",
+          "value": 3
+        }
+      },
+      {
+        "id": "no-literals",
+        "kind": "should",
+        "scope": "color",
+        "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+        "check": {
+          "type": "forbiddenColorLiterals",
+          "value": true
+        }
+      },
+      {
+        "id": "whitespace",
+        "kind": "should",
+        "scope": "layout",
+        "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+      }
+    ]
+  },
+  "slides": [
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X01000100",
+      "name": "Title",
+      "semanticIntent": "Establish what the system is and who built it, in one breath",
+      "keyMessage": "Deckastra turns repositories into presentations that stay editable",
+      "background": {
+        "paint": {
+          "type": "solid",
+          "color": "token:colors.background"
+        }
+      },
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01000200",
+          "type": "text",
+          "name": "Eyebrow",
+          "semanticRole": "eyebrow",
+          "transform": {
+            "x": 120,
+            "y": 320,
+            "width": 800,
+            "height": 40
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01000300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "ARCHITECTURE REVIEW"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.caption.fontFamily",
+            "fontSize": 16,
+            "letterSpacing": 4,
+            "color": "token:colors.accent",
+            "textTransform": "uppercase"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01000400",
+          "type": "text",
+          "name": "Headline",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 380,
+            "width": 1300,
+            "height": 240
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01000500",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Agents propose. Deterministic engines compose."
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 96,
+            "fontWeight": 700,
+            "lineHeight": 1.05,
+            "letterSpacing": -2,
+            "color": "token:colors.foreground"
+          },
+          "fit": "shrinkToFit",
+          "minFontSize": 56,
+          "paragraph": {
+            "lineBreakStrategy": "balanced"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01000600",
+          "type": "text",
+          "name": "Subtitle",
+          "semanticRole": "subtitle",
+          "transform": {
+            "x": 120,
+            "y": 650,
+            "width": 1000,
+            "height": 80
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01000700",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "How the .mydeck document model keeps humans in control"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.body.fontFamily",
+            "fontSize": 24,
+            "color": "token:colors.foregroundMuted"
+          }
+        }
+      ],
+      "animations": [],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X01000800",
+      "name": "Budgets",
+      "semanticIntent": "Show that the performance targets are numbers, not adjectives",
+      "keyMessage": "Every renderer budget is instrumented, not aspirational",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01000900",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 120,
+            "width": 1200,
+            "height": 100
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01001000",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Budgets that are dashboard lines"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.h1.fontFamily",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01001100",
+          "type": "group",
+          "name": "KPI row",
+          "groupRole": "kpiRow",
+          "transform": {
+            "x": 120,
+            "y": 340,
+            "width": 1680,
+            "height": 240
+          },
+          "containerLayout": {
+            "type": "horizontal",
+            "gap": 24,
+            "distribute": "equal",
+            "align": "stretch"
+          },
+          "resizeMode": "resizeContainer",
+          "children": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001200",
+              "type": "group",
+              "name": "KPI Typical slide first paint",
+              "groupRole": "kpiCard",
+              "transform": {
+                "x": 0,
+                "y": 0,
+                "width": 380,
+                "height": 240
+              },
+              "containerLayout": {
+                "type": "vertical",
+                "gap": 16,
+                "align": "start",
+                "padding": {
+                  "top": 32,
+                  "right": 32,
+                  "bottom": 32,
+                  "left": 32
+                }
+              },
+              "resizeMode": "resizeContainer",
+              "style": {
+                "fill": {
+                  "type": "solid",
+                  "color": "token:colors.surface"
+                },
+                "cornerRadius": 12,
+                "stroke": {
+                  "paint": {
+                    "type": "solid",
+                    "color": "token:colors.border"
+                  },
+                  "width": 1
+                }
+              },
+              "children": [
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01001300",
+                  "type": "text",
+                  "semanticRole": "metric",
+                  "transform": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 316,
+                    "height": 100
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01001400",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "250ms"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.metric.fontFamily",
+                    "fontSize": 72,
+                    "fontWeight": 700,
+                    "color": "token:colors.accent",
+                    "fontFeatures": [
+                      "tnum"
+                    ]
+                  }
+                },
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01001500",
+                  "type": "text",
+                  "semanticRole": "caption",
+                  "transform": {
+                    "x": 0,
+                    "y": 116,
+                    "width": 316,
+                    "height": 56
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01001600",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "Typical slide first paint"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.caption.fontFamily",
+                    "fontSize": 18,
+                    "color": "token:colors.foregroundMuted"
+                  },
+                  "fit": "autoHeight"
+                }
+              ]
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001700",
+              "type": "group",
+              "name": "KPI Drag frame time p95",
+              "groupRole": "kpiCard",
+              "transform": {
+                "x": 404,
+                "y": 0,
+                "width": 380,
+                "height": 240
+              },
+              "containerLayout": {
+                "type": "vertical",
+                "gap": 16,
+                "align": "start",
+                "padding": {
+                  "top": 32,
+                  "right": 32,
+                  "bottom": 32,
+                  "left": 32
+                }
+              },
+              "resizeMode": "resizeContainer",
+              "style": {
+                "fill": {
+                  "type": "solid",
+                  "color": "token:colors.surface"
+                },
+                "cornerRadius": 12,
+                "stroke": {
+                  "paint": {
+                    "type": "solid",
+                    "color": "token:colors.border"
+                  },
+                  "width": 1
+                }
+              },
+              "children": [
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01001800",
+                  "type": "text",
+                  "semanticRole": "metric",
+                  "transform": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 316,
+                    "height": 100
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01001900",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "16ms"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.metric.fontFamily",
+                    "fontSize": 72,
+                    "fontWeight": 700,
+                    "color": "token:colors.accent",
+                    "fontFeatures": [
+                      "tnum"
+                    ]
+                  }
+                },
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01002000",
+                  "type": "text",
+                  "semanticRole": "caption",
+                  "transform": {
+                    "x": 0,
+                    "y": 116,
+                    "width": 316,
+                    "height": 56
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01002100",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "Drag frame time p95"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.caption.fontFamily",
+                    "fontSize": 18,
+                    "color": "token:colors.foregroundMuted"
+                  },
+                  "fit": "autoHeight"
+                }
+              ]
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002200",
+              "type": "group",
+              "name": "KPI Slide switch, warm",
+              "groupRole": "kpiCard",
+              "transform": {
+                "x": 808,
+                "y": 0,
+                "width": 380,
+                "height": 240
+              },
+              "containerLayout": {
+                "type": "vertical",
+                "gap": 16,
+                "align": "start",
+                "padding": {
+                  "top": 32,
+                  "right": 32,
+                  "bottom": 32,
+                  "left": 32
+                }
+              },
+              "resizeMode": "resizeContainer",
+              "style": {
+                "fill": {
+                  "type": "solid",
+                  "color": "token:colors.surface"
+                },
+                "cornerRadius": 12,
+                "stroke": {
+                  "paint": {
+                    "type": "solid",
+                    "color": "token:colors.border"
+                  },
+                  "width": 1
+                }
+              },
+              "children": [
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01002300",
+                  "type": "text",
+                  "semanticRole": "metric",
+                  "transform": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 316,
+                    "height": 100
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01002400",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "120ms"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.metric.fontFamily",
+                    "fontSize": 72,
+                    "fontWeight": 700,
+                    "color": "token:colors.accent",
+                    "fontFeatures": [
+                      "tnum"
+                    ]
+                  }
+                },
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01002500",
+                  "type": "text",
+                  "semanticRole": "caption",
+                  "transform": {
+                    "x": 0,
+                    "y": 116,
+                    "width": 316,
+                    "height": 56
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01002600",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "Slide switch, warm"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.caption.fontFamily",
+                    "fontSize": 18,
+                    "color": "token:colors.foregroundMuted"
+                  },
+                  "fit": "autoHeight"
+                }
+              ]
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002700",
+              "type": "group",
+              "name": "KPI 60-slide deck memory",
+              "groupRole": "kpiCard",
+              "transform": {
+                "x": 1212,
+                "y": 0,
+                "width": 380,
+                "height": 240
+              },
+              "containerLayout": {
+                "type": "vertical",
+                "gap": 16,
+                "align": "start",
+                "padding": {
+                  "top": 32,
+                  "right": 32,
+                  "bottom": 32,
+                  "left": 32
+                }
+              },
+              "resizeMode": "resizeContainer",
+              "style": {
+                "fill": {
+                  "type": "solid",
+                  "color": "token:colors.surface"
+                },
+                "cornerRadius": 12,
+                "stroke": {
+                  "paint": {
+                    "type": "solid",
+                    "color": "token:colors.border"
+                  },
+                  "width": 1
+                }
+              },
+              "children": [
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01002800",
+                  "type": "text",
+                  "semanticRole": "metric",
+                  "transform": {
+                    "x": 0,
+                    "y": 0,
+                    "width": 316,
+                    "height": 100
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01002900",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "600MB"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.metric.fontFamily",
+                    "fontSize": 72,
+                    "fontWeight": 700,
+                    "color": "token:colors.accent",
+                    "fontFeatures": [
+                      "tnum"
+                    ]
+                  }
+                },
+                {
+                  "id": "el_01JB8Z9K2QW4RN7F3X01003000",
+                  "type": "text",
+                  "semanticRole": "caption",
+                  "transform": {
+                    "x": 0,
+                    "y": 116,
+                    "width": 316,
+                    "height": 56
+                  },
+                  "content": {
+                    "version": 1,
+                    "blocks": [
+                      {
+                        "id": "blk_01JB8Z9K2QW4RN7F3X01003100",
+                        "type": "paragraph",
+                        "spans": [
+                          {
+                            "text": "60-slide deck memory"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "typography": {
+                    "fontFamily": "token:typography.caption.fontFamily",
+                    "fontSize": 18,
+                    "color": "token:colors.foregroundMuted"
+                  },
+                  "fit": "autoHeight"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X01003800",
+      "name": "Architecture",
+      "semanticIntent": "Explain how a request moves through the agent graph and where the human checkpoint sits",
+      "keyMessage": "No agent writes to the store; every change goes through the transaction service",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01003900",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 100,
+            "width": 1200,
+            "height": 90
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01004000",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "The agent graph"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.h1.fontFamily",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01004100",
+          "type": "diagram",
+          "name": "Agent pipeline",
+          "semanticRole": "mainDiagram",
+          "transform": {
+            "x": 120,
+            "y": 260,
+            "width": 1680,
+            "height": 620
+          },
+          "diagramType": "architecture",
+          "layoutHint": {
+            "algorithm": "layered",
+            "direction": "LR",
+            "mode": "hybrid",
+            "nodeSpacing": 48,
+            "rankSpacing": 96
+          },
+          "nodes": [
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003200",
+              "label": "User request",
+              "role": "external",
+              "rank": 0
+            },
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003300",
+              "label": "Orchestrator",
+              "sublabel": "routes and budgets",
+              "role": "service",
+              "rank": 1
+            },
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003400",
+              "label": "Story Architect",
+              "role": "service",
+              "rank": 2
+            },
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003500",
+              "label": "Layout Agent",
+              "sublabel": "proposes, never places pixels",
+              "role": "service",
+              "rank": 2
+            },
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003600",
+              "label": "Critic",
+              "role": "service",
+              "rank": 3
+            },
+            {
+              "id": "nd_01JB8Z9K2QW4RN7F3X01003700",
+              "label": "Transaction service",
+              "sublabel": "the only writer",
+              "role": "datastore",
+              "rank": 4
+            }
+          ],
+          "edges": [
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004200",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003200",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003300"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004300",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003300",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003400"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004400",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003300",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003500"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004500",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003400",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003600",
+              "label": "story plan"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004600",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003500",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003600",
+              "label": "candidates"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004700",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003600",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003700",
+              "label": "accepted patch"
+            },
+            {
+              "id": "edg_01JB8Z9K2QW4RN7F3X01004800",
+              "from": "nd_01JB8Z9K2QW4RN7F3X01003600",
+              "to": "nd_01JB8Z9K2QW4RN7F3X01003500",
+              "label": "revise",
+              "kind": "dashed",
+              "direction": "forward"
+            }
+          ],
+          "groups": [
+            {
+              "id": "grp_01JB8Z9K2QW4RN7F3X01004900",
+              "label": "Model-driven",
+              "kind": "boundary",
+              "nodeIds": [
+                "nd_01JB8Z9K2QW4RN7F3X01003300",
+                "nd_01JB8Z9K2QW4RN7F3X01003400",
+                "nd_01JB8Z9K2QW4RN7F3X01003500",
+                "nd_01JB8Z9K2QW4RN7F3X01003600"
+              ]
+            }
+          ]
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X01005000",
+      "name": "Export fidelity",
+      "semanticIntent": "Set expectations about what survives each export target",
+      "keyMessage": "The model does not shrink to the weakest export target; adapters degrade and report",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01005100",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 100,
+            "width": 1200,
+            "height": 90
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01005200",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "What survives export"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.h1.fontFamily",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01005300",
+          "type": "table",
+          "name": "Export capability",
+          "transform": {
+            "x": 120,
+            "y": 280,
+            "width": 1680,
+            "height": 480
+          },
+          "headerRow": true,
+          "columns": [
+            {
+              "id": "col_01JB8Z9K2QW4RN7F3X01005400",
+              "label": "Property",
+              "align": "left"
+            },
+            {
+              "id": "col_01JB8Z9K2QW4RN7F3X01005500",
+              "label": "PDF",
+              "align": "left"
+            },
+            {
+              "id": "col_01JB8Z9K2QW4RN7F3X01005600",
+              "label": "PPTX",
+              "align": "left"
+            }
+          ],
+          "rows": [
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X01005700",
+              "cells": [
+                {
+                  "content": "Solid and gradient fill"
+                },
+                {
+                  "content": "Full"
+                },
+                {
+                  "content": "Full"
+                }
+              ]
+            },
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X01005800",
+              "cells": [
+                {
+                  "content": "Per-corner radius"
+                },
+                {
+                  "content": "Full"
+                },
+                {
+                  "content": "Rasterized"
+                }
+              ]
+            },
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X01005900",
+              "cells": [
+                {
+                  "content": "Blend modes"
+                },
+                {
+                  "content": "Partial"
+                },
+                {
+                  "content": "Rasterized"
+                }
+              ]
+            },
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X01006000",
+              "cells": [
+                {
+                  "content": "Backdrop filters"
+                },
+                {
+                  "content": "Rasterized"
+                },
+                {
+                  "content": "Rasterized"
+                }
+              ]
+            }
+          ],
+          "tableStyle": {
+            "banding": "rows",
+            "borders": "horizontal",
+            "compact": false
+          }
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X01006100",
+      "name": "Patch shape",
+      "semanticIntent": "Show that an AI edit is a narrow, reviewable operation",
+      "keyMessage": "An agent changes one property, not a whole slide",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01006200",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 100,
+            "width": 1200,
+            "height": 90
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01006300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "One property, not a rewrite"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.h1.fontFamily",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01006400",
+          "type": "code",
+          "name": "Patch example",
+          "transform": {
+            "x": 120,
+            "y": 300,
+            "width": 1680,
+            "height": 320
+          },
+          "language": "json",
+          "fileName": "patch.json",
+          "showLineNumbers": true,
+          "code": "{\n  \"op\": \"replace\",\n  \"path\": \"/slides/id:sld_04/elements/id:el_12/typography/fontSize\",\n  \"value\": 72\n}"
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01006500",
+          "type": "text",
+          "semanticRole": "caption",
+          "transform": {
+            "x": 120,
+            "y": 660,
+            "width": 1400,
+            "height": 60
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X01006600",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Id-addressed paths survive a concurrent insertion; index paths do not."
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.caption.fontFamily",
+            "fontSize": 20,
+            "color": "token:colors.foregroundMuted"
+          }
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    }
+  ],
+  "assets": [],
+  "components": [],
+  "dataSources": [],
+  "variables": {},
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z"
+}

@@ -1,0 +1,79 @@
+# CI (doc 05 §36).
+#
+# The gates that exist today are the ones Phase 0 can actually enforce. Visual
+# regression, agent contract tests and E2E join as the phases that produce them
+# land — each one added with its phase, never as a retrofit, because a gate added
+# after the fact starts life red and gets disabled.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # The generated JSON Schema is committed so the Python service and external
+      # tooling can consume it without running the TypeScript build. That only
+      # works if it is never stale, which is what this gate enforces.
+      - name: JSON Schema is not stale
+        run: npm run schema:drift
+
+      # Fixtures are generated from the schema too. A drifted fixture would make
+      # every downstream test assert against a document shape that no longer exists.
+      - name: Fixtures are not stale
+        run: |
+          npm run fixtures:build --workspace @deckastra/presentation-schema
+          git diff --exit-code -- packages/presentation-schema/fixtures \
+            || (echo "::error::Fixtures are stale. Run the fixture build and commit the result." && exit 1)
+
+  cross-language:
+    name: Schema contract (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: npm ci
+      - run: pip install -r requirements-dev.txt
+
+      # Regenerate rather than trusting the committed artifact: this job's whole
+      # purpose is to prove the Python side and the Zod definitions agree right
+      # now, and reading a stale file would prove nothing.
+      - name: Emit JSON Schema
+        run: npm run schema:emit
+
+      - name: Fixtures validate in Python, and the schema still has teeth
+        run: python scripts/validate_fixtures.py

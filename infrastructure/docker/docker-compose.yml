@@ -1,0 +1,91 @@
+# Local development services (doc 05 §35).
+#
+#   docker compose -f infrastructure/docker/docker-compose.yml up -d
+#
+# The API, worker and web containers join this file in Phase 1. Phase 0 only needs
+# the backing services, so that schema work can be done without waiting on an
+# application that does not exist yet.
+#
+# Nothing here is a production topology. Passwords are local-only by design; real
+# secrets come from the deployment platform (doc 05 §34).
+
+name: deckastra
+
+services:
+  postgres:
+    # pgvector rather than plain postgres: the repository index (Phase 6) stores
+    # embeddings alongside the relational data, and doc 05 §39 keeps the vector
+    # store flexible. Postgres is already in the stack, so this is the low-friction
+    # answer and adding it now costs nothing.
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: deckastra
+      POSTGRES_PASSWORD: deckastra_local
+      POSTGRES_DB: deckastra
+      # Deterministic collation: an index built under a different locale sorts
+      # differently, which produces the kind of bug that only appears on one
+      # developer's machine.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deckastra -d deckastra"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    # Ephemeral only: agent-run progress, pub/sub for SSE, rate limits, caches.
+    # Never a source of truth (doc 05 §25) — LangGraph checkpoints go to Postgres
+    # so a run survives a Redis restart.
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # S3-compatible object storage for assets, exports and render previews.
+    # Developing against real S3 semantics locally is what stops "works on my
+    # machine, 403s in staging".
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: deckastra
+      MINIO_ROOT_PASSWORD: deckastra_local
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    # Creates the buckets the app expects, so a fresh clone works without a manual
+    # console step.
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 deckastra deckastra_local &&
+      mc mb --ignore-existing local/deckastra-assets &&
+      mc mb --ignore-existing local/deckastra-exports &&
+      mc mb --ignore-existing local/deckastra-previews &&
+      echo 'buckets ready'
+      "
+
+volumes:
+  postgres-data:
+  minio-data:

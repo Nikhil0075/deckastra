@@ -1,0 +1,698 @@
+{
+  "schemaVersion": "1.1.0",
+  "id": "doc_01JB8Z9K2QW4RN7F3X03002100",
+  "metadata": {
+    "title": "Animation Conformance Deck",
+    "language": "en",
+    "presentationType": "technical",
+    "audience": "The animation engine test suite",
+    "objective": "Exercise every MVP trigger, preset shape and reduced-motion path",
+    "estimatedDurationSeconds": 120,
+    "description": "Seek/play parity and reduced-motion fixtures live here."
+  },
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "unit": "px",
+    "aspectRatio": "16:9",
+    "safeArea": {
+      "top": 80,
+      "right": 120,
+      "bottom": 80,
+      "left": 120
+    }
+  },
+  "theme": {
+    "id": "thm_01JB8Z9K2QW4RN7F3X03000000",
+    "name": "Neo Technical",
+    "description": "Dark editorial layout with luminous technical accents.",
+    "mode": "dark",
+    "colors": {
+      "background": "#0B0F14",
+      "surface": "#121821",
+      "surfaceAlt": "#1A222E",
+      "overlay": "#000000B3",
+      "foreground": "#E8EEF5",
+      "foregroundMuted": "#9FB0C3",
+      "foregroundSubtle": "#6B7C90",
+      "accent": "#4CC2FF",
+      "accentForeground": "#04121C",
+      "accentMuted": "#1E5F80",
+      "secondary": "#A78BFA",
+      "secondaryForeground": "#150C2E",
+      "border": "#243141",
+      "borderStrong": "#35485D",
+      "divider": "#1C2530",
+      "success": "#3DDC97",
+      "warning": "#F2C14E",
+      "danger": "#FF6B6B",
+      "info": "#4CC2FF",
+      "chartSeries": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "chartPositive": "#3DDC97",
+      "chartNegative": "#FF6B6B",
+      "chartNeutral": "#6B7C90"
+    },
+    "typography": {
+      "display": {
+        "fontFamily": "Inter",
+        "fontSize": 96,
+        "fontWeight": 700,
+        "lineHeight": 1.05,
+        "letterSpacing": -2
+      },
+      "h1": {
+        "fontFamily": "Inter",
+        "fontSize": 64,
+        "fontWeight": 700,
+        "lineHeight": 1.1,
+        "letterSpacing": -1
+      },
+      "h2": {
+        "fontFamily": "Inter",
+        "fontSize": 44,
+        "fontWeight": 600,
+        "lineHeight": 1.15
+      },
+      "h3": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 600,
+        "lineHeight": 1.2
+      },
+      "body": {
+        "fontFamily": "Inter",
+        "fontSize": 24,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "bodySmall": {
+        "fontFamily": "Inter",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "caption": {
+        "fontFamily": "Inter",
+        "fontSize": 16,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "quote": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 400,
+        "fontStyle": "italic",
+        "lineHeight": 1.35
+      },
+      "code": {
+        "fontFamily": "JetBrains Mono",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.5
+      },
+      "metric": {
+        "fontFamily": "Inter",
+        "fontSize": 88,
+        "fontWeight": 700,
+        "lineHeight": 1,
+        "fontFeatures": [
+          "tnum"
+        ]
+      },
+      "scaleRatio": 1.25
+    },
+    "spacing": {
+      "base": 8,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 32,
+      "xl": 64,
+      "xxl": 96,
+      "slideMargin": {
+        "top": 80,
+        "right": 120,
+        "bottom": 80,
+        "left": 120
+      }
+    },
+    "radii": {
+      "none": 0,
+      "sm": 4,
+      "md": 12,
+      "lg": 24,
+      "full": 9999
+    },
+    "shadows": {
+      "none": [],
+      "sm": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 1,
+          "blur": 3,
+          "color": "#00000059"
+        }
+      ],
+      "md": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 6,
+          "blur": 18,
+          "color": "#00000073"
+        }
+      ],
+      "lg": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 18,
+          "blur": 48,
+          "color": "#00000099"
+        }
+      ]
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": 24,
+      "margin": 120,
+      "baseUnit": 8,
+      "baselineGrid": 8
+    },
+    "chart": {
+      "series": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "gridlineColor": "#1C2530",
+      "axisColor": "#6B7C90",
+      "showGridlines": true,
+      "barCornerRadius": 4,
+      "lineWidth": 3,
+      "pointSize": 6
+    },
+    "diagram": {
+      "nodeFill": {
+        "type": "solid",
+        "color": "token:colors.surface"
+      },
+      "nodeStroke": {
+        "paint": {
+          "type": "solid",
+          "color": "token:colors.border"
+        },
+        "width": 1
+      },
+      "nodeRadius": 12,
+      "nodePadding": {
+        "top": 16,
+        "right": 20,
+        "bottom": 16,
+        "left": 20
+      },
+      "roleStyles": {
+        "service": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          }
+        },
+        "datastore": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surfaceAlt"
+          }
+        },
+        "external": {
+          "fill": {
+            "type": "none"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.borderStrong"
+            },
+            "width": 1,
+            "dash": [
+              6,
+              4
+            ]
+          }
+        }
+      }
+    },
+    "imagery": {
+      "treatment": "none",
+      "defaultCornerRadius": 12
+    },
+    "motion": {
+      "personality": "technical",
+      "defaultEntrance": "fadeUp",
+      "defaultDurationMs": 400,
+      "defaultEasing": "emphasized",
+      "staggerMs": 70,
+      "reducedMotionFallback": "fade",
+      "maxSlideDurationMs": 2500
+    },
+    "contrastPairs": [
+      {
+        "foreground": "colors.foreground",
+        "background": "colors.background",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.accentForeground",
+        "background": "colors.accent",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.foregroundMuted",
+        "background": "colors.background",
+        "minimumRatio": 3
+      }
+    ],
+    "brandRules": [
+      {
+        "id": "type-sizes",
+        "kind": "must-not",
+        "scope": "typography",
+        "statement": "Use no more than three type sizes on a single slide.",
+        "check": {
+          "type": "maxFontSizesPerSlide",
+          "value": 3
+        }
+      },
+      {
+        "id": "no-literals",
+        "kind": "should",
+        "scope": "color",
+        "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+        "check": {
+          "type": "forbiddenColorLiterals",
+          "value": true
+        }
+      },
+      {
+        "id": "whitespace",
+        "kind": "should",
+        "scope": "layout",
+        "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+      }
+    ]
+  },
+  "slides": [
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X03000500",
+      "name": "Sequenced entrance",
+      "semanticIntent": "Exercise slideEnter, afterPrevious and withPrevious in one timeline",
+      "keyMessage": "Motion reinforces narrative order",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03000100",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 200,
+            "width": 1400,
+            "height": 180
+          },
+          "opacity": 0,
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03000600",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Motion reinforces order"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 88,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03000200",
+          "type": "shape",
+          "name": "Proposed",
+          "transform": {
+            "x": 120,
+            "y": 520,
+            "width": 480,
+            "height": 240
+          },
+          "shape": "rectangle",
+          "opacity": 0,
+          "style": {
+            "fill": {
+              "type": "solid",
+              "color": "token:colors.surface"
+            },
+            "cornerRadius": 12,
+            "stroke": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.border"
+              },
+              "width": 1
+            }
+          },
+          "text": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03000700",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Proposed"
+                  }
+                ]
+              }
+            ]
+          },
+          "textPadding": {
+            "top": 32,
+            "right": 32,
+            "bottom": 32,
+            "left": 32
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03000300",
+          "type": "shape",
+          "name": "Applied",
+          "transform": {
+            "x": 640,
+            "y": 520,
+            "width": 480,
+            "height": 240
+          },
+          "shape": "rectangle",
+          "opacity": 0,
+          "style": {
+            "fill": {
+              "type": "solid",
+              "color": "token:colors.surface"
+            },
+            "cornerRadius": 12,
+            "stroke": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.border"
+              },
+              "width": 1
+            }
+          },
+          "text": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03000800",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Applied"
+                  }
+                ]
+              }
+            ]
+          },
+          "textPadding": {
+            "top": 32,
+            "right": 32,
+            "bottom": 32,
+            "left": 32
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03000400",
+          "type": "text",
+          "semanticRole": "metric",
+          "transform": {
+            "x": 1240,
+            "y": 520,
+            "width": 560,
+            "height": 240
+          },
+          "opacity": 0,
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03000900",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "0"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.metric.fontFamily",
+            "fontSize": 88,
+            "fontWeight": 700,
+            "color": "token:colors.accent",
+            "fontFeatures": [
+              "tnum"
+            ]
+          }
+        }
+      ],
+      "animations": [
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03001000",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03000100",
+          "trigger": {
+            "type": "slideEnter"
+          },
+          "label": "Headline fade up",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03001100",
+              "preset": "fadeUp",
+              "startMs": 0,
+              "durationMs": 400,
+              "easing": "emphasized",
+              "reducedMotionPreset": "fade",
+              "propertyTracks": [
+                {
+                  "property": "opacity",
+                  "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 0
+                    },
+                    {
+                      "offset": 1,
+                      "value": 1
+                    }
+                  ]
+                },
+                {
+                  "property": "y",
+                  "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 24
+                    },
+                    {
+                      "offset": 1,
+                      "value": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03001200",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03000200",
+          "trigger": {
+            "type": "afterPrevious"
+          },
+          "label": "First card",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03001300",
+              "preset": "fadeUp",
+              "startMs": 0,
+              "durationMs": 400,
+              "easing": "emphasized",
+              "reducedMotionPreset": "fade",
+              "propertyTracks": [
+                {
+                  "property": "opacity",
+                  "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 0
+                    },
+                    {
+                      "offset": 1,
+                      "value": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03001400",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03000300",
+          "trigger": {
+            "type": "withPrevious"
+          },
+          "label": "Second card, staggered",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03001500",
+              "preset": "fadeUp",
+              "startMs": 70,
+              "durationMs": 400,
+              "easing": "emphasized",
+              "reducedMotionPreset": "fade",
+              "propertyTracks": [
+                {
+                  "property": "opacity",
+                  "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 0
+                    },
+                    {
+                      "offset": 1,
+                      "value": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03001600",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03000400",
+          "trigger": {
+            "type": "afterPrevious"
+          },
+          "label": "Count up",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03001700",
+              "preset": "numberCount",
+              "presetParams": {
+                "from": 0,
+                "to": 128
+              },
+              "startMs": 0,
+              "durationMs": 700,
+              "easing": "easeOut",
+              "reducedMotionBehavior": "instant",
+              "propertyTracks": [
+                {
+                  "property": "numberValue",
+                  "keyframes": [
+                    {
+                      "offset": 0,
+                      "value": 0
+                    },
+                    {
+                      "offset": 1,
+                      "value": 128
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "timelineMarkers": [
+        {
+          "id": "evidence-revealed",
+          "timeMs": 1200,
+          "label": "Evidence revealed"
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 300
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X03001800",
+      "name": "Transition target",
+      "semanticIntent": "Receiving slide for transition tests",
+      "keyMessage": "Transitions belong to the slide being entered",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03001900",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 440,
+            "width": 1400,
+            "height": 200
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03002000",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Entered with a zoom"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 88,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        }
+      ],
+      "transition": {
+        "type": "zoom",
+        "durationMs": 500,
+        "easing": "emphasized"
+      }
+    }
+  ],
+  "assets": [],
+  "components": [],
+  "dataSources": [],
+  "variables": {},
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z"
+}

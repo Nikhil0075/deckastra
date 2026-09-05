@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Deckastra patch",
+  "description": "Generated from @deckastra/presentation-schema v1.1.0. Do not edit by hand — run \"npm run schema:emit\" instead. The Zod definitions in src/ are normative.",
+  "x-schema-version": "1.1.0",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "targetPresentationId": {
+      "type": "string",
+      "pattern": "^doc_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "expectedVersionId": {
+      "type": "string"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "add"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              },
+              "value": {}
+            },
+            "required": [
+              "op",
+              "path",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "remove"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              }
+            },
+            "required": [
+              "op",
+              "path"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "replace"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              },
+              "value": {}
+            },
+            "required": [
+              "op",
+              "path",
+              "value"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "move"
+              },
+              "from": {
+                "$ref": "#/$defs/__schema1"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              }
+            },
+            "required": [
+              "op",
+              "from",
+              "path"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "copy"
+              },
+              "from": {
+                "$ref": "#/$defs/__schema1"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              }
+            },
+            "required": [
+              "op",
+              "from",
+              "path"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "test"
+              },
+              "path": {
+                "$ref": "#/$defs/__schema1"
+              },
+              "value": {}
+            },
+            "required": [
+              "op",
+              "path",
+              "value"
+            ]
+          }
+        ]
+      }
+    },
+    "intent": {
+      "type": "string"
+    },
+    "agentMetadata": {
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string"
+        },
+        "intent": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "sourceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "alternativesConsidered": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "criticScoreBefore": {
+          "type": "number"
+        },
+        "criticScoreAfter": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        }
+      },
+      "required": [
+        "agentId",
+        "intent",
+        "createdAt"
+      ],
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "id",
+    "targetPresentationId",
+    "operations",
+    "intent"
+  ],
+  "additionalProperties": {},
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[a-z]{2,4}_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "__schema1": {
+      "type": "string",
+      "pattern": "^\\/.*"
+    }
+  }
+}
