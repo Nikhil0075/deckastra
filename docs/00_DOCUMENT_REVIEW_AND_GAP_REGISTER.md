@@ -15,6 +15,8 @@
 | 03 — Agents | Strong | Sound; one contradiction with 01 | Missing cost, injection, memory | High |
 | 05 — System | Strong | Sound; data model has modelling holes | Missing multi-member workspaces, themes, vector store, webhooks | High |
 
+> **Status update — Phase 2.** Doc 05's two S1 items and cross-cutting #2 are closed in code and in the documents; see §"Suggested Fix Order". The remaining pre-Phase-5 work is doc 03's S1 set (edit scope, injection policy, run budgets), which belongs with the agent graph.
+>
 > **Status update — schema v1.1.** Every doc 02 finding below (S1, S2, and S3) is closed in `02_MYDECK_PRESENTATION_SCHEMA.md` v1.1, along with cross-cutting items #2, #4, #5, #7, and #8. The findings are retained here as the record of what was fixed and why. Items now open are in docs 01, 03, and 05; §"Suggested Fix Order" has been re-sequenced accordingly.
 
 None of the four documents is wrong in its architecture. The issues are of three kinds: **types referenced but never defined**, **features defined but not wired to anything**, and **decisions deferred that block implementation**.
@@ -312,10 +314,10 @@ Journey F is version/branch. Doc 04 Appendix A's proposed agent-driven journey i
 
 ~~**Before any code** — doc 02 S1 items and cross-cutting #2~~ **Done in schema v1.1.**
 
-**Before Phase 1 (presentation core)**
-1. Doc 03 S1 — edit scope (`sources`), injection policy, run budgets.
-2. Doc 05 S1 — `workspace_members`, transaction `status` / `parent_version_id` / `result_version_id`.
-3. Doc 03 §16 and doc 05 §11 — replace the local transaction types with references to schema §31.5.
+~~**Before Phase 1 (presentation core)**~~ **Items 2 and 3 done in Phase 2.**
+1. Doc 03 S1 — edit scope (`sources`), injection policy, run budgets. *Still open; lands in Phase 5 with the agent graph.*
+2. ~~Doc 05 S1 — `workspace_members`, transaction `status` / `parent_version_id` / `result_version_id`.~~ **Done.** Both tables exist in `infrastructure/database/migrations`, authorization resolves by membership and role, and a proposal has a `pending` status to live in.
+3. ~~Doc 03 §16 and doc 05 §11 — replace the local transaction types with references to schema §31.5.~~ **Done.** Both now reference doc 02 §31 rather than declaring their own shape.
 
 **Before Phase 4 (AI foundation)**
 4. Doc 03 S2 — retrieval index home, proposal lifecycle, agent memory model.

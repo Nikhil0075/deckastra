@@ -9,8 +9,9 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 1.** A prompt becomes a real deck you can present in a browser.
-Every slide is a structured document of editable objects — no editing UI yet.
+**Status: Phase 2.** A prompt becomes a real deck you can present in a browser,
+and every change to it is versioned, attributable and reversible. There is no
+editing UI yet — Phase 3 — but the machinery an editor needs is here and tested.
 
 ---
 
@@ -18,12 +19,15 @@ Every slide is a structured document of editable objects — no editing UI yet.
 
 ```
 packages/presentation-schema/   the canonical .mydeck document model
+packages/presentation-core/     pure document operations — every one emits a patch
+packages/transactions/          patch apply, inverses, undo/redo, transaction lifecycle
 packages/renderer/              document -> IntermediateScene -> DOM/SVG
-apps/api/                       FastAPI: prompt -> story plan -> composed deck
+apps/api/                       FastAPI: generation, persistence, versioned history
 apps/web/                       prompt box, deck preview, present mode
 docs/                           the six specification documents
+infrastructure/database/        Alembic migrations
 infrastructure/docker/          Postgres + pgvector, Redis, MinIO
-scripts/                        cross-language schema contract check
+scripts/                        cross-language contract checks
 ```
 
 Everything else in the tree is a directory reserved by
@@ -52,10 +56,18 @@ renderer and present mode can all be exercised without credentials and without
 spending anything. Every stub deck says so in the UI. Set the key and restart the
 API for real generation.
 
-To bring up the backing services (not needed yet — Phase 2 uses them):
+The API needs a database. For local development, point it at SQLite:
+
+```bash
+DATABASE_URL=sqlite:///deckastra.db npm run db:migrate
+DATABASE_URL=sqlite:///deckastra.db npm run dev:api
+```
+
+Or bring up Postgres and run against that:
 
 ```bash
 docker compose -f infrastructure/docker/docker-compose.yml up -d
+npm run db:migrate    # defaults to the compose Postgres
 ```
 
 ---
@@ -78,6 +90,29 @@ overlap the moment the real text is longer than the sample, and a model that
 proposes `layout: "metrics"` produces slides a composer can always place
 correctly. It also moves the interesting failure from the document — large, and
 expensive to re-ask for — to the plan, which is small and cheap.
+
+---
+
+## How editing works
+
+One path changes a document, and everything uses it:
+
+```
+editor gesture ─┐
+agent proposal ─┼─> PatchOperation[] ─> transactions.applyPatch ─> document + inverse
+data refresh   ─┘                                    │
+                                                     └─> versioned, attributed, reversible
+```
+
+`packages/presentation-core` never returns a modified document — every operation
+emits a patch. That is what makes "human and AI editing are equal citizens"
+(doc 01 §4.7) true rather than aspirational: adding a text box from a toolbar and
+adding one from an agent are literally the same operations, so undo, validation,
+provenance and autosave are wired up once.
+
+Storage is snapshot-plus-operations (doc 05 §22): most versions carry only their
+patch, a full snapshot is written periodically and around agent runs, and a read
+replays forward through the same applier that produced them.
 
 ---
 

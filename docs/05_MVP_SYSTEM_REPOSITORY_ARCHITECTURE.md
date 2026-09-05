@@ -328,17 +328,9 @@ Responsibilities:
 - identify transaction source,
 - version snapshots.
 
-Core types:
-
-```ts
-interface Transaction {
-  id: string;
-  source: "user" | "agent" | "system";
-  operations: PatchOperation[];
-  inverseOperations: PatchOperation[];
-  metadata?: Record<string, unknown>;
-}
-```
+Core types: **defined in `02_MYDECK_PRESENTATION_SCHEMA.md` §31 and not restated
+here** (gap register cross-cutting item #2). `PatchOperation` → `Patch` →
+`Transaction`, with `status` and both version columns.
 
 ---
 
@@ -640,16 +632,60 @@ created_at
 
 ### transactions
 
+Mirrors the schema type in doc 02 §31.5. Three columns were missing from v1.0 of
+this document and are flagged S1 in the gap register:
+
 ```text
 id
 presentation_id
-version_id
-source
+status                  -- pending | applied | rejected | expired | reverted
+parent_version_id       -- the version this was computed against
+result_version_id       -- the version it produced; null while pending
+source                  -- user | agent | system | import
 agent_id
+client_id
+user_instruction
+intent
 operations_json
 inverse_operations_json
-metadata_json
+reason
+confidence
+source_ids_json
+risk_tier               -- computed server-side from the operations, never sent
+created_by
 created_at
+applied_at
+```
+
+Without `status` there is nowhere for a proposed-but-unapplied change to live,
+which is what doc 01 §11.2 requires. Without both version columns the lineage of
+an applied change is implicit and cannot be replayed.
+
+### workspace_members
+
+Closes the other S1 gap: `workspaces` carried an `owner_id` and nothing else, so
+§27's authorization chain could not be resolved for anyone but the owner.
+
+```text
+id
+workspace_id
+user_id
+role                    -- owner | admin | editor | viewer
+created_at
+```
+
+Authorization asks "is this user's role at least X", never "is this user the
+owner". A single-member workspace is then a special case of the general model
+rather than a migration later.
+
+### presentation_versions
+
+`snapshot_json` is written periodically rather than on every version (§22), so
+the table also carries:
+
+```text
+ops_since_snapshot      -- distance from the nearest snapshot
+label
 ```
 
 ### agent_runs

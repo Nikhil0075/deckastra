@@ -1,10 +1,17 @@
-# Deckastra API — Phase 1 (walking skeleton).
+# Deckastra API.
 #
-# Deliberately small. LangGraph, SQLAlchemy and Alembic arrive in Phases 2 and 5;
-# adding them now would be scaffolding for code that does not exist yet.
+# LangGraph and the agent stack arrive in Phase 5; adding them now would be
+# scaffolding for code that does not exist yet.
 
 anthropic>=1.4,<2
 fastapi>=0.115,<1
 uvicorn[standard]>=0.32,<1
 pydantic>=2.9,<3
 jsonschema>=4.23,<5
+
+# Persistence (Phase 2).
+SQLAlchemy>=2.0,<3
+alembic>=1.13,<2
+# psycopg 3. The sync driver is deliberate: FastAPI runs sync endpoints in a
+# thread pool, and async buys nothing until there is measured pool pressure.
+psycopg[binary]>=3.2,<4

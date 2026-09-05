@@ -2,7 +2,7 @@
   "name": "deckastra",
   "private": true,
   "version": "0.0.0",
-  "description": "Deckastra \u2014 an AI-native presentation studio. Agents propose, deterministic engines compose, humans stay in control.",
+  "description": "Deckastra — an AI-native presentation studio. Agents propose, deterministic engines compose, humans stay in control.",
   "workspaces": [
     "packages/*",
     "apps/web"
@@ -19,7 +19,9 @@
     "schema:drift": "npm run schema:drift --workspace @deckastra/presentation-schema",
     "fixtures:build": "npm run fixtures:build --workspace @deckastra/presentation-schema",
     "dev:web": "npm run dev --workspace @deckastra/web",
-    "dev:api": "python -m uvicorn deckastra_api.main:app --reload --port 8000 --app-dir apps/api"
+    "dev:api": "python -m uvicorn deckastra_api.main:app --reload --port 8000 --app-dir apps/api",
+    "db:migrate": "python -m alembic -c infrastructure/database/alembic.ini upgrade head",
+    "db:revision": "python -m alembic -c infrastructure/database/alembic.ini revision --autogenerate -m"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

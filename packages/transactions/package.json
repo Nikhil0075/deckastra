@@ -1,0 +1,22 @@
+{
+  "name": "@deckastra/transactions",
+  "version": "0.0.0",
+  "description": "Patch application, inverse generation, transaction lifecycle and undo/redo. The only path that mutates a document.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@deckastra/presentation-schema": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

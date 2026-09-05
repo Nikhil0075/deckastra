@@ -79,13 +79,15 @@ class StoryPlan(BaseModel):
 
 
 class GenerateRequest(BaseModel):
-    """A user's request for a deck (doc 03 §6, reduced to what Phase 1 uses)."""
+    """A user's request for a deck (doc 03 §6, reduced to what is used so far)."""
 
     instruction: str = Field(min_length=1, max_length=4000)
     audience: str = ""
     objective: str = ""
     slide_count: int = Field(default=5, ge=1, le=20)
     tone: str = ""
+    """Where to put the deck. Defaults to the caller's first project."""
+    project_id: str | None = None
 
 
 class GenerationDiagnostics(BaseModel):
@@ -111,5 +113,8 @@ class GenerationDiagnostics(BaseModel):
 
 class GenerateResponse(BaseModel):
     presentation_id: str
+    #: The head of the version chain, which a client sends back as
+    #: `expected_version_id` on its first edit.
+    version_id: str
     document: dict
     diagnostics: GenerationDiagnostics

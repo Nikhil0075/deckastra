@@ -1,8 +1,9 @@
-# Python tooling for Phase 0.
+# Python tooling for development and CI.
 #
-# The API service and its own dependencies (FastAPI, LangGraph, SQLAlchemy,
-# Alembic) arrive in Phase 1. Everything here exists to let Python validate the
-# same `.mydeck` contract the TypeScript packages enforce, so the two cannot
-# disagree about what a valid document is.
+# The API's own dependencies are in apps/api/requirements.txt; install both to
+# run the full test suite.
 
 jsonschema>=4.23,<5
+pytest>=8.3,<9
+# TestClient needs it.
+httpx>=0.27

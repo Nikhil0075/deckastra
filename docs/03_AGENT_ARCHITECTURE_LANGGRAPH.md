@@ -683,23 +683,33 @@ chart.build
 
 ## 16. Transaction Model
 
-Every accepted agent edit should become a transaction.
+Every accepted agent edit becomes a transaction.
 
-```ts
-interface AgentTransaction {
-  id: string;
-  presentationId: string;
-  parentVersionId: string;
-  agentId: string;
-  userInstruction: string;
-  intent: string;
-  operations: PatchOperation[];
-  reason?: string;
-  confidence?: number;
-  sourceIds?: string[];
-  createdAt: string;
-}
+**The type is defined in `02_MYDECK_PRESENTATION_SCHEMA.md` §31.5 and is not
+restated here.** v1.0 of this document declared its own `AgentTransaction`
+alongside doc 05 §11's `Transaction`, doc 02 §31's `PresentationPatch` and doc 04
+§29's `EditCommand` — four names for one concept, which is cross-cutting item #2
+in the gap register. They now resolve to one lineage:
+
+```text
+PatchOperation   atomic change to one path
+      |
+    Patch        an ordered set of operations + intent
+      |
+ Transaction     an applied patch + inverse + source + status
 ```
+
+Two fields that matter specifically to agents, both absent from the v1.0 shape:
+
+- `status` (`pending | applied | rejected | expired | reverted`) — an agent
+  proposal is `pending` until a human approves it, which is where
+  proposal-before-apply (doc 01 §11.2) actually lives.
+- `inverseOperations` — computed at apply time against the pre-state, because
+  that is the only moment the old value is known. It is what makes AI-specific
+  undo possible.
+
+Agent attribution (`agentId`, `intent`, `reason`, `confidence`, `sourceIds`)
+travels on the same record; see §32 of doc 02 for `AgentChangeMetadata`.
 
 Benefits:
 - AI-only undo,

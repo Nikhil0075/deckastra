@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 1 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/renderer`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 2 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -22,10 +22,15 @@ npm run schema:emit     # regenerate generated/
 npm run schema:drift    # CI gate: fail if generated/ is stale
 npm run fixtures:build
 
-npm run dev:api         # FastAPI on :8000
+npm run dev:api         # FastAPI on :8000 (needs DATABASE_URL)
 npm run dev:web         # Next on :3000
+npm run db:migrate      # alembic upgrade head
+npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
 ```
+
+The API needs a database. `DATABASE_URL=sqlite:///deckastra.db` works for local
+development; the default is the compose Postgres.
 
 Single test file or single test, from `packages/presentation-schema/` or `packages/renderer/`:
 
@@ -77,6 +82,51 @@ keep its decks visibly labelled as stub-composed.
 a child's advisory `x`/`y` is what positions it, so the composer bakes container
 padding into those coordinates — correct now, and still correct once the container
 starts laying out.
+
+### One path mutates a document
+
+`packages/transactions` is the only code that changes a `.mydeck` document. The
+editor, the agents, an import and a data refresh all produce a patch and hand it
+there.
+
+`packages/presentation-core` therefore **never returns a modified document** —
+every operation emits `PatchOperation[]`. Do not add an operation that mutates
+and returns: a second mutation path means undo, validation, provenance and
+autosave each need wiring in two places, and one will be missed.
+
+Three properties that are easy to break:
+
+- **Inverses are computed during application, against the pre-state.** They cannot
+  be derived afterwards — a `remove` has already destroyed what it removed.
+- **Inverses come back in reverse application order.** Undoing `[a, b]` means
+  undoing `b` first. Getting this backwards works for single-operation patches and
+  corrupts multi-operation ones.
+- **Some inverses can only be index-addressed** — restoring a removed element has
+  to name a position. Those are safe only against the state they were computed
+  from, so a *deferred* undo must first check nothing later disturbed the target.
+  `disturbs()` implements that rule (in both languages); the server calls it
+  before a revert, and `History.undoLastAgentChange` before an AI undo.
+
+### Persistence is snapshot + operations
+
+Most versions store only their patch; a full snapshot is written every
+`SNAPSHOT_EVERY` operations and around every agent run. A read loads the nearest
+snapshot and replays forward through the same applier that produced the patches.
+
+`expected_version_id` gives optimistic concurrency. A mismatch is a 409, never a
+last-write-wins overwrite — silently discarding someone's change is the worst
+failure mode a document product has.
+
+### There are two patch appliers, and that is deliberate
+
+TypeScript (`packages/transactions`) for the editor and agents; Python
+(`apps/api/deckastra_api/patch.py`) because the store replays server-side on a
+read. This is the one place the project tolerates a second implementation.
+
+It is made safe by `apps/api/tests/test_patch_conformance.py`, which runs the same
+patches through both and asserts byte-identical documents *and* inverses, plus
+identical rejections. **Changing behaviour in one applier without the other is how
+drift starts** — treat that test as part of both modules.
 
 ### The schema is the product
 
@@ -182,6 +232,9 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 - `packages/presentation-schema` must not depend on React or on any renderer or animation runtime.
 - Source comments explain *why*, citing the spec section. Match that when adding code — the reasoning is the part that stops a future change from silently undoing a decision.
 - Relative imports inside packages are **extensionless** (`from "./scene"`), matching `moduleResolution: "Bundler"`. Turbopack does not map `.js` → `.ts`, so extensions break the web build.
+- Authorization resolves `User → Workspace → Project → Presentation` through `resolve_presentation_access`, by **membership and role**, never by `owner_id`. A missing resource and a forbidden one both return 404: a 403 on something you cannot see confirms it exists.
+- Risk tier is computed server-side from the operations. Never accept one from a caller.
+- Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
 - `.gitattributes` forces LF. Both drift gates compare generated files against their committed form, and the generators emit LF; a CRLF checkout fails them on a clean tree.
 
 ## Tooling deviations from doc 05

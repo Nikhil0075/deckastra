@@ -87,5 +87,15 @@ jobs:
       # and spends nothing. What it checks is the part that is ours: the schema we
       # send, the retry, the refusal handling, and that every composed layout
       # validates against the same artifact the renderer consumes.
+      # Includes the cross-language patch conformance suite, which runs the same
+      # patches through the TypeScript and Python appliers and asserts the results
+      # are byte-identical. There are two implementations because the store
+      # replays operations server-side; this is what keeps them from drifting.
       - name: API tests
         run: python -m pytest apps/api/tests -q
+
+      # The models and the migration are two descriptions of one schema, so they
+      # drift: someone adds a column, create_all() picks it up, every test passes,
+      # and the deployed database is missing it.
+      - name: Migrations match the models
+        run: python -m pytest apps/api/tests/test_migrations.py -q
