@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 8 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `agents/`, `integrations/`, `apps/api`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 9 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `agents/`, `integrations/`, `apps/api`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -263,6 +263,7 @@ Structural enums stay **closed**: patch op codes, paint variants, constraint kin
 Unknown element types and enum values are preserved and reported as `W240`/`W241` — warnings, never errors. Refusing them would delete the user's content.
 
 
+
 ### Ordering has exactly one authority
 
 Array position, for both slides and z-order. `Slide.order` was removed in v1.1 precisely because two sources of truth meant a reorder had to update N fields. `zIndex` is an override only — "bring to front" is an array `move`, not a `zIndex` increment.
@@ -502,6 +503,105 @@ Restraint is the default and the composer encodes it: no motion plan means a
 still deck, a role the plan does not name does not animate, body text past
 ~24 words is left in place (doc 04 §24.4), and a role is consumed the first time
 it is reached so nothing is ever animated twice.
+
+### A share link is a bearer credential, and everything follows from that
+
+`sharing.py`. Whoever holds the link is authorised — no identity, no second
+factor — so:
+
+- **256 random bits** from `secrets.token_urlsafe`, never an id or a UUID. A
+  guessable link is a public deck nobody chose to publish.
+- **Only the hash is stored**, so a database read cannot hand out working links to
+  every deck. The plaintext is returned once, at creation, and the UI says so
+  because it is literally true.
+- **Every refusal is the same refusal.** Expired, revoked and never-existed all
+  answer with one message: telling a holder which it is confirms a deck exists
+  behind the id they tried.
+- **Revoked, not deleted.** "Who could see this, and when did that stop" is the
+  question asked after a leak.
+
+`/v1/shared/{token}` is the only unauthenticated read in the product, and it
+returns one document and nothing about the workspace around it. The role on a
+share is a real `Role` from the membership ladder, so a shared viewer and a
+workspace viewer are the same thing to every downstream check — an `is_public`
+boolean would have been a second thing every authorisation site had to consult,
+and one of them would have missed it.
+
+### Quotas refuse before the work and charge after it
+
+`quotas.py`. `RunBudget` (doc 03) caps one run; quotas cap a hundred. Both are
+needed and they are different controls.
+
+- **Refuse first, charge later.** Checking after means paying for the request
+  that broke the limit; reserving up front means releasing a reservation through
+  a crash. A workspace overshoots by at most one run.
+- **The period resets lazily**, on the first request after it lapses. A cron that
+  misses a month locks every workspace out and the failure looks like a bug in
+  generation.
+- **Null is unlimited and it is not zero.** One integer cannot say both.
+- Storage is a *level*, not a flow, so it is recounted from the assets and never
+  reset with the month.
+
+### An asset outlives the slide that used it
+
+`assets.py`. Version history is the product's promise, so a deck's third version
+can cite an image its fifth deleted, and an undo has to bring the picture back.
+
+- **References are recounted from every stored snapshot**, not incremented on
+  edit. An increment missed once is wrong forever; a recount is right every time.
+  And from every *version*, not just the head.
+- **Zero references starts a clock.** Only the sweeper removes bytes, after
+  `ORPHAN_GRACE_DAYS`, so an undo inside that window finds the file.
+- `referenced_ids` walks the whole document rather than its asset manifest,
+  because the manifest is a convenience and the elements are the truth.
+- `sweep` defaults to `dry_run=True`. It deletes user data by inference.
+
+### A themed document carries both the id and the tokens
+
+`themes.py`. A `themeId` alone would make a `.mydeck` file unopenable outside the
+workspace that owns the theme, and doc 02's first rule is that a document is
+portable and safe to email. So the id records which brand this deck follows and
+the resolved definition is what renders.
+
+Applying a theme goes through the **one mutation path** — apply, capture the
+inverse, validate, commit — so it undoes like every other edit. The `themeId`
+operation is an `add` rather than a `replace` because a deck themed for the first
+time has no such property and `replace` refuses one that does not exist.
+
+### JSON columns are not `MutableDict`
+
+`JsonColumn` is a plain `JSON`/`JSONB` type. Mutating a nested list in place and
+then re-assigning a shallow copy leaves SQLAlchemy comparing an already-equal
+value: **no UPDATE is issued and the change vanishes**. Assign a deep copy, or
+build a fresh object. Nothing in the product does this today; a test did, and it
+failed silently until the row was read back.
+
+### Accessibility has a named target and a named scope
+
+**WCAG 2.1 AA.** `packages/renderer/src/accessibility.ts` checks 1.1.1 (alt text
+on images, charts and diagrams), 1.4.3 (contrast against *what is actually
+behind* the text, not the theme's nominal background) and 1.3.1 (reading order
+against visual order, with a row tolerance so a two-column slide reads across).
+Keyboard and reduced motion are covered by present mode and the animation engine.
+
+Deferred and stated so: tagged PDF, and full screen-reader support for the
+*editor* as opposed to the decks. "Accessible except for some things" is a claim
+nobody can rely on.
+
+The three seed decks pass every in-scope criterion, which is the gate: a product
+whose own examples are inaccessible cannot ask anyone else to comply.
+
+### Telemetry is optional, and carries no user text
+
+`telemetry.py`. A no-op unless OpenTelemetry is installed, because an
+observability layer that blocks a fresh clone from starting is one people delete.
+Spans carry `presentation_id`, `run_id`, `workspace_id`, `version_id` — a trace
+saying "the API was slow" is not actionable; one naming the generation is.
+
+**No user text in a span attribute, ever** — not a title, not a prompt, not a
+retrieved chunk. Traces land in a third party, and an attribute is the easiest
+place in a system to leak a customer's words. Enforced with a length guard rather
+than a convention.
 
 ### Export: resolved scenes in, a reported degradation out
 

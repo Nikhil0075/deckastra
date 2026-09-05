@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import provenance, repository_service, retrieval, store
+from . import provenance, quotas, repository_service, retrieval, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import WorkspaceMember
 from .db.session import get_session
@@ -104,6 +104,11 @@ def connect_local_repository(
     with an account.
     """
     workspace_id = _workspace_of(session, principal.user_id)
+
+    try:
+        quotas.check_repository(session, workspace_id)
+    except quotas.QuotaExceeded as exceeded:
+        raise HTTPException(status_code=429, detail=exceeded.as_detail()) from exceeded
 
     try:
         repository = repository_service.connect_local(

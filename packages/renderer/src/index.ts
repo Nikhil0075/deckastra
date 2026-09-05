@@ -27,4 +27,5 @@ export * from "./scene";
 export * from "./transitions";
 export * from "./perf";
 export * from "./semantic";
+export * from "./accessibility";
 export * from "./digest";

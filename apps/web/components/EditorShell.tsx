@@ -42,6 +42,7 @@ import { checkFrameBudget } from "@deckastra/renderer";
 
 import { AskPanel } from "./AskPanel";
 import { ExportPanel } from "./ExportPanel";
+import { SharePanel } from "./SharePanel";
 import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
 
@@ -786,6 +787,7 @@ function SidePanel({
       {/* Above Ask rather than in a menu: an export is a thing people look for,
           and its report is something they should read rather than dismiss. */}
       <div style={{ margin: "16px -16px 0" }}>
+        <SharePanel presentationId={presentationId} token={token} />
         <ExportPanel presentationId={presentationId} token={token} />
       </div>
 

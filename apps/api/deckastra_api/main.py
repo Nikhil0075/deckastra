@@ -25,10 +25,11 @@ from .models import GenerateRequest, GenerateResponse, GenerationDiagnostics
 from deckastra_agents import ProjectMemory
 from deckastra_agents.router import MODELS as router_models
 
-from . import agent_service, agent_store, provenance, repository_service
+from . import agent_service, agent_store, provenance, quotas, repository_service, telemetry
 from .agent_routes import router as agent_router
 from .export_routes import router as export_router
 from .repository_routes import router as repository_router
+from .workspace_routes import router as workspace_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
 from .story import StoryGenerationError, api_key_available, generate_story_plan
@@ -40,6 +41,11 @@ app = FastAPI(
     version="0.2.0",
     description="Documents, transactions and versioned history.",
 )
+
+# Doc 05 §32, gap register S3. A no-op unless OpenTelemetry is installed, so a
+# fresh clone starts without a collector — an observability layer that blocks
+# startup is one people delete rather than configure.
+telemetry.configure(app)
 
 # Added before CORS so CORS ends up the outer layer: a preflight is answered
 # without opening a database session, and every response — including an error —
@@ -59,6 +65,7 @@ app.include_router(v1_router)
 app.include_router(agent_router)
 app.include_router(repository_router)
 app.include_router(export_router)
+app.include_router(workspace_router)
 
 
 @app.get("/health")
@@ -172,6 +179,20 @@ def generate(
             # 404 rather than 403: a 403 on a project you cannot see confirms it
             # exists.
             raise HTTPException(status_code=404, detail="No such project.")
+
+    # Refused before the work, not after (gap register doc 01 S3). Checking
+    # afterwards means paying for the request that broke the limit, and the
+    # user has no way to tell a limit from a failure.
+    try:
+        quotas.check_generation(session, membership.workspace_id)
+    except quotas.QuotaExceeded as exceeded:
+        telemetry.record_quota_refusal(
+            workspace_id=membership.workspace_id, limit=exceeded.limit
+        )
+        # 429 rather than 403: this is a rate the caller can wait out, and the
+        # detail carries the numbers so the message can say which limit and when
+        # it resets rather than "quota exceeded".
+        raise HTTPException(status_code=429, detail=exceeded.as_detail()) from exceeded
 
     # The agent graph, not a single-shot chain (doc 03 §4). The Orchestrator
     # routes, the Story Architect writes, the Layout Agent checks the fit, the
@@ -305,6 +326,27 @@ def generate(
     )
 
     run_row.presentation_id = stored.presentation_id
+
+    # Charged after the fact, with what the run actually spent. A reservation
+    # taken up front has to be released, and a crash in between leaves the
+    # workspace permanently poorer.
+    quotas.record_generation(
+        session,
+        membership.workspace_id,
+        tokens=diagnostics.input_tokens + diagnostics.output_tokens,
+    )
+
+    # Ids and counts, never the prompt or the copy. A trace store is a third
+    # party, and a span attribute is the easiest place in a system to leak a
+    # customer's words without noticing.
+    telemetry.record_generation(
+        workspace_id=membership.workspace_id,
+        run_id=run_row.id,
+        duration_ms=diagnostics.duration_ms,
+        tokens_in=diagnostics.input_tokens,
+        tokens_out=diagnostics.output_tokens,
+        outcome=diagnostics.source,
+    )
     session.flush()
 
     return GenerateResponse(

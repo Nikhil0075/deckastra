@@ -178,6 +178,12 @@ jobs:
       - name: Agent tests
         run: python -m pytest agents -q
 
+      # The launch surfaces: share links, quotas, the asset lifecycle and
+      # themes. A gate rather than a nicety — a share link is a bearer
+      # credential, and a mistake in one turns a private deck public silently.
+      - name: Launch hardening tests
+        run: python -m pytest apps/api/tests/test_launch.py -q
+
       # The indexing side of Journey B: the ignore rules, the ranking, the
       # chunker, the GitHub App's JWT and the webhook signature. No network and
       # no credentials — the signature tests generate their own key, and the

@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import export_service, store
+from . import export_service, store, telemetry
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import ExportJob
 from .db.session import get_session
@@ -54,7 +54,7 @@ def start_export(
     """
     # An export reads the whole deck, so viewer is the right bar: anyone who can
     # see it can take a copy away.
-    resolve_presentation_access(
+    access = resolve_presentation_access(
         session,
         user_id=principal.user_id,
         presentation_id=presentation_id,
@@ -80,13 +80,33 @@ def start_export(
     except export_service.ExportError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    try:
-        export_service.run_job(session, job, loaded.document)
-    except export_service.ExportError as error:
-        # 502 rather than 500: the failure is in the exporter subprocess, and the
-        # message is the useful part. The row keeps the failure either way.
-        logger.warning("Export %s failed: %s", job.id, error)
-        raise HTTPException(status_code=502, detail=str(error)) from error
+    with telemetry.span(
+        "export",
+        **{
+            telemetry.PRESENTATION_ID: presentation_id,
+            telemetry.VERSION_ID: loaded.version_id,
+        },
+    ):
+        try:
+            export_service.run_job(session, job, loaded.document)
+        except export_service.ExportError as error:
+            telemetry.record_export(
+                workspace_id=access.workspace_id,
+                kind=request.kind,
+                duration_ms=0,
+                outcome="failed",
+            )
+            # 502 rather than 500: the failure is in the exporter subprocess, and
+            # the message is the useful part. The row keeps it either way.
+            logger.warning("Export %s failed: %s", job.id, error)
+            raise HTTPException(status_code=502, detail=str(error)) from error
+
+    telemetry.record_export(
+        workspace_id=access.workspace_id,
+        kind=request.kind,
+        duration_ms=float((job.report_json or {}).get("durationMs", 0)),
+        outcome="completed",
+    )
 
     return export_service.describe(job)
 

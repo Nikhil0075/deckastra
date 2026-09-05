@@ -55,3 +55,36 @@ def validate_document(document: dict[str, Any], *, limit: int = 12) -> list[str]
     if len(errors) > limit:
         out.append(f"... and {len(errors) - limit} more")
     return out
+
+
+THEME_SCHEMA_PATH = (
+    REPO_ROOT / "packages" / "presentation-schema" / "generated" / "mydeck-theme.schema.json"
+)
+
+
+@lru_cache(maxsize=1)
+def theme_validator() -> Draft202012Validator:
+    if not THEME_SCHEMA_PATH.exists():
+        raise SchemaUnavailable(f"{THEME_SCHEMA_PATH} is missing. Run: npm run schema:emit")
+    with THEME_SCHEMA_PATH.open(encoding="utf-8") as handle:
+        return Draft202012Validator(json.load(handle))
+
+
+def validate_theme(theme: dict[str, Any], *, limit: int = 12) -> list[str]:
+    """Errors in a workspace theme, empty when it is valid.
+
+    Against the generated artifact, like everything else. A workspace theme is
+    the same `ThemeDefinition` a document embeds, so validating it with a second
+    hand-written check would be the drift the generated-downward pipeline exists
+    to prevent.
+    """
+    errors = sorted(theme_validator().iter_errors(theme), key=lambda e: list(e.absolute_path))
+
+    out: list[str] = []
+    for error in errors[:limit]:
+        location = "/" + "/".join(str(part) for part in error.absolute_path)
+        out.append(f"{location}: {error.message}")
+
+    if len(errors) > limit:
+        out.append(f"... and {len(errors) - limit} more")
+    return out

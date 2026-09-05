@@ -5,6 +5,7 @@ import { buildDocumentScene, type DocumentScene } from "@deckastra/renderer";
 import { ScaledSlide } from "@deckastra/renderer/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
+import { GenerationFailed, QuotaReached } from "../components/EmptyState";
 import { PresentMode } from "../components/PresentMode";
 import { RepositoryPanel } from "../components/RepositoryPanel";
 import { SourcesPanel } from "../components/SourcesPanel";
@@ -34,10 +35,20 @@ interface Diagnostics {
   duration_ms: number;
 }
 
+interface QuotaDetail {
+  limit: string;
+  used: number;
+  allowed: number;
+  resets_at: string;
+}
+
 type Status =
   | { phase: "idle" }
   | { phase: "generating" }
   | { phase: "ready"; document: PresentationDocument; diagnostics: Diagnostics }
+  // A quota refusal is the system working, not a failure, and it gets its own
+  // message rather than a red box that says something broke.
+  | { phase: "quota"; detail: QuotaDetail }
   | { phase: "error"; message: string };
 
 const EXAMPLES = [
@@ -92,6 +103,12 @@ export default function Home() {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         const detail = body.detail;
+
+        if (response.status === 429 && detail?.limit) {
+          setStatus({ phase: "quota", detail: detail as QuotaDetail });
+          return;
+        }
+
         throw new Error(
           typeof detail === "string"
             ? detail
@@ -221,10 +238,27 @@ export default function Home() {
         </p>
       ) : null}
 
+      {status.phase === "quota" ? (
+        <div style={{ marginTop: 28 }}>
+          <QuotaReached
+            limit={status.detail.limit}
+            used={status.detail.used}
+            allowed={status.detail.allowed}
+            resetsAt={status.detail.resets_at}
+          />
+        </div>
+      ) : null}
+
       {status.phase === "error" ? (
-        <div style={{ ...noticeStyle, borderColor: "var(--danger)", marginTop: 28 }}>
-          <strong>Generation failed.</strong>
-          <div style={{ marginTop: 6, color: "var(--fg-muted)" }}>{status.message}</div>
+        <div style={{ marginTop: 28 }}>
+          {/* Says what happened and what to do about it. A red box reading
+              "An error occurred" tells a user their software is broken and
+              leaves them with nowhere to go. */}
+          <GenerationFailed
+            reason={status.message}
+            onRetry={() => void generate()}
+            onStartBlank={() => setStatus({ phase: "idle" })}
+          />
         </div>
       ) : null}
 

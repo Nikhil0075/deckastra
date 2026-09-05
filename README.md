@@ -9,7 +9,7 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 8.** A prompt becomes a real deck you can present in a browser,
+**Status: Phase 9.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
 direct-manipulation editor with in-place text editing. Every MVP element type
 draws for real — charts, diagrams, tables, highlighted code and icons are laid
@@ -34,7 +34,9 @@ changes the slide.
 And it leaves. A deck exports to PDF with its text still selectable, and to
 PowerPoint with its text still editable — each with a report of everything the
 format could not carry, shown before the download rather than after the file has
-gone to a client.
+gone to a client. Or it goes to an audience: a share link opens the deck for
+someone with no account, and the person who sent it can see whether anyone
+opened it and close the door when they are done.
 
 ---
 
@@ -386,6 +388,43 @@ Critic's preview images and every future MCP preview tool will use too.
 
 ---
 
+## What a launch needs that a demo does not
+
+Four things the product had no model for, each one a gap-register item.
+
+**Sharing.** The Share button had nothing behind it and present mode had no
+access path for an audience — which made the core use case, showing a deck to
+people, impossible for anyone but the author. A link is a bearer credential, so
+it is 256 random bits, stored only as a hash, returned exactly once, revoked
+rather than deleted, and refused identically whether it expired, was turned off,
+or never existed. What it opens is one deck and nothing about the workspace it
+lives in.
+
+**Quotas.** Model spend is the dominant variable cost, and per-run budgets stop
+one runaway generation while doing nothing about a hundred ordinary ones.
+Refusal comes before the work and accounting after it, so a workspace can
+overshoot by at most one run; the period resets lazily, because a scheduled job
+that misses a month would lock everyone out and look like a bug in generation.
+
+**Asset lifecycle.** An asset outlives the slide that used it — version history
+is the promise, so a deck's third version can cite an image its fifth deleted.
+References are recounted from the documents rather than incremented on edit, and
+reaching zero starts a clock rather than deleting anything.
+
+**Themes.** A theme living only in document JSON means every deck carries a
+private copy of the brand and nobody can change it in one place. Now a workspace
+owns it, and a document carries *both* the id and the resolved tokens — the id so
+a brand change can be re-applied, the tokens so the file still opens on a laptop
+that has never heard of the workspace.
+
+Plus the things that have no UI: **WCAG 2.1 AA** with its in-scope criteria named
+and checked (and the three seed decks passing them), OpenTelemetry that is a
+no-op until a collector exists, and `docs/06_OPERATIONS_AND_TARGETS.md` — backups,
+RPO, migration policy, plans, and the metric targets, including the one that
+matters most: *the percentage of generated slides kept without regeneration.*
+
+---
+
 ## What is actually verified
 
 Claims in a README are cheap; these are the ones with a gate behind them.
@@ -421,6 +460,12 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | Every degradation reaches the user | Asserted on the report, and shown above the download button |
 | Two exports of an unchanged deck are the same file | Byte comparison, with a zip writer that fixes its own timestamps |
 | A 60-slide deck exports within budget | 60 pages of PDF in ~2s of work; PPTX in 23ms |
+| A share link opens a deck with no account | Verified in a browser with no session |
+| A revoked link stops working, and stays on the record | Asserted, and refused identically to one that never existed |
+| A link grants nothing beyond the one deck | Response keys asserted: no project, no workspace, no siblings |
+| Generation is refused before the work when a quota is gone | 429 with the numbers, and the run never starts |
+| An asset a version still cites is never swept | Reference counted from every stored snapshot, not just the head |
+| The seed decks pass every accessibility criterion in scope | Alt text, contrast against what is actually behind the text, reading order |
 
 ---
 
@@ -434,6 +479,7 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | `docs/03_AGENT_ARCHITECTURE_LANGGRAPH.md` | Agent boundaries and the graph |
 | `docs/04_CANVAS_RENDERING_ANIMATION_ENGINE.md` | Renderer, animation, export |
 | `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` | Services, data model, deployment |
+| `docs/06_OPERATIONS_AND_TARGETS.md` | Backups, RPO, migrations, plans, accessibility scope, metric targets |
 
 ---
 

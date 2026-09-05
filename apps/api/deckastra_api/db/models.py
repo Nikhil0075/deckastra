@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -550,3 +551,194 @@ class ExportJob(Base, TimestampMixin):
     report_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
     error: Mapped[str | None] = mapped_column(Text)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PresentationShare(Base, TimestampMixin):
+    """A way into a presentation for someone outside the workspace
+    (gap register doc 01 S2, doc 05 S2).
+
+    The Share button in doc 01 §10 has had no model behind it, and present mode
+    has had no access path for an audience — which makes the core use case,
+    showing a deck to people, impossible for anyone but the author.
+
+    Two decisions shape the table:
+
+    **A share carries a role, not a boolean.** `viewer` is the audience case and
+    the default; `editor` is a colleague without a seat. Storing "is public"
+    instead would mean adding a second column the first time someone wants a
+    reviewer, and every check would then have two things to consult.
+
+    **The token is stored hashed.** A share link is a bearer credential — anyone
+    holding it is authorised — so a database read must not hand out working links
+    to every deck in the product. The plaintext is returned once, at creation,
+    exactly like an API key.
+    """
+
+    __tablename__ = "presentation_shares"
+    __table_args__ = (
+        CheckConstraint("role IN ('viewer', 'editor')", name="ck_share_role"),
+        # One lookup per request on the hash, so it is indexed and unique: two
+        # shares hashing the same would silently grant access to the wrong deck.
+        UniqueConstraint("token_hash", name="uq_share_token"),
+        Index("ix_shares_presentation", "presentation_id", "revoked_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="viewer")
+    label: Mapped[str | None] = mapped_column(String(255))
+
+    #: Null means it does not expire. Never expiring is the right default for
+    #: "send this to a client today"; an expiry is what makes a link safe to send
+    #: to a room you do not control.
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Revoked rather than deleted, so "who could see this, and when did that
+    #: stop" survives — the question asked after something leaks.
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    #: Enough to answer "is anyone using this link?" without a second table. A
+    #: per-visit log is later work; a count and a timestamp are what a user looks
+    #: at.
+    view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkspaceQuota(Base, TimestampMixin):
+    """What a workspace is allowed to spend (gap register doc 01 S3).
+
+    Model spend is the dominant variable cost, and Phase 5 `RunBudget` has had
+    nothing to reference: it enforces per-run ceilings, which stop one runaway
+    generation and do nothing about a hundred ordinary ones.
+
+    Counters are stored rather than derived. Summing every agent run to answer
+    "may this proceed" is a table scan on the hot path, and the answer has to be
+    right at the moment of asking rather than eventually.
+
+    `period_start` is what makes this a monthly allowance rather than a lifetime
+    one, and the reset is **lazy** — the first request of a new period rolls the
+    counters. A scheduled job that misses a month would silently lock every
+    workspace out.
+    """
+
+    __tablename__ = "workspace_quotas"
+
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    plan: Mapped[str] = mapped_column(String(32), nullable=False, default="free")
+
+    #: The allowance. Null means unlimited, for a plan with no ceiling — which is
+    #: a different thing from 0, meaning "allowed nothing".
+    monthly_generations: Mapped[int | None] = mapped_column(Integer)
+    monthly_tokens: Mapped[int | None] = mapped_column(Integer)
+    storage_bytes: Mapped[int | None] = mapped_column(Integer)
+    max_repositories: Mapped[int | None] = mapped_column(Integer)
+
+    period_start: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    used_generations: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    used_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    #: Storage is a level, not a flow, so it is counted from the assets rather
+    #: than reset with the month.
+    used_storage_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class Asset(Base, TimestampMixin):
+    """An uploaded or generated file (gap register doc 05 S2).
+
+    The gap: `assets` had no soft delete, no reference counting, no orphan
+    cleanup and no quota, so generated images accumulated forever and deleting a
+    slide silently orphaned its uploads.
+
+    **Reference counting, not cascade.** An asset can be used by several slides
+    and by several *versions* of the same slide — the version history is the whole
+    product — so deleting a slide must not delete the image it used.
+    `reference_count` is recomputed from the documents that cite it, and an asset
+    reaching zero becomes a candidate for cleanup rather than a deletion.
+
+    **Soft delete with a grace period.** A user who deletes a slide and undoes it
+    expects the picture back. `deleted_at` starts the clock; only the sweeper
+    removes bytes, and only after the grace period.
+    """
+
+    __tablename__ = "assets"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('image', 'video', 'audio', 'font', 'document')", name="ck_asset_kind"
+        ),
+        Index("ix_assets_workspace", "workspace_id", "deleted_at"),
+        # The sweeper query: unreferenced assets, oldest first.
+        Index("ix_assets_orphans", "reference_count", "deleted_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="image")
+    #: Opaque, resolved to a signed URL at render time (doc 02, doc 05 §24). A
+    #: canonical document must never carry a transient signed URL.
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(128))
+    bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+
+    #: How many live documents cite this asset. Recomputed rather than
+    #: incremented: an increment missed once is wrong forever, and the documents
+    #: are the truth.
+    reference_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Theme(Base, TimestampMixin):
+    """A workspace brand, as something an organisation can enforce
+    (gap register doc 05 S2).
+
+    Themes have lived only inside document JSON, so every deck carries its own
+    copy and nobody can change the brand in one place. Doc 02 §22 calls the theme
+    "a design contract" agents reference; a contract each document holds a private
+    copy of is not one.
+
+    **The document keeps its resolved snapshot.** A `themeId` alone would make a
+    `.mydeck` file unopenable outside the workspace that owns the theme, and doc
+    02 first rule is that a document is portable and safe to email. So the
+    document carries both: the id, so a brand change can be re-applied, and the
+    resolved tokens, so the file renders anywhere.
+    """
+
+    __tablename__ = "themes"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "name", name="uq_theme_name"),
+        Index("ix_themes_workspace", "workspace_id", "archived_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    #: The full `ThemeDefinition`, validated against the generated schema before
+    #: it is stored. One definition, generated downward — there is no second
+    #: Python model of a theme.
+    definition_json: Mapped[dict[str, Any]] = mapped_column(JsonColumn, nullable=False)
+
+    #: Exactly one default per workspace, enforced in the service rather than by
+    #: a partial index: SQLite has none, and the two dialects would then disagree
+    #: about what is legal.
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
