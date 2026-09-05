@@ -194,3 +194,40 @@ jobs:
       # and the deployed database is missing it.
       - name: Migrations match the models
         run: python -m pytest apps/api/tests/test_migrations.py -q
+
+  # Export needs a browser and a Node subprocess, so it is its own job rather
+  # than a dependency the schema-contract job carries for one test file.
+  #
+  # What it gates is the property that cannot be asserted from inside the
+  # exporter: the artifacts open in readers that are not us. `python-pptx` and
+  # `pypdf` are independent implementations of the same specifications, so a file
+  # they refuse is a file PowerPoint or Acrobat refuses.
+  export:
+    name: Export
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt pytest python-pptx pypdf
+
+      # The adapters themselves: OOXML structure, the relationship graph, the
+      # degradation ledger and byte-stability. No browser needed.
+      - name: Export adapter tests
+        run: npm test --workspace @deckastra/export-pptx
+
+      # End to end through the API, including a real Chromium PDF. Slow, and the
+      # only place the whole path is exercised as a user would.
+      - name: Export end to end
+        run: python -m pytest apps/api/tests/test_exports.py apps/api/tests/test_pptx_opens.py -q

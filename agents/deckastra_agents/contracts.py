@@ -232,18 +232,70 @@ class CriticIssue(BaseModel):
 
     slide_id: str = Field(default="", description="Empty when the issue is deck-wide.")
     severity: Literal["blocker", "major", "minor"]
-    category: Literal["narrative", "content", "layout", "style", "accessibility"]
+    category: Literal[
+        "narrative", "content", "layout", "style", "motion", "accessibility"
+    ]
     message: str = Field(description="What is wrong, in a sentence a user would understand.")
     suggested_fix: str = Field(default="", description="How to fix it. May be empty.")
 
 
+class CriticScores(BaseModel):
+    """The score model doc 03 §13 specifies, in full.
+
+    Eight dimensions rather than one number, and the reason is routing. A single
+    score says a deck is a 0.6 and leaves a human to work out what to do about
+    it; `hierarchy: 0.4, narrative_clarity: 0.9` says the words are fine and the
+    slides are not, which is a stage to send the work back to.
+
+    Every dimension is 0..1 and comparable *between drafts of the same deck* —
+    that comparability is what the disagreement fallback relies on when it has to
+    pick the best of several attempts (gap register doc 03 S3).
+    """
+
+    hierarchy: float = Field(ge=0, le=1, description="Does the eye land on the most important thing first?")
+    readability: float = Field(ge=0, le=1, description="Can this be read from the back of a room?")
+    contrast: float = Field(ge=0, le=1, description="Is the text legible against what is behind it?")
+    alignment: float = Field(ge=0, le=1, description="Do edges line up, or nearly line up?")
+    density: float = Field(ge=0, le=1, description="Is there more on the slide than a listener can take in?")
+    consistency: float = Field(ge=0, le=1, description="Does the deck look like one deck?")
+    narrative_clarity: float = Field(ge=0, le=1, description="Does it open, build and close?")
+    #: Optional in doc 03 §13 because a still deck has no motion to judge.
+    motion_quality: float | None = Field(
+        default=None, ge=0, le=1, description="Null when nothing on the deck moves."
+    )
+
+    def overall(self) -> float:
+        """One number, for the fallback that has to choose between drafts.
+
+        A plain mean of the dimensions that apply. Weighting them would encode a
+        claim about which failure matters most, and that claim belongs to the
+        deck's purpose rather than to this class — a data-heavy technical review
+        and a keynote do not agree about density.
+        """
+        values = [
+            self.hierarchy,
+            self.readability,
+            self.contrast,
+            self.alignment,
+            self.density,
+            self.consistency,
+            self.narrative_clarity,
+        ]
+        if self.motion_quality is not None:
+            values.append(self.motion_quality)
+        return round(sum(values) / len(values), 4)
+
+
 class CriticResult(BaseModel):
     verdict: Literal["pass", "revise_story", "revise_layout", "revise_creative", "revise_motion"]
-    #: 0..1. Used to pick the best candidate when the Critic and the producer
-    #: cannot agree and the revision budget runs out (gap register doc 03 S3).
-    score: float = Field(ge=0, le=1, description="Overall quality, 0 to 1.")
+    scores: CriticScores
     issues: list[CriticIssue] = Field(default_factory=list)
     summary: str = Field(description="One user-facing sentence.")
+
+    @property
+    def score(self) -> float:
+        """The single number the revision fallback compares drafts by."""
+        return self.scores.overall()
 
 
 # ---------------------------------------------------------- contextual edit

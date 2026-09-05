@@ -41,6 +41,7 @@ import { browserMeasurer } from "../lib/measurer";
 import { checkFrameBudget } from "@deckastra/renderer";
 
 import { AskPanel } from "./AskPanel";
+import { ExportPanel } from "./ExportPanel";
 import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
 
@@ -781,6 +782,12 @@ function SidePanel({
           <li style={{ fontSize: 12, color: "var(--fg-subtle)" }}>No changes yet.</li>
         ) : null}
       </ol>
+
+      {/* Above Ask rather than in a menu: an export is a thing people look for,
+          and its report is something they should read rather than dismiss. */}
+      <div style={{ margin: "16px -16px 0" }}>
+        <ExportPanel presentationId={presentationId} token={token} />
+      </div>
 
       {/* Journey C. Placed at the bottom of the panel the user is already
           looking at while they have something selected, rather than in a modal

@@ -1,0 +1,33 @@
+{
+  "name": "@deckastra/worker",
+  "version": "0.0.0",
+  "description": "Headless render service and export jobs.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "deckastra-export": "./src/cli.ts" },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@deckastra/animation-engine": "*",
+    "@deckastra/export-core": "*",
+    "@deckastra/export-pdf": "*",
+    "@deckastra/export-pptx": "*",
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/renderer": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "playwright": "^1.49.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

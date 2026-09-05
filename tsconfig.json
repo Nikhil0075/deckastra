@@ -1,0 +1,22 @@
+{
+  "//": "Root config for tooling that expects `tsconfig.json` by name \u00e2\u20ac\u201d `tsx` in particular, which reads the JSX transform from here and otherwise defaults to the classic runtime and fails on the first `.tsx` it loads. Each workspace still has its own config extending `tsconfig.base.json`; this compiles nothing.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/tests",
+    "apps/worker/src",
+    "apps/worker/tests"
+  ]
+}

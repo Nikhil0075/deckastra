@@ -63,7 +63,27 @@ DIRECTION = {
     "choices": [],
     "warnings": [],
 }
-PASS = {"verdict": "pass", "score": 0.9, "issues": [], "summary": "Ready."}
+def scores(value: float, **overrides: float | None) -> dict[str, float | None]:
+    """The eight dimensions doc 03 §13 specifies, all at one value.
+
+    A helper rather than a literal because a test that spells out eight numbers
+    is a test nobody reads, and the thing under test is almost never which
+    dimension — it is the verdict, or the overall the fallback compares by.
+    """
+    return {
+        "hierarchy": value,
+        "readability": value,
+        "contrast": value,
+        "alignment": value,
+        "density": value,
+        "consistency": value,
+        "narrative_clarity": value,
+        "motion_quality": None,
+        **overrides,
+    }
+
+
+PASS = {"verdict": "pass", "scores": scores(0.9), "issues": [], "summary": "Ready."}
 
 
 def context(client: StubClient, memory: ProjectMemory | None = None) -> tuple[NodeContext, list]:
@@ -279,7 +299,7 @@ def test_nothing_to_lay_out_is_not_an_error():
 
 
 def test_a_revise_verdict_names_where_the_work_goes():
-    ctx, _ = context(stub(critique={**PASS, "verdict": "revise_story", "score": 0.4}))
+    ctx, _ = context(stub(critique={**PASS, "verdict": "revise_story", "scores": scores(0.4)}))
     produced = critic(state(story_plan=STORY_PLAN), ctx)
     assert produced["revision_target"] == "revise_story"
 
@@ -290,7 +310,7 @@ def test_the_critic_falls_back_rather_than_looping_forever():
     A user can act on an attached issue. They can do nothing with a run that
     never finished.
     """
-    ctx, _ = context(stub(critique={**PASS, "verdict": "revise_story", "score": 0.4}))
+    ctx, _ = context(stub(critique={**PASS, "verdict": "revise_story", "scores": scores(0.4)}))
     ctx.budget.max_revisions_per_run = 0
 
     produced = critic(state(story_plan=STORY_PLAN), ctx)
@@ -362,7 +382,7 @@ def test_a_run_with_no_stages_goes_straight_to_propose():
 
 def test_a_revise_verdict_re_enters_the_story_stage():
     """The routing table is the contract (doc 03 §13.4)."""
-    verdicts = iter([{**PASS, "verdict": "revise_story", "score": 0.3}, PASS])
+    verdicts = iter([{**PASS, "verdict": "revise_story", "scores": scores(0.3)}, PASS])
 
     class Sequenced(StubClient):
         def complete(self, request, budget):

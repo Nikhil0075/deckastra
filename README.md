@@ -9,7 +9,7 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 7.** A prompt becomes a real deck you can present in a browser,
+**Status: Phase 8.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
 direct-manipulation editor with in-place text editing. Every MVP element type
 draws for real — charts, diagrams, tables, highlighted code and icons are laid
@@ -31,6 +31,11 @@ order, deterministic code turns that into a timeline inside the per-slide
 duration budget, and a presenter's arrow key reveals the next point before it
 changes the slide.
 
+And it leaves. A deck exports to PDF with its text still selectable, and to
+PowerPoint with its text still editable — each with a report of everything the
+format could not carry, shown before the download rather than after the file has
+gone to a client.
+
 ---
 
 ## What is here
@@ -47,6 +52,9 @@ packages/editor/                selection, hit testing, transforms, snapping,
                                 clipboard, keys, rich-text editing and paste sanitization
 packages/animation-engine/      presets, timeline compilation, stateless sampling,
                                 playback and the DOM adapter
+packages/export-core/           the adapter contract, capabilities, the degradation ledger
+packages/export-pdf/            PDF assembly: which slides, which frame, what degraded
+packages/export-pptx/           OOXML generation, element mapping, its own zip writer
 agents/                         the LangGraph agent system: nodes, contracts,
                                 tool registry, budgets, memory, model routing
 integrations/                   repository sources: ignore rules, importance
@@ -54,6 +62,7 @@ integrations/                   repository sources: ignore rules, importance
 apps/api/                       FastAPI: generation, persistence, versioned history
 apps/web/                       prompt box, repository picker, deck preview with
                                 per-slide sources, editor, present mode
+apps/worker/                    the headless render service and the export CLI
 docs/                           the six specification documents
 infrastructure/database/        Alembic migrations
 infrastructure/docker/          Postgres + pgvector, Redis, MinIO
@@ -333,6 +342,50 @@ survives a re-layout.
 
 ---
 
+## How export works
+
+```
+PresentationDocument
+       |
+       v  buildDocumentScene, once
+IntermediateScene --+--> PDF adapter   --> headless Chromium, printToPDF
+                    +--> PPTX adapter  --> OOXML, no browser at all
+```
+
+Both adapters receive **resolved scenes**, never the document. That is what stops
+PDF and PPTX disagreeing about where things sit: they are reading the numbers the
+editor drew, not re-deriving them. An adapter that took the document would be a
+second layout engine, and the first time a measurement differed the export would
+quietly stop matching the screen.
+
+**PDF is printed, not screenshotted.** Chromium paginates one page with CSS page
+breaks, so a 60-slide deck becomes one 60-page document in a single call — and
+the text arrives as *vector text*: selectable, searchable, sharp at any zoom. A
+screenshot pipeline is easier and produces pictures of slides.
+
+**PPTX is for compatibility, not fidelity.** The user story is "my client needs a
+.pptx", so editable text beats an exact shadow. Text becomes runs, shapes become
+preset geometries, code becomes a monospaced box with its highlighting intact,
+and anything this build cannot represent becomes a labelled box rather than
+nothing. It has its own zip writer, because every general-purpose one stamps the
+current time into each entry and that would make two exports of an unchanged deck
+different files.
+
+**A degradation is a value, not a side effect.** The only way for an adapter to
+skip or approximate something is `DegradationLedger.record`, so "every
+degradation is reported" is a property of the object graph rather than a rule
+each adapter has to remember. The report says *what happened* — flattened,
+rasterized, dropped, approximated — because "unsupported" tells a reader nothing
+while "rasterized" tells them the text is no longer selectable. The user reads it
+before the download button, not after the file has gone to a client.
+
+The headless render service under all of it (`apps/worker`) is the same
+`SlideView` the editor mounts, in `mode="export"`, with no network, reduced
+motion set explicitly and animations resolved to a chosen frame. It is what the
+Critic's preview images and every future MCP preview tool will use too.
+
+---
+
 ## What is actually verified
 
 Claims in a README are cheap; these are the ones with a gate behind them.
@@ -363,6 +416,11 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | A slide's entrance fits its budget | Enforced in the composer and asserted at all three pacings |
 | A timeline edit is an undoable transaction | Asserted as patch operations, and driven through the editor in a browser |
 | `→` reveals the next point before it changes the slide | Present mode, in a browser |
+| A .pptx opens in a real PowerPoint reader | `python-pptx` walks the relationship graph and reads the shapes |
+| A PDF keeps its text as text | `pypdf` extracts it, and the page is 1440x810pt with no extra page |
+| Every degradation reaches the user | Asserted on the report, and shown above the download button |
+| Two exports of an unchanged deck are the same file | Byte comparison, with a zip writer that fixes its own timestamps |
+| A 60-slide deck exports within budget | 60 pages of PDF in ~2s of work; PPTX in 23ms |
 
 ---
 

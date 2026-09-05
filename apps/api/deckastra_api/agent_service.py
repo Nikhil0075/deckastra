@@ -153,7 +153,19 @@ def _stub_answers(
         "critique",
         {
             "verdict": "pass",
-            "score": 0.6,
+            # Middling across the board, and honestly so: no model looked at this
+            # deck. A stub that scored itself 0.9 would make the agent inspector
+            # show a confident review that never happened.
+            "scores": {
+                "hierarchy": 0.6,
+                "readability": 0.6,
+                "contrast": 0.6,
+                "alignment": 0.6,
+                "density": 0.6,
+                "consistency": 0.6,
+                "narrative_clarity": 0.6,
+                "motion_quality": None,
+            },
             "issues": [],
             "summary": "Composed by the deterministic planner; not reviewed by a model.",
         },

@@ -30,6 +30,7 @@ from typing import Any
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -494,3 +495,58 @@ __all__ = [
     "Workspace",
     "WorkspaceMember",
 ]
+
+
+class ExportJob(Base, TimestampMixin):
+    """One export (doc 04 §32.4, doc 05 §8).
+
+    A row rather than a request, because a 60-slide PDF at 2× takes tens of
+    seconds — longer than any HTTP request should live, and long enough that a
+    client that loses its connection would have no way to find out whether the
+    work finished. So the API returns an id and the client asks about it.
+
+    The artifact is written to disk and the row holds the path. Object storage is
+    Phase 9's; what matters now is that the artifact does not live in the
+    database, because an export is megabytes and a row read is not.
+
+    The report is stored alongside it because doc 04 §32.2 requires the user to
+    see the degradations *before* they download — which means the report has to
+    outlive the job that produced it, not stream past during it.
+    """
+
+    __tablename__ = "export_jobs"
+    __table_args__ = (
+        CheckConstraint("kind IN ('pdf', 'pptx')", name="ck_export_kind"),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'completed', 'failed')",
+            name="ck_export_status",
+        ),
+        Index("ix_export_jobs_presentation", "presentation_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), nullable=False
+    )
+    #: The version exported. An export is of a *version*, not of a presentation:
+    #: doc 04 §32.3 keys artifact stability on it, and a deck that changed after
+    #: the job started must not silently change what the file contains.
+    version_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
+    options_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
+
+    progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    stage: Mapped[str | None] = mapped_column(String(24))
+    message: Mapped[str | None] = mapped_column(Text)
+
+    artifact_path: Mapped[str | None] = mapped_column(Text)
+    filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(128))
+    bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    report_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
+    error: Mapped[str | None] = mapped_column(Text)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

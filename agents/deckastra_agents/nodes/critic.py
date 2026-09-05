@@ -25,6 +25,8 @@ from ..contracts import CriticResult
 from ..envelope import Source, envelope
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
+from ._signals import describe as describe_measurements
+from ._signals import measure_deck
 
 AGENT_ID = "critic"
 STAGE = "critic"
@@ -41,17 +43,38 @@ Return one verdict:
   revise_motion    The motion is the problem: too much of it, the wrong order,
                    or an entrance the presenter would have to talk over.
 
-Score the deck 0 to 1. The score is used to pick the best draft if reviewers and
-writers cannot converge, so it must be comparable between drafts of the same deck:
-score what is there, not how much is left to do.
+The verdict names the stage that should act. A review that only says "this is
+bad" leaves a human to work out who fixes it.
+
+SCORE EIGHT DIMENSIONS, each 0 to 1:
+
+  hierarchy          Does the eye land on the most important thing first?
+  readability        Can this be read from the back of a room?
+  contrast           Is the text legible against what is behind it?
+  alignment          Do edges line up, or nearly line up?
+  density            Is there more here than a listener can take in?
+  consistency        Does the deck look like one deck?
+  narrative_clarity  Does it open, build and close?
+  motion_quality     Null when nothing on the deck moves.
+
+The scores must be comparable BETWEEN DRAFTS of the same deck - they are used to
+pick the best attempt when reviewer and writer cannot converge. So score what is
+there, not how much is left to do. A draft that fixed two of five problems scores
+higher than the one before it, even though three remain.
+
+YOU ARE GIVEN MEASUREMENTS. Word counts, bullet counts, layout misfits, uncited
+numbers and motion counts are measured, not estimated. Use them: do not re-count,
+do not contradict them, and do not raise a density issue about a slide the
+measurements say is short.
 
 Judge:
   - Narrative: does it open, build and close? Is any slide redundant?
   - Claims: is anything asserted that the material does not support? A number
     with no source is the most important thing you can catch.
-  - Layout fit: metrics with no numbers, bullets with one point, a quote with no
-    attribution.
-  - Density: a slide nobody can read from the back of a room.
+  - Layout fit: the measurements name misfits outright.
+  - Density: a slide nobody can read while also listening.
+  - Motion: does it earn its place? Motion reads as emphasis, and a deck that
+    emphasises everything emphasises nothing.
 
 Do not pass a deck to be kind and do not fail one to be thorough. Every issue you
 raise costs the user attention, so raise the ones that would change what they
@@ -69,14 +92,18 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
 
     known_sources = {source["id"] for source in research.get("sources") or []}
 
+    # Doc 03 §13's "render metadata" input, and doc 03 §14's deterministic
+    # services. Counts are measured rather than left to the model: density is a
+    # count, and a model asked to count will sometimes say four when it is three
+    # and then raise an issue about it.
+    measurements = measure_deck(state)
+
     described = "\n\n".join(
         "\n".join(
             [
                 f"slide {index}: {slide.get('layout', '?')}",
                 f"headline: {slide.get('headline', '')}",
                 f"key_message: {slide.get('key_message', '')}",
-                f"bullets: {len(slide.get('bullets') or [])}",
-                f"metrics: {len(slide.get('metrics') or [])}",
                 f"cites: {', '.join(slide.get('source_ids') or []) or 'nothing'}",
             ]
         )
@@ -88,6 +115,9 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
             f"Review this {len(slides)}-slide draft.",
             "",
             envelope(described, Source(id="draft", kind="draft")),
+            "",
+            "Measurements (these are facts; do not re-count them):",
+            describe_measurements(measurements),
             "",
             (
                 f"Sources available to the writer: {', '.join(sorted(known_sources)) or 'none'}."
@@ -111,6 +141,11 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
     )
 
     payload = result.model_dump(mode="json")
+    # The single number the fallback compares drafts by, alongside the eight it
+    # came from. Both are kept: the fallback needs one, and the editor shows the
+    # reader which dimension failed.
+    payload["score"] = result.score
+    payload["measurements"] = measurements
     warnings: list[str] = []
 
     # Issues in categories this project's users have already dismissed are

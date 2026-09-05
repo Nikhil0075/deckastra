@@ -2,10 +2,11 @@
   "name": "deckastra",
   "private": true,
   "version": "0.0.0",
-  "description": "Deckastra — an AI-native presentation studio. Agents propose, deterministic engines compose, humans stay in control.",
+  "description": "Deckastra \u00e2\u20ac\u201d an AI-native presentation studio. Agents propose, deterministic engines compose, humans stay in control.",
   "workspaces": [
     "packages/*",
-    "apps/web"
+    "apps/web",
+    "apps/worker"
   ],
   "engines": {
     "node": ">=22"

@@ -27,6 +27,7 @@ from deckastra_agents.router import MODELS as router_models
 
 from . import agent_service, agent_store, provenance, repository_service
 from .agent_routes import router as agent_router
+from .export_routes import router as export_router
 from .repository_routes import router as repository_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
@@ -57,6 +58,7 @@ app.add_middleware(
 app.include_router(v1_router)
 app.include_router(agent_router)
 app.include_router(repository_router)
+app.include_router(export_router)
 
 
 @app.get("/health")

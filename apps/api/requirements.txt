@@ -32,3 +32,11 @@ redis>=5.0,<7
 # rather than accidental.
 cryptography>=42,<51
 httpx>=0.27,<1
+
+# Export verification (Phase 8).
+#
+# Independent readers of the formats the exporters write. Every other assertion
+# about a .pptx or a .pdf is made by the code that produced it, which means they
+# all share the same misunderstanding if there is one; these do not.
+python-pptx>=1.0,<2
+pypdf>=5,<7

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 7 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `agents/`, `integrations/`, `apps/api`, `apps/web`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 8 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `agents/`, `integrations/`, `apps/api`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -30,6 +30,7 @@ npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
 python -m pytest agents -q          # the agent graph, against the stub client
 python -m pytest integrations -q    # ignore rules, ranking, chunking, GitHub
+python -m pytest apps/api -q -m "not slow"   # skip the browser and subprocess tests
 ```
 
 Single package, from `packages/animation-engine/`:
@@ -260,6 +261,7 @@ Descriptive enums (transition type, semantic role, chart/diagram/shape kind, tex
 Structural enums stay **closed**: patch op codes, paint variants, constraint kinds. An unknown value there cannot be interpreted at all, and accepting it pushes the failure somewhere far less diagnosable.
 
 Unknown element types and enum values are preserved and reported as `W240`/`W241` — warnings, never errors. Refusing them would delete the user's content.
+
 
 ### Ordering has exactly one authority
 
@@ -500,6 +502,98 @@ Restraint is the default and the composer encodes it: no motion plan means a
 still deck, a role the plan does not name does not animate, body text past
 ~24 words is left in place (doc 04 §24.4), and a role is consumed the first time
 it is reached so nothing is ever animated twice.
+
+### Export: resolved scenes in, a reported degradation out
+
+```
+PresentationDocument
+       |
+       v  buildDocumentScene, once
+IntermediateScene --+--> packages/export-pdf   --> apps/worker, Chromium printToPDF
+                    +--> packages/export-pptx  --> OOXML, no browser
+```
+
+**Adapters receive scenes, never the document for geometry.** Doc 04 §32.1, and
+it is what stops PDF and PPTX disagreeing about where an element sits. The one
+thing PPTX reads from the document is *semantics* the scene resolved away — a
+shape's kind, because `prstGeom prst="ellipse"` is editable in PowerPoint where a
+converted path is not. Coordinates never come from there.
+
+**`DegradationLedger` is the only way to degrade something.** An adapter cannot
+skip a feature without the skip landing in the report, so doc 04 §32.2's "every
+degradation is reported" is a property of the object graph rather than a rule
+someone remembers. The report names the *action* — flattened, rasterized,
+dropped, approximated — because "unsupported" tells a reader nothing.
+
+**Byte-stability is load-bearing** (doc 04 §32.3). `packages/export-pptx` has its
+own zip writer because every general-purpose one stamps the current time into
+each entry; timestamps come from the document, and shape names derive from
+element ids rather than a counter — which is also what gives PowerPoint's Morph
+something stable to pair on (§33.3). A counter renumbers when a slide gains an
+element and every morph silently stops working.
+
+**PDF is one paginated page, not N merged documents.** Chromium paginates with
+CSS page breaks, so one `printToPDF` gives one file; merging would mean parsing
+cross-reference tables. `break-after: page` is cleared on the last section —
+without that every export ends with a blank sheet (doc 04 §34.3).
+
+**The exports are checked by readers that are not us.** `python-pptx` and `pypdf`
+are independent implementations of the same specifications, and a package they
+refuse is one PowerPoint refuses. Every other assertion about these files is made
+by the code that wrote them and shares its misunderstandings.
+
+### The render service is the renderer's determinism claim, checked
+
+`apps/worker` mounts the same `SlideView` the editor does, in `mode="export"`,
+with no editor, no session and no user (doc 04 §41.1). Three things there are not
+incidental:
+
+- **No network at render time.** Every request is aborted except `data:` URLs. A
+  document that could make the render server fetch a URL is an SSRF primitive as
+  well as a source of nondeterminism.
+- **Reduced motion is set explicitly**, not inherited. A render that picked up the
+  *server's* preference would bake one machine's accessibility setting into every
+  user's export.
+- **Animations resolve to a chosen frame** (`final` by default). Otherwise a
+  render catches whatever frame the entrance happened to be on.
+
+Text metrics are still estimated there — the scene is built in Node, where there
+is no DOM — so every export reports `metricsEstimated: true`. The visual result
+currently matches the editor because of the Phase 4 estimator calibration, but a
+warning that fires every time is a warning nobody reads; closing it means the
+batch text-measurement service doc 04 §31.2 describes.
+
+### The API reaches the worker through a subprocess
+
+The renderer, the adapters and the animation engine are TypeScript; the API is
+Python. `export_service._invoke_worker` shells out to `apps/worker/src/cli.ts`,
+with a deliberately narrow contract — **JSON in on stdin, JSON out on stdout,
+bytes to a file** — so it can become an HTTP call later without its callers
+changing. Progress goes to stderr, one object per line, which keeps stdout a
+single parseable value.
+
+`tsx` reads the JSX transform from the root `tsconfig.json`. Without that file it
+defaults to the classic runtime and every `.tsx` in the renderer fails with
+"React is not defined" — which is why a root config exists even though nothing
+compiles through it.
+
+### The Critic scores eight dimensions, and measures before it judges
+
+Doc 03 §13's full score model: hierarchy, readability, contrast, alignment,
+density, consistency, narrative clarity, and motion quality when there is motion.
+Eight rather than one because the verdict has to *route* — a single 0.6 leaves a
+human to work out what to do, while `hierarchy: 0.4, narrative_clarity: 0.9` says
+the words are fine and the slides are not.
+
+`nodes/_signals.py` is doc 03 §14's deterministic service: word counts, layout
+misfits, uncited numbers, repeated layouts, motion counts. Nothing there has an
+opinion. It exists because density is a count, and a model asked to count will
+sometimes say four where there are three and then raise an issue about the four.
+The Critic argues about what the numbers mean, never about what they are.
+
+Doc 03 §13 also allows a rendered preview image, and the render service now makes
+that a wiring job rather than a missing capability — it needs a vision model and
+a composed document, and the Critic runs before the composer.
 
 ### Repository grounding runs on bytes, never on execution
 
