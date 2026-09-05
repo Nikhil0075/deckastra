@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
+import { IdSchema, prefixedId } from "./ids";
 import {
   FiniteNumber,
   ImageFitSchema,
@@ -8,19 +8,19 @@ import {
   PaintSchema,
   PointSchema,
   RectSchema,
-} from "./primitives.js";
-import { RichTextDocumentSchema } from "./text.js";
-import { PresentationElementSchema, type PresentationElement } from "./elements.js";
+} from "./primitives";
+import { RichTextDocumentSchema } from "./text";
+import { PresentationElementSchema, type PresentationElement } from "./elements";
 import {
   AnimationTrackSchema,
   InteractionSchema,
   SlideTransitionSchema,
   TimelineMarkerSchema,
-} from "./animation.js";
-import { ThemeDefinitionSchema } from "./theme.js";
-import { AssetReferenceSchema } from "./assets.js";
-import { DataSourceDefinitionSchema, ProvenanceRecordSchema } from "./data.js";
-import { ComponentDefinitionSchema, VariableDefinitionSchema } from "./components.js";
+} from "./animation";
+import { ThemeDefinitionSchema } from "./theme";
+import { AssetReferenceSchema } from "./assets";
+import { DataSourceDefinitionSchema, ProvenanceRecordSchema } from "./data";
+import { ComponentDefinitionSchema, VariableDefinitionSchema } from "./components";
 
 /** Slide and document (doc 02 §4–§7). */
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
-import { FiniteNumber, IsoDateTimeSchema, NormalizedSchema } from "./primitives.js";
+import { IdSchema, prefixedId } from "./ids";
+import { FiniteNumber, IsoDateTimeSchema, NormalizedSchema } from "./primitives";
 
 /** Data sources, bindings and provenance (doc 02 §29–§30). */
 

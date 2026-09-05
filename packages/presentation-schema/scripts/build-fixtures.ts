@@ -23,7 +23,7 @@ import {
   type PresentationElement,
   type Slide,
   type ThemeDefinition,
-} from "../src/index.js";
+} from "../src/index";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = join(HERE, "..", "fixtures");

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
+import { IdSchema, prefixedId } from "./ids";
 import {
   ColorValueSchema,
   CommonStyleSchema,
@@ -11,16 +11,16 @@ import {
   openEnum,
   PointSchema,
   VerticalAlignSchema,
-} from "./primitives.js";
-import { SemanticRoleSchema } from "./semantic-roles.js";
+} from "./primitives";
+import { SemanticRoleSchema } from "./semantic-roles";
 import {
   ParagraphStyleSchema,
   RichTextDocumentSchema,
   TextFitSchema,
   TypographyStyleSchema,
-} from "./text.js";
-import { ContainerLayoutSchema, LayoutConstraintSchema } from "./layout.js";
-import { DataBindingSchema, NumberFormatSchema } from "./data.js";
+} from "./text";
+import { ContainerLayoutSchema, LayoutConstraintSchema } from "./layout";
+import { DataBindingSchema, NumberFormatSchema } from "./data";
 
 /**
  * Elements (doc 02 §8–§19, §40.4).

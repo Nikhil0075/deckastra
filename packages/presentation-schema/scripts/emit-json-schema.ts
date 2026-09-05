@@ -29,7 +29,7 @@ import {
   SCHEMA_VERSION,
   ThemeDefinitionSchema,
   TransactionSchema,
-} from "../src/index.js";
+} from "../src/index";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "..", "generated");

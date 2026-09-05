@@ -36,6 +36,11 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # A production build is the only thing that exercises the app's module
+      # resolution and server/client boundary; the unit tests do not.
+      - name: Web build
+        run: npm run build --workspace @deckastra/web
+
       # The generated JSON Schema is committed so the Python service and external
       # tooling can consume it without running the TypeScript build. That only
       # works if it is never stale, which is what this gate enforces.
@@ -67,7 +72,7 @@ jobs:
           cache: pip
 
       - run: npm ci
-      - run: pip install -r requirements-dev.txt
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt pytest
 
       # Regenerate rather than trusting the committed artifact: this job's whole
       # purpose is to prove the Python side and the Zod definitions agree right
@@ -77,3 +82,10 @@ jobs:
 
       - name: Fixtures validate in Python, and the schema still has teeth
         run: python scripts/validate_fixtures.py
+
+      # The generation path runs against a fake client, so this needs no API key
+      # and spends nothing. What it checks is the part that is ours: the schema we
+      # send, the retry, the refusal handling, and that every composed layout
+      # validates against the same artifact the renderer consumes.
+      - name: API tests
+        run: python -m pytest apps/api/tests -q

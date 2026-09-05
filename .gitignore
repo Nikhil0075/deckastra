@@ -26,3 +26,7 @@ Thumbs.db
 
 # Generated schema artifacts are committed on purpose (see packages/presentation-schema/README.md)
 # so CI can diff them for drift. Nothing else generated is.
+
+# Next.js
+.next/
+next-env.d.ts

@@ -1,0 +1,59 @@
+/*
+ * Phase 1 chrome. Deliberately plain — the slide surface is the product, and the
+ * shell around it is temporary scaffolding the editor replaces in Phase 3.
+ */
+
+:root {
+  --bg: #08090c;
+  --surface: #12151c;
+  --surface-alt: #1a1f28;
+  --border: #262c37;
+  --fg: #e8eef5;
+  --fg-muted: #98a5b6;
+  --fg-subtle: #6b7889;
+  --accent: #4cc2ff;
+  --accent-fg: #04121c;
+  --danger: #ff6b6b;
+  --warning: #f2c14e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+textarea,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Present mode hides the cursor after a moment of stillness, so a projected deck
+   does not show a stray pointer parked over the slide. */
+.present-idle {
+  cursor: none;
+}

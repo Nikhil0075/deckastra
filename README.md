@@ -9,16 +9,18 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 0.** The document model exists and is enforced in two languages.
-Nothing renders yet.
+**Status: Phase 1.** A prompt becomes a real deck you can present in a browser.
+Every slide is a structured document of editable objects — no editing UI yet.
 
 ---
 
 ## What is here
 
 ```
-packages/presentation-schema/   the canonical .mydeck document model  ← the only
-                                built package today
+packages/presentation-schema/   the canonical .mydeck document model
+packages/renderer/              document -> IntermediateScene -> DOM/SVG
+apps/api/                       FastAPI: prompt -> story plan -> composed deck
+apps/web/                       prompt box, deck preview, present mode
 docs/                           the six specification documents
 infrastructure/docker/          Postgres + pgvector, Redis, MinIO
 scripts/                        cross-language schema contract check
@@ -33,20 +35,49 @@ Everything else in the tree is a directory reserved by
 
 ```bash
 npm install
+pip install -r requirements-dev.txt -r apps/api/requirements.txt
 npm test
 ```
 
-To bring up the backing services (not needed for schema work):
+Run it:
+
+```bash
+npm run dev:api    # http://localhost:8000
+npm run dev:web    # http://localhost:3000
+```
+
+**Without an `ANTHROPIC_API_KEY` the whole path still works** — a deterministic
+stub planner writes the narrative instead of a model, so the composer, the
+renderer and present mode can all be exercised without credentials and without
+spending anything. Every stub deck says so in the UI. Set the key and restart the
+API for real generation.
+
+To bring up the backing services (not needed yet — Phase 2 uses them):
 
 ```bash
 docker compose -f infrastructure/docker/docker-compose.yml up -d
 ```
 
-To run the cross-language contract check:
+---
 
-```bash
-pip install -r requirements-dev.txt && python scripts/validate_fixtures.py
+## How generation works
+
 ```
+prompt
+  ↓  a model, constrained to a StoryPlan by JSON schema
+narrative + copy + a layout name per slide     ← intent only, no coordinates
+  ↓  deterministic composer (apps/api/deckastra_api/compose.py)
+a .mydeck document                             ← every coordinate decided by code
+  ↓  validated against the generated JSON Schema
+renderer -> IntermediateScene -> DOM/SVG
+```
+
+The model never emits a coordinate, a font size or a colour. That boundary is the
+product thesis in one place: a model that proposes `x: 137` produces slides which
+overlap the moment the real text is longer than the sample, and a model that
+proposes `layout: "metrics"` produces slides a composer can always place
+correctly. It also moves the interesting failure from the document — large, and
+expensive to re-ask for — to the plan, which is small and cheap.
 
 ---
 

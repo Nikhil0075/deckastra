@@ -1,4 +1,4 @@
-import { openEnum } from "./primitives.js";
+import { openEnum } from "./primitives";
 
 /**
  * Semantic roles (doc 02 §9).

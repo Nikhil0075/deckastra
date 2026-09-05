@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { IdSchema } from "./ids.js";
+import { IdSchema } from "./ids";
 import {
   ColorValueSchema,
   FiniteNumber,
   HorizontalAlignSchema,
   openEnum,
   VerticalAlignSchema,
-} from "./primitives.js";
+} from "./primitives";
 
 /**
  * Rich text (doc 02 §12.1).

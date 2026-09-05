@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
+import { IdSchema, prefixedId } from "./ids";
 import {
   EasingSchema,
   MillisecondsSchema,
   NormalizedSchema,
   openEnum,
-} from "./primitives.js";
+} from "./primitives";
 
 /**
  * Animation (doc 02 §24–§26).

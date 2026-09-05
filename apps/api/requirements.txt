@@ -1,0 +1,10 @@
+# Deckastra API — Phase 1 (walking skeleton).
+#
+# Deliberately small. LangGraph, SQLAlchemy and Alembic arrive in Phases 2 and 5;
+# adding them now would be scaffolding for code that does not exist yet.
+
+anthropic>=1.4,<2
+fastapi>=0.115,<1
+uvicorn[standard]>=0.32,<1
+pydantic>=2.9,<3
+jsonschema>=4.23,<5

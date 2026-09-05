@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema } from "./ids.js";
+import { IdSchema } from "./ids";
 
 /**
  * Conventions and primitives (doc 02 §0).

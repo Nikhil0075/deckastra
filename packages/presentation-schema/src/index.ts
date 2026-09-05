@@ -17,20 +17,20 @@
  * This package must not depend on React, or on any renderer or animation runtime.
  */
 
-export * from "./version.js";
-export * from "./ids.js";
-export * from "./primitives.js";
-export * from "./limits.js";
-export * from "./semantic-roles.js";
-export * from "./text.js";
-export * from "./layout.js";
-export * from "./theme.js";
-export * from "./animation.js";
-export * from "./assets.js";
-export * from "./data.js";
-export * from "./elements.js";
-export * from "./components.js";
-export * from "./document.js";
-export * from "./patch.js";
-export * from "./serialize.js";
-export * from "./validate.js";
+export * from "./version";
+export * from "./ids";
+export * from "./primitives";
+export * from "./limits";
+export * from "./semantic-roles";
+export * from "./text";
+export * from "./layout";
+export * from "./theme";
+export * from "./animation";
+export * from "./assets";
+export * from "./data";
+export * from "./elements";
+export * from "./components";
+export * from "./document";
+export * from "./patch";
+export * from "./serialize";
+export * from "./validate";

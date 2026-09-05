@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
-import { SizeSchema } from "./primitives.js";
-import { ContainerLayoutSchema } from "./layout.js";
+import { IdSchema, prefixedId } from "./ids";
+import { SizeSchema } from "./primitives";
+import { ContainerLayoutSchema } from "./layout";
 import {
   ElementTypeSchema,
   PresentationElementSchema,
   type GroupResizeMode,
   type PresentationElement,
-} from "./elements.js";
+} from "./elements";
 
 /**
  * Components and variables (doc 02 §40).

@@ -12,7 +12,7 @@ import {
   walkElements,
   type PresentationDocument,
   type ValidationReport,
-} from "../src/index.js";
+} from "../src/index";
 
 const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
 

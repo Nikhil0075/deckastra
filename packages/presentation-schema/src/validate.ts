@@ -1,6 +1,6 @@
-import { type Id } from "./ids.js";
-import { type PatchOperation } from "./patch.js";
-import { checkLimit, LIMITS } from "./limits.js";
+import { type Id } from "./ids";
+import { type PatchOperation } from "./patch";
+import { checkLimit, LIMITS } from "./limits";
 import {
   CHART_KINDS,
   DIAGRAM_KINDS,
@@ -9,18 +9,18 @@ import {
   isKnownElementType,
   walkElements,
   type PresentationElement,
-} from "./elements.js";
-import { SEMANTIC_ROLES } from "./semantic-roles.js";
-import { SLIDE_TRANSITION_TYPES } from "./animation.js";
-import { isUnknownEnumValue } from "./primitives.js";
-import { isTokenRef, resolveToken, tokenPath, type ThemeDefinition } from "./theme.js";
-import { isAllowedBindingTarget } from "./data.js";
+} from "./elements";
+import { SEMANTIC_ROLES } from "./semantic-roles";
+import { SLIDE_TRANSITION_TYPES } from "./animation";
+import { isUnknownEnumValue } from "./primitives";
+import { isTokenRef, resolveToken, tokenPath, type ThemeDefinition } from "./theme";
+import { isAllowedBindingTarget } from "./data";
 import {
   PresentationDocumentSchema,
   type PresentationDocument,
   type Slide,
-} from "./document.js";
-import { isReadableSchemaVersion, parseSemVer } from "./version.js";
+} from "./document";
+import { isReadableSchemaVersion, parseSemVer } from "./version";
 
 /**
  * Validation (doc 02 §34, §42).

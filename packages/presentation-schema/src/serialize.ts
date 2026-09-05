@@ -1,4 +1,4 @@
-import { PresentationDocumentSchema, type PresentationDocument } from "./document.js";
+import { PresentationDocumentSchema, type PresentationDocument } from "./document";
 
 /**
  * Deterministic serialization (doc 01 §9.2, doc 02 §2.2).

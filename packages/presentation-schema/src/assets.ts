@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { prefixedId } from "./ids.js";
-import { ColorValueSchema, FiniteNumber, IsoDateTimeSchema, PointSchema } from "./primitives.js";
+import { prefixedId } from "./ids";
+import { ColorValueSchema, FiniteNumber, IsoDateTimeSchema, PointSchema } from "./primitives";
 
 /** Assets (doc 02 §28). */
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
-import { IsoDateTimeSchema, NormalizedSchema } from "./primitives.js";
+import { IdSchema, prefixedId } from "./ids";
+import { IsoDateTimeSchema, NormalizedSchema } from "./primitives";
 
 /**
  * Patch and transaction model (doc 02 §31).

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { IdSchema } from "./ids.js";
-import { FiniteNumber, InsetsSchema } from "./primitives.js";
+import { IdSchema } from "./ids";
+import { FiniteNumber, InsetsSchema } from "./primitives";
 
 /**
  * Layout constraints (doc 02 §20) and container layouts (§21).

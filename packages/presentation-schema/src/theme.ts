@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IdSchema, prefixedId } from "./ids.js";
+import { IdSchema, prefixedId } from "./ids";
 import {
   ColorValueSchema,
   CommonStyleSchema,
@@ -10,9 +10,9 @@ import {
   PaintSchema,
   ShadowStyleSchema,
   StrokeStyleSchema,
-} from "./primitives.js";
-import { TypographyStyleSchema } from "./text.js";
-import { SemanticRoleSchema } from "./semantic-roles.js";
+} from "./primitives";
+import { TypographyStyleSchema } from "./text";
+import { SemanticRoleSchema } from "./semantic-roles";
 
 /**
  * Theme (doc 02 §22).
