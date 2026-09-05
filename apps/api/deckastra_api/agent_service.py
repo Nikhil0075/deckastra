@@ -76,9 +76,9 @@ def _stub_answers(
         {
             "intent": "create_deck",
             "stages": (
-                ["research", "story", "creative", "layout", "critic"]
+                ["research", "story", "creative", "layout", "motion", "critic"]
                 if repositories
-                else ["story", "creative", "layout", "critic"]
+                else ["story", "creative", "layout", "motion", "critic"]
             ),
             "scope_kind": "deck",
             "needs_research": bool(repositories),
@@ -132,6 +132,20 @@ def _stub_answers(
             # The Layout Agent reads the same task type; an empty choice list
             # means "no changes", which is the honest answer from a stub.
             "choices": [],
+            # So does the Motion Agent. A stub that choreographed every slide
+            # would make a placeholder deck busier than a generated one, which is
+            # exactly backwards — but one restrained entrance keeps the whole
+            # motion path (compose, compile, sample, play) exercised in CI.
+            "slides": [
+                {
+                    "slide_id": "0",
+                    "sequence": ["headline", "subtitle"],
+                    "entrance": "blurReveal",
+                    "pacing": "measured",
+                    "click_reveals": 0,
+                    "rationale": "The title arrives before the line that qualifies it.",
+                }
+            ],
             "warnings": [],
         },
     )
@@ -324,7 +338,7 @@ def add_repository_tools(
 
 def _composer(
     request: GenerateRequest, produced: dict[str, Any]
-) -> Callable[[dict[str, Any], dict[str, Any]], list[dict[str, Any]]]:
+) -> Callable[[dict[str, Any], dict[str, Any], dict[str, Any]], list[dict[str, Any]]]:
     """Story plan -> patch operations.
 
     The agent proposes intent; this turns it into a document through the same
@@ -332,7 +346,11 @@ def _composer(
     geometric decision is made here, by code, the same way every time.
     """
 
-    def compose(plan: dict[str, Any], direction: dict[str, Any]) -> list[dict[str, Any]]:
+    def compose(
+        plan: dict[str, Any],
+        direction: dict[str, Any],
+        motion_plan: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         # The agent's StoryPlan and the composer's are different contracts on
         # purpose: the agent's carries provenance and an injection flag the
         # composer has no use for, and the composer's carries the request context
@@ -350,7 +368,11 @@ def _composer(
                 ],
             }
         )
-        document = compose_document(story_plan, instruction=request.instruction)
+        document = compose_document(
+            story_plan,
+            instruction=request.instruction,
+            motion_plan=motion_plan,
+        )
 
         # Kept for the caller. The composer runs once; asking main.py to compose
         # the same plan again would be a second chance for the two to differ.

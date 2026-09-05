@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .ids import new_id
+from .motion import animate_slide
 from .models import SlideLayout, SlidePlan, StoryPlan
 from .theme import neo_technical_theme
 
@@ -549,8 +550,32 @@ def compose_slide(plan: SlidePlan, index: int) -> dict[str, Any]:
     return slide
 
 
-def compose_document(plan: StoryPlan, *, instruction: str = "") -> dict[str, Any]:
+def compose_document(
+    plan: StoryPlan,
+    *,
+    instruction: str = "",
+    motion_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Compose a document, and animate it if the Motion Agent had an opinion.
+
+    `motion_plan` is optional and defaults to nothing moving. That is the right
+    default rather than a limitation: doc 04 §24.4's rule is that restraint is the
+    baseline, so a deck with no motion plan is a still deck, not a deck with
+    invented animation.
+    """
     now = _now()
+    intents = {
+        int(entry.get("index", -1)): entry
+        for entry in ((motion_plan or {}).get("slides") or [])
+    }
+
+    slides: list[dict[str, Any]] = []
+    motion_warnings: list[str] = []
+    for index, slide_plan in enumerate(plan.slides):
+        slide = compose_slide(slide_plan, index)
+        motion_warnings.extend(animate_slide(slide, intents.get(index)))
+        slides.append(slide)
+
     return {
         "schemaVersion": SCHEMA_VERSION,
         "id": new_id("doc"),
@@ -574,7 +599,7 @@ def compose_document(plan: StoryPlan, *, instruction: str = "") -> dict[str, Any
             "safeArea": SAFE,
         },
         "theme": neo_technical_theme(),
-        "slides": [compose_slide(slide, i) for i, slide in enumerate(plan.slides)],
+        "slides": slides,
         "assets": [],
         "components": [],
         "dataSources": [],
@@ -582,6 +607,12 @@ def compose_document(plan: StoryPlan, *, instruction: str = "") -> dict[str, Any
         "createdAt": now,
         "updatedAt": now,
         "extensions": {
-            "deckastra.generation": {"phase": 1, "instruction": instruction[:500]}
+            "deckastra.generation": {
+                "phase": 1,
+                "instruction": instruction[:500],
+                # Surfaced rather than logged: a warning about motion that nobody
+                # sees is a slide whose entrance was quietly tightened.
+                **({"motionWarnings": motion_warnings} if motion_warnings else {}),
+            }
         },
     }

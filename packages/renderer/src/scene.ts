@@ -201,6 +201,17 @@ export interface SlideScene {
   transition?: { type: string; durationMs: number; easing?: string };
   speakerNotes?: string;
   /**
+   * The slide's animation tracks, passed through unresolved.
+   *
+   * Pass-through, not resolution: the renderer does not compile timelines —
+   * `@deckastra/animation-engine` does, and it needs both the tracks and the
+   * scene. Carrying them here rather than making every consumer also hold the
+   * document is the same choice already made for `transition` and
+   * `speakerNotes`, and it is what lets present mode, the editor preview and a
+   * headless export each drive motion from a scene alone.
+   */
+  animations?: unknown[];
+  /**
    * What each requested font family actually resolved to (doc 04 §18.4).
    *
    * Part of the scene, not a side channel, because font availability changes the
@@ -626,12 +637,28 @@ function buildPayload(
     }
 
     case "line": {
-      const el = element as unknown as { from: unknown; to: unknown };
+      const el = element as unknown as { from?: unknown; to?: unknown };
       // Anchors resolve to concrete points at scene-build time (doc 04 §7.2).
       // Phase 1 only handles literal points; anchored connectors need the element
       // index that Phase 3's layout engine builds.
-      const from = el.from as { x?: number; y?: number };
-      const to = el.to as { x?: number; y?: number };
+      //
+      // Both endpoints are required by the schema and are still checked here,
+      // because "required by the schema" and "present in this object" are not the
+      // same claim. `ElementSchema` is a union ending in `UnknownElementSchema`,
+      // which accepts any `type: string` — so a `line` missing `from` fails the
+      // line branch, matches the unknown branch, and arrives here having passed
+      // validation. Reading `.x` off it throws and takes the whole deck down; a
+      // placeholder loses one element and names the problem.
+      const from = el.from as { x?: number; y?: number } | undefined;
+      const to = el.to as { x?: number; y?: number } | undefined;
+
+      if (!from || !to) {
+        return {
+          kind: "placeholder",
+          label: element.name ?? "Line",
+          reason: "This line is missing its from/to endpoints",
+        };
+      }
 
       return {
         kind: "line",
@@ -1027,6 +1054,7 @@ export function buildSlideScene(
         : slide.speakerNotes
           ? textContent(slide.speakerNotes)
           : undefined,
+    animations: slide.animations,
     fonts: describeFontUsage([...ctx.fontFamilies], availability),
   };
 }

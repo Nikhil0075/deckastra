@@ -33,6 +33,7 @@ from .nodes._common import NodeContext, NodeFailure
 from .nodes.creative import creative as creative_node
 from .nodes.critic import critic as critic_node
 from .nodes.layout import layout as layout_node
+from .nodes.motion import motion as motion_node
 from .nodes.orchestrate import orchestrate as orchestrate_node
 from .nodes.propose import Composer
 from .nodes.propose import propose as propose_node
@@ -47,6 +48,7 @@ STORY = "story"
 STORY_CHECKPOINT = "story_checkpoint"
 CREATIVE = "creative"
 LAYOUT = "layout"
+MOTION = "motion"
 CRITIC = "critic"
 PROPOSE = "propose"
 
@@ -97,6 +99,7 @@ def build_graph(
     builder.add_node(STORY_CHECKPOINT, lambda state: {"awaiting": None})
     builder.add_node(CREATIVE, _guard(CREATIVE, lambda s: creative_node(s, ctx)))
     builder.add_node(LAYOUT, _guard(LAYOUT, lambda s: layout_node(s, ctx)))
+    builder.add_node(MOTION, _guard(MOTION, lambda s: motion_node(s, ctx)))
     builder.add_node(CRITIC, _guard(CRITIC, lambda s: critic_node(s, ctx)))
     builder.add_node(PROPOSE, _guard(PROPOSE, lambda s: propose_node(s, ctx, compose)))
 
@@ -115,11 +118,12 @@ def build_graph(
         {CREATIVE: CREATIVE, LAYOUT: LAYOUT, END: END},
     )
     builder.add_edge(CREATIVE, LAYOUT)
-    builder.add_conditional_edges(LAYOUT, _after_layout, {CRITIC: CRITIC, PROPOSE: PROPOSE})
+    builder.add_conditional_edges(LAYOUT, _after_layout, {MOTION: MOTION, CRITIC: CRITIC, PROPOSE: PROPOSE})
+    builder.add_conditional_edges(MOTION, _after_motion, {CRITIC: CRITIC, PROPOSE: PROPOSE})
     builder.add_conditional_edges(
         CRITIC,
         _after_critic,
-        {STORY: STORY, LAYOUT: LAYOUT, CREATIVE: CREATIVE, PROPOSE: PROPOSE},
+        {STORY: STORY, LAYOUT: LAYOUT, CREATIVE: CREATIVE, MOTION: MOTION, PROPOSE: PROPOSE},
     )
     builder.add_edge(PROPOSE, END)
 
@@ -172,6 +176,17 @@ def _after_checkpoint(state: PresentationAgentState) -> str:
 def _after_layout(state: PresentationAgentState) -> str:
     if state.get("current_stage") == "failed":
         return PROPOSE
+    # Motion runs after layout because it sequences by role, and layout is what
+    # decides which roles a slide ends up with. Before it, the Motion Agent would
+    # be sequencing a slide that no longer exists.
+    if "motion" in _stages(state):
+        return MOTION
+    return CRITIC if "critic" in _stages(state) else PROPOSE
+
+
+def _after_motion(state: PresentationAgentState) -> str:
+    if state.get("current_stage") == "failed":
+        return PROPOSE
     return CRITIC if "critic" in _stages(state) else PROPOSE
 
 
@@ -190,4 +205,6 @@ def _after_critic(state: PresentationAgentState) -> str:
         return LAYOUT
     if target == "revise_creative":
         return CREATIVE
+    if target == "revise_motion":
+        return MOTION
     return PROPOSE

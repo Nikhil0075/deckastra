@@ -331,7 +331,9 @@ def test_dismissed_issue_categories_are_filtered_and_counted():
 # -------------------------------------------------------------------- graph
 
 
-def compose(plan: dict[str, Any], direction: dict[str, Any]) -> list[dict[str, Any]]:
+def compose(
+    plan: dict[str, Any], direction: dict[str, Any], motion: dict[str, Any]
+) -> list[dict[str, Any]]:
     return [{"op": "replace", "path": "/slides", "value": plan.get("slides", [])}]
 
 

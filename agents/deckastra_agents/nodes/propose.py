@@ -23,7 +23,9 @@ STAGE = "propose"
 #: Turns a story plan into operations. Injected because it is the composer's job,
 #: and the composer lives in the API — an agent that imported it would be an
 #: agent that knows about the application (doc 05 §17).
-Composer = Callable[[dict[str, Any], dict[str, Any]], list[dict[str, Any]]]
+Composer = Callable[
+    [dict[str, Any], dict[str, Any], dict[str, Any]], list[dict[str, Any]]
+]
 
 
 def propose(
@@ -39,7 +41,11 @@ def propose(
         ctx.emit(completed(state, STAGE, AGENT_ID, "Nothing to propose"))
         return {"current_stage": "done", "proposed_operations": []}
 
-    operations = compose(plan, state.get("creative_direction") or {})
+    operations = compose(
+        plan,
+        state.get("creative_direction") or {},
+        state.get("motion_plan") or {},
+    )
 
     # Unresolved issues travel with the proposal so the editor can show them
     # against the slides they belong to (doc 03 §13's fallback, made visible).

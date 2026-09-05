@@ -12,6 +12,7 @@ from .research import research
 from .story import story
 from .creative import creative
 from .layout import layout
+from .motion import motion
 from .critic import critic
 from .propose import propose
 
@@ -21,6 +22,7 @@ __all__ = [
     "story",
     "creative",
     "layout",
+    "motion",
     "critic",
     "propose",
 ]

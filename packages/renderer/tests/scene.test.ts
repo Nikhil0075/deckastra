@@ -322,9 +322,20 @@ describe("scene building", () => {
     expect(nodes[0]!.flags.outOfBounds).toBe(true);
   });
 
-  it("carries transition and speaker notes onto the scene", () => {
+  it("carries transition, speaker notes and animations onto the scene", () => {
     const animScene = buildDocumentScene(animation);
-    expect(animScene.slides[1]!.transition?.type).toBe("zoom");
+
+    // By name, not by index: the fixture gains slides as the animation surface
+    // grows, and a positional assertion here fails for a reason that has nothing
+    // to do with what it is checking.
+    const zoomed = animScene.slides.find((slide) => slide.name === "Transition target")!;
+    expect(zoomed.transition?.type).toBe("zoom");
+
+    // Animations ride on the scene unresolved (doc 04 §22.1): the renderer does
+    // not compile timelines, but present mode and the export drive motion from a
+    // scene alone, so the tracks have to arrive with it.
+    const sequenced = animScene.slides.find((slide) => slide.name === "Sequenced entrance")!;
+    expect(sequenced.animations).toHaveLength(4);
   });
 
   it("is deterministic: two builds of the same document match", () => {

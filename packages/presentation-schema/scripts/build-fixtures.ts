@@ -792,6 +792,100 @@ function animationDeck(): PresentationDocument {
     transition: { type: "fade", durationMs: 300 },
   };
 
+  // Click triggers, a staggered group and a drawn path. Without these the deck
+  // claims in its own metadata to exercise every MVP trigger and preset shape
+  // while covering neither segments nor stagger — and segments are the half of
+  // the playback engine a presenter actually drives.
+  const groupId = id("el");
+  const bulletIds = [id("el"), id("el"), id("el")];
+  const arrowId = id("el");
+
+  const bullet = (elementId: string, label: string, y: number): PresentationElement => ({
+    id: elementId,
+    type: "text",
+    semanticRole: "body",
+    transform: { x: 0, y, width: 900, height: 90 },
+    opacity: 0,
+    content: plainText(label, id("blk")),
+    typography: { fontFamily: "token:typography.body.fontFamily", fontSize: 44, color: "token:colors.foreground" },
+  });
+
+  const clickReveal: Slide = {
+    id: id("sld"),
+    name: "Click to reveal",
+    semanticIntent: "Exercise click segments, staggered children and a drawn path",
+    keyMessage: "The presenter paces the slide, not the timeline",
+    elements: [
+      {
+        id: id("el"),
+        type: "text",
+        semanticRole: "headline",
+        transform: { x: 120, y: 160, width: 1400, height: 140 },
+        content: plainText("Revealed on click", id("blk")),
+        typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 72, fontWeight: 700, color: "token:colors.foreground" },
+      },
+      {
+        id: groupId,
+        type: "group",
+        name: "Bullets",
+        transform: { x: 120, y: 380, width: 900, height: 300 },
+        children: [
+          bullet(bulletIds[0]!, "Agents propose", 0),
+          bullet(bulletIds[1]!, "Deterministic engines compose", 100),
+          bullet(bulletIds[2]!, "Humans stay in control", 200),
+        ],
+      },
+      {
+        id: arrowId,
+        type: "line",
+        transform: { x: 1140, y: 420, width: 560, height: 200 },
+        from: { x: 0, y: 0 },
+        to: { x: 560, y: 200 },
+        style: { stroke: { paint: { type: "solid", color: "token:colors.accent" }, width: 6 } },
+        endMarker: "arrow",
+      },
+    ],
+    animations: [
+      {
+        id: id("anm"),
+        targetId: groupId,
+        // The first click. A click trigger opens a segment: playback runs to the
+        // boundary and waits, which is what present mode's arrow key advances.
+        trigger: { type: "click" },
+        label: "Reveal the bullets",
+        clips: [
+          {
+            id: id("clp"),
+            preset: "staggerReveal",
+            presetParams: { childPreset: "slide", direction: "up", distance: 32, staggerMs: 90 },
+            startMs: 0,
+            durationMs: 350,
+            easing: "emphasized",
+          },
+        ],
+      },
+      {
+        id: id("anm"),
+        targetId: arrowId,
+        trigger: { type: "click" },
+        label: "Draw the arrow",
+        clips: [
+          {
+            id: id("clp"),
+            preset: "drawPath",
+            startMs: 0,
+            durationMs: 500,
+            easing: "easeInOut",
+            // A path that fades in says something different from one that draws;
+            // under reduced motion the honest answer is the finished path.
+            reducedMotionBehavior: "instant",
+          },
+        ],
+      },
+    ],
+    transition: { type: "slide", durationMs: 400, direction: "left" },
+  };
+
   const transitionTarget: Slide = {
     id: id("sld"),
     name: "Transition target",
@@ -816,7 +910,7 @@ function animationDeck(): PresentationDocument {
     id: id("doc"),
     title: "Animation Conformance Deck",
     theme,
-    slides: [sequenced, transitionTarget],
+    slides: [sequenced, clickReveal, transitionTarget],
     metadata: {
       presentationType: "technical",
       audience: "The animation engine test suite",

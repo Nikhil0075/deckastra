@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.1.0",
-  "id": "doc_01JB8Z9K2QW4RN7F3X03002100",
+  "id": "doc_01JB8Z9K2QW4RN7F3X03003600",
   "metadata": {
     "title": "Animation Conformance Deck",
     "language": "en",
@@ -645,13 +645,234 @@
       }
     },
     {
-      "id": "sld_01JB8Z9K2QW4RN7F3X03001800",
+      "id": "sld_01JB8Z9K2QW4RN7F3X03002300",
+      "name": "Click to reveal",
+      "semanticIntent": "Exercise click segments, staggered children and a drawn path",
+      "keyMessage": "The presenter paces the slide, not the timeline",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03002400",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 160,
+            "width": 1400,
+            "height": 140
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03002500",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Revealed on click"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 72,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03001800",
+          "type": "group",
+          "name": "Bullets",
+          "transform": {
+            "x": 120,
+            "y": 380,
+            "width": 900,
+            "height": 300
+          },
+          "children": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03001900",
+              "type": "text",
+              "semanticRole": "body",
+              "transform": {
+                "x": 0,
+                "y": 0,
+                "width": 900,
+                "height": 90
+              },
+              "opacity": 0,
+              "content": {
+                "version": 1,
+                "blocks": [
+                  {
+                    "id": "blk_01JB8Z9K2QW4RN7F3X03002600",
+                    "type": "paragraph",
+                    "spans": [
+                      {
+                        "text": "Agents propose"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "typography": {
+                "fontFamily": "token:typography.body.fontFamily",
+                "fontSize": 44,
+                "color": "token:colors.foreground"
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002000",
+              "type": "text",
+              "semanticRole": "body",
+              "transform": {
+                "x": 0,
+                "y": 100,
+                "width": 900,
+                "height": 90
+              },
+              "opacity": 0,
+              "content": {
+                "version": 1,
+                "blocks": [
+                  {
+                    "id": "blk_01JB8Z9K2QW4RN7F3X03002700",
+                    "type": "paragraph",
+                    "spans": [
+                      {
+                        "text": "Deterministic engines compose"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "typography": {
+                "fontFamily": "token:typography.body.fontFamily",
+                "fontSize": 44,
+                "color": "token:colors.foreground"
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002100",
+              "type": "text",
+              "semanticRole": "body",
+              "transform": {
+                "x": 0,
+                "y": 200,
+                "width": 900,
+                "height": 90
+              },
+              "opacity": 0,
+              "content": {
+                "version": 1,
+                "blocks": [
+                  {
+                    "id": "blk_01JB8Z9K2QW4RN7F3X03002800",
+                    "type": "paragraph",
+                    "spans": [
+                      {
+                        "text": "Humans stay in control"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "typography": {
+                "fontFamily": "token:typography.body.fontFamily",
+                "fontSize": 44,
+                "color": "token:colors.foreground"
+              }
+            }
+          ]
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03002200",
+          "type": "line",
+          "transform": {
+            "x": 1140,
+            "y": 420,
+            "width": 560,
+            "height": 200
+          },
+          "from": {
+            "x": 0,
+            "y": 0
+          },
+          "to": {
+            "x": 560,
+            "y": 200
+          },
+          "style": {
+            "stroke": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "width": 6
+            }
+          },
+          "endMarker": "arrow"
+        }
+      ],
+      "animations": [
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03002900",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03001800",
+          "trigger": {
+            "type": "click"
+          },
+          "label": "Reveal the bullets",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03003000",
+              "preset": "staggerReveal",
+              "presetParams": {
+                "childPreset": "slide",
+                "direction": "up",
+                "distance": 32,
+                "staggerMs": 90
+              },
+              "startMs": 0,
+              "durationMs": 350,
+              "easing": "emphasized"
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X03003100",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X03002200",
+          "trigger": {
+            "type": "click"
+          },
+          "label": "Draw the arrow",
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X03003200",
+              "preset": "drawPath",
+              "startMs": 0,
+              "durationMs": 500,
+              "easing": "easeInOut",
+              "reducedMotionBehavior": "instant"
+            }
+          ]
+        }
+      ],
+      "transition": {
+        "type": "slide",
+        "durationMs": 400,
+        "direction": "left"
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X03003300",
       "name": "Transition target",
       "semanticIntent": "Receiving slide for transition tests",
       "keyMessage": "Transitions belong to the slide being entered",
       "elements": [
         {
-          "id": "el_01JB8Z9K2QW4RN7F3X03001900",
+          "id": "el_01JB8Z9K2QW4RN7F3X03003400",
           "type": "text",
           "semanticRole": "headline",
           "transform": {
@@ -664,7 +885,7 @@
             "version": 1,
             "blocks": [
               {
-                "id": "blk_01JB8Z9K2QW4RN7F3X03002000",
+                "id": "blk_01JB8Z9K2QW4RN7F3X03003500",
                 "type": "paragraph",
                 "spans": [
                   {

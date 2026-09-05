@@ -41,6 +41,8 @@ import { browserMeasurer } from "../lib/measurer";
 import { checkFrameBudget } from "@deckastra/renderer";
 
 import { AskPanel } from "./AskPanel";
+import { MotionPanel } from "./MotionPanel";
+import { MotionPreview } from "./MotionPreview";
 
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { EditorCanvas } from "./EditorCanvas";
@@ -67,6 +69,13 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
   // that makes the drag budget observable while telemetry is Phase 9.
   const [frames, setFrames] = useState<{ summary: string; over: boolean }>();
   const [canvasWidth, setCanvasWidth] = useState(880);
+  // The motion playhead. Editor state, not document state — where the author has
+  // scrubbed to is exactly the kind of thing doc 02 §4.1 keeps out of the file.
+  const [playheadMs, setPlayheadMs] = useState(0);
+  const [playing, setPlaying] = useState(0);
+  // Whether the author has asked to see the motion. Until they do the canvas
+  // shows the slide at rest — see MotionPreview for why.
+  const [scrubbing, setScrubbing] = useState(false);
 
   const slide = doc.slides[slideIndex];
   const index = useMemo(() => buildIndex(nodes), [nodes]);
@@ -74,6 +83,15 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
   const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
 
   const order = useMemo(() => nodes.map((node) => node.id), [nodes]);
+  const slideScene = scene.slides[slideIndex];
+
+  useEffect(() => {
+    // Changing slide ends the preview. The playhead belongs to the slide it was
+    // scrubbed on, and carrying it across would show the new slide part-way
+    // through an entrance nobody asked to see.
+    setScrubbing(false);
+    setPlayheadMs(0);
+  }, [slideIndex]);
 
   const flash = useCallback((message: string) => {
     setNotice(message);
@@ -394,37 +412,79 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
         </div>
       ) : null}
 
+      {/* Applies the sampled styles to the canvas's real elements. It renders
+          nothing; the motion it drives is the editor's own DOM.
+
+          Unmounted while presenting: present mode drives the same elements from
+          its own adapter, and two adapters writing the same styles is a race. */}
+      {slideScene && !presenting ? (
+        <MotionPreview
+          document={doc}
+          scene={slideScene}
+          slideIndex={slideIndex}
+          timeMs={playheadMs}
+          playToken={playing}
+          engaged={scrubbing}
+          onTime={setPlayheadMs}
+        />
+      ) : null}
+
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <SlideStrip editor={editor} scene={scene} onAdd={() =>
           apply(createSlide(doc).operations, { label: "Add slide" })
         } />
 
-        <div
-          style={{
-            flex: 1,
-            display: "grid",
-            placeItems: "center",
-            background: "#07080b",
-            overflow: "auto",
-            padding: 24,
-          }}
-          ref={(node) => {
-            if (node) {
-              const available = node.clientWidth - 48;
-              if (available > 200 && Math.abs(available - canvasWidth) > 12) {
-                setCanvasWidth(Math.min(available, 1280));
-              }
-            }
-          }}
-        >
-          <EditorCanvas
-            editor={editor}
-            width={canvasWidth}
-            onFrameStats={(stats) => {
-              const verdict = checkFrameBudget(stats);
-              setFrames({ summary: verdict.summary, over: !verdict.withinBudget });
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div
+            style={{
+              flex: 1,
+              display: "grid",
+              placeItems: "center",
+              background: "#07080b",
+              overflow: "auto",
+              padding: 24,
             }}
-          />
+            ref={(node) => {
+              if (node) {
+                const available = node.clientWidth - 48;
+                if (available > 200 && Math.abs(available - canvasWidth) > 12) {
+                  setCanvasWidth(Math.min(available, 1280));
+                }
+              }
+            }}
+          >
+            <EditorCanvas
+              editor={editor}
+              width={canvasWidth}
+              onFrameStats={(stats) => {
+                const verdict = checkFrameBudget(stats);
+                setFrames({ summary: verdict.summary, over: !verdict.withinBudget });
+              }}
+            />
+          </div>
+
+          {/* Under the canvas, not in the side panel: a timeline is horizontal
+              and an author needs to see the slide while scrubbing it. */}
+          {slideScene ? (
+            <MotionPanel
+              document={doc}
+              scene={slideScene}
+              slideIndex={slideIndex}
+              selectedIds={selection.selectedIds}
+              apply={(operations, label) =>
+                apply(operations as never, { label })
+              }
+              playheadMs={playheadMs}
+              onScrub={(at) => {
+                setScrubbing(true);
+                setPlayheadMs(at);
+              }}
+              onPlay={() => {
+                setScrubbing(true);
+                setPlaying((count) => count + 1);
+              }}
+            />
+          ) : null}
         </div>
 
         <SidePanel

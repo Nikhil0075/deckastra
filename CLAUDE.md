@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 5 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `agents/`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 7 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `agents/`, `integrations/`, `apps/api`, `apps/web`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -30,6 +30,12 @@ npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
 python -m pytest agents -q          # the agent graph, against the stub client
 python -m pytest integrations -q    # ignore rules, ranking, chunking, GitHub
+```
+
+Single package, from `packages/animation-engine/`:
+
+```bash
+npx vitest run tests/playback.test.ts   # seek/play parity
 ```
 
 The API needs a database. `DATABASE_URL=sqlite:///deckastra.db` works for local
@@ -429,6 +435,72 @@ Union parse failures are expanded via `ELEMENT_SCHEMA_BY_TYPE` before being repo
 
 A `.mydeck` file must be safe to email. Data bindings use a fixed transform allowlist (`BindingTransformSchema`), binding targets use a path allowlist (`isAllowedBindingTarget` — unrestricted paths would let a binding rewrite `id`, `type` or `children`), and component parameters wire to concrete template paths rather than substituting into strings. Assets carry an opaque `storageKey`, never a signed URL; signed URLs are minted at render time.
 
+### Motion: compile once, then sample a pure function of time
+
+```
+document tracks ──┐
+                  ├─> compileTimeline ──> CompiledTimeline ──> sampleAt(t) ──> styles
+scene nodes ──────┘        (once)          absolute ms         pure of t
+```
+
+`packages/animation-engine`. Everything relative — `afterPrevious`, `click`, a
+clip's `startMs` offset — is resolved to absolute milliseconds at compile, and
+nothing downstream resolves anything. That is what makes `seek(t)` stateless,
+which doc 04 §26.2 makes an acceptance criterion: **playing to `t` and seeking to
+`t` must produce identical styles.** The way that breaks is a value advanced
+frame by frame, so there is exactly one function that computes a value and
+playback is a loop that calls it.
+
+`sample.ts` is deliberately the engine rather than WAAPI, against doc 04 §23.1's
+recommendation. WAAPI owns the interpolation, which moves parity into the browser
+and leaves a fixed-step video export (§26.1) reproducing whatever the browser did.
+The adapter interface (§22.1) still allows a WAAPI adapter later.
+
+Six things that look like details and are load-bearing:
+
+- **`x`/`y` are offsets, not positions.** Doc 04 §22.2's sketch animates to
+  `node.bounds.y` while §22.4 applies them as CSS `translate`; the two cannot
+  both hold. Offsets win, because an animation written as one survives the
+  element moving or the container re-laying out.
+- **Backwards fill is the default** (`CompiledClip.fill` = `"both"`), against the
+  CSS default of `forwards` that doc 02 §24 inherited. An entrance is only an
+  entrance if the element is in its starting state before the clip runs; a bullet
+  visible until its click-triggered fade-in begins has flashed, not been revealed.
+- **Every preset declares a reduced-motion fallback**, enforced by a build-time
+  test (doc 04 §27.3). `drawPath` and `numberCount` fall back to `"instant"` —
+  the drawn path and the final number — because a fade is a different statement,
+  not a quieter one.
+- **Springs are sampled into keyframes at compile.** A live spring's state at `t`
+  depends on the frames before `t`, so it cannot be seeked.
+- **Determinism, again**: a fixed Newton iteration count in the bezier solver, a
+  fixed spring step, and `round()` to three decimals. An epsilon-terminated loop
+  runs a different number of times on different inputs.
+- **Longhands only** (`translate`, `scale`, `rotate`). The scene already puts a
+  base `transform` on the element and a shorthand written by the adapter would
+  erase it, sending the element to the slide origin.
+
+**The timeline is a view of document state.** A clip edit is `clipPatchOperations`
+→ patch → transaction, in the same history as a text edit. There is no local
+timeline state and no way for the timeline and the document to disagree.
+
+### The Motion Agent names roles; code computes milliseconds
+
+Same split as the Story Architect's, applied to time. `nodes/motion.py` emits
+semantic roles, a preset name and one word of pacing;
+`apps/api/deckastra_api/motion.py` turns that into tracks.
+
+It has to work this way — the agent runs before the composer, so no element id
+exists to name — and the constraint pays for itself twice. A sequence written in
+roles survives a re-layout, and the **entrance budget becomes enforceable**: doc
+04 §24.2's 2.5s ceiling is something `_fit_to_budget` computes, not something a
+model is asked to respect. The fan between elements sharing a step counts toward
+it; ignoring that satisfies the arithmetic while the slide visibly over-runs.
+
+Restraint is the default and the composer encodes it: no motion plan means a
+still deck, a role the plan does not name does not animate, body text past
+~24 words is left in place (doc 04 §24.4), and a role is consumed the first time
+it is reached so nothing is ever animated twice.
+
 ### Repository grounding runs on bytes, never on execution
 
 `integrations/` reads repositories; `apps/api` indexes, searches and cites them.
@@ -495,7 +567,7 @@ Three seed decks in `packages/presentation-schema/fixtures/`, generated by `scri
 | --- | --- |
 | `technical-deck` | Every MVP element type; container layouts; the general renderer and export fixture |
 | `repository-context` | Repository-grounded content where every claim carries a provenance record |
-| `animation-test` | Every MVP trigger, preset shape and reduced-motion path |
+| `animation-test` | Every MVP trigger, preset shape and reduced-motion path — including click segments, a staggered group and a drawn path |
 
 Fixture ids are **deterministic** so regeneration produces a zero-line diff — a fixture whose ids churn makes every visual-regression snapshot fail for no reason. Do not use hand-written ULIDs in tests; call `newId()`.
 

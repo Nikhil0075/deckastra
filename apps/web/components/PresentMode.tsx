@@ -6,6 +6,7 @@ import { resolveTransition, transitionStylesheet } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 
 import { PresentChannel } from "../lib/presentSync";
+import { SlideMotion, type SlideMotionHandle } from "./SlideMotion";
 import { PresenterView } from "./PresenterView";
 
 /**
@@ -47,6 +48,12 @@ export function PresentMode({
   const [presenter, setPresenter] = useState(presenterOnly);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Doc 04 §26.3's `B`. One of the two keys every presenter reaches for, and the
+  // one that has to work when something goes wrong on the laptop.
+  const [blacked, setBlacked] = useState(false);
+  // Whether the slide was entered forwards. Backwards means its final state,
+  // never a replayed entrance (§26.3).
+  const [enteredBackwards, setEnteredBackwards] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -55,6 +62,7 @@ export function PresentMode({
   const indexRef = useRef(initialSlide);
   const slideCountRef = useRef(scene.slides.length);
   const popout = useRef<Window | null>(null);
+  const motion = useRef<SlideMotionHandle>(null);
   const startedAt = useRef(Date.now());
 
   const slides = scene.slides;
@@ -81,9 +89,26 @@ export function PresentMode({
 
   const go = useCallback(
     (delta: number) => {
+      setEnteredBackwards(delta < 0);
       setIndexSynced((current) => Math.min(slides.length - 1, Math.max(0, current + delta)));
     },
     [setIndexSynced, slides.length],
+  );
+
+  /**
+   * `→` and `←`: a segment if there is one, otherwise a slide (doc 04 §26.3).
+   *
+   * The order is the whole of click-to-reveal. A presenter pressing `→` means
+   * "show me the next thing", and whether that thing is the next bullet or the
+   * next slide is not something they should have to think about.
+   */
+  const advance = useCallback(
+    (delta: number) => {
+      const stepped = delta > 0 ? motion.current?.next() : motion.current?.previous();
+      if (stepped) return;
+      go(delta);
+    },
+    [go],
   );
 
   // ------------------------------------------------------------ preferences
@@ -134,17 +159,30 @@ export function PresentMode({
     const onKey = (event: KeyboardEvent) => {
       switch (event.key) {
         case "ArrowRight":
-        case "ArrowDown":
         case " ":
         case "PageDown":
           event.preventDefault();
-          go(1);
+          advance(1);
           break;
         case "ArrowLeft":
-        case "ArrowUp":
         case "PageUp":
           event.preventDefault();
+          advance(-1);
+          break;
+        // Down and up skip segments entirely (§26.3): the escape hatch for a
+        // presenter who needs to get off this slide now.
+        case "ArrowDown":
+          event.preventDefault();
+          go(1);
+          break;
+        case "ArrowUp":
+          event.preventDefault();
           go(-1);
+          break;
+        case "b":
+        case "B":
+          event.preventDefault();
+          setBlacked((value) => !value);
           break;
         case "Home":
           event.preventDefault();
@@ -177,7 +215,7 @@ export function PresentMode({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, onExit, setIndexSynced, slides.length]);
+  }, [advance, go, onExit, setIndexSynced, slides.length]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -300,7 +338,7 @@ export function PresentMode({
           // Click-to-advance, left third goes back — the convention every remote
           // and every presenter already expects.
           const x = event.clientX / window.innerWidth;
-          go(x < 0.33 ? -1 : 1);
+          advance(x < 0.33 ? -1 : 1);
         }}
       >
         {scale > 0 ? (
@@ -319,6 +357,10 @@ export function PresentMode({
             }}
           >
             <div
+              // Scopes the motion adapter's element lookup to the audience
+              // stage, so the presenter view's copy of the same slide — with the
+              // same element ids — is not styled by it too.
+              data-present-stage=""
               style={{
                 position: "absolute",
                 top: 0,
@@ -331,6 +373,26 @@ export function PresentMode({
               <SlideView scene={slide} mode="present" />
             </div>
           </div>
+        ) : null}
+
+        {/* Re-keyed on the slide so each arrival compiles and plays its own
+            timeline; the key is what makes leaving a slide tear its motion down. */}
+        <SlideMotion
+          // Distinct from the stage div's key: they are siblings, and React
+          // treats two siblings with the same key as one element.
+          key={`motion-${slide.slideId}`}
+          scene={slide}
+          rootSelector="[data-present-stage]"
+          reducedMotion={reducedMotion}
+          autoPlay={!enteredBackwards}
+          handle={motion}
+        />
+
+        {blacked ? (
+          <div
+            aria-label="Screen blacked out"
+            style={{ position: "absolute", inset: 0, background: "#000", zIndex: 20 }}
+          />
         ) : null}
 
         <style>{stylesheet}</style>

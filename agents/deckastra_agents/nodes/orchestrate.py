@@ -36,6 +36,9 @@ Available stages, in the order they run:
   story     Narrative and copy. Needed to create a deck or rewrite its structure.
   creative  Visual direction. Needed when the request is about how it looks.
   layout    Which layout each slide uses. Needed when structure changes.
+  motion    What moves and in what order. Run it when a deck is created, or when
+            the request is about animation, pacing or reveals. Skip it when the
+            deck should be still — a still deck is a legitimate answer.
   critic    Quality review. Run it for anything that creates or restructures.
 
 Scope rules, which matter more than the stage list:
@@ -132,7 +135,7 @@ def orchestrate(state: PresentationAgentState, ctx: NodeContext) -> dict[str, An
     }
 
 
-KNOWN_STAGES = {"research", "story", "creative", "layout", "critic"}
+KNOWN_STAGES = {"research", "story", "creative", "layout", "motion", "critic"}
 
 
 def is_creation(plan: dict[str, Any] | None) -> bool:

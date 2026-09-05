@@ -9,7 +9,7 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 6.** A prompt becomes a real deck you can present in a browser,
+**Status: Phase 7.** A prompt becomes a real deck you can present in a browser,
 every change to it is versioned, attributable and reversible, and there is a
 direct-manipulation editor with in-place text editing. Every MVP element type
 draws for real — charts, diagrams, tables, highlighted code and icons are laid
@@ -26,6 +26,11 @@ executing any of it — writes a deck from what it retrieved, and records which
 file and which lines each claim came from, so you can click any slide and read
 its sources.
 
+Slides move, too: a Motion Agent decides what should be revealed and in what
+order, deterministic code turns that into a timeline inside the per-slide
+duration budget, and a presenter's arrow key reveals the next point before it
+changes the slide.
+
 ---
 
 ## What is here
@@ -40,6 +45,8 @@ packages/renderer/              document -> IntermediateScene -> DOM/SVG
 packages/layout-engine/         text measurement, container layout, constraints
 packages/editor/                selection, hit testing, transforms, snapping,
                                 clipboard, keys, rich-text editing and paste sanitization
+packages/animation-engine/      presets, timeline compilation, stateless sampling,
+                                playback and the DOM adapter
 agents/                         the LangGraph agent system: nodes, contracts,
                                 tool registry, budgets, memory, model routing
 integrations/                   repository sources: ignore rules, importance
@@ -284,6 +291,48 @@ HMAC-SHA256, a missing secret fails closed, and a rejection says nothing but
 
 ---
 
+## How motion works
+
+```
+document tracks ──┐
+                  ├─> compileTimeline ──> CompiledTimeline ──> sampleAt(t) ──> styles
+scene nodes ──────┘        (once)          absolute ms         pure of t
+```
+
+Everything relative — "after the previous one", "when the presenter clicks" — is
+resolved to absolute milliseconds once, at compile. Everything after that is a
+pure function of time.
+
+That is not tidiness. It is the only way `seek(t)` and "play, then pause at `t`"
+can be guaranteed to agree, which is the acceptance criterion doc 04 §26.2
+states outright. One sampler drives the editor preview, present mode and — when
+it lands — the video export, so an exported deck cannot disagree with the one the
+author previewed. They differ only in where time comes from: a frame callback, a
+scrub position, or a fixed step.
+
+Four rules the design turns into properties rather than intentions:
+
+- **Every preset declares a reduced-motion fallback**, and a build-time test
+  fails without one. `drawPath` falls back to the drawn path, not a fade — a path
+  that fades in says something different from one that draws. Reduced motion
+  never means the content fails to appear.
+- **The per-slide entrance budget is enforced, not warned about.** A model asked
+  to respect 2.5 seconds usually does; code that computes the durations always
+  does, so a sequence that would over-run is compressed and the author is told.
+- **An entrance holds its starting state before it runs.** A bullet that is
+  visible until its click-triggered reveal begins has not been revealed, it has
+  flashed.
+- **Springs are sampled into keyframes at build time.** A live spring cannot
+  answer `seek(t)` without having played the frames before `t`.
+
+The Motion Agent works in **semantic roles and one word of pacing** — "the
+numbers arrive after the claim they support", not "el_7 at 900ms". It has to:
+it runs before the composer, so no element exists yet to name. That constraint
+turns out to be the right vocabulary anyway, because a sequence written in roles
+survives a re-layout.
+
+---
+
 ## What is actually verified
 
 Claims in a README are cheap; these are the ones with a gate behind them.
@@ -309,6 +358,11 @@ Claims in a README are cheap; these are the ones with a gate behind them.
 | Losing access to a repository deletes what was indexed from it | Chunk count asserted to be zero after the event |
 | One workspace cannot search or cite another's repository | Asserted on the search, index and generate paths |
 | A grounded slide names the file and lines it came from | Journey B, end to end in a browser |
+| Seeking to `t` and playing to `t` agree | Compared frame by frame against a cold seek, and at every millisecond of the seed deck |
+| Every preset has a reduced-motion fallback | Build-time test over the preset registry; a preset without one fails |
+| A slide's entrance fits its budget | Enforced in the composer and asserted at all three pacings |
+| A timeline edit is an undoable transaction | Asserted as patch operations, and driven through the editor in a browser |
+| `→` reveals the next point before it changes the slide | Present mode, in a browser |
 
 ---
 

@@ -82,7 +82,18 @@ export const AnimationClipSchema = z.looseObject({
   /** Default 0. -1 is infinite. */
   repeat: z.number().int().min(-1).optional(),
   direction: z.enum(["normal", "reverse", "alternate"]).optional(),
-  /** Default "forwards". */
+  /**
+   * How the clip's values behave outside its own span.
+   *
+   * **Absent means "both", not "forwards".** The CSS/WAAPI default is
+   * `forwards`, and inheriting it here would be wrong for the thing clips are
+   * mostly used for: an entrance is only an entrance if the element is in its
+   * starting state *before* the clip runs. A bullet that is visible until its
+   * click-triggered fade-in begins has not been revealed, it has flashed.
+   *
+   * Set it explicitly to opt out — `forwards` for an emphasis that should leave
+   * the element alone until it fires.
+   */
   fill: z.enum(["none", "forwards", "backwards", "both"]).optional(),
   /**
    * Reduced motion (doc 02 §24.7). Every preset declares a fallback; the document

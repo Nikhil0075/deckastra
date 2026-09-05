@@ -1,4 +1,4 @@
-document doc_01JB8Z9K2QW4RN7F3X03002100 1920x1080
+document doc_01JB8Z9K2QW4RN7F3X03003600 1920x1080
 theme thm_01JB8Z9K2QW4RN7F3X03000000 dark
 fonts Inter
 slide sld_01JB8Z9K2QW4RN7F3X03000500 1920x1080
@@ -8,7 +8,16 @@ el_01JB8Z9K2QW4RN7F3X03000100 | text | headline | z=0 | b=120,200,1400,180 | m=1
 el_01JB8Z9K2QW4RN7F3X03000200 | shape | - | z=1 | b=120,520,480,240 | m=1,0,0,1,120,520 | fill=#121821 | stroke=#243141/1 | opacity=0 | a11y=presentation/5001 | shape d=29 rect=true r=12
 el_01JB8Z9K2QW4RN7F3X03000300 | shape | - | z=2 | b=640,520,480,240 | m=1,0,0,1,640,520 | fill=#121821 | stroke=#243141/1 | opacity=0 | a11y=presentation/5002 | shape d=29 rect=true r=12
 el_01JB8Z9K2QW4RN7F3X03000400 | text | metric | z=3 | b=1240,520,560,240 | m=1,0,0,1,1240,520 | fill=- | stroke=- | opacity=0 | a11y=paragraph/303 | text size=88 lines=1 chars=1
-slide sld_01JB8Z9K2QW4RN7F3X03001800 1920x1080
+slide sld_01JB8Z9K2QW4RN7F3X03002300 1920x1080
+background -
+transition slide
+el_01JB8Z9K2QW4RN7F3X03002400 | text | headline | z=0 | b=120,160,1400,140 | m=1,0,0,1,120,160 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=72 lines=1 chars=17
+el_01JB8Z9K2QW4RN7F3X03001800 | group | - | z=1 | b=120,380,900,300 | m=1,0,0,1,120,380 | fill=- | stroke=- | opacity=1 | a11y=group/5001 | group
+el_01JB8Z9K2QW4RN7F3X03001900 | text | body | z=1.0 | b=120,380,900,90 | m=1,0,0,1,120,380 | fill=- | stroke=- | opacity=0 | a11y=paragraph/402 | text size=44 lines=1 chars=14
+el_01JB8Z9K2QW4RN7F3X03002000 | text | body | z=1.1 | b=120,480,900,90 | m=1,0,0,1,120,480 | fill=- | stroke=- | opacity=0 | a11y=paragraph/403 | text size=44 lines=1 chars=29
+el_01JB8Z9K2QW4RN7F3X03002100 | text | body | z=1.2 | b=120,580,900,90 | m=1,0,0,1,120,580 | fill=- | stroke=- | opacity=0 | a11y=paragraph/404 | text size=44 lines=1 chars=22
+el_01JB8Z9K2QW4RN7F3X03002200 | line | - | z=2 | b=1140,420,560,200 | m=1,0,0,1,1140,420 | fill=- | stroke=#4CC2FF/6 | opacity=1 | a11y=presentation/5005 | line 0,0->560,200
+slide sld_01JB8Z9K2QW4RN7F3X03003300 1920x1080
 background -
 transition zoom
-el_01JB8Z9K2QW4RN7F3X03001900 | text | headline | z=0 | b=120,440,1400,200 | m=1,0,0,1,120,440 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=88 lines=1 chars=19
+el_01JB8Z9K2QW4RN7F3X03003400 | text | headline | z=0 | b=120,440,1400,200 | m=1,0,0,1,120,440 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=88 lines=1 chars=19

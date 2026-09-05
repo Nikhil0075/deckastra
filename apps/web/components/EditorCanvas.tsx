@@ -550,6 +550,10 @@ export function EditorCanvas({
   return (
     <div
       ref={containerRef}
+      // Scopes the motion preview's element lookup. Without it the sampled
+      // styles would also land on the slide-strip thumbnails, which render the
+      // same element ids.
+      data-editor-canvas=""
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
       onPointerMove={onPointerMove}

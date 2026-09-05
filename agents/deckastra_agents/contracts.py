@@ -69,7 +69,7 @@ class OrchestratorPlan(BaseModel):
     intent: Intent
     #: Nodes to run, in order. The Orchestrator routes; it never edits.
     stages: list[str] = Field(
-        description="Which stages this request needs, from: research, story, creative, layout, critic."
+        description="Which stages this request needs, from: research, story, creative, layout, motion, critic."
     )
     scope_kind: Literal["deck", "slide", "elements"] = Field(
         description="What the request is about. Never guess 'deck' for an ambiguous request."
@@ -174,6 +174,56 @@ class LayoutProposal(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+# -------------------------------------------------------------------- motion
+
+
+class SlideMotionPlan(BaseModel):
+    """Motion intent for one slide (doc 03 §12, doc 04 §24).
+
+    Expressed in **semantic roles and preset names**, never in element ids,
+    coordinates or milliseconds. Two reasons, and the second is the one that
+    makes it work at all:
+
+    - Geometry is the deterministic side (doc 03 §2.3), and a duration is
+      geometry in time. Code owns the numbers, so the per-slide entrance budget
+      can be *enforced* rather than hoped for.
+    - This runs before the composer, so the element ids do not exist yet. A plan
+      that named them would be a plan that could not be written.
+    """
+
+    slide_id: str = Field(description="The slide's index in the story plan, as a string.")
+    #: Reveal order by semantic role. `["headline", "body", "metric"]` means the
+    #: headline arrives, then the body, then the numbers.
+    sequence: list[str] = Field(
+        default_factory=list,
+        description="Semantic roles in the order they should appear. Omit roles that should be there from the start.",
+    )
+    entrance: str = Field(
+        default="fade",
+        description="Preset for the entrance: fade, slide, scale, blurReveal, maskReveal, staggerReveal, springIn.",
+    )
+    pacing: Literal["tight", "measured", "deliberate"] = Field(
+        default="measured",
+        description="How much room the motion gets. Code turns this into durations.",
+    )
+    #: How many of the sequenced steps wait for the presenter rather than running
+    #: on entry. Doc 04 §25.1: a click starts a segment.
+    click_reveals: int = Field(
+        default=0,
+        ge=0,
+        le=6,
+        description="How many later steps the presenter reveals by clicking. 0 means everything runs on entry.",
+    )
+    rationale: str = Field(description="One user-facing sentence: what the motion is doing for the audience.")
+
+
+class MotionPlan(BaseModel):
+    """Motion for a deck. Restrained by default (doc 04 §24.4)."""
+
+    slides: list[SlideMotionPlan] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 # -------------------------------------------------------------------- critic
 
 
@@ -188,7 +238,7 @@ class CriticIssue(BaseModel):
 
 
 class CriticResult(BaseModel):
-    verdict: Literal["pass", "revise_story", "revise_layout", "revise_creative"]
+    verdict: Literal["pass", "revise_story", "revise_layout", "revise_creative", "revise_motion"]
     #: 0..1. Used to pick the best candidate when the Critic and the producer
     #: cannot agree and the revision budget runs out (gap register doc 03 S3).
     score: float = Field(ge=0, le=1, description="Overall quality, 0 to 1.")

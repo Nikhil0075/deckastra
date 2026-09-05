@@ -26,6 +26,7 @@ Stage = Literal[
     "story_checkpoint",
     "creative",
     "layout",
+    "motion",
     "critic",
     "propose",
     "done",
@@ -33,7 +34,9 @@ Stage = Literal[
 ]
 
 #: The verdicts the Critic may return, and where each routes (doc 03 §13.4).
-CriticVerdict = Literal["pass", "revise_story", "revise_layout", "revise_creative"]
+CriticVerdict = Literal[
+    "pass", "revise_story", "revise_layout", "revise_creative", "revise_motion"
+]
 
 
 def _append(left: list[Any] | None, right: list[Any] | None) -> list[Any]:
@@ -95,6 +98,10 @@ class PresentationAgentState(TypedDict, total=False):
     story_plan: dict[str, Any]
     creative_direction: dict[str, Any]
     layout_result: dict[str, Any]
+    #: Motion intent per slide — roles and pacing, never durations. Declared here
+    #: for the same reason as `orchestrator_plan`: LangGraph merges only the keys
+    #: this TypedDict names, and an undeclared one is silently dropped.
+    motion_plan: dict[str, Any]
     critic_results: Annotated[list[dict[str, Any]], _append]
 
     #: The document as it stands. See the module docstring for why it is here.

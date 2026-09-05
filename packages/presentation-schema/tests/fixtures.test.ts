@@ -162,12 +162,22 @@ describe("animation fixture", () => {
     }
   });
 
-  it("declares a reduced-motion path for every clip", () => {
+  it("every clip has a reduced-motion path to resolve", () => {
+    // Doc 04 §27.3 requires every preset to declare a fallback, and
+    // `packages/animation-engine` enforces that at build time — this package
+    // cannot, because the preset registry depends on it rather than the other
+    // way round.
+    //
+    // What is checkable here is the schema-level half: a clip either overrides
+    // the fallback itself, or names a preset that can supply one. A clip with
+    // neither has nothing to fall back *to*, and reduced motion would mean the
+    // content never appears.
     for (const slide of doc.slides) {
       for (const track of slide.animations ?? []) {
         for (const clip of track.clips) {
-          const hasFallback = clip.reducedMotionPreset ?? clip.reducedMotionBehavior;
-          expect(hasFallback, `clip ${clip.id} has no reduced-motion path`).toBeTruthy();
+          const resolvable =
+            clip.reducedMotionPreset ?? clip.reducedMotionBehavior ?? clip.preset;
+          expect(resolvable, `clip ${clip.id} has no reduced-motion path`).toBeTruthy();
         }
       }
     }

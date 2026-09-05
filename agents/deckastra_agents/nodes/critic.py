@@ -38,6 +38,8 @@ Return one verdict:
   revise_story     The narrative or the copy is the problem.
   revise_layout    The content is right but a slide's layout does not fit it.
   revise_creative  The visual direction is the problem.
+  revise_motion    The motion is the problem: too much of it, the wrong order,
+                   or an entrance the presenter would have to talk over.
 
 Score the deck 0 to 1. The score is used to pick the best draft if reviewers and
 writers cannot converge, so it must be comparable between drafts of the same deck:
