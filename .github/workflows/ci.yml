@@ -33,6 +33,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # Includes the visual-regression gate: the three seed decks' resolved
+      # scenes are compared against committed digests in
+      # packages/renderer/baselines/. UPDATE_BASELINES is deliberately not set
+      # here — a baseline that regenerates in CI is not a gate.
       - name: Unit tests
         run: npm test
 

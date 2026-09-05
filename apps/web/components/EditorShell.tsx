@@ -57,6 +57,10 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
   const [presenting, setPresenting] = useState(false);
   const [clipboard, setClipboard] = useState<ClipboardPayload | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
+  // Last drag's frame times. Shown rather than logged: doc 04 §31.5 is explicit
+  // that an untracked budget regresses quietly, and this is the smallest thing
+  // that makes the drag budget observable while telemetry is Phase 9.
+  const [frames, setFrames] = useState<{ p95: number; over: boolean; count: number }>();
   const [canvasWidth, setCanvasWidth] = useState(880);
 
   const slide = doc.slides[slideIndex];
@@ -334,7 +338,16 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
   ]);
 
   if (presenting) {
-    return <PresentMode scene={scene} onExit={() => setPresenting(false)} initialSlide={slideIndex} />;
+    return (
+      <PresentMode
+        scene={scene}
+        onExit={() => setPresenting(false)}
+        initialSlide={slideIndex}
+        // Scoped to the deck, so two decks presented at once do not drive each
+        // other's second screen.
+        channelName={`deckastra-present-${props.presentationId}`}
+      />
+    );
   }
 
   if (!slide) return <div style={{ padding: 40 }}>This deck has no slides.</div>;
@@ -356,6 +369,22 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
       {notice ? (
         <div style={{ padding: "10px 20px", background: "rgba(242,193,78,0.14)", fontSize: 14 }}>
           {notice}
+        </div>
+      ) : null}
+
+      {frames ? (
+        <div
+          style={{
+            padding: "4px 20px",
+            fontSize: 12,
+            color: frames.over ? "var(--warning)" : "var(--fg-subtle)",
+            borderBottom: "1px solid var(--border)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+          title="Frame time during the last drag, p95. Budget is 16ms (doc 04 §31.1)."
+        >
+          Last drag: {frames.p95}ms p95 over {frames.count} frames
+          {frames.over ? " — over the 16ms budget" : ""}
         </div>
       ) : null}
 
@@ -382,7 +411,13 @@ export function EditorShell(props: UseEditorInput & { onExit?: () => void }) {
             }
           }}
         >
-          <EditorCanvas editor={editor} width={canvasWidth} />
+          <EditorCanvas
+            editor={editor}
+            width={canvasWidth}
+            onFrameStats={(budget, stats) =>
+              setFrames({ p95: stats.p95, over: !budget.withinBudget, count: stats.count })
+            }
+          />
         </div>
 
         <SidePanel

@@ -23,6 +23,8 @@ export interface ResolvedTheme {
   /** Flat map, e.g. "colors.accent" -> "#4CC2FF". Values are concrete. */
   tokens: ReadonlyMap<string, unknown>;
   source: ThemeDefinition;
+  /** The theme `source.extends` names, when the caller supplied it. */
+  parent?: ThemeDefinition;
 }
 
 /**
@@ -64,21 +66,38 @@ function flatten(value: unknown, prefix: string, out: Map<string, unknown>): voi
   }
 }
 
-export function resolveTheme(theme: ThemeDefinition): ResolvedTheme {
+/**
+ * Resolve a theme, optionally over the theme it extends (doc 02 §22.8).
+ *
+ * `extends` is an id, and this package has no theme registry, so the parent is
+ * supplied by whoever does know the workspace. Inheritance is a *token-level*
+ * merge rather than a top-level object merge: a child that overrides one colour
+ * must not lose the parent's typography, which is exactly what
+ * `{ ...parent, ...child }` would do to `colors`.
+ */
+export function resolveTheme(theme: ThemeDefinition, parent?: ThemeDefinition): ResolvedTheme {
   const tokens = new Map<string, unknown>();
-  for (const group of ["colors", "typography", "spacing", "radii", "shadows", "grid"] as const) {
-    flatten(theme[group], group, tokens);
-  }
-  for (const group of ["chart", "diagram", "imagery", "motion"] as const) {
-    if (theme[group]) flatten(theme[group], group, tokens);
-  }
+
+  const load = (definition: ThemeDefinition): void => {
+    for (const group of ["colors", "typography", "spacing", "radii", "shadows", "grid"] as const) {
+      flatten(definition[group], group, tokens);
+    }
+    for (const group of ["chart", "diagram", "imagery", "motion"] as const) {
+      if (definition[group]) flatten(definition[group], group, tokens);
+    }
+  };
+
+  // Parent first so the child's tokens overwrite it key by key.
+  if (parent) load(parent);
+  load(theme);
 
   return {
     id: theme.id,
     name: theme.name,
-    mode: theme.mode ?? "light",
+    mode: theme.mode ?? parent?.mode ?? "light",
     tokens,
     source: theme,
+    parent,
   };
 }
 
@@ -99,7 +118,10 @@ export function resolveValue<T = unknown>(
   if (!isTokenRef(value)) return value as T;
 
   const path = tokenPath(value);
-  const resolved = theme.tokens.get(path) ?? resolveToken(theme.source, path);
+  const resolved =
+    theme.tokens.get(path) ??
+    resolveToken(theme.source, path) ??
+    (theme.parent ? resolveToken(theme.parent, path) : undefined);
   return (resolved as T) ?? fallback;
 }
 
@@ -107,7 +129,11 @@ export function resolveValue<T = unknown>(
 export function isDanglingToken(theme: ResolvedTheme, value: unknown): boolean {
   if (!isTokenRef(value)) return false;
   const path = tokenPath(value);
-  return theme.tokens.get(path) === undefined && resolveToken(theme.source, path) === undefined;
+  return (
+    theme.tokens.get(path) === undefined &&
+    resolveToken(theme.source, path) === undefined &&
+    (!theme.parent || resolveToken(theme.parent, path) === undefined)
+  );
 }
 
 /**
@@ -129,6 +155,46 @@ export function resolveTypography(
   }
 
   return out as unknown as TypographyStyle;
+}
+
+
+/**
+ * A Paint as a CSS value.
+ *
+ * Lives with theme resolution rather than in the scene builder because charts,
+ * diagrams and the scene all need it, and three implementations of "what colour
+ * is this fill" is three chances to disagree about a gradient.
+ *
+ * An unknown paint variant returns `undefined` rather than a guess: the schema
+ * preserves it for a newer reader (doc 02 §0.8), and painting it wrong here
+ * would be worse than leaving it unpainted.
+ */
+export function paintToCss(theme: ResolvedTheme, paint: unknown): string | undefined {
+  if (!paint || typeof paint !== "object") return undefined;
+  const p = paint as { type: string; color?: unknown; stops?: { offset: number; color: unknown }[]; angle?: number };
+
+  switch (p.type) {
+    case "none":
+      return undefined;
+    case "solid":
+      return resolveValue<string>(theme, p.color);
+    case "linearGradient": {
+      const stops = (p.stops ?? [])
+        .map((s) => `${resolveValue<string>(theme, s.color) ?? "transparent"} ${(s.offset * 100).toFixed(1)}%`)
+        .join(", ");
+      return `linear-gradient(${p.angle ?? 180}deg, ${stops})`;
+    }
+    case "radialGradient": {
+      const stops = (p.stops ?? [])
+        .map((s) => `${resolveValue<string>(theme, s.color) ?? "transparent"} ${(s.offset * 100).toFixed(1)}%`)
+        .join(", ");
+      return `radial-gradient(circle, ${stops})`;
+    }
+    default:
+      // Unknown paint variants are preserved by the schema and skipped here rather
+      // than painted wrong.
+      return undefined;
+  }
 }
 
 export { TOKEN_PREFIX };

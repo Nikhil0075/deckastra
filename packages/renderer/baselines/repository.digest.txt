@@ -1,0 +1,14 @@
+document doc_01JB8Z9K2QW4RN7F3X02001200 1920x1080
+theme thm_01JB8Z9K2QW4RN7F3X02000000 dark
+fonts Inter
+slide sld_01JB8Z9K2QW4RN7F3X02000300 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X02000400 | text | headline | z=0 | b=120,140,1300,180 | m=1,0,0,1,120,140 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=96 lines=1 chars=12
+el_01JB8Z9K2QW4RN7F3X02000100 | text | body | z=1 | b=120,380,1100,200 | m=1,0,0,1,120,380 | fill=- | stroke=- | opacity=1 | a11y=paragraph/401 | text size=28 lines=2 chars=125
+el_01JB8Z9K2QW4RN7F3X02000200 | text | metric | z=2 | b=1400,380,400,200 | m=1,0,0,1,1400,380 | fill=- | stroke=- | opacity=1 | a11y=paragraph/302 | text size=88 lines=1 chars=3
+slide sld_01JB8Z9K2QW4RN7F3X02000800 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X02000900 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=12
+el_01JB8Z9K2QW4RN7F3X02001100 | chart | primaryChart | z=1 | b=120,260,1200,600 | m=1,0,0,1,120,260 | fill=- | stroke=- | opacity=1 | a11y=img/801 | chart bar plot=120,12,1068,556 rects=4 paths=0 points=0 texts=10 legend=0 marks=120,29.375,1029.552,104.25;120,168.375,273.408,104.25;120,307.375,98.256,104.25;120,446.375,38.448,104.25 d=

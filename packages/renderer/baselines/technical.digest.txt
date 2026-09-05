@@ -1,0 +1,42 @@
+document doc_01JB8Z9K2QW4RN7F3X01006700 1920x1080
+theme thm_01JB8Z9K2QW4RN7F3X01000000 dark
+fonts Inter|JetBrains Mono
+slide sld_01JB8Z9K2QW4RN7F3X01000100 1920x1080
+background #0B0F14
+transition fade
+el_01JB8Z9K2QW4RN7F3X01000200 | text | eyebrow | z=0 | b=120,320,800,40 | m=1,0,0,1,120,320 | fill=- | stroke=- | opacity=1 | a11y=paragraph/0 | text size=16 lines=1 chars=19
+el_01JB8Z9K2QW4RN7F3X01000400 | text | headline | z=1 | b=120,380,1300,240 | m=1,0,0,1,120,380 | fill=- | stroke=- | opacity=1 | a11y=heading/101 | text size=93 lines=2 chars=46
+el_01JB8Z9K2QW4RN7F3X01000600 | text | subtitle | z=2 | b=120,650,1000,80 | m=1,0,0,1,120,650 | fill=- | stroke=- | opacity=1 | a11y=paragraph/202 | text size=24 lines=1 chars=54
+slide sld_01JB8Z9K2QW4RN7F3X01000800 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X01000900 | text | headline | z=0 | b=120,120,1200,100 | m=1,0,0,1,120,120 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=32
+el_01JB8Z9K2QW4RN7F3X01001100 | group | - | z=1 | b=120,340,1680,240 | m=1,0,0,1,120,340 | fill=- | stroke=- | opacity=1 | a11y=group/5001 | group
+el_01JB8Z9K2QW4RN7F3X01001200 | group | - | z=1.0 | b=120,340,380,240 | m=1,0,0,1,120,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5002 | group
+el_01JB8Z9K2QW4RN7F3X01001300 | text | metric | z=1.0.0 | b=120,340,316,100 | m=1,0,0,1,120,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/303 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01001500 | text | caption | z=1.0.1 | b=120,456,316,56 | m=1,0,0,1,120,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1404 | text size=18 lines=1 chars=25
+el_01JB8Z9K2QW4RN7F3X01001700 | group | - | z=1.1 | b=524,340,380,240 | m=1,0,0,1,524,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5005 | group
+el_01JB8Z9K2QW4RN7F3X01001800 | text | metric | z=1.1.0 | b=524,340,316,100 | m=1,0,0,1,524,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/306 | text size=72 lines=1 chars=4
+el_01JB8Z9K2QW4RN7F3X01002000 | text | caption | z=1.1.1 | b=524,456,316,56 | m=1,0,0,1,524,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1407 | text size=18 lines=1 chars=19
+el_01JB8Z9K2QW4RN7F3X01002200 | group | - | z=1.2 | b=928,340,380,240 | m=1,0,0,1,928,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5008 | group
+el_01JB8Z9K2QW4RN7F3X01002300 | text | metric | z=1.2.0 | b=928,340,316,100 | m=1,0,0,1,928,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/309 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01002500 | text | caption | z=1.2.1 | b=928,456,316,56 | m=1,0,0,1,928,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1410 | text size=18 lines=1 chars=18
+el_01JB8Z9K2QW4RN7F3X01002700 | group | - | z=1.3 | b=1332,340,380,240 | m=1,0,0,1,1332,340 | fill=#121821 | stroke=#243141/1 | opacity=1 | a11y=group/5011 | group
+el_01JB8Z9K2QW4RN7F3X01002800 | text | metric | z=1.3.0 | b=1332,340,316,100 | m=1,0,0,1,1332,340 | fill=- | stroke=- | opacity=1 | a11y=paragraph/312 | text size=72 lines=1 chars=5
+el_01JB8Z9K2QW4RN7F3X01003000 | text | caption | z=1.3.1 | b=1332,456,316,56 | m=1,0,0,1,1332,456 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1413 | text size=18 lines=1 chars=20
+slide sld_01JB8Z9K2QW4RN7F3X01003800 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X01003900 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=15
+el_01JB8Z9K2QW4RN7F3X01004100 | diagram | mainDiagram | z=1 | b=120,260,1680,620 | m=1,0,0,1,120,260 | fill=- | stroke=- | opacity=1 | a11y=img/901 | diagram architecture/layered nodes=003200@73.718,275.7,201.2,68.6;003300@370.918,264.612,212.816,90.776;003400@715.308,206.312,237.5,68.6;003500@679.734,322.912,308.648,90.776;003600@1084.382,275.7,140,68.6;003700@1320.382,250.312,285.9,119.376 edges=004200:M 274.918 310 C 313.318 310 332.518 310 370.918 310;004300:M 583.734 289.303 C 636.364 289.303 662.678 263.71 715.308 263.71;004400:M 583.734 327.39 C 622.134 327.39 641.334 343.079 679.734 343.079;004500:M 952.808 266.335 C 1005.438 266.335 1031.752 294.837 1084.382 294.837;004600:M 988.382 340.213 C 1026.782 340.213 1045.982 322.74 1084.382 322.74;004700:M 1224.382 310 C 1262.782 310 1281.982 310 1320.382 310;004800:M 1084.382 322.74 C 1045.982 322.74 1026.782 340.213 988.382 340.213 groups=346.918,156.312,901.464,281.376
+slide sld_01JB8Z9K2QW4RN7F3X01005000 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X01005100 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=20
+el_01JB8Z9K2QW4RN7F3X01005300 | table | - | z=1 | b=120,280,1680,480 | m=1,0,0,1,120,280 | fill=- | stroke=- | opacity=1 | a11y=table/5001 | table 3x4 borders=horizontal banding=rows
+slide sld_01JB8Z9K2QW4RN7F3X01006100 1920x1080
+background -
+transition fade
+el_01JB8Z9K2QW4RN7F3X01006200 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=27
+el_01JB8Z9K2QW4RN7F3X01006400 | code | - | z=1 | b=120,300,1680,320 | m=1,0,0,1,120,300 | fill=- | stroke=- | opacity=1 | a11y=presentation/5001 | code json lines=5 tokens=19
+el_01JB8Z9K2QW4RN7F3X01006500 | text | caption | z=2 | b=120,660,1400,60 | m=1,0,0,1,120,660 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1402 | text size=20 lines=1 chars=70

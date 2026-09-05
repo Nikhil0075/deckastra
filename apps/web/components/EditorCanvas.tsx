@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { PresentationDocument, Rect, Transform } from "@deckastra/presentation-schema";
-import { buildDocumentScene } from "@deckastra/renderer";
+import { FrameSampler, buildDocumentScene, checkBudget } from "@deckastra/renderer";
+import type { BudgetResult, FrameStats } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { setProperty, resolveElementById } from "@deckastra/presentation-core";
 import {
@@ -47,6 +48,13 @@ export interface EditorCanvasProps {
   width: number;
   showGuides?: boolean;
   gridEnabled?: boolean;
+  /**
+   * Called once per gesture with the measured frame times (doc 04 §31.1).
+   *
+   * Reported rather than logged, so the number reaches a place a person can see
+   * it. An untracked budget regresses quietly.
+   */
+  onFrameStats?: (budget: BudgetResult, frames: FrameStats) => void;
 }
 
 type Gesture =
@@ -73,7 +81,13 @@ type Gesture =
       elementId: string;
     };
 
-export function EditorCanvas({ editor, width, showGuides = true, gridEnabled = false }: EditorCanvasProps) {
+export function EditorCanvas({
+  editor,
+  width,
+  showGuides = true,
+  gridEnabled = false,
+  onFrameStats,
+}: EditorCanvasProps) {
   const { document: doc, slideIndex, selection, setSelection, apply, nodes } = editor;
   const slide = doc.slides[slideIndex];
 
@@ -82,6 +96,12 @@ export function EditorCanvas({ editor, width, showGuides = true, gridEnabled = f
   const [draft, setDraft] = useState<Map<string, Transform>>(new Map());
   const [guides, setGuides] = useState<SnapLine[]>([]);
   const modifiers = useRef({ shift: false, alt: false, mod: false });
+
+  // Frame-time sampling for the drag budget (doc 04 §31.1: <16ms p95). Measured
+  // as the interval between frames, not the duration of the handler — a handler
+  // that takes 3ms but forces a synchronous layout costs 40ms of frame time, and
+  // only the interval sees it.
+  const sampler = useRef(new FrameSampler());
 
   const scale = width / doc.viewport.width;
 
@@ -171,6 +191,8 @@ export function EditorCanvas({ editor, width, showGuides = true, gridEnabled = f
       }
 
       for (const id of ids) spatial.exclude(id);
+      sampler.current.reset();
+      sampler.current.start();
       setGesture({ kind: "move", origin: world, startTransforms: starts });
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     },
@@ -213,6 +235,8 @@ export function EditorCanvas({ editor, width, showGuides = true, gridEnabled = f
       if (!found) return;
 
       spatial.exclude(id);
+      sampler.current.reset();
+      sampler.current.start();
       setGesture({
         kind: "resize",
         handle,
@@ -395,11 +419,15 @@ export function EditorCanvas({ editor, width, showGuides = true, gridEnabled = f
       });
     }
 
+    sampler.current.stop();
+    const frames = sampler.current.stats();
+    if (frames && frames.count > 8) onFrameStats?.(checkBudget("dragFrame", frames.p95), frames);
+
     spatial.clearExclusions();
     setDraft(new Map());
     setGuides([]);
     setGesture({ kind: "none" });
-  }, [apply, doc, draft, gesture, index, setSelection, spatial]);
+  }, [apply, doc, draft, gesture, index, onFrameStats, setSelection, spatial]);
 
   if (!slide || !slideScene) return null;
 

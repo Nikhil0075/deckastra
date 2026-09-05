@@ -1,7 +1,14 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { toCss } from "../matrix";
-import type { SceneNode, TextBlockPayload } from "../scene";
+import type {
+  ChartPayload,
+  DiagramPayload,
+  IconPayload,
+  SceneNode,
+  TablePayload,
+  TextBlockPayload,
+} from "../scene";
 import type { TypographyStyle } from "@deckastra/presentation-schema";
 
 /**
@@ -287,7 +294,6 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
     }
 
     case "code": {
-      const lines = payload.code.split("\n");
       return (
         <div
           style={{
@@ -308,7 +314,9 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
               style={{
                 padding: "8px 16px",
                 borderBottom: "1px solid rgba(127,127,127,0.25)",
-                font: "500 14px ui-monospace, monospace",
+                fontFamily: payload.typography.fontFamily,
+                fontSize: Math.round(payload.typography.fontSize * 0.8),
+                fontWeight: 500,
                 opacity: 0.7,
               }}
             >
@@ -321,24 +329,33 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
               padding: 16,
               overflow: "hidden",
               ...typographyToCss(payload.typography),
+              color: payload.colors.plain,
               whiteSpace: "pre",
             }}
           >
-            {lines.map((line, i) => (
-              <div key={i} style={{ display: "flex", gap: 16 }}>
+            {payload.lines.map((line) => (
+              <div key={line.number} style={{ display: "flex", gap: 16 }}>
                 {payload.showLineNumbers ? (
                   <span
                     style={{
-                      opacity: 0.4,
+                      color: payload.colors.comment,
+                      opacity: 0.6,
                       userSelect: "none",
                       minWidth: "2.5ch",
                       textAlign: "right",
                     }}
                   >
-                    {payload.startLineNumber + i}
+                    {line.number}
                   </span>
                 ) : null}
-                <span>{line || " "}</span>
+                <span>
+                  {line.tokens.length === 0 ? " " : null}
+                  {line.tokens.map((token, i) => (
+                    <span key={i} style={{ color: payload.colors[token.kind] }}>
+                      {token.text}
+                    </span>
+                  ))}
+                </span>
               </div>
             ))}
           </pre>
@@ -346,61 +363,17 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
       );
     }
 
-    case "table": {
-      const cellPadding = "10px 16px";
-      return (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            ...typographyToCss(payload.typography),
-          }}
-        >
-          {payload.headerRow ? (
-            <thead>
-              <tr>
-                {payload.columns.map((col) => (
-                  <th
-                    key={col.id}
-                    style={{
-                      textAlign: (col.align as CSSProperties["textAlign"]) ?? "left",
-                      padding: cellPadding,
-                      borderBottom: "2px solid rgba(127,127,127,0.4)",
-                      fontWeight: 600,
-                      opacity: 0.85,
-                    }}
-                  >
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-          ) : null}
-          <tbody>
-            {payload.rows.map((row) => (
-              <tr key={row.id}>
-                {row.cells.map((cell, i) => (
-                  <td
-                    key={i}
-                    style={{
-                      textAlign:
-                        (cell.align as CSSProperties["textAlign"]) ??
-                        (payload.columns[i]?.align as CSSProperties["textAlign"]) ??
-                        "left",
-                      padding: cellPadding,
-                      borderBottom: "1px solid rgba(127,127,127,0.2)",
-                      fontWeight: row.emphasis === "total" ? 700 : undefined,
-                    }}
-                  >
-                    {cell.text}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
+    case "table":
+      return <TableContent payload={payload} />;
+
+    case "chart":
+      return <ChartContent payload={payload} width={width} height={height} />;
+
+    case "diagram":
+      return <DiagramContent payload={payload} width={width} height={height} />;
+
+    case "icon":
+      return <IconContent payload={payload} width={width} height={height} />;
 
     case "group":
       // A group paints nothing itself; its children are separate nodes.
@@ -434,6 +407,447 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
     default:
       return null;
   }
+}
+
+// ---------------------------------------------------------------------- table
+
+function TableContent({ payload }: { payload: TablePayload }): ReactNode {
+  const { padding, borders, borderColor } = payload;
+  const cellPadding = `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
+
+  const horizontalBorder =
+    borders === "all" || borders === "horizontal" ? `1px solid ${borderColor}` : undefined;
+  const verticalBorder = borders === "all" ? `1px solid ${borderColor}` : undefined;
+
+  return (
+    <table
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        border: borders === "outer" || borders === "all" ? `1px solid ${borderColor}` : undefined,
+        ...typographyToCss(payload.typography),
+      }}
+    >
+      {payload.columns.some((column) => column.width) ? (
+        <colgroup>
+          {payload.columns.map((column) => (
+            <col key={column.id} style={{ width: column.width }} />
+          ))}
+        </colgroup>
+      ) : null}
+
+      {payload.headerRow ? (
+        <thead>
+          <tr>
+            {payload.columns.map((column) => (
+              <th
+                key={column.id}
+                style={{
+                  textAlign: (column.align as CSSProperties["textAlign"]) ?? "left",
+                  padding: cellPadding,
+                  background: payload.headerFill,
+                  borderBottom: `2px solid ${borderColor}`,
+                  borderRight: verticalBorder,
+                  ...typographyToCss(payload.headerTypography),
+                }}
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+      ) : null}
+
+      <tbody>
+        {payload.rows.map((row, rowIndex) => (
+          <tr
+            key={row.id}
+            style={{
+              background:
+                row.emphasis === "total" || row.emphasis === "highlight"
+                  ? payload.emphasisFill
+                  : payload.banding === "rows" && rowIndex % 2 === 1
+                    ? payload.bandColor
+                    : undefined,
+            }}
+          >
+            {row.cells.map((cell, columnIndex) => (
+              <td
+                key={columnIndex}
+                colSpan={cell.colSpan}
+                rowSpan={cell.rowSpan}
+                style={{
+                  textAlign:
+                    (cell.align as CSSProperties["textAlign"]) ??
+                    (payload.columns[columnIndex]?.align as CSSProperties["textAlign"]) ??
+                    "left",
+                  padding: cellPadding,
+                  borderBottom: horizontalBorder,
+                  borderRight: verticalBorder,
+                  background:
+                    cell.fill ??
+                    (payload.banding === "columns" && columnIndex % 2 === 1
+                      ? payload.bandColor
+                      : undefined),
+                  // A total row and a header column are both emphasis, and both
+                  // come from the document rather than from a guess about content.
+                  fontWeight:
+                    row.emphasis === "total" || row.emphasis === "subtotal"
+                      ? 700
+                      : payload.headerColumn && columnIndex === 0
+                        ? 600
+                        : undefined,
+                }}
+              >
+                {cell.text}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// ---------------------------------------------------------------------- chart
+
+function Notice({ text }: { text: string }): ReactNode {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
+        textAlign: "center",
+        background: "rgba(127,127,127,0.06)",
+        border: "1px dashed rgba(127,127,127,0.35)",
+        borderRadius: 10,
+        font: "500 18px ui-sans-serif, system-ui, sans-serif",
+        color: "rgba(127,127,127,0.95)",
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+function ChartContent({
+  payload,
+  width,
+  height,
+}: {
+  payload: ChartPayload;
+  width: number;
+  height: number;
+}): ReactNode {
+  if (payload.notice) return <Notice text={payload.notice} />;
+
+  const labelColor = String(payload.labelTypography.color ?? "currentColor");
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ position: "absolute", inset: 0, overflow: "visible" }}
+      role="img"
+      aria-label={payload.altText}
+      fontFamily={payload.labelTypography.fontFamily}
+    >
+      {payload.altText ? <title>{payload.altText}</title> : null}
+
+      {payload.gridlines.map((line, i) => (
+        <line
+          key={`g${i}`}
+          x1={line.x1}
+          y1={line.y1}
+          x2={line.x2}
+          y2={line.y2}
+          stroke={labelColor}
+          strokeOpacity={0.18}
+          strokeWidth={1}
+        />
+      ))}
+
+      {payload.axisLines.map((line, i) => (
+        <line
+          key={`a${i}`}
+          x1={line.x1}
+          y1={line.y1}
+          x2={line.x2}
+          y2={line.y2}
+          stroke={labelColor}
+          strokeOpacity={0.45}
+          strokeWidth={1.5}
+        />
+      ))}
+
+      {payload.rects.map((rect) => (
+        <rect
+          key={rect.id}
+          x={rect.x}
+          y={rect.y}
+          width={rect.width}
+          height={rect.height}
+          rx={rect.radius || undefined}
+          fill={rect.fill}
+        />
+      ))}
+
+      {payload.paths.map((path) => (
+        <path
+          key={path.id}
+          d={path.d}
+          fill={path.fill ?? "none"}
+          fillOpacity={path.fillOpacity}
+          stroke={path.stroke}
+          strokeWidth={path.strokeWidth}
+          strokeDasharray={path.dash}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+
+      {payload.points.map((point) => (
+        <circle key={point.id} cx={point.cx} cy={point.cy} r={point.r} fill={point.fill} />
+      ))}
+
+      {payload.texts.map((text) => (
+        <text
+          key={text.id}
+          x={text.x}
+          y={text.y}
+          textAnchor={text.anchor}
+          fontSize={text.fontSize}
+          fontWeight={text.weight}
+          fill={text.fill}
+          transform={text.rotate ? `rotate(${text.rotate} ${text.x} ${text.y})` : undefined}
+        >
+          {text.text}
+        </text>
+      ))}
+
+      {payload.legend.map((item) => (
+        <g key={item.label}>
+          <rect
+            x={item.swatch.x}
+            y={item.swatch.y}
+            width={item.swatch.width}
+            height={item.swatch.height}
+            rx={3}
+            fill={item.color}
+          />
+          <text
+            x={item.textX}
+            y={item.textY}
+            dominantBaseline="middle"
+            fontSize={payload.labelTypography.fontSize}
+            fill={labelColor}
+          >
+            {item.label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// -------------------------------------------------------------------- diagram
+
+function DiagramContent({
+  payload,
+  width,
+  height,
+}: {
+  payload: DiagramPayload;
+  width: number;
+  height: number;
+}): ReactNode {
+  if (payload.notice) return <Notice text={payload.notice} />;
+
+  // One marker definition per diagram rather than per edge: identical arrowheads,
+  // and markup that does not grow with the edge count. The id is derived from a
+  // node id so two diagrams on one slide cannot collide in the shared defs scope.
+  const markerId = `arrow-${payload.nodes[0]?.id ?? "d"}`;
+  const arrowColor = payload.edges[0]?.stroke ?? "currentColor";
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ position: "absolute", inset: 0, overflow: "visible" }}
+      fontFamily={payload.typography.fontFamily}
+    >
+      <defs>
+        <marker
+          id={markerId}
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={arrowColor} />
+        </marker>
+      </defs>
+
+      {payload.groups.map((group) => (
+        <g key={group.id}>
+          <rect
+            x={group.x}
+            y={group.y}
+            width={group.width}
+            height={group.height}
+            rx={group.radius}
+            fill={group.fill ?? "none"}
+            stroke={group.stroke}
+            strokeWidth={group.strokeWidth}
+            strokeDasharray={group.dash}
+          />
+          {group.label ? (
+            <text
+              x={group.label.x}
+              y={group.label.y}
+              fontSize={group.label.size}
+              fill={group.label.color}
+              letterSpacing={1}
+            >
+              {group.label.text}
+            </text>
+          ) : null}
+        </g>
+      ))}
+
+      {payload.edges.map((edge) => (
+        <g key={edge.id}>
+          <path
+            d={edge.d}
+            fill="none"
+            stroke={edge.stroke}
+            strokeWidth={edge.strokeWidth}
+            strokeDasharray={edge.dash}
+            markerEnd={edge.markerEnd ? `url(#${markerId})` : undefined}
+            markerStart={edge.markerStart ? `url(#${markerId})` : undefined}
+          />
+          {edge.label ? (
+            <text
+              x={edge.label.x}
+              y={edge.label.y}
+              textAnchor="middle"
+              fontSize={edge.label.size}
+              fill={edge.label.color}
+            >
+              {edge.label.text}
+            </text>
+          ) : null}
+        </g>
+      ))}
+
+      {payload.nodes.map((n) => (
+        <g key={n.id} data-diagram-node={n.id} data-role={n.role}>
+          <rect
+            x={n.x}
+            y={n.y}
+            width={n.width}
+            height={n.height}
+            rx={n.radius}
+            fill={n.fill}
+            stroke={n.stroke}
+            strokeWidth={n.strokeWidth}
+            strokeDasharray={n.dash}
+          />
+          <text
+            x={n.x + n.width / 2}
+            y={n.sublabel ? n.y + n.height / 2 - 2 : n.y + n.height / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={n.labelSize}
+            fontWeight={600}
+            fill={n.labelColor}
+          >
+            {n.label}
+          </text>
+          {n.sublabel ? (
+            <text
+              x={n.x + n.width / 2}
+              y={n.y + n.height / 2 + n.sublabelSize + 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={n.sublabelSize}
+              fill={n.labelColor}
+              opacity={0.65}
+            >
+              {n.sublabel}
+            </text>
+          ) : null}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ----------------------------------------------------------------------- icon
+
+function IconContent({
+  payload,
+  width,
+  height,
+}: {
+  payload: IconPayload;
+  width: number;
+  height: number;
+}): ReactNode {
+  if (payload.missing) {
+    // Named, not blank. A deck that asks for an icon this build does not carry
+    // should still say which one it wanted (doc 02 §0.8).
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "grid",
+          placeItems: "center",
+          border: "1px dashed rgba(127,127,127,0.45)",
+          borderRadius: 8,
+          font: "500 11px ui-sans-serif, system-ui, sans-serif",
+          color: "rgba(127,127,127,0.9)",
+          textAlign: "center",
+          padding: 4,
+          overflow: "hidden",
+        }}
+        title={payload.missing}
+      >
+        {payload.name}
+      </div>
+    );
+  }
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${payload.viewBox} ${payload.viewBox}`}
+      style={{ position: "absolute", inset: 0 }}
+      fill="none"
+      stroke={payload.color}
+      strokeWidth={payload.strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={payload.name}
+    >
+      {payload.paths.map((d, i) => (
+        <path key={i} d={d} />
+      ))}
+      {payload.circles.map(([cx, cy, r], i) => (
+        <circle key={i} cx={cx} cy={cy} r={r} />
+      ))}
+    </svg>
+  );
 }
 
 /**

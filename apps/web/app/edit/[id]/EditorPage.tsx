@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
+import { buildDocumentScene } from "@deckastra/renderer";
+
 import { EditorShell } from "../../../components/EditorShell";
+import { PresentMode } from "../../../components/PresentMode";
 import { getSession } from "../../../lib/session";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -79,6 +82,21 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
           </a>
         </div>
       </Centered>
+    );
+  }
+
+  // The presenter window is this same route with `presenter=1`: it loads the
+  // deck itself rather than being handed one, so it survives a reload and does
+  // not depend on the audience window staying open.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("presenter") === "1") {
+    return (
+      <PresentMode
+        scene={buildDocumentScene(state.document)}
+        onExit={() => window.close()}
+        presenterOnly
+        channelName={params.get("channel") ?? `deckastra-present-${presentationId}`}
+      />
     );
   }
 

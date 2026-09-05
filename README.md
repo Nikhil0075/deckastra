@@ -9,10 +9,12 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 3.** A prompt becomes a real deck you can present in a browser,
-every change to it is versioned, attributable and reversible, and there is now a
-direct-manipulation editor: select, move, resize, rotate, snap, group, reorder,
-undo and autosave, all keyboard-driven as well as mouse-driven. In-place text
+**Status: Phase 4.** A prompt becomes a real deck you can present in a browser,
+every change to it is versioned, attributable and reversible, and there is a
+direct-manipulation editor. Every MVP element type now draws for real — charts,
+diagrams, tables, highlighted code and icons are laid out deterministically from
+the document rather than standing in as placeholders — and present mode has a
+presenter view with notes, a timer and a second-screen window. In-place text
 editing is not built yet.
 
 ---
@@ -24,6 +26,8 @@ packages/presentation-schema/   the canonical .mydeck document model
 packages/presentation-core/     pure document operations — every one emits a patch
 packages/transactions/          patch apply, inverses, undo/redo, transaction lifecycle
 packages/renderer/              document -> IntermediateScene -> DOM/SVG
+                                charts, diagrams, icons, fonts, highlighting,
+                                the semantic validation pass, render digests
 packages/layout-engine/         text measurement, container layout, constraints
 packages/editor/                selection, hit testing, transforms, snapping, clipboard, keys
 apps/api/                       FastAPI: generation, persistence, versioned history
@@ -94,6 +98,31 @@ overlap the moment the real text is longer than the sample, and a model that
 proposes `layout: "metrics"` produces slides a composer can always place
 correctly. It also moves the interesting failure from the document — large, and
 expensive to re-ask for — to the plan, which is small and cheap.
+
+---
+
+## What "deterministic" costs, concretely
+
+The promise that the same document renders identically in the editor, a PNG and a
+PDF is only worth anything if it survives contact with the ordinary things that
+break it. Three of them cost real code here:
+
+- **Number formatting is hand-written.** `Intl.NumberFormat` reads the ICU data
+  compiled into the runtime, so an axis label reads "24.1K" in the editor and
+  "24,1 K" in the exported PDF. Localised formatting is a real requirement and
+  belongs behind an explicit, versioned locale table, not behind whatever ICU the
+  process happens to carry.
+- **Layout algorithms run a fixed number of iterations.** The force-directed
+  diagram layout takes exactly 200 steps and stops. Running to convergence would
+  make the result depend on a tolerance and on floating-point ordering; a diagram
+  that settles differently each time moves under the user on reload.
+- **Font availability is recorded, not assumed.** Which families resolved and
+  which fell back is part of the scene and part of the render digest, so a visual
+  difference caused by a missing face is attributable rather than mysterious.
+
+Icons are inlined as path data and syntax highlighting is a hand-written scanner
+for the same reason: both must work offline, in the headless export service, with
+no asynchronous grammar or asset load that could resolve differently twice.
 
 ---
 

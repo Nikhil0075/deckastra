@@ -279,12 +279,24 @@ describe("scene building", () => {
   });
 
   it("renders unimplemented element types as placeholders instead of dropping them", () => {
-    const nodes = flattenScene(scene.slides[2]!);
-    const diagram = nodes.find((n) => n.type === "diagram")!;
-    expect(diagram.renderPayload.kind).toBe("placeholder");
+    // Video is in the schema and deferred past MVP (doc 02 §37.1), so it still
+    // takes this path. It is the placeholder's remaining live case now that
+    // charts, diagrams and icons draw for real.
+    const doc = JSON.parse(JSON.stringify(technical)) as PresentationDocument;
+    doc.slides[0]!.elements.push({
+      id: "el_01JB8Z9K2QW4RN7F3XG5HTMD88",
+      type: "video",
+      name: "Product tour",
+      transform: { x: 10, y: 10, width: 100, height: 100 },
+      assetId: "ast_01JB8Z9K2QW4RN7F3XG5HTMD87",
+    } as never);
+
+    const nodes = flattenScene(buildDocumentScene(doc).slides[0]!);
+    const video = nodes.find((n) => n.type === "video")!;
+    expect(video.renderPayload.kind).toBe("placeholder");
     // Not marked unsupported: the schema knows this type, the renderer just has
     // not implemented it yet. The distinction matters for the message shown.
-    expect(diagram.flags.unsupported).toBe(false);
+    expect(video.flags.unsupported).toBe(false);
   });
 
   it("marks an element type it does not know as unsupported, and keeps it", () => {

@@ -45,18 +45,25 @@ describe("slide rendering", () => {
     expect(html).toContain("Rasterized");
   });
 
-  it("renders code with line numbers", () => {
+  it("renders code with line numbers, highlighted", () => {
     const html = render(4);
     expect(html).toContain("patch.json");
-    expect(html).toContain("&quot;op&quot;: &quot;replace&quot;");
+    // Syntax highlighting splits the source across spans, so the raw substring
+    // is gone by design — the text is still all there, in order.
+    const text = html.replace(/<[^>]+>/g, "");
+    expect(text).toContain("&quot;op&quot;: &quot;replace&quot;");
+    expect(html).toMatch(/<span style="color:[^"]*">&quot;op&quot;<\/span>/);
   });
 
-  it("shows a labelled placeholder for a type it cannot draw yet", () => {
-    // Honest about the gap rather than silently blank: the user can see that a
-    // diagram belongs there and that this build does not draw it.
+  it("draws a diagram as real shapes, not a placeholder", () => {
     const html = render(2);
-    expect(html).toContain("Agent pipeline");
-    expect(html).toContain("not implemented yet");
+    expect(html).toContain("Orchestrator");
+    expect(html).toContain("Transaction service");
+    // Nodes are laid out, connected and grouped — a diagram, not a box of text.
+    expect(html).toContain("data-diagram-node");
+    expect(html).toContain("<marker");
+    expect(html).toContain("Model-driven");
+    expect(html).not.toContain("not implemented yet");
   });
 
   it("gives each element a stable id and layer in the DOM", () => {

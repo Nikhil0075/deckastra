@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 3 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 4 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -38,6 +38,13 @@ Single test file or single test, from `packages/presentation-schema/` or `packag
 npx vitest run tests/validation.test.ts
 npx vitest run -t "rejects a duplicate id"
 npx vitest                                            # watch mode
+```
+
+Renderer-specific, from `packages/renderer/`:
+
+```bash
+UPDATE_BASELINES=1 npx vitest run tests/baseline.test.ts   # after a deliberate visual change
+PREVIEW_OUT=/tmp/p.html npx vitest run tests/preview.test.tsx   # contact sheet of every fixture slide
 ```
 
 Cross-language contract check (needs `pip install -r requirements-dev.txt`):
@@ -199,9 +206,71 @@ Three things there that look incidental and are not:
   a group draws no content of its own — its children are separate scene nodes.
 
 Text measurement is estimated in the scene builder and flagged
-`metricsEstimated: true`. `packages/layout-engine` now provides a real
-`DomMeasurer`, but the scene builder does not consume it yet — wiring it in is
-still open, and is the same slot the estimate occupies today.
+`metricsEstimated: true`. `packages/layout-engine` provides a real `DomMeasurer`,
+but the scene builder does not consume it yet — wiring it in is still open, and
+is the same slot the estimate occupies today.
+
+The estimator wraps by **word**, with a per-character width table calibrated so
+its weighted mean is 1.0 for ordinary prose. Both parts are load-bearing:
+dividing a character count by an average advance assumes a line can break
+anywhere and under-counts lines for real text, and a table whose mean drifts to
+0.88 makes every estimate 12% narrow. Either error turns a three-line headline
+into a predicted two-line one, and the headline then overflows onto the subtitle.
+If you touch the table, re-check it against a canvas measurement.
+
+### Charts and diagrams are geometry in the scene, not in React
+
+`buildChartPayload` and `buildDiagramPayload` emit fully-resolved numbers — plot
+rect, tick positions, bar rects, arc paths, node placements, edge paths. The
+React layer draws them and computes nothing. That is what lets the PDF and PPTX
+adapters consume the same structure in Phase 8 rather than each re-deriving a
+chart and drifting from what the user approved on screen.
+
+Everything they do is deterministic and bounded: fixed iteration counts, document
+order as the tie-break, and a seeded generator for the force layout. A force
+layout without a `seed` degrades to layered *and says so* (doc 02 §18.5) rather
+than producing a diagram that moves on the next open.
+
+Degradations are surfaced, never silent: an unknown chart type draws as a column
+chart with a warning, a top-N limit folds the tail into "Other" and says how
+many, a dangling edge is dropped and named, an uncurated icon draws its own name.
+
+### Determinism has three named enemies here
+
+- **`Intl`.** Number formatting is hand-written (`format.ts`) because Intl output
+  depends on the ICU compiled into the runtime. Same document, three renderers,
+  three answers. `NumberFormat.locale` is recorded and deliberately not honoured.
+- **Float noise.** All chart and diagram geometry goes through `round()` (3
+  decimals) before it reaches the payload. Two runs differing by 1e-15 produce
+  different markup and a failed baseline.
+- **Font availability.** Recorded on the scene as `fonts` / `fontDigest` and
+  included in the render digest. Without that, a snapshot failure caused by a
+  missing face is indistinguishable from a code regression.
+
+### The visual-regression gate
+
+`packages/renderer/baselines/*.digest.txt` are committed scene digests for the
+three seed decks, compared by `tests/baseline.test.ts` on every run. The digest
+is readable on purpose — a hash says something changed, these lines say which
+node moved and how.
+
+It digests the **scene**, not pixels, so it cannot see a bug that lives purely in
+the React emit step or in the browser's painting of it. Those need the headless
+render service (Phase 8). Regenerate only after reading the diff: a baseline
+updated reflexively is a gate that has been turned off while still looking on.
+
+### The semantic pass is where brand rules become real
+
+`validateDocument` (schema) checks what a document says. `validateScene`
+(renderer) checks what it renders as — contrast pairs, overflow at the applied
+font size, font-size counts, allowed families, text density, required roles.
+Rules marked `REQUIRES_RENDER_CONTEXT` in the catalog run there and only there.
+
+Rule codes live in the schema's `RULES` catalog even when the implementation is
+in the renderer, because the editor, the Critic and export reports all reference
+them; a code defined next to its implementation cannot be referenced by anything
+else. A brand rule with no `check` is prompt context and is deliberately not
+evaluated.
 
 ### The editor works in world space; the document does not
 
@@ -222,6 +291,10 @@ Two more that are easy to undo:
 
 - **Rounding happens once, in `commitTransform()` on pointer-up.** Rounding each
   pointermove accumulates error across a drag.
+- **Frame time is sampled per gesture** and shown in the shell. It measures the
+  interval *between* frames, not the duration of the handler: a handler that
+  takes 3ms but forces a synchronous layout costs 40ms of frame time, and only
+  the interval sees it.
 - **The renderer's element boxes are `pointer-events: none` except in
   `mode="editor"`.** The editor resolves selection from `data-element-id` on
   exactly those boxes, so making them inert everywhere leaves nothing on the
@@ -264,6 +337,8 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 - Authorization resolves `User → Workspace → Project → Presentation` through `resolve_presentation_access`, by **membership and role**, never by `owner_id`. A missing resource and a forbidden one both return 404: a 403 on something you cannot see confirms it exists.
 - Risk tier is computed server-side from the operations. Never accept one from a caller.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
+- Performance budgets are data (`perf.ts` `BUDGETS`), transcribed from doc 04
+  §31.1. Changing a number there means changing the spec.
 - `.gitattributes` forces LF. Both drift gates compare generated files against their committed form, and the generators emit LF; a CRLF checkout fails them on a clean tree.
 
 ## Tooling deviations from doc 05

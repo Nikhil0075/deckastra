@@ -138,6 +138,18 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   // the document. Fold these back into the spec at the next revision.
   W240: { severity: "warning", summary: "Unknown element type; preserved and rendered as a placeholder" },
   W241: { severity: "warning", summary: "Unknown enum value; preserved and degraded by the renderer" },
+
+  // Brand rules that carry a `check` (doc 02 §22.7). Declared here rather than in
+  // the renderer so that the editor, the Critic and an export report all name the
+  // same rule; a check whose code lives with its implementation cannot be
+  // referenced by anything else. Evaluated in the renderer's semantic pass,
+  // because every one of them needs resolved geometry or resolved colour.
+  W211: { severity: "warning", summary: "Slide uses more font sizes than the brand allows" },
+  W212: { severity: "warning", summary: "Font family is not in the brand's allowed set" },
+  W213: { severity: "warning", summary: "Slide exceeds the brand's text density limit" },
+  W214: { severity: "warning", summary: "Slide is missing an element the brand requires" },
+  W215: { severity: "warning", summary: "Logo is smaller than the brand's minimum" },
+  W250: { severity: "warning", summary: "Font unavailable; rendered with a metric-matched substitute" },
 };
 
 /**
@@ -152,7 +164,20 @@ export const MECHANICALLY_FIXABLE = ["W103", "W104", "W203", "W220", "E204", "W1
  * semantic pass, not here. Declared so the catalog stays honest about what a
  * document-only validator can and cannot see.
  */
-export const REQUIRES_RENDER_CONTEXT = ["W102", "W103", "W104", "W110", "W111", "W210"] as const;
+export const REQUIRES_RENDER_CONTEXT = [
+  "W102",
+  "W103",
+  "W104",
+  "W110",
+  "W111",
+  "W210",
+  "W211",
+  "W212",
+  "W213",
+  "W214",
+  "W215",
+  "W250",
+] as const;
 
 class IssueCollector {
   readonly errors: ValidationIssue[] = [];

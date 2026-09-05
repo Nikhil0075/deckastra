@@ -12,13 +12,30 @@ import {
 } from "@deckastra/presentation-schema";
 
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
-import { resolveTheme, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
+import { paintToCss, resolveTheme, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
 import {
   defaultTextMeasurer,
   type TextMeasurer,
   type TextMetrics,
 } from "./text-metrics";
+import { buildChartPayload, type ChartPayload } from "./charts";
+import { buildDiagramPayload, type DiagramPayload } from "./diagram";
+
+export type { ChartPayload } from "./charts";
+export type { DiagramPayload } from "./diagram";
+import { ICON_VIEWBOX, findIcon } from "./icons";
+import { codeColors, highlight, type CodeColors, type CodeToken } from "./highlight";
+import { formatNumber, toNumber } from "./format";
+import { Stopwatch, type PhaseTiming } from "./perf";
+import {
+  describeFontUsage,
+  detectFontAvailability,
+  fontDigest,
+  resolveFontStack,
+  type FontAvailability,
+  type FontUsage,
+} from "./fonts";
 
 /**
  * Scene building — pipeline stage 9 (doc 04 §6, §7).
@@ -92,10 +109,56 @@ export type RenderPayload =
   | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
   | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
-  | { kind: "code"; code: string; language: string; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
-  | { kind: "table"; columns: { id: string; label?: string; align?: string }[]; rows: { id: string; cells: { text: string; align?: string }[]; emphasis?: string }[]; headerRow: boolean; typography: TypographyStyle }
+  | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
+  | TablePayload
+  | ChartPayload
+  | DiagramPayload
+  | IconPayload
   | { kind: "group"; containerLayout?: unknown }
   | { kind: "placeholder"; label: string; reason: string };
+
+export interface CodeLine {
+  number: number;
+  tokens: CodeToken[];
+}
+
+export interface IconPayload {
+  kind: "icon";
+  name: string;
+  set: string;
+  paths: string[];
+  circles: [number, number, number][];
+  color: string;
+  strokeWidth: number;
+  viewBox: number;
+  /** Set when the icon is not in the curated set; the renderer draws its name. */
+  missing?: string;
+}
+
+export interface TableCellPayload {
+  text: string;
+  align?: string;
+  fill?: string;
+  colSpan?: number;
+  rowSpan?: number;
+}
+
+export interface TablePayload {
+  kind: "table";
+  columns: { id: string; label?: string; align?: string; width?: number }[];
+  rows: { id: string; cells: TableCellPayload[]; emphasis?: string }[];
+  headerRow: boolean;
+  headerColumn: boolean;
+  typography: TypographyStyle;
+  headerTypography: TypographyStyle;
+  padding: Insets;
+  banding: "none" | "rows" | "columns";
+  bandColor?: string;
+  borders: "all" | "horizontal" | "outer" | "none";
+  borderColor: string;
+  headerFill?: string;
+  emphasisFill?: string;
+}
 
 interface Insets {
   top: number;
@@ -136,6 +199,14 @@ export interface SlideScene {
   theme: ResolvedTheme;
   transition?: { type: string; durationMs: number; easing?: string };
   speakerNotes?: string;
+  /**
+   * What each requested font family actually resolved to (doc 04 §18.4).
+   *
+   * Part of the scene, not a side channel, because font availability changes the
+   * pixels. A visual-regression failure that cannot be attributed to a missing
+   * face costs an afternoon; this is what makes the attribution immediate.
+   */
+  fonts: FontUsage[];
 }
 
 export interface DocumentScene {
@@ -144,6 +215,9 @@ export interface DocumentScene {
   viewport: { width: number; height: number };
   theme: ResolvedTheme;
   slides: SlideScene[];
+  fonts: FontUsage[];
+  /** Readable, not hashed: "Inter was missing" is the useful failure message. */
+  fontDigest: string;
 }
 
 /** Which DOM layer an element type belongs to (doc 04 §3.2). An element is
@@ -223,34 +297,6 @@ function a11yRole(type: string, semanticRole?: string): string {
       return "group";
     default:
       return "presentation";
-  }
-}
-
-function paintToCss(theme: ResolvedTheme, paint: unknown): string | undefined {
-  if (!paint || typeof paint !== "object") return undefined;
-  const p = paint as { type: string; color?: unknown; stops?: { offset: number; color: unknown }[]; angle?: number };
-
-  switch (p.type) {
-    case "none":
-      return undefined;
-    case "solid":
-      return resolveValue<string>(theme, p.color);
-    case "linearGradient": {
-      const stops = (p.stops ?? [])
-        .map((s) => `${resolveValue<string>(theme, s.color) ?? "transparent"} ${(s.offset * 100).toFixed(1)}%`)
-        .join(", ");
-      return `linear-gradient(${p.angle ?? 180}deg, ${stops})`;
-    }
-    case "radialGradient": {
-      const stops = (p.stops ?? [])
-        .map((s) => `${resolveValue<string>(theme, s.color) ?? "transparent"} ${(s.offset * 100).toFixed(1)}%`)
-        .join(", ");
-      return `radial-gradient(circle, ${stops})`;
-    }
-    default:
-      // Unknown paint variants are preserved by the schema and skipped here rather
-      // than painted wrong.
-      return undefined;
   }
 }
 
@@ -354,6 +400,10 @@ interface BuildContext {
   assetKeys: Map<string, string>;
   nodes: SceneNode[];
   counter: { value: number };
+  /** Elements on the slide, by id. A chart bound to a table reads it from here. */
+  elementsById: Map<string, PresentationElement>;
+  /** Every family the slide asked for, so the scene can report what resolved. */
+  fontFamilies: Set<string>;
 }
 
 function buildNode(
@@ -556,44 +606,78 @@ function buildPayload(
         fileName?: string;
       };
 
+      const typography = resolveTypography(theme, {
+        fontFamily: "token:typography.code.fontFamily",
+        fontSize: 20,
+        lineHeight: 1.5,
+      });
+
+      const start = el.startLineNumber ?? 1;
+      // Tokenized here, not in the React layer: highlighting is a pure function
+      // of the source and the language, so it belongs on the side of the split
+      // that the PDF and PPTX adapters also read.
+      const lines: CodeLine[] = el.code
+        .split("\n")
+        .map((line, i) => ({ number: start + i, tokens: highlight(line, el.language) }));
+
       return {
         kind: "code",
         code: el.code,
         language: el.language,
+        lines,
+        colors: codeColors(
+          String(resolveValue(theme, "token:colors.foreground", "#111")),
+          String(resolveValue(theme, "token:colors.foregroundSubtle", "#888")),
+          (theme.source.colors.chartSeries ?? []).map((color) =>
+            String(resolveValue(theme, color, "#888")),
+          ),
+        ),
         showLineNumbers: el.showLineNumbers ?? false,
-        startLineNumber: el.startLineNumber ?? 1,
+        startLineNumber: start,
         fileName: el.fileName,
-        typography: resolveTypography(theme, {
-          fontFamily: "token:typography.code.fontFamily",
-          fontSize: 20,
-          lineHeight: 1.5,
-        }),
+        typography,
       };
     }
 
-    case "table": {
+    case "table":
+      return buildTablePayload(element, theme);
+
+    case "chart":
+      return buildChartPayload(element as never, width, height, {
+        theme,
+        tableRows: chartTableRows(element as never, ctx),
+      });
+
+    case "diagram":
+      return buildDiagramPayload(element as never, width, height, theme);
+
+    case "icon": {
       const el = element as unknown as {
-        columns: { id: string; label?: string; align?: string }[];
-        rows: { id: string; cells: { content: unknown; align?: string }[]; emphasis?: string }[];
-        headerRow?: boolean;
+        icon: { set: string; name: string; variant?: string };
+        color?: unknown;
+        strokeWidth?: number;
       };
 
+      const definition = findIcon(el.icon.name);
+      const color = String(
+        resolveValue(theme, el.color ?? "token:colors.foreground", "currentColor"),
+      );
+
       return {
-        kind: "table",
-        columns: el.columns.map((c) => ({ id: c.id, label: c.label, align: c.align })),
-        rows: el.rows.map((r) => ({
-          id: r.id,
-          emphasis: r.emphasis,
-          cells: r.cells.map((cell) => ({
-            text: textContent(cell.content as never),
-            align: cell.align,
-          })),
-        })),
-        headerRow: el.headerRow ?? true,
-        typography: resolveTypography(theme, {
-          fontFamily: "token:typography.bodySmall.fontFamily",
-          fontSize: 20,
-        }),
+        kind: "icon",
+        name: el.icon.name,
+        set: el.icon.set,
+        paths: definition?.paths ?? [],
+        circles: definition?.circles ?? [],
+        color,
+        // Scaled with the box so a large icon keeps its weight rather than
+        // turning into a hairline drawing.
+        strokeWidth:
+          el.strokeWidth ?? Math.max(1, (ICON_VIEWBOX / Math.max(1, Math.min(width, height))) * 2.2),
+        viewBox: ICON_VIEWBOX,
+        missing: definition
+          ? undefined
+          : `${el.icon.set}/${el.icon.name} is not in the curated icon set`,
       };
     }
 
@@ -615,6 +699,153 @@ function buildPayload(
           : `"${element.type}" rendering is not implemented yet`,
       };
   }
+}
+
+/**
+ * Rows for a chart whose data reference points at a TableElement on the slide.
+ *
+ * Keeping table and chart in sync is the entire reason that reference exists
+ * (doc 02 §17.2); resolving it here means the chart re-derives whenever the
+ * table is edited, with no synchronisation step to forget.
+ */
+function chartTableRows(
+  element: { data?: { type?: string; elementId?: string } },
+  ctx: BuildContext,
+): Record<string, unknown>[] | undefined {
+  if (element.data?.type !== "table" || !element.data.elementId) return undefined;
+
+  const table = ctx.elementsById.get(element.data.elementId) as
+    | {
+        type: string;
+        columns: { id: string; label?: string }[];
+        rows: { cells: { content: unknown }[] }[];
+      }
+    | undefined;
+
+  if (!table || table.type !== "table") return undefined;
+
+  return table.rows.map((row) => {
+    const record: Record<string, unknown> = {};
+    table.columns.forEach((column, index) => {
+      const raw = textContent(row.cells[index]?.content as never);
+      // Key by both id and label: an encoding may name either, and a chart that
+      // silently plots nothing because it named the label is a bad afternoon.
+      const value = toNumber(raw) ?? raw;
+      record[column.id] = value;
+      if (column.label) record[column.label] = value;
+    });
+    return record;
+  });
+}
+
+function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): TablePayload {
+  const el = element as unknown as {
+    columns: { id: string; label?: string; align?: string; width?: number; format?: unknown }[];
+    rows: {
+      id: string;
+      cells: { content: unknown; align?: string; colSpan?: number; rowSpan?: number; style?: CommonStyle }[];
+      emphasis?: string;
+    }[];
+    headerRow?: boolean;
+    headerColumn?: boolean;
+    columnWidths?: number[];
+    tableStyle?: {
+      banding?: string;
+      borders?: string;
+      headerFill?: unknown;
+      cellPadding?: Insets;
+      compact?: boolean;
+    };
+  };
+
+  const style = el.tableStyle ?? {};
+  const compact = style.compact === true;
+
+  const typography = resolveTypography(theme, {
+    fontFamily: "token:typography.bodySmall.fontFamily",
+    fontSize: compact ? 18 : 20,
+    color: "token:colors.foreground",
+  });
+
+  return {
+    kind: "table",
+    columns: el.columns.map((column, index) => ({
+      id: column.id,
+      label: column.label,
+      align: column.align,
+      width: el.columnWidths?.[index] ?? column.width,
+    })),
+    rows: el.rows.map((row) => ({
+      id: row.id,
+      emphasis: row.emphasis,
+      cells: row.cells.map((cell, index) => {
+        const raw = textContent(cell.content as never);
+        const format = el.columns[index]?.format;
+        const numeric = format ? toNumber(raw) : undefined;
+
+        return {
+          // A column that declares a format owns its cells' presentation, so a
+          // table and a chart reading the same column agree on what "24.1K" is.
+          text: numeric === undefined ? raw : formatNumber(numeric, format as never),
+          align: cell.align,
+          fill: cell.style?.fill ? paintToCss(theme, cell.style.fill) : undefined,
+          colSpan: cell.colSpan,
+          rowSpan: cell.rowSpan,
+        };
+      }),
+    })),
+    headerRow: el.headerRow ?? true,
+    headerColumn: el.headerColumn ?? false,
+    typography,
+    headerTypography: resolveTypography(theme, {
+      fontFamily: "token:typography.bodySmall.fontFamily",
+      fontSize: compact ? 18 : 20,
+      fontWeight: 600,
+      color: "token:colors.foregroundMuted",
+    }),
+    padding: style.cellPadding ?? {
+      top: compact ? 6 : 10,
+      right: compact ? 10 : 16,
+      bottom: compact ? 6 : 10,
+      left: compact ? 10 : 16,
+    },
+    banding: (style.banding as TablePayload["banding"]) ?? "none",
+    bandColor: String(resolveValue(theme, "token:colors.surfaceAlt", "rgba(127,127,127,0.06)")),
+    borders: (style.borders as TablePayload["borders"]) ?? "horizontal",
+    borderColor: String(resolveValue(theme, "token:colors.border", "rgba(127,127,127,0.3)")),
+    headerFill: style.headerFill ? paintToCss(theme, style.headerFill) : undefined,
+    emphasisFill: String(resolveValue(theme, "token:colors.surfaceAlt", "rgba(127,127,127,0.08)")),
+  };
+}
+
+/**
+ * Record the families a slide asked for, then rewrite each one as a full stack.
+ *
+ * A single pass over the finished payloads rather than a hook in every place a
+ * typography style is built: there are seven such places today and the eighth
+ * would forget. Recording the *requested* family before expansion is what makes
+ * the availability report readable — "Inter" rather than the whole stack.
+ */
+function expandFontStacks(ctx: BuildContext): void {
+  const visit = (value: unknown, depth: number): void => {
+    if (depth > 8 || value === null || typeof value !== "object") return;
+
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item, depth + 1);
+      return;
+    }
+
+    const record = value as Record<string, unknown>;
+    const family = record.fontFamily;
+    if (typeof family === "string" && family !== "") {
+      ctx.fontFamilies.add(family.split(",")[0]!.trim());
+      record.fontFamily = resolveFontStack(family);
+    }
+
+    for (const child of Object.values(record)) visit(child, depth + 1);
+  };
+
+  for (const node of ctx.nodes) visit(node.renderPayload, 0);
 }
 
 function buildBackground(
@@ -647,6 +878,28 @@ function comparePaths(a: number[], b: number[]): number {
 
 export interface BuildSceneOptions {
   measurer?: TextMeasurer;
+  /**
+   * Which font families the host has. Omit and the renderer probes the document
+   * it is running in; in Node there is nothing to probe, and the result says
+   * "unknown" rather than claiming every family is missing.
+   */
+  fonts?: FontAvailability;
+  /**
+   * The theme this document's theme extends (doc 02 §22.8).
+   *
+   * `extends` is an id, and the renderer has no theme registry — resolving it is
+   * the caller's job, because only the caller knows the workspace. Passing the
+   * parent here is what makes the inheritance step of the resolution order real
+   * instead of documented.
+   */
+  parentTheme?: Parameters<typeof resolveTheme>[0];
+  /**
+   * Collects phase timings for the scene build (doc 04 §31.5).
+   *
+   * Passed in rather than always collected so the caller owns the report, and
+   * so a build inside a tight loop is not forced to allocate one.
+   */
+  timings?: PhaseTiming[];
 }
 
 export function buildSlideScene(
@@ -656,6 +909,15 @@ export function buildSlideScene(
   theme: ResolvedTheme,
   options: BuildSceneOptions = {},
 ): SlideScene {
+  const elementsById = new Map<string, PresentationElement>();
+  const indexElements = (elements: readonly PresentationElement[]): void => {
+    for (const element of elements) {
+      elementsById.set(element.id, element);
+      if (isGroup(element)) indexElements(element.children);
+    }
+  };
+  indexElements(slide.elements);
+
   const ctx: BuildContext = {
     theme,
     measurer: options.measurer ?? defaultTextMeasurer,
@@ -663,9 +925,14 @@ export function buildSlideScene(
     assetKeys: new Map(document.assets.map((a) => [a.id, a.storageKey])),
     nodes: [],
     counter: { value: 0 },
+    elementsById,
+    fontFamilies: new Set<string>(),
   };
 
   const roots = slide.elements.map((element, i) => buildNode(element, IDENTITY, [], i, ctx));
+
+  const availability = options.fonts ?? detectFontAvailability();
+  expandFontStacks(ctx);
 
   const paintOrder = [...ctx.nodes]
     .sort((a, b) => comparePaths(a.zPath, b.zPath))
@@ -696,6 +963,7 @@ export function buildSlideScene(
         : slide.speakerNotes
           ? textContent(slide.speakerNotes)
           : undefined,
+    fonts: describeFontUsage([...ctx.fontFamilies], availability),
   };
 }
 
@@ -703,16 +971,32 @@ export function buildDocumentScene(
   document: PresentationDocument,
   options: BuildSceneOptions = {},
 ): DocumentScene {
-  const theme = resolveTheme(document.theme);
+  const watch = new Stopwatch();
+  const theme = resolveTheme(document.theme, options.parentTheme);
+  watch.mark("theme");
+
+  const slides = document.slides.map((slide, i) =>
+    buildSlideScene(document, slide, i, theme, options),
+  );
+  watch.mark("slides");
+
+  // One report for the document, deduplicated: a font is missing for the whole
+  // render or not at all, and repeating it per slide buries the signal.
+  const seen = new Map<string, FontUsage>();
+  for (const slide of slides) for (const usage of slide.fonts) seen.set(usage.family, usage);
+  const fonts = [...seen.values()].sort((a, b) => a.family.localeCompare(b.family));
+  watch.mark("fonts");
+
+  if (options.timings) options.timings.push(...watch.report().phases);
 
   return {
     documentId: document.id,
     title: document.metadata.title,
     viewport: { width: document.viewport.width, height: document.viewport.height },
     theme,
-    slides: document.slides.map((slide, i) =>
-      buildSlideScene(document, slide, i, theme, options),
-    ),
+    slides,
+    fonts,
+    fontDigest: fontDigest(fonts),
   };
 }
 
