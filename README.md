@@ -9,9 +9,11 @@ document of real objects — text with semantic roles, diagrams with nodes and
 edges, charts with data and intent — so an AI edit is a reviewable patch against
 one property rather than a regeneration of the whole slide.
 
-**Status: Phase 2.** A prompt becomes a real deck you can present in a browser,
-and every change to it is versioned, attributable and reversible. There is no
-editing UI yet — Phase 3 — but the machinery an editor needs is here and tested.
+**Status: Phase 3.** A prompt becomes a real deck you can present in a browser,
+every change to it is versioned, attributable and reversible, and there is now a
+direct-manipulation editor: select, move, resize, rotate, snap, group, reorder,
+undo and autosave, all keyboard-driven as well as mouse-driven. In-place text
+editing is not built yet.
 
 ---
 
@@ -22,8 +24,10 @@ packages/presentation-schema/   the canonical .mydeck document model
 packages/presentation-core/     pure document operations — every one emits a patch
 packages/transactions/          patch apply, inverses, undo/redo, transaction lifecycle
 packages/renderer/              document -> IntermediateScene -> DOM/SVG
+packages/layout-engine/         text measurement, container layout, constraints
+packages/editor/                selection, hit testing, transforms, snapping, clipboard, keys
 apps/api/                       FastAPI: generation, persistence, versioned history
-apps/web/                       prompt box, deck preview, present mode
+apps/web/                       prompt box, deck preview, editor, present mode
 docs/                           the six specification documents
 infrastructure/database/        Alembic migrations
 infrastructure/docker/          Postgres + pgvector, Redis, MinIO
@@ -113,6 +117,11 @@ provenance and autosave are wired up once.
 Storage is snapshot-plus-operations (doc 05 §22): most versions carry only their
 patch, a full snapshot is written periodically and around agent runs, and a read
 replays forward through the same applier that produced them.
+
+`packages/editor` sits in front of that and owns no document state at all. It
+computes transforms; the canvas turns them into patches, coalescing one gesture
+into one undo entry. Selection, hover, isolation and zoom stay out of the
+document — a test asserts none of them ever appear in a saved file.
 
 ---
 

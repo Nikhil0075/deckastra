@@ -445,7 +445,11 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
  * nodes. Without this a card built as a styled group renders as an invisible
  * container and its children float on the slide background.
  */
-export function positionStyle(node: SceneNode, zIndex: number): CSSProperties {
+export function positionStyle(
+  node: SceneNode,
+  zIndex: number,
+  interactive = false,
+): CSSProperties {
   const { width, height } = node.localBounds;
   const { fill, stroke, cornerRadius } = node.resolvedStyle;
   const isContainer = node.type === "group";
@@ -472,7 +476,10 @@ export function positionStyle(node: SceneNode, zIndex: number): CSSProperties {
     // A group is a stacking context, so a child can never paint outside its
     // group's z-band (doc 04 §8.3).
     isolation: isContainer ? "isolate" : undefined,
-    // Nothing in the render layer is interactive; present mode owns pointer input.
-    pointerEvents: "none",
+    // The render layer is inert unless the editor asks for hits: present and
+    // export must never let a click land on a rendered element, but the editor
+    // resolves selection from `data-element-id` on exactly these boxes, so
+    // making them inert there means nothing on the canvas is ever selectable.
+    pointerEvents: interactive ? "auto" : "none",
   };
 }

@@ -6,6 +6,7 @@ import { ScaledSlide } from "@deckastra/renderer/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { PresentMode } from "../components/PresentMode";
+import { getSession } from "../lib/session";
 
 /**
  * Phase 1 shell: prompt in, deck out, present.
@@ -47,6 +48,7 @@ export default function Home() {
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [presenting, setPresenting] = useState(false);
   const [generationMode, setGenerationMode] = useState<"model" | "stub" | null>(null);
+  const [presentationId, setPresentationId] = useState<string | null>(null);
 
   // Ask the API up front whether it has a key, so the user learns their deck will
   // be stub-composed *before* they wait for it rather than after.
@@ -65,9 +67,14 @@ export default function Home() {
   async function generate() {
     setStatus({ phase: "generating" });
     try {
+      const { token } = await getSession();
+
       const response = await fetch(`${API}/v1/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           instruction,
           audience,
@@ -86,6 +93,7 @@ export default function Home() {
       }
 
       const body = await response.json();
+      setPresentationId(body.presentation_id);
       setStatus({ phase: "ready", document: body.document, diagnostics: body.diagnostics });
     } catch (error) {
       setStatus({
@@ -210,7 +218,12 @@ export default function Home() {
       ) : null}
 
       {status.phase === "ready" && scene ? (
-        <Deck scene={scene} diagnostics={status.diagnostics} onPresent={() => setPresenting(true)} />
+        <Deck
+          scene={scene}
+          diagnostics={status.diagnostics}
+          onPresent={() => setPresenting(true)}
+          onEdit={presentationId ? () => { window.location.href = `/edit/${presentationId}`; } : undefined}
+        />
       ) : null}
     </main>
   );
@@ -220,10 +233,12 @@ function Deck({
   scene,
   diagnostics,
   onPresent,
+  onEdit,
 }: {
   scene: DocumentScene;
   diagnostics: Diagnostics;
   onPresent: () => void;
+  onEdit?: () => void;
 }) {
   const [selected, setSelected] = useState(0);
   const current = scene.slides[selected];
@@ -246,9 +261,16 @@ function Deck({
             {scene.slides.length} slides · {scene.viewport.width}×{scene.viewport.height}
           </div>
         </div>
-        <button onClick={onPresent} style={primaryButtonStyle}>
-          Present
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          {onEdit ? (
+            <button onClick={onEdit} style={secondaryButtonStyle}>
+              Edit
+            </button>
+          ) : null}
+          <button onClick={onPresent} style={primaryButtonStyle}>
+            Present
+          </button>
+        </div>
       </div>
 
       {current ? (
@@ -354,6 +376,16 @@ const primaryButtonStyle: React.CSSProperties = {
   border: "none",
   borderRadius: 10,
   padding: "13px 24px",
+  fontSize: 15,
+  fontWeight: 600,
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  background: "var(--surface-alt)",
+  color: "var(--fg)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  padding: "13px 22px",
   fontSize: 15,
   fontWeight: 600,
 };

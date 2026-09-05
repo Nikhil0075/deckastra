@@ -104,8 +104,24 @@ describe("export safety", () => {
   });
 
   it("renders identical content markup in editor and export mode", () => {
-    const strip = (html: string) => html.replace(/<div data-deckastra-chrome[\s\S]*?<\/div>/g, "");
+    // Pointer-events is the one intentional difference (the editor resolves
+    // selection by hit-testing these boxes), so it is normalised away here
+    // rather than weakening the comparison.
+    const strip = (html: string) =>
+      html
+        .replace(/<div data-deckastra-chrome[\s\S]*?<\/div>/g, "")
+        .replace(/pointer-events:(auto|none)/g, "pointer-events:x");
     expect(strip(render(0, { mode: "export" }))).toBe(strip(render(0, { mode: "editor" })));
+  });
+
+  it("makes elements hit-testable only in editor mode", () => {
+    // Without this the editor canvas has nothing to click: selection is resolved
+    // from `data-element-id` on these boxes, and an inert box never receives the
+    // pointer event. Present and export stay inert so a click can never land on
+    // a rendered element there.
+    expect(render(0, { mode: "editor" })).toContain("pointer-events:auto");
+    expect(render(0, { mode: "present" })).not.toContain("pointer-events:auto");
+    expect(render(0, { mode: "export" })).not.toContain("pointer-events:auto");
   });
 });
 

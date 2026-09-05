@@ -104,7 +104,7 @@ export function SlideView({
             data-element-id={node.id}
             data-layer={node.layer}
             data-role={node.semanticRole}
-            style={positionStyle(node, paintIndex.get(node.id) ?? 0)}
+            style={positionStyle(node, paintIndex.get(node.id) ?? 0, mode === "editor")}
             aria-label={node.a11y.label}
             role={node.a11y.role === "presentation" ? "presentation" : undefined}
           >

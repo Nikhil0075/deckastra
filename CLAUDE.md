@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 2 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 3 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `apps/api`, `apps/web`. `agents/`, `integrations/` and the other `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -78,7 +78,10 @@ vertical slice runnable without an API key, so the composer, renderer and presen
 mode work on a fresh clone and in CI without spending money. Keep it working, and
 keep its decks visibly labelled as stub-composed.
 
-**Container layout is not resolved yet** (pipeline stage 6, Phase 3). Until it is,
+**Container layout is not resolved in the scene build yet** (pipeline stage 6).
+`packages/layout-engine` implements it — `resolveContainer`, constraint solving
+with cycle detection, measurement and fit — but the renderer does not call it.
+Until it does,
 a child's advisory `x`/`y` is what positions it, so the composer bakes container
 padding into those coordinates — correct now, and still correct once the container
 starts laying out.
@@ -195,9 +198,35 @@ Three things there that look incidental and are not:
 - **Groups paint their own fill, stroke and radius** via `positionStyle`, because
   a group draws no content of its own — its children are separate scene nodes.
 
-Text measurement is estimated in Phase 1 and flagged `metricsEstimated: true`;
-real measurement drops in behind `TextMeasurer` in Phase 3 without the scene
-builder changing.
+Text measurement is estimated in the scene builder and flagged
+`metricsEstimated: true`. `packages/layout-engine` now provides a real
+`DomMeasurer`, but the scene builder does not consume it yet — wiring it in is
+still open, and is the same slot the estimate occupies today.
+
+### The editor works in world space; the document does not
+
+`packages/editor` is pure interaction logic — selection, hit testing, transforms,
+snapping, clipboard, keyboard — with no React and no document mutation. It hands
+back transforms; `apps/web/components/EditorCanvas.tsx` turns them into patches.
+
+The one thing to get right when touching any of it: **an element's `transform`
+is local to its parent group, while every editor surface — hit testing, the
+marquee, the spatial index, the snap lines, the selection overlay — is world
+space.** `buildSelectableNodes` accumulates the parent origin into `bounds` and
+keeps it on the node as `offset`; the canvas adds `offset` on the way out and the
+commit path subtracts it on the way back in. Treating the two spaces as the same
+is invisible for top-level elements and puts every grouped element's selection
+box at the slide origin.
+
+Two more that are easy to undo:
+
+- **Rounding happens once, in `commitTransform()` on pointer-up.** Rounding each
+  pointermove accumulates error across a drag.
+- **The renderer's element boxes are `pointer-events: none` except in
+  `mode="editor"`.** The editor resolves selection from `data-element-id` on
+  exactly those boxes, so making them inert everywhere leaves nothing on the
+  canvas selectable; making them live everywhere lets a click land on an element
+  in present and export.
 
 ### Validation is a product surface
 
