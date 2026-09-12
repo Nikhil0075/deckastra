@@ -185,3 +185,124 @@ def test_the_watcher_reads_the_flag_on_its_own_connection(tmp_path, monkeypatch)
         export_service.request_cancel(requester, requester.get(ExportJob, job_id))
 
     assert watcher() is True
+
+
+def test_a_running_job_is_cancelled_by_a_request_on_another_connection(tmp_path, monkeypatch):
+    """The case the unit tests above could not see, and the live run found.
+
+    `run_job` used to *flush* the "running" update and keep the write transaction
+    open across the whole render. On SQLite that blocks every other writer: the
+    cancel request could not commit its flag until the render had finished, so the
+    watcher polled a value that could not change, the job completed, and the flag
+    was written afterwards against a stale snapshot. The row ended up saying
+    `cancel_requested = 1, status = completed` — which reads like a poll that did
+    not work, when in fact nothing was allowed to answer it.
+
+    This drives the real path: the worker claims a job, renders through a
+    stand-in that sleeps, and a *separate connection* asks for the stop.
+    """
+    import threading
+
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'running.db'}")
+    monkeypatch.setenv("DECKASTRA_EXPORT_DIR", str(tmp_path))
+
+    slow = tmp_path / "slow.py"
+    slow.write_text(
+        textwrap.dedent(
+            """
+            import json, sys, time
+            request = json.loads(sys.stdin.read())
+            time.sleep(6)
+            open(request["output"], "wb").write(b"late bytes")
+            print(json.dumps({"ok": True, "bytes": 10, "filename": "late.pdf",
+                              "contentType": "application/pdf", "report": {}}))
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DECKASTRA_WORKER_CMD", str(slow))
+    monkeypatch.setenv("DECKASTRA_WORKER_NODE", sys.executable)
+
+    from deckastra_api.db import session as db_session
+
+    db_session.reset_engine()
+    db_session.create_all()
+
+    from deckastra_api.db.models import (
+        ExportJob,
+        Presentation,
+        PresentationVersion,
+        Project,
+        User,
+        Workspace,
+    )
+    from deckastra_api.ids import new_id
+
+    with db_session.session_scope() as setup:
+        user = User(id=new_id("usr"), email="running@localhost", name="R")
+        workspace = Workspace(id=new_id("wsp"), name="W", owner_id=user.id)
+        project = Project(id=new_id("prj"), workspace_id=workspace.id, name="P", created_by=user.id)
+        deck = Presentation(
+            id=new_id("doc"), project_id=project.id, title="T", schema_version="1.1"
+        )
+        version = PresentationVersion(
+            id=new_id("ver"),
+            presentation_id=deck.id,
+            created_by=user.id,
+            source="user",
+            snapshot_json={"slides": []},
+        )
+        setup.add_all([user, workspace, project, deck, version])
+        setup.flush()
+        job = ExportJob(
+            id=new_id("exp"),
+            presentation_id=deck.id,
+            version_id=version.id,
+            created_by=user.id,
+            kind="pdf",
+            status="queued",
+            options_json={},
+        )
+        setup.add(job)
+        job_id, document_version = job.id, version.id
+
+    worker_done = threading.Event()
+
+    def work() -> None:
+        try:
+            with db_session.session_scope() as session:
+                export_service.run_job(
+                    session,
+                    session.get(ExportJob, job_id),
+                    {"slides": [], "metadata": {"title": "T"}},
+                    should_cancel=export_service.cancellation_watcher(job_id),
+                )
+        finally:
+            worker_done.set()
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+
+    # Wait until it is really rendering, then ask — from another connection, as
+    # the HTTP request does. This is the write that used to block.
+    for _ in range(40):
+        time.sleep(0.25)
+        with db_session.session_scope() as watcher:
+            if watcher.get(ExportJob, job_id).status == "running":
+                break
+
+    asked_at = time.monotonic()
+    with db_session.session_scope() as requester:
+        export_service.request_cancel(requester, requester.get(ExportJob, job_id))
+    # The request itself must not wait for the render to finish.
+    assert time.monotonic() - asked_at < 3, "the cancel request blocked behind the render"
+
+    worker_done.wait(timeout=30)
+    with db_session.session_scope() as after:
+        finished = after.get(ExportJob, job_id)
+        assert finished.status == "cancelled", f"ended {finished.status}"
+        # And nothing published: a file from a render the user stopped is a file
+        # they did not ask for.
+        assert not finished.artifact_path
+        assert finished.bytes == 0
+    assert document_version

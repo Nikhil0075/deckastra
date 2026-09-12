@@ -1218,10 +1218,19 @@ the process **tree** — `taskkill /T` on Windows, because the renderer starts t
 app's own Chromium and that child outlives its parent otherwise. The half-written
 artifact is deleted rather than published against a job that says "cancelled".
 
-`cancellation_watcher` reads the flag on **its own connection**. The worker holds
-an open transaction while it renders and cannot see a flag another connection set
-after that transaction began, which is exactly how cancellation came to be
-noticed only once the render had finished.
+`cancellation_watcher` reads the flag on **its own connection**, and `run_job`
+**commits** the "running" update rather than flushing it. The second half is the
+one that mattered, and only a live cancellation found it: a flush left a write
+transaction open for the whole render, and on SQLite that blocks every other
+writer — so the cancel request could not commit its flag until the render had
+finished. The poll was not wrong; the database was not allowed to answer it. The
+row it produced said `cancel_requested = 1, status = completed`, which reads like
+a broken poll and was actually a lock.
+
+The unit tests could not have caught it: they call the invocation directly, with
+no database in the picture, and passed throughout. The regression test that does
+catch it drives `run_job` on a worker thread and cancels from another connection
+— and was checked against the old behaviour before being trusted.
 
 ### Quotas refuse before the work and charge after it
 

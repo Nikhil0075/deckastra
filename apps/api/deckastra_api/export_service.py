@@ -146,7 +146,14 @@ def run_job(
     job.started_at = job.started_at or _now()
     if job.attempts == 0:
         job.attempts = 1
-    session.flush()
+    # Committed, not flushed, and this is what makes cancellation possible at
+    # all. A flush leaves a write transaction open for the whole render, and on
+    # SQLite that blocks every other writer: the cancel request could not commit
+    # its flag until the render had finished, so the watcher polled a value that
+    # could not yet have changed and the job completed with `cancel_requested`
+    # written afterwards against a stale snapshot. Nothing in the poll was wrong;
+    # it was asking a database that was not allowed to answer.
+    session.commit()
 
     root = export_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -166,6 +173,16 @@ def run_job(
         return mark_cancelled(session, job)
     except ExportError as error:
         return record_failure(session, job, error)
+
+    if should_cancel is not None and should_cancel():
+        # Asked for while the render was finishing. Publishing anyway would end a
+        # job the user stopped with a file they did not want, and a terminal state
+        # of "completed" that contradicts what they pressed. Found by cancelling a
+        # real export: a one-slide deck renders faster than the poll interval.
+        output.unlink(missing_ok=True)
+        job.bytes = 0
+        job.artifact_path = None
+        return mark_cancelled(session, job)
 
     job.status = "completed"
     job.stage = "done"
@@ -516,7 +533,7 @@ def _invoke_worker(
     try:
         while True:
             try:
-                stdout, stderr = process.communicate(to_send, timeout=1)
+                stdout, stderr = process.communicate(to_send, timeout=CANCEL_POLL_SECONDS)
                 break
             except subprocess.TimeoutExpired:
                 # stdin is written once; `communicate` is resumed with nothing.
@@ -568,6 +585,10 @@ def _invoke_worker(
 #: Doc 04 §41.4's MCP preview size. A slide at 1024 wide is legible to a person
 #: and cheap to hand a model; the deck's own viewport decides the scale.
 PREVIEW_WIDTH = 1024
+
+#: How often a running render is asked whether it has been cancelled. Short
+#: because the answer is a person waiting, and the check is one cheap read.
+CANCEL_POLL_SECONDS = 0.25
 
 #: A preview is something a caller waits on, unlike an export, which is a job.
 PREVIEW_TIMEOUT_SECONDS = 90

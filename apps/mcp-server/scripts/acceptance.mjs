@@ -32,6 +32,19 @@ function check(name, passed, detail = "") {
   console.log(`${passed ? "  ok  " : " FAIL "} ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
+/**
+ * An id the schema accepts: `{prefix}_{26 Crockford base32 characters}`.
+ *
+ * Not a timestamp dressed up as one. Ids are validated, and a malformed one is
+ * refused as an invalid document — which would look like the proposal path being
+ * broken rather than this script being sloppy.
+ */
+function newId(prefix) {
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  const random = crypto.getRandomValues(new Uint8Array(26));
+  return `${prefix}_${[...random].map((byte) => alphabet[byte % 32]).join("")}`;
+}
+
 const payload = (result) => {
   if (result.isError) throw new Error(result.content[0].text);
   return JSON.parse(result.content[0].text);
@@ -86,7 +99,7 @@ async function main() {
             op: "add",
             path: `/slides/id:${slide.id}/elements/-`,
             value: {
-              id: `el_${Date.now().toString(36).padStart(26, "0").slice(0, 26)}`,
+              id: newId("el"),
               type: "text",
               semanticRole: "headline",
               transform: { x: 120, y: 300, width: 1600, height: 200 },
@@ -94,7 +107,7 @@ async function main() {
                 version: 1,
                 blocks: [
                   {
-                    id: `blk_${Date.now().toString(36).padStart(26, "0").slice(0, 26)}`,
+                    id: newId("blk"),
                     type: "paragraph",
                     spans: [{ text: "Written by an agent" }],
                   },
@@ -177,9 +190,16 @@ async function main() {
   );
 
   // --- export, and a cancellation
-  const job = payload(
+  let job = payload(
     await client.callTool({ name: "document_export", arguments: { presentation_id: deck, kind: "pdf" } }),
   );
+  // Cancelled while it is *rendering*, not while it is queued. Cancelling a
+  // queued job only removes it from the queue, which always worked; the case
+  // worth proving is the one where a browser is already open.
+  for (let attempt = 0; attempt < 40 && job.status === "queued"; attempt += 1) {
+    await new Promise((done) => setTimeout(done, 250));
+    job = payload(await client.callTool({ name: "export_status", arguments: { export_id: job.id } }));
+  }
   const cancelled = payload(await client.callTool({ name: "export_cancel", arguments: { export_id: job.id } }));
   check(
     "an export can be cancelled",
