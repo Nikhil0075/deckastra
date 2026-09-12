@@ -46,3 +46,7 @@ release/
 
 # Claude Code's scratch worktrees.
 .claude/worktrees/
+
+# A placeholder some tool leaves behind. This repository uses npm workspaces;
+# a pnpm workspace file here describes a layout nothing reads.
+pnpm-workspace.yaml
