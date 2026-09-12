@@ -961,6 +961,18 @@ process, and a tool that took a path would let a deck someone emailed you choose
 where bytes are written. A test asserts each absence, so none is restored by
 someone wiring up "the missing tool".
 
+**Verified from a freshly built installer, 2026-09-12** (260MB, built from
+current source, installed silently in 32s). Export from the app's own window:
+finished in 8s, no CSP violations, artifact stored in
+`workspace\deckastra-exports` and read back by `pypdf` as 3 pages at 1440×810pt
+with the byte count the export row records. Then the **installed app's own MCP
+server** — `resources/mcp/cli.mjs`, run by `Deckastra.exe` under
+`ELECTRON_RUN_AS_NODE`, with nothing from this repository in the server path —
+drove the acceptance journey 13/13: create, propose, a refused stale change,
+motion in roles, a rendered preview, a pending proposal attributed to
+`mcp:acceptance`, a *running* export cancelled to a terminal cancelled state, and
+an export that completes.
+
 **An installed app ships the server** (`dist/mcp`, `extraResources`). It ran only
 from a checkout through `tsx` and this repository's `node_modules`, so anyone who
 installed Deckastra without cloning it had no agent access at all. It is bundled

@@ -52,9 +52,20 @@ const payload = (result) => {
 const picture = (result) => result.content.find((part) => part.type === "image");
 
 async function main() {
+  // By default this checkout's server, through tsx. `DECKASTRA_MCP_COMMAND` and
+  // `DECKASTRA_MCP_ARGS` point it at another — the *installed* app's bundled
+  // server, say, which is the only way to check that what ships works:
+  //
+  //   DECKASTRA_MCP_COMMAND="%LOCALAPPDATA%/Programs/Deckastra/Deckastra.exe"   //   DECKASTRA_MCP_ARGS='["%LOCALAPPDATA%/Programs/Deckastra/resources/mcp/cli.mjs"]'   //   ELECTRON_RUN_AS_NODE=1 node apps/mcp-server/scripts/acceptance.mjs
+  const command = process.env.DECKASTRA_MCP_COMMAND || process.execPath;
+  const args = process.env.DECKASTRA_MCP_ARGS
+    ? JSON.parse(process.env.DECKASTRA_MCP_ARGS)
+    : [join(root, "node_modules", "tsx", "dist", "cli.mjs"), join(root, "apps", "mcp-server", "src", "cli.ts")];
+  console.log(`server: ${command} ${args.join(" ")}`);
+
   const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [join(root, "node_modules", "tsx", "dist", "cli.mjs"), join(root, "apps", "mcp-server", "src", "cli.ts")],
+    command,
+    args,
     env: { ...process.env, DECKASTRA_MCP_CLIENT: "acceptance" },
     stderr: "pipe",
   });
