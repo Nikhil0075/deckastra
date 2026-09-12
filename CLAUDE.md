@@ -1198,11 +1198,26 @@ because three sites each remembering to start a server is two that will not.
 **Not done, and not claimed:** there is no download or settings surface, the
 runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, and
 **no model has been run.** The benchmark that decides whether a 4B or an 8B can
-hold these contracts on real hardware is the D3 exit gate and has not happened —
-it is blocked on this machine rather than deferred: llama.cpp's binaries and the
-`llama-cpp-python` wheel index both live on GitHub, which does not resolve here,
-and there is no C++ toolchain to build from the PyPI source. Until that is
-unblocked, D3 is the refusal path and the supervision working, and nothing more.
+hold these contracts on real hardware is the D3 exit gate, and it is blocked by
+this network rather than deferred. Both halves are blocked, and by the same
+thing: `github.com` does not resolve here, which rules out llama.cpp's binaries
+and the `llama-cpp-python` wheel index (and there is no C++ toolchain to build
+from the PyPI source); and while `huggingface.co` resolves, the host that serves
+the actual bytes — `us.aws.cdn.hf.co` — does not, consistently, across repeated
+attempts. So the *metadata* for a model is reachable while the model is not.
+
+`scripts/install-model-pack.py` is shaped by that. It downloads when it can and
+installs `--from-file` when it cannot, and in both cases it verifies against the
+size and sha256 HuggingFace publishes — which it reads off the **302**, without
+following it, because those facts are on the redirect and the thing it points at
+is the unreachable host. Following it lost them silently, and a 12-byte file
+installed as a 2.3GB model. The pack ids to use when the network allows are
+`Qwen/Qwen3-4B-GGUF` and `Qwen/Qwen3-8B-GGUF` at Q4_K_M: both Apache-2.0, which
+keeps D6's redistribution gate clean, and the 4B is the one that fits a 4GB card
+whole — the difference between seconds and minutes per call.
+
+Until that is unblocked, D3 is the refusal path, the supervision and the pack
+format working, and nothing more.
 
 ### The editor is a package; the shell decides where it runs
 

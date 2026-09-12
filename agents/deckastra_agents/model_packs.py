@@ -135,13 +135,13 @@ def _load(directory: Path) -> ModelPack | PackProblem:
     )
 
 
-def scan(root: Path | None = None) -> tuple[list[ModelPack], list[PackProblem]]:
+def scan(root: "Path | str | None" = None) -> tuple[list[ModelPack], list[PackProblem]]:
     """Every pack under `root`, and every directory that meant to be one.
 
     Sorted by id so two machines with the same packs choose the same default, and
     so a listing does not reorder itself between calls.
     """
-    where = root if root is not None else model_root()
+    where = Path(root) if root is not None else model_root()
     if where is None or not where.is_dir():
         return [], []
 
