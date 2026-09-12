@@ -21,7 +21,7 @@ from typing import Any, Literal
 from deckastra_agents import ProjectMemory, RunBudget, ToolRegistry, initial_state
 from deckastra_agents.nodes._common import NodeContext
 from deckastra_agents.nodes.edit import edit as edit_node
-from deckastra_agents.router import api_key_available, default_client
+from deckastra_agents.router import default_client
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -156,11 +156,7 @@ def agent_edit(
     budget = RunBudget()
 
     registry: ToolRegistry = agent_service.build_registry(lambda: loaded.document)
-    client = (
-        default_client()
-        if api_key_available()
-        else _stub_edit_client(request, loaded.document)
-    )
+    client = default_client(fallback=lambda: _stub_edit_client(request, loaded.document))
 
     state = initial_state(
         run_id=run_row.id,

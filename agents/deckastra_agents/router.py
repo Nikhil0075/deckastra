@@ -21,6 +21,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import Any, Protocol
 
 from .budgets import RunBudget
@@ -67,6 +68,17 @@ class ModelClient(Protocol):
 
 class ModelError(RuntimeError):
     """A provider failure the run cannot recover from on its own."""
+
+
+class ModelUnavailable(ModelError):
+    """There is no model to ask, and the run must say so rather than substitute one.
+
+    Separate from `ModelError` because the cause is configuration rather than a
+    provider having a bad minute: nothing is wrong, something is missing, and the
+    message names what to install or choose. `ask_model` already turns any
+    `ModelError` into a stage failure that keeps earlier stages, which is the
+    right handling for both.
+    """
 
 
 # ---------------------------------------------------------------- Anthropic
@@ -208,6 +220,80 @@ class StubClient:
         return ModelResponse(text=text, model="stub", input_tokens=len(request.system) // 4, output_tokens=len(text) // 4)
 
 
-def default_client() -> ModelClient:
-    """The real client when a key is configured, the stub when one is not."""
-    return AnthropicClient() if api_key_available() else StubClient()
+# ------------------------------------------------------------- which provider
+
+#: What the operator or the user chose. Unset is the historical behaviour and
+#: must stay that way: the web app, CI and every existing test run through it.
+INTELLIGENCE_ENV = "DECKASTRA_INTELLIGENCE"
+INTELLIGENCE_LOCAL = "local"
+INTELLIGENCE_CLOUD = "cloud"
+
+
+#: What will actually produce text here.
+PROVIDER_LOCAL = "local"
+PROVIDER_CLOUD = "cloud"
+PROVIDER_STUB = "stub"
+
+
+def intelligence() -> str:
+    return os.environ.get(INTELLIGENCE_ENV, "").strip().lower()
+
+
+def selected_provider() -> str:
+    """Which provider this install will use, without building it.
+
+    Several places need this answer and none of them wants to construct a client
+    to get it: `/health` reports it, generation provenance records whether a deck
+    was written by a model or by the stub, and the call sites below choose which
+    fallback to prepare. They all used to ask `api_key_available()` instead, which
+    was the same question only while there were two answers — with local
+    intelligence a keyless install is not a stub install, and every one of those
+    sites would have said it was.
+    """
+    choice = intelligence()
+    if choice == INTELLIGENCE_LOCAL:
+        return PROVIDER_LOCAL
+    if choice == INTELLIGENCE_CLOUD:
+        return PROVIDER_CLOUD
+    return PROVIDER_CLOUD if api_key_available() else PROVIDER_STUB
+
+
+def default_client(fallback: "Callable[[], ModelClient] | None" = None) -> ModelClient:
+    """The provider this install is configured to use.
+
+    Three branches, and the reason there are three rather than a fallback chain:
+    **a fallback is a decision made silently.** Someone who selected local
+    intelligence did it because nothing of theirs should leave the machine, or
+    because there is no network; answering from Anthropic instead would be a
+    privacy decision taken on their behalf, in the one direction that cannot be
+    taken back once the request has been sent. Someone who selected cloud and has
+    no key has a configuration problem, and a stub deck is not the answer to it —
+    it looks like a generated deck that came out badly.
+
+    So each explicit choice is honoured or refused. Only the unset case, which is
+    the web app and CI, keeps the old "a key if there is one, the stub if not" —
+    and `fallback` is how a caller supplies the stub it has prepared answers for.
+    It is a callable because on every other path it is never needed, and because
+    building one means registering answers against the request.
+    """
+    choice = intelligence()
+
+    if choice == INTELLIGENCE_LOCAL:
+        # Imported here so nothing on the cloud path pays for it, and — more to
+        # the point — so this branch returns without any expression in it that
+        # could reach a key.
+        from .local_model import local_client
+
+        return local_client()
+
+    if choice == INTELLIGENCE_CLOUD:
+        if not api_key_available():
+            raise ModelUnavailable(
+                "Cloud generation is selected and no API key is configured. Set "
+                "ANTHROPIC_API_KEY, or choose local intelligence."
+            )
+        return AnthropicClient()
+
+    if api_key_available():
+        return AnthropicClient()
+    return fallback() if fallback is not None else StubClient()

@@ -35,7 +35,7 @@ from deckastra_agents import (
     initial_state,
 )
 from deckastra_agents.events import Emitter, RedisEmitter, fan_out
-from deckastra_agents.router import api_key_available
+from deckastra_agents.router import PROVIDER_STUB, default_client, selected_provider
 from deckastra_agents.runner import resume_generation, run_generation
 from deckastra_agents.tools.presentation import register_presentation_tools
 from deckastra_agents.tools.repository import register_repository_tools
@@ -473,7 +473,11 @@ def run_deck_generation(
     def provider() -> dict[str, Any]:
         return state_document
 
-    client = default_client() if api_key_available() else _stub_answers(request, repositories)
+    # Not `if api_key_available()`. That asked the right question only while there
+    # were two answers: with local intelligence selected, a keyless install is a
+    # local-model install, and this line would have quietly run the stub instead —
+    # which is the failure the whole D3 selection exists to refuse.
+    client = default_client(fallback=lambda: _stub_answers(request, repositories))
     emitter = _emitter(run_id)
     produced: dict[str, Any] = {}
 
@@ -524,7 +528,9 @@ def run_deck_generation(
         operations=operations,
         risk_tier=assessment.tier,
         requires_approval=assessment.requires_approval,
-        source="model" if api_key_available() else "stub",
+        # "model" covers a local model as well as a cloud one: the document's own
+        # record of who wrote it must not call a local run a stub run.
+        source="stub" if selected_provider() == PROVIDER_STUB else "model",
     )
 
 
@@ -540,7 +546,7 @@ def resume(run_id: str, decision: dict[str, Any], request: GenerateRequest, docu
     checkpoint_theme = document.get("theme")
     checkpoint_theme_id = (document.get("metadata") or {}).get("themeId")
     run = AgentRun(
-        client=telemetry.TracedModelClient(default_client() if api_key_available() else _stub_answers(request), run_id),
+        client=telemetry.TracedModelClient(default_client(fallback=lambda: _stub_answers(request)), run_id),
         registry=build_registry(lambda: document),
         compose=_composer(
             request,

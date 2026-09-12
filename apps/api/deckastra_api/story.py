@@ -21,6 +21,7 @@ import os
 import time
 from typing import Any
 
+from deckastra_agents.router import PROVIDER_LOCAL, ModelUnavailable, selected_provider
 from pydantic import ValidationError
 
 from .models import GenerationDiagnostics, GenerateRequest, StoryPlan
@@ -143,6 +144,18 @@ def generate_story_plan(
     present-mode path can all be exercised in CI.
     """
     started = time.monotonic()
+
+    # The single-shot chain talks to the SDK directly rather than through
+    # `ModelClient`, so it cannot serve a local model yet. Refusing is the only
+    # honest answer to someone who selected local intelligence: the alternative
+    # is a stub deck that looks like a model wrote it badly, on the one path
+    # where they asked for nothing to leave the machine.
+    if selected_provider() == PROVIDER_LOCAL:
+        raise ModelUnavailable(
+            "Local intelligence is selected, and the single-shot planner can only "
+            "reach a cloud model. Use the agent graph (use_graph), or choose cloud "
+            "generation."
+        )
 
     if not api_key_available():
         plan = stub_story_plan(request)

@@ -38,7 +38,9 @@ from .repository_routes import router as repository_router
 from .workspace_routes import router as workspace_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
-from .story import StoryGenerationError, api_key_available, generate_story_plan
+from deckastra_agents.router import PROVIDER_STUB, ModelUnavailable, selected_provider
+
+from .story import StoryGenerationError, generate_story_plan
 
 logger = logging.getLogger("deckastra")
 
@@ -98,8 +100,12 @@ def health(session: Session = Depends(get_session)) -> dict[str, Any]:
     return {
         "status": "ok",
         # Surfaced so the UI can tell the user their deck will be stub-composed
-        # before they wait for a generation, rather than after.
-        "generation": "model" if api_key_available() else "stub",
+        # before they wait for a generation, rather than after. A local model is
+        # a model: asking for a key here would have called a local install stub.
+        "generation": "stub" if selected_provider() == PROVIDER_STUB else "model",
+        # And which one, because "no cloud traffic in local mode" is a claim
+        # somebody has to be able to check from outside the process.
+        "intelligence": selected_provider(),
         "database": dialect,
     }
 
@@ -235,6 +241,12 @@ def generate(
                 theme_definition=theme_definition,
                 theme_id=theme_id,
             )
+        except ModelUnavailable as exc:
+            # 503 rather than 502, and no "the agent run failed" in front of it:
+            # nothing failed and nothing is upstream. Something the install was
+            # told to use is not there, and the message says which and what to do.
+            agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         except Exception as exc:  # noqa: BLE001 - reported with its reason, not a bare 500
             logger.exception("Agent run failed")
             agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
@@ -303,6 +315,9 @@ def generate(
     else:
         try:
             plan, diagnostics = generate_story_plan(request)
+        except ModelUnavailable as exc:
+            agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         except StoryGenerationError as exc:
             # 502, not 500: the failure is upstream, and the message is the useful part.
             agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])

@@ -1112,6 +1112,79 @@ intelligence, paid for no second model call, could not choose its own risk tier,
 and could not approve its own change. The session also found the `workspace_list`
 gap above, which is the other thing a real session is for.
 
+### Local intelligence is chosen, never fallen back to
+
+D3. `ModelClient` is one method, so a third provider is plumbing
+(`local_model.py`, a llama.cpp server on loopback). Everything around it is not.
+
+**A fallback chain is a decision made silently**, so there isn't one
+(`router.default_client`). Three branches: local is honoured or refused, cloud is
+honoured or refused, and only the *unset* case — the web app, CI, every existing
+test — keeps the old "a key if there is one, the stub if not". Someone who
+selected local did it because nothing of theirs should leave the machine, or
+because there is no network; answering from Anthropic when the pack is missing
+would be a privacy decision taken on their behalf, in the one direction that
+cannot be taken back once the request has been sent. The local branch therefore
+returns without any expression in it that could reach a key, and a test sets a
+real-looking key alongside it to prove the refusal holds.
+
+**`api_key_available()` was the wrong question in four places**, and stayed right
+only while a keyless install meant a stub install. It decided which client the
+graph built (so a local install would have run the *stub* and never reached the
+selection at all), what generation provenance recorded as `source` (so a deck a
+local model wrote would carry "stub" in the document, where it outlives the run),
+and what `/health` reported. They all ask `selected_provider()` now, which
+answers `local` / `cloud` / `stub` without building anything. `/health` also
+reports it by name, because "no cloud traffic in local mode" is a claim someone
+has to be able to check from outside the process.
+
+**The single-shot planner refuses rather than stubbing.** `story.py` talks to the
+SDK directly and cannot serve a local model, and left alone it would have fallen
+through to "no key, so use the stub" — a stub deck on the one path where the user
+asked for nothing to leave the machine. A missing provider is **503** at the
+route, not 502 and not "the agent run failed": nothing failed and nothing is
+upstream, something is not installed, and the message names it.
+
+**A pack is a directory with a manifest beside its weights** (`model_packs.py`),
+installed by copying it in and removed by deleting it. No registry, because a
+half-finished download would leave one wrong — and that download is the failure
+users actually hit, so a manifest whose weights are missing is reported with its
+reason rather than silently not listed. The manifest must name a license:
+redistribution is a D6 gate, and "nobody wrote it down" is otherwise discovered
+at release. Two installed packs and no `DECKASTRA_MODEL_PACK` is a refusal, not a
+choice — which model wrote a deck is not a fact to leave unrecorded, and the
+benchmark has to say which one it measured.
+
+**A server process, not in-process bindings.** `llama-cpp-python` would put a
+compiled runtime, and a GPU variant of it, inside the PyInstaller sidecar D1
+fought down to 103MB — carried by every user whether or not they ever install a
+model. A child process keeps "not installed" a coherent state rather than an
+import error, keeps offload flags a property of the server, and is the pattern
+the desktop already has. The OpenAI-compatible endpoint is used because that is
+where llama.cpp exposes schema-constrained sampling and a `usage` object, not
+because compatibility is a goal.
+
+**The schema is a hint; our validation is the authority.** llama.cpp converts
+JSON Schema to a GBNF grammar and its converter covers a subset, so a constraint
+can be dropped and the output still parses — which is worse than a refusal.
+`ask_model` validates against the Pydantic contract and repairs, unchanged. A
+contract the runtime cannot express at all comes back as a 400 and gets its own
+message, because a generic error sends someone to look at the model.
+
+**Tokens are reported, never estimated.** A run that looks cheap because nobody
+counted it is worse than one that says its total is short. Note the ceiling means
+something different here: for a cloud model the token budget is money, and for a
+local one the honest bound is the wall clock — so a request's timeout is the
+run's own remaining time, and a wedged model cannot hold a user past the ceiling
+that exists to stop exactly that.
+
+**Not done, and not claimed:** nothing starts the server yet (the desktop
+supervises the workspace service and will have to supervise this the same way),
+there is no download or settings surface, and **no model has been run** — the
+benchmark that decides whether a 4B or an 8B can hold these contracts, on real
+hardware, is the D3 exit gate and has not happened. Until it does, this is the
+refusal path working and nothing more.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.
