@@ -1047,10 +1047,11 @@ What that pair of sessions is evidence *for* is narrower than "the journey":
 between them they listed a workspace, read a deck, authored and approved a
 restyle, and confirmed the tools answer. Nobody has yet recorded one client
 driving create → revise → animate → preview → approve → undo → export end to end,
-including a stale refusal and a cancellation, and the acceptance script does not
-do it either — it edits the deck that happens to be open and exports it. That is
-the remaining interoperability evidence, and it belongs on a scratch workspace
-rather than someone's real deck.
+including a stale refusal and a cancellation. The acceptance script now does most
+of it — on a deck it creates, so nobody's real work is touched — but the two steps
+it deliberately cannot take are the two that belong to the human: approving a
+pending change, and undoing an applied one. That is the remaining interoperability
+evidence, and only a person sitting in front of the app can produce it.
 
 **An agent plans motion in roles** (`motion_capabilities`, `motion_propose`,
 `GET /motion/capabilities`, `POST /presentations/{id}/motion`). The tool surface
@@ -1073,14 +1074,20 @@ Two refusals worth naming: a plan whose roles match nothing on the slide commits
 later diff has to be read past — and a plan authored against a version that has
 moved is the same 409 every other agent write gives.
 
-Nothing in D2's tool list is now unbuilt. Still open: `export_cancel` does not
-stop a render already under way (`request_cancel` flags it and the worker is
-expected to stop "at the next boundary", but the subprocess runs to completion);
-the editor clears local undo when it adopts an outside change, so an agent's
-applied edit has no Undo button in the app; the MCP server runs from a checkout
-through `tsx`, so an installed app on a machine that never cloned this repository
-has no server; and D2.3's scoped session grant is met only by omission — no tool
-shares, exports to a path, or changes access, so nothing yet needs a grant.
+Nothing in D2's tool list is unbuilt, and the four things this paragraph used to
+list as open are closed: cancelling stops a running render, an adopted outside
+change has an Undo that reverts through the server, the installed app ships the
+server beside the exporter, and D2.3 is a scoped grant the authority enforces
+plus a consent switch in the window — each written up in its own section above.
+
+What remains is evidence rather than code, and one gap of each kind:
+
+- **The undo of an agent's change has never been pressed by a person.** It has
+  unit coverage (`external-change.test.ts`) and a wired control
+  (`EditorShell.tsx:576`), which is not the same as someone watching an agent
+  edit their deck and stepping back out of it.
+- **No single client has driven the whole journey.** See the paragraph above.
+- **macOS**, unchanged from D1: not measured, and not measurable from here.
 
 **D2.3 measured, 2026-09-12**, development build, by the `consent` step driving
 the window's own button: no attachment file before anyone allowed one; after
