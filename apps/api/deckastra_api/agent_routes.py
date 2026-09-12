@@ -21,13 +21,12 @@ from typing import Any, Literal
 from deckastra_agents import ProjectMemory, RunBudget, ToolRegistry, initial_state
 from deckastra_agents.nodes._common import NodeContext
 from deckastra_agents.nodes.edit import edit as edit_node
-from deckastra_agents.router import default_client
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import agent_service, agent_store, proposals, store
+from . import agent_service, agent_store, model_server, proposals, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import Presentation, TransactionRow
 from .db.session import get_session
@@ -156,7 +155,7 @@ def agent_edit(
     budget = RunBudget()
 
     registry: ToolRegistry = agent_service.build_registry(lambda: loaded.document)
-    client = default_client(fallback=lambda: _stub_edit_client(request, loaded.document))
+    client = model_server.build_client(fallback=lambda: _stub_edit_client(request, loaded.document))
 
     state = initial_state(
         run_id=run_row.id,

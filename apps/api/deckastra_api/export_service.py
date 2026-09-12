@@ -36,6 +36,7 @@ from typing import Any, Callable
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from . import processes
 from .db.models import ExportJob
 from .ids import new_id
 from .db.session import session_scope, supports_row_locks
@@ -452,27 +453,14 @@ def _terminate_tree(process: "subprocess.Popen[str]") -> None:
 
     Killing the exporter alone is not enough: it starts a browser of its own — the
     app's Chromium in render-host mode — and on Windows that child survives its
-    parent and keeps a profile directory and a GPU process alive. `taskkill /T`
-    takes the tree; elsewhere the process group does.
+    parent and keeps a profile directory and a GPU process alive.
+
+    This was `taskkill /F /T`, whose tree walk goes through WMI — and on a machine
+    with a damaged WMI repository it answers "Provider not found" to every call,
+    silently, leaving the browser running after a cancelled export. `processes`
+    walks the tree with a kernel call instead.
     """
-    if process.poll() is not None:
-        return
-    try:
-        if sys.platform == "win32":
-            subprocess.run(  # noqa: S603,S607 - fixed command, pid from our own child
-                ["taskkill", "/F", "/T", "/PID", str(process.pid)],
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
-        else:
-            process.terminate()
-    except Exception:  # noqa: BLE001 - a failed kill must not replace the real answer
-        logger.exception("Could not stop the exporter cleanly")
-    try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
+    processes.terminate_tree(process)
 
 
 def _invoke_worker(

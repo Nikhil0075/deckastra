@@ -1178,12 +1178,31 @@ local one the honest bound is the wall clock — so a request's timeout is the
 run's own remaining time, and a wedged model cannot hold a user past the ceiling
 that exists to stop exactly that.
 
-**Not done, and not claimed:** nothing starts the server yet (the desktop
-supervises the workspace service and will have to supervise this the same way),
-there is no download or settings surface, and **no model has been run** — the
-benchmark that decides whether a 4B or an 8B can hold these contracts, on real
-hardware, is the D3 exit gate and has not happened. Until it does, this is the
-refusal path working and nothing more.
+**The runtime is supervised from the API, not the desktop**
+(`deckastra_api/model_server.py`), and started **on demand**. The desktop
+supervises the workspace service because a window is useless without it; nothing
+is useless without a model until someone generates, and holding gigabytes for the
+other 95% of a session is a cost the user did not agree to. The same argument
+from the other end unloads it after ten idle minutes. A crash is *not* retried
+with backoff, unlike the workspace service: a model that died is usually a model
+this machine cannot hold, each attempt costs tens of seconds and several
+gigabytes, and the refusal in between carries what the runtime actually printed —
+"could not allocate 4096 MiB" is the whole diagnosis, and it is the difference
+between "try a smaller pack" and "file a bug". "Ready means answering" applies
+again and harder: a model server binds its port and *then* spends tens of seconds
+reading weights, so readiness is a poll of `/v1/models` rather than a bind.
+
+`build_client()` is the single entry point the three generation call sites use,
+because three sites each remembering to start a server is two that will not.
+
+**Not done, and not claimed:** there is no download or settings surface, the
+runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, and
+**no model has been run.** The benchmark that decides whether a 4B or an 8B can
+hold these contracts on real hardware is the D3 exit gate and has not happened —
+it is blocked on this machine rather than deferred: llama.cpp's binaries and the
+`llama-cpp-python` wheel index both live on GitHub, which does not resolve here,
+and there is no C++ toolchain to build from the PyPI source. Until that is
+unblocked, D3 is the refusal path and the supervision working, and nothing more.
 
 ### The editor is a package; the shell decides where it runs
 
@@ -1350,8 +1369,19 @@ rendering — browser and all — and was marked cancelled once the work nobody
 wanted was already done.
 
 The exporter is now a `Popen` polled between short waits, and cancelling kills
-the process **tree** — `taskkill /T` on Windows, because the renderer starts the
-app's own Chromium and that child outlives its parent otherwise. The half-written
+the process **tree**, because the renderer starts the app's own Chromium and that
+child outlives its parent otherwise.
+
+That was `taskkill /F /T`, and it was **silently doing nothing on this machine**:
+taskkill's tree walk goes through WMI, a damaged WMI repository answers "ERROR:
+Provider not found" to every call, and `check=False` swallowed it. The caller
+then waited out its ten-second grace and killed the parent alone — so a cancelled
+export reported success while leaving a Chromium and its profile directory
+running. A damaged WMI repository is an ordinary Windows state, not an exotic
+one. `processes.terminate_tree` walks the tree with `CreateToolhelp32Snapshot`
+instead, which is a kernel call with no service behind it, killing depth first so
+a parent cannot outlive its children in the snapshot. The model supervisor uses
+the same function. The half-written
 artifact is deleted rather than published against a job that says "cancelled".
 
 `cancellation_watcher` reads the flag on **its own connection**, and `run_job`
