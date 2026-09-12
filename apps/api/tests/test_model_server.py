@@ -226,7 +226,10 @@ def test_building_a_client_starts_the_runtime_and_never_falls_back(local_install
     sentinel = object()
     client = model_server.build_client(fallback=lambda: sentinel)
 
-    assert isinstance(client, LlamaServerClient)
+    # Wrapped, so that using it keeps it loaded — but it is still the local
+    # client underneath, never the fallback.
+    assert isinstance(client._inner, LlamaServerClient)
+    assert client._inner is not sentinel
     assert model_server._process is not None
 
     # And it really is the process this supervisor started that answers.
@@ -235,6 +238,50 @@ def test_building_a_client_starts_the_runtime_and_never_falls_back(local_install
         RunBudget(),
     )
     assert answer.json() == {"ok": True}
+
+
+def test_using_a_model_keeps_it_loaded(local_install, monkeypatch):
+    """The regression that cost four benchmark runs and three wrong diagnoses.
+
+    "Idle" was time since the runtime started, because the client learns the URL
+    once and then talks to the port directly — the supervisor never hears about
+    the work going through it. So the reaper unloaded the model *during* a
+    generation, and the caller saw a dropped connection with no explanation on
+    either side. Every crash landed within a second of the 600s window while VRAM,
+    context size and a second GPU were each investigated and discarded.
+    """
+    from deckastra_agents.budgets import RunBudget
+    from deckastra_agents.router import ModelRequest
+
+    monkeypatch.setenv(model_server.IDLE_ENV, "1")
+    client = model_server.build_client()
+    started = model_server._process
+
+    # Longer than the idle window, with work going through the client the whole
+    # time — which is exactly the shape of one real generation.
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        client.complete(
+            ModelRequest(task_type="fast", system="s", messages=[{"role": "user", "content": "go"}]),
+            RunBudget(),
+        )
+        time.sleep(0.2)
+
+    assert model_server._process is started, "the model was unloaded while it was being used"
+
+
+def test_a_model_really_left_alone_is_still_unloaded(local_install, monkeypatch):
+    """The other half: keeping it alive must not mean keeping it for ever."""
+    monkeypatch.setenv(model_server.IDLE_ENV, "1")
+    model_server.build_client()
+    assert model_server._process is not None
+
+    for _ in range(40):
+        time.sleep(0.5)
+        if model_server._process is None:
+            break
+
+    assert model_server._process is None
 
 
 def test_a_cloud_install_starts_nothing(monkeypatch):

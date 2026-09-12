@@ -126,6 +126,17 @@ class LlamaServerClient:
                 f"'{self.pack.name}' is installed, so this is the server rather than "
                 "the model: start Deckastra's local intelligence, or check the port."
             ) from error
+        except (httpx.ReadError, httpx.RemoteProtocolError) as error:
+            # The connection died mid-answer, which means the runtime did. This
+            # was a raw `ReadError: [WinError 10054]` reaching the user, and on
+            # this hardware it has one overwhelmingly likely cause: a context
+            # large enough to push the model off the card, so the allocation that
+            # fails is the one made while generating.
+            raise ModelUnavailable(
+                f"'{self.pack.name}' stopped while answering. The usual cause is memory — "
+                "a context too large to hold beside the model, so the runtime dies partway "
+                "through rather than refusing at load. Serving a smaller context is the fix."
+            ) from error
         except httpx.TimeoutException as error:
             raise ModelError(
                 f"'{self.pack.name}' did not answer within {timeout:.0f}s. On this machine "

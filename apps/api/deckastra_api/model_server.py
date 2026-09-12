@@ -157,6 +157,16 @@ def _stop_locked(reason: str = "") -> None:
     processes.terminate_tree(process, grace=10)
 
 
+def last_output() -> list[str]:
+    """The tail of what the runtime printed, for whoever has to explain a failure.
+
+    Kept because the interesting line is written by the process that died, and by
+    the time anyone asks, the process is gone.
+    """
+    with _lock:
+        return list(_stderr)
+
+
 def stop(reason: str = "") -> None:
     with _lock:
         _stop_locked(reason)
@@ -252,6 +262,33 @@ def ensure_ready() -> str:
         )
 
 
+class _KeptAlive:
+    """A local client that tells the supervisor it is still being used.
+
+    Without this, "idle" means *time since the runtime started*, because the
+    client learns the URL once and then talks to the port directly — the
+    supervisor never hears about the work going through it. The reaper then
+    unloads a model in the middle of a generation, and the caller sees the
+    connection drop with no explanation on either side.
+
+    It is not a hypothetical. Every crash in the first four benchmark runs landed
+    within a second of the 600s idle window — 600.8, 600.9, 600.8, 600.5 — while
+    three separate hardware explanations were investigated and discarded. One
+    generation on this hardware takes minutes, so a run of any length crosses the
+    window with work still in flight.
+
+    `ensure_ready` is the touch: it returns immediately when the runtime is up,
+    and restarts it when something else has stopped it.
+    """
+
+    def __init__(self, inner: ModelClient) -> None:
+        self._inner = inner
+
+    def complete(self, request, budget):
+        ensure_ready()
+        return self._inner.complete(request, budget)
+
+
 def build_client(fallback=None) -> ModelClient:
     """The client for this install, with a local runtime started if that is the choice.
 
@@ -262,4 +299,5 @@ def build_client(fallback=None) -> ModelClient:
     """
     if selected_provider() == PROVIDER_LOCAL:
         ensure_ready()
+        return _KeptAlive(default_client(fallback=fallback))
     return default_client(fallback=fallback)

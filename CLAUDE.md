@@ -1195,29 +1195,64 @@ reading weights, so readiness is a poll of `/v1/models` rather than a bind.
 `build_client()` is the single entry point the three generation call sites use,
 because three sites each remembering to start a server is two that will not.
 
+`scripts/install-model-pack.py` installs a pack, downloading it or taking
+`--from-file` when the bytes arrived another way, and verifying either against
+the size and sha256 HuggingFace publishes. It reads those off the **302 without
+following it**: for an LFS object they are on the redirect, and the CDN it points
+at is a different host — one that a filtered network can block while
+`huggingface.co` still resolves, which is exactly the state this was written in.
+Following the redirect lost facts already in hand, and a 12-byte file installed
+as a 2.3GB model. Two more traps there: `content-length` on a 302 describes the
+redirect (236 bytes of "you want it over there"), and a file stored in git rather
+than LFS reports a git blob SHA-1 where an LFS file reports a sha256.
+
+**D3 measured, 2026-09-12**, Windows 11, GTX 1650 (4GB) + Intel UHD 630, 12GB
+RAM, `Qwen3-4B-Q4_K_M` (Apache-2.0) on llama.cpp b10927 Vulkan, served
+`-c 4096 --parallel 1`. Six runs of the real `story()` node, two briefs:
+
+| | |
+| --- | --- |
+| Runs completed | 6 of 6 |
+| Valid on the first attempt | 5 of 6; the sixth repaired and was then valid |
+| Slide count honoured | 6 of 6 |
+| Invented citations | none, in any run |
+| Throughput | 7.9–10.4 tok/s |
+| One story plan | 136–576s, median 248s |
+| Model load | 8.0s |
+| Peak RSS | 4,432MB |
+
+**The contract question is answered, and that was the risky one.** A `StoryPlan`
+is nested, has a closed layout enum and carries citation ids, and a 4B holds it —
+never once fabricating a source id, which matters because the product renders
+those as provenance. What it costs is minutes: ~4 for a story plan here, so a
+full multi-stage deck is 15–20. That is the honest shape of local intelligence on
+entry-level hardware, and it is why local is **chosen, never defaulted to**.
+
+One number bounds the configuration: the six-slide brief produced **4,687 output
+tokens against a 4,096-token context**. It still came back valid, but that is
+where a larger deck starts to fail, and it is the figure to size context from
+rather than a guess.
+
+**The bug that cost five benchmark runs was in this code, not the hardware.** The
+idle reaper unloaded the model *during* generation, because `_last_used` was
+refreshed by `ensure_ready()` and nothing else — and the client learns the URL
+once, then talks to the port directly, so the supervisor never heard about the
+work going through it. "Idle" meant *time since the runtime started*. Every crash
+landed within a second of the 600s window — 600.8, 600.9, 600.8, 600.5, 600.9 —
+while VRAM pressure, context size and a second GPU's TDR were each investigated
+and written up as the cause. A hardware fault does not keep time to a tenth of a
+second; adding up the per-run times found in a minute what four configurations
+could not. `_KeptAlive` makes use the thing that keeps a model loaded, and the
+benchmark now goes through `build_client()` like every other caller — reaching
+past the product's own entry point is how a harness comes to measure a path
+nobody takes.
+
 **Not done, and not claimed:** there is no download or settings surface, the
-runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, and
-**no model has been run.** The benchmark that decides whether a 4B or an 8B can
-hold these contracts on real hardware is the D3 exit gate, and it is blocked by
-this network rather than deferred. Both halves are blocked, and by the same
-thing: `github.com` does not resolve here, which rules out llama.cpp's binaries
-and the `llama-cpp-python` wheel index (and there is no C++ toolchain to build
-from the PyPI source); and while `huggingface.co` resolves, the host that serves
-the actual bytes — `us.aws.cdn.hf.co` — does not, consistently, across repeated
-attempts. So the *metadata* for a model is reachable while the model is not.
-
-`scripts/install-model-pack.py` is shaped by that. It downloads when it can and
-installs `--from-file` when it cannot, and in both cases it verifies against the
-size and sha256 HuggingFace publishes — which it reads off the **302**, without
-following it, because those facts are on the redirect and the thing it points at
-is the unreachable host. Following it lost them silently, and a 12-byte file
-installed as a 2.3GB model. The pack ids to use when the network allows are
-`Qwen/Qwen3-4B-GGUF` and `Qwen/Qwen3-8B-GGUF` at Q4_K_M: both Apache-2.0, which
-keeps D6's redistribution gate clean, and the 4B is the one that fits a 4GB card
-whole — the difference between seconds and minutes per call.
-
-Until that is unblocked, D3 is the refusal path, the supervision and the pack
-format working, and nothing more.
+runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, the
+**8B is unmeasured** (it cannot fit a 4GB card, so the number would describe
+partial offload rather than the model), and nothing has driven the *whole graph*
+locally — only the story stage, which is the largest contract but not the only
+one.
 
 ### The editor is a package; the shell decides where it runs
 

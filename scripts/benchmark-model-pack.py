@@ -168,6 +168,12 @@ def one_run(client, brief: dict, with_sources: bool) -> dict:
         record["failure"] = f"{type(error).__name__}: {error}"[:300]
 
     record["seconds"] = round(time.monotonic() - started, 1)
+    if not record["ok"]:
+        # What the runtime itself said. Without this a crash is a connection
+        # error in the harness and a diagnosis nobody has.
+        from deckastra_api import model_server
+
+        record["runtime_said"] = model_server.last_output()[-6:]
     observations = budget.structured_requests
     record["attempts"] = max((int(o["attempts"]) for o in observations), default=0)
     record["valid_first_attempt"] = bool(observations) and all(
@@ -202,9 +208,11 @@ def main() -> int:
     stop = threading.Event()
     rss = peak_rss_watcher(model_server._process.pid, stop)  # type: ignore[union-attr]
 
-    from deckastra_agents.local_model import local_client
-
-    client = local_client()
+    # Through `build_client`, not `local_client`: the product's own entry point,
+    # which wraps the client so that using it keeps the model loaded. Reaching
+    # past it meant the harness measured a path no caller takes — and spent five
+    # runs rediscovering the idle reaper at 600 seconds.
+    client = model_server.build_client()
 
     records = []
     try:

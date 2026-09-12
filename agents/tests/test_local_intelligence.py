@@ -315,6 +315,29 @@ def test_a_server_that_is_not_running_is_named_as_the_server(tmp_path):
     assert "is installed" in str(refusal.value)
 
 
+def test_a_runtime_that_dies_mid_answer_is_named_as_memory(tmp_path):
+    """Measured on a 4GB card: this is what running out of VRAM looks like.
+
+    The failure arrives as a dropped connection partway through generation, not
+    as a refusal at load, because the allocation that fails is the one made while
+    generating. A raw `ReadError: [WinError 10054]` reaching a user is a fact
+    about sockets; the useful sentence is the one about context size.
+    """
+    write_pack(tmp_path, "qwen3-4b-q4")
+
+    def handler(request):
+        raise httpx.ReadError("forcibly closed", request=request)
+
+    with pytest.raises(ModelUnavailable) as refusal:
+        fake_server(handler, tmp_path).complete(
+            ModelRequest(task_type="fast", system="s", messages=[{"role": "user", "content": "go"}]),
+            RunBudget(),
+        )
+
+    assert "stopped while answering" in str(refusal.value)
+    assert "smaller context" in str(refusal.value)
+
+
 def test_a_contract_the_runtime_cannot_turn_into_a_grammar_says_that(tmp_path):
     """The failure that separates a local model from a cloud one, and the one a
     generic '400' would send someone looking in the wrong place for."""
