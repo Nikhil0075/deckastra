@@ -64,6 +64,19 @@ class ToolDefinition:
     #: True when the result contains text the agent did not write, and therefore
     #: must be enveloped before it can reach a prompt.
     returns_untrusted_content: bool = False
+    #: Which leaves of the result carry that text — `("content",)` for a search
+    #: hit, `("text",)` for a slide read. Named rather than inferred, because
+    #: enveloping every string in a result would wrap ids and paths, and an
+    #: envelope around an id is noise the model has to parse past.
+    #:
+    #: The flag on its own used to be the whole declaration, and nothing read it:
+    #: each node remembered to call `untrusted()`. A boundary that depends on
+    #: every future node remembering is not a boundary.
+    untrusted_fields: tuple[str, ...] = ()
+    #: The `kind` those envelopes carry. Part of the provenance identity, not
+    #: decoration: downstream code reads the kind to tell repository content from
+    #: deck content, and a generic label would erase that distinction.
+    untrusted_kind: str = "tool-result"
     #: Retried on failure. False for anything with a side effect — a retried
     #: write is a duplicate write.
     idempotent: bool = True
@@ -111,6 +124,10 @@ class ToolRegistry:
             raise ValueError(f"Tool {definition.id} is already registered.")
         Draft202012Validator.check_schema(definition.input_schema)
         Draft202012Validator.check_schema(definition.output_schema)
+        if definition.returns_untrusted_content and not definition.untrusted_fields:
+            raise ValueError(f"Tool {definition.id} returns untrusted content but declares no untrusted_fields.")
+        if any(not name.strip() for name in definition.untrusted_fields):
+            raise ValueError(f"Tool {definition.id} has an empty untrusted field name.")
         self._tools[definition.id] = (definition, handler)
 
     def definitions(self) -> list[ToolDefinition]:
@@ -220,7 +237,9 @@ class ToolRegistry:
             self.trace.append(
                 ToolCall(tool_id=tool_id, agent_id=agent_id, duration_ms=elapsed_ms, ok=True, attempts=attempt)
             )
-            return result
+            # Enveloped here, at the boundary, so a result cannot reach a prompt
+            # unlabelled — including through a node written next year.
+            return self._envelope_result(definition, result)
 
         elapsed_ms = int((time.monotonic() - started) * 1000)
         self.trace.append(
@@ -234,6 +253,49 @@ class ToolRegistry:
             )
         )
         raise ToolError(tool_id, f"failed after {attempts} attempt(s): {last_error}")
+
+    def _envelope_result(self, definition: ToolDefinition, result: Any) -> Any:
+        """Wrap every declared untrusted leaf, wherever it occurs in the result.
+
+        A walk rather than a fixed path, because the same field name appears at
+        different depths across tools — `content` is on each hit of a search and
+        at the top level of a file read — and a per-tool path is one more thing
+        to keep in step with a schema.
+
+        The source identity is taken from the object the field sits in, so a
+        citation survives into the envelope: a hit knows its `source_id`, an
+        element knows its id. Falling back to the tool id keeps the label honest
+        rather than absent.
+        """
+        if not definition.untrusted_fields:
+            return result
+
+        fields = set(definition.untrusted_fields)
+
+        def source_for(container: dict[str, Any]) -> Source:
+            identity = (
+                container.get("source_id")
+                or container.get("reference")
+                or container.get("id")
+                or definition.id
+            )
+            label = container.get("path") or container.get("name") or container.get("label")
+            return Source(id=str(identity), kind=definition.untrusted_kind, label=label)
+
+        def walk(value: Any) -> Any:
+            if isinstance(value, dict):
+                out: dict[str, Any] = {}
+                for key, inner in value.items():
+                    if key in fields and isinstance(inner, str) and inner:
+                        out[key] = self.wrap_untrusted(definition.id, inner, source_for(value))
+                    else:
+                        out[key] = walk(inner)
+                return out
+            if isinstance(value, list):
+                return [walk(item) for item in value]
+            return value
+
+        return walk(result)
 
     def wrap_untrusted(self, tool_id: str, text: str, source: Source) -> str:
         """Envelope a tool result, and note it if it looks like it is addressing the model."""
@@ -275,4 +337,19 @@ class ScopedRegistry:
         return self._registry.describe(self.tool_ids)
 
     def untrusted(self, tool_id: str, text: str, source: Source) -> str:
+        """Envelope content that did not come through a tool.
+
+        Still public, and still needed: the user's brief and slide text read from
+        graph state are untrusted too, and neither passes `_invoke`. What it is
+        no longer for is tool output — that is enveloped at the boundary.
+        """
         return self._registry.wrap_untrusted(tool_id, text, source)
+
+    @property
+    def injection_warnings(self) -> list[str]:
+        """Sources that looked like they were addressing the model.
+
+        Reported, never filtered: the envelope is what makes the content safe,
+        and a filter would refuse a legitimate deck about prompt injection.
+        """
+        return list(self._registry.injection_warnings)

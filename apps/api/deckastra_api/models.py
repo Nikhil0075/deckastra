@@ -111,7 +111,12 @@ class GenerationDiagnostics(BaseModel):
 
     source: Literal["model", "stub"]
     model: str = ""
+    # Highest schema-attempt count for a structured request in this invocation.
+    # Graph-node calls/critic revisions are separate requests. Transport retries
+    # inside a provider SDK are not measured by this field.
     attempts: int = 1
+    # True only when structured responses and the composed document validate
+    # without schema repair. Stub observations are not real-model evaluation.
     valid_first_attempt: bool = True
     plan_valid_first_attempt: bool = True
     validation_errors: list[str] = Field(default_factory=list)

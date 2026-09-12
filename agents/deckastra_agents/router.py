@@ -205,7 +205,7 @@ class StubClient:
         text = json.dumps(answer(request) if callable(answer) else answer)
         # Charged so budget accounting is exercised on the stub path too.
         budget.spend_tokens(len(request.system) // 4, len(text) // 4)
-        return ModelResponse(text=text, model="stub", output_tokens=len(text) // 4)
+        return ModelResponse(text=text, model="stub", input_tokens=len(request.system) // 4, output_tokens=len(text) // 4)
 
 
 def default_client() -> ModelClient:

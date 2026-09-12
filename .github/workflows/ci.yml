@@ -66,25 +66,32 @@ jobs:
   pixels:
     name: Pixel regression
     runs-on: ubuntu-latest
+    # The reviewed Linux baseline uses this exact browser, OS and font image.
+    # Upgrade Playwright and this digest together, then inspect all PNGs.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --shm-size=512m
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
 
-      # Enforces the determinism properties on every platform: identical PNGs
-      # twice, identical after a reload, and a negative control proving the gate
-      # can see a change. The committed per-platform hash baseline is compared
-      # only where one exists — font rasterisation differs between platforms, and
-      # failing for a reason nobody on this OS can act on is how a gate gets
-      # switched off.
+      # Enforces the determinism properties: identical PNGs twice, identical
+      # after a reload, and a negative control proving the gate can see a change.
+      #
+      # Missing or changed baselines fail. Never update expected hashes in CI.
       - name: Pixel determinism and baselines
-        run: PIXELS=1 npm run test:pixels --workspace @deckastra/renderer
+        run: |
+          PIXELS=1 REQUIRE_PIXEL_BASELINE=1 npm run test:pixels --workspace @deckastra/renderer
+
+      - name: Pixel review evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-review
+          path: |
+            packages/renderer/baselines/pixels/*.computed
+            packages/renderer/baselines/pixels/artifacts/
+          if-no-files-found: ignore
 
   # The database the product actually deploys on. The schema is not
   # dialect-neutral — `JsonColumn` resolves to JSONB here and to JSON everywhere
@@ -228,6 +235,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt pytest python-pptx pypdf
 
+      - name: Worker browser measurement and editor scene parity
+        run: npm run test:browser --workspace @deckastra/worker
+
       # The adapters themselves: OOXML structure, the relationship graph, the
       # degradation ledger and byte-stability. No browser needed.
       - name: Export adapter tests
@@ -237,3 +247,53 @@ jobs:
       # only place the whole path is exercised as a user would.
       - name: Export end to end
         run: python -m pytest apps/api/tests/test_exports.py apps/api/tests/test_pptx_opens.py -q
+
+  # Recovery is a release control, not a paragraph in an operations document.
+  # This job restores a complete PostgreSQL dump into a second database and
+  # follows a known presentation through its historical version and S3 object.
+  recovery-rehearsal:
+    name: Database and asset restore rehearsal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
+
+      - name: Start production-shaped persistence services
+        run: |
+          docker compose -f infrastructure/docker/docker-compose.yml up -d --wait postgres minio
+          docker compose -f infrastructure/docker/docker-compose.yml up minio-init
+
+      - name: Migrate source database
+        env:
+          DATABASE_URL: postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra
+        run: python -m alembic -c infrastructure/database/alembic.ini upgrade head
+
+      - name: Timed scratch restore
+        env:
+          DATABASE_URL: postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra
+          S3_ENDPOINT_URL: http://localhost:9000
+          S3_ACCESS_KEY_ID: deckastra
+          S3_SECRET_ACCESS_KEY: deckastra_local
+          S3_ASSETS_BUCKET: deckastra-assets
+        run: >-
+          python scripts/restore_rehearsal.py
+          --allow-sentinel-write
+          --evidence .artifacts/release/restore-rehearsal.json
+
+      - name: Upload recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restore-rehearsal
+          path: .artifacts/release/restore-rehearsal.json
+          if-no-files-found: error
+
+      - name: Stop rehearsal services
+        if: always()
+        run: docker compose -f infrastructure/docker/docker-compose.yml down --volumes

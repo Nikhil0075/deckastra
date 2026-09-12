@@ -9,20 +9,18 @@ reading it.
 
 from __future__ import annotations
 
-import logging
+import os
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import export_service, store, telemetry
+from . import export_service, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import ExportJob
 from .db.session import get_session
-
-logger = logging.getLogger("deckastra.exports")
 
 router = APIRouter(prefix="/v1")
 
@@ -36,9 +34,10 @@ class ExportRequest(BaseModel):
     #: right for a deck someone will read; `initial` is for a handout of a
     #: click-reveal deck, where the final state gives every answer away at once.
     at_time: Literal["final", "initial"] = "final"
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
 
 
-@router.post("/presentations/{presentation_id}/exports")
+@router.post("/presentations/{presentation_id}/exports", status_code=status.HTTP_202_ACCEPTED)
 def start_export(
     presentation_id: str,
     request: ExportRequest,
@@ -76,38 +75,40 @@ def start_export(
                 "includeNotes": request.include_notes,
                 "atTime": request.at_time,
             },
+            idempotency_key=request.idempotency_key,
         )
     except export_service.ExportError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    with telemetry.span(
-        "export",
-        **{
-            telemetry.PRESENTATION_ID: presentation_id,
-            telemetry.VERSION_ID: loaded.version_id,
-        },
-    ):
-        try:
-            export_service.run_job(session, job, loaded.document)
-        except export_service.ExportError as error:
-            telemetry.record_export(
-                workspace_id=access.workspace_id,
-                kind=request.kind,
-                duration_ms=0,
-                outcome="failed",
-            )
-            # 502 rather than 500: the failure is in the exporter subprocess, and
-            # the message is the useful part. The row keeps it either way.
-            logger.warning("Export %s failed: %s", job.id, error)
-            raise HTTPException(status_code=502, detail=str(error)) from error
+    # Compatibility mode for local acceptance tests. Production leaves work in
+    # the durable queue for `python -m deckastra_api.export_worker`.
+    if os.environ.get("DECKASTRA_EXPORT_INLINE") == "1" and job.status == "queued":
+        export_service.run_job(session, job, loaded.document)
 
-    telemetry.record_export(
-        workspace_id=access.workspace_id,
-        kind=request.kind,
-        duration_ms=float((job.report_json or {}).get("durationMs", 0)),
-        outcome="completed",
+    return export_service.describe(job)
+
+
+@router.post("/exports/{export_id}/cancel")
+def cancel_export(
+    export_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    return export_service.describe(
+        export_service.request_cancel(session, _authorised(session, principal, export_id))
     )
 
+
+@router.post("/exports/{export_id}/retry", status_code=status.HTTP_202_ACCEPTED)
+def retry_export(
+    export_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    try:
+        job = export_service.retry(session, _authorised(session, principal, export_id))
+    except export_service.ExportError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return export_service.describe(job)
 
 

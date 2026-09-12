@@ -4297,7 +4297,25 @@
               "$ref": "#/$defs/__schema36"
             },
             "type": {
-              "type": "string"
+              "type": "string",
+              "not": {
+                "enum": [
+                  "text",
+                  "shape",
+                  "line",
+                  "image",
+                  "icon",
+                  "group",
+                  "chart",
+                  "diagram",
+                  "table",
+                  "code",
+                  "video",
+                  "audio",
+                  "webEmbed",
+                  "componentInstance"
+                ]
+              }
             }
           },
           "required": [

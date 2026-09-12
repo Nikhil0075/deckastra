@@ -43,7 +43,7 @@ function scene(nodes: SceneNode[], motion: Record<string, unknown> = {}): SlideS
     height: 1080,
     nodes,
     paintOrder: nodes.map((one) => one.id),
-    theme: { motion } as unknown as SlideScene["theme"],
+    theme: { tokens: new Map(Object.entries(motion).map(([key, value]) => [`motion.${key}`, value])) } as unknown as SlideScene["theme"],
     fonts: [],
   };
 }

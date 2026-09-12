@@ -23,6 +23,7 @@ import {
   elementsByRole,
   groupElements,
   makeTextElement,
+  makeStarterElement,
   moveElement,
   moveSlide,
   removeElement,
@@ -43,6 +44,31 @@ const elementId = base.slides[0]!.elements[0]!.id;
 function apply(document: PresentationDocument, operations: PatchOperation[]): PresentationDocument {
   return applyPatch(document, operations).document;
 }
+
+describe("starter elements", () => {
+  it.each(["text", "shape", "line", "icon", "chart", "diagram", "table", "code"] as const)(
+    "creates a valid and useful %s element",
+    (kind) => {
+      const element = makeStarterElement({ kind, viewport: base.viewport });
+      const after = apply(base, addElement(base, { slideId, element }));
+
+      expect(element.type).toBe(kind);
+      expect(element.transform.x).toBeGreaterThanOrEqual(0);
+      expect(element.transform.y).toBeGreaterThanOrEqual(0);
+      expect(validateDocument(after)).toMatchObject({ valid: true });
+    },
+  );
+
+  it("uses local coordinates for line endpoints", () => {
+    const line = makeStarterElement({ kind: "line", viewport: base.viewport });
+    expect(line).toMatchObject({
+      type: "line",
+      from: { x: 0 },
+      to: { x: line.transform.width },
+      endMarker: "arrow",
+    });
+  });
+});
 
 describe("finding things", () => {
   it("resolves a top-level element and gives back a usable path", () => {

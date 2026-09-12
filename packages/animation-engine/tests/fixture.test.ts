@@ -33,7 +33,7 @@ const document = JSON.parse(readFileSync(FIXTURE, "utf8")) as PresentationDocume
 const scene = buildDocumentScene(document);
 
 function timelineFor(index: number) {
-  return compileTimeline(scene.slides[index]!, document.slides[index]!.animations ?? []);
+  return compileTimeline(scene.slides[index]!, document.slides[index]!.animations ?? [], { userMotionPreference: "full" });
 }
 
 function plain(sample: Sample): Record<string, Record<string, unknown>> {

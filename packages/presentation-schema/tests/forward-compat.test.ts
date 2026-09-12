@@ -63,6 +63,7 @@ describe("forward compatibility", () => {
       type: "hologram",
       transform: { x: 10, y: 10, width: 100, height: 100 },
       density: 0.4,
+      semanticRole: "futureRole",
     } as never);
 
     const round = JSON.parse(JSON.stringify(PresentationDocumentSchema.parse(doc)));
@@ -71,6 +72,11 @@ describe("forward compatibility", () => {
     expect(survivor.type).toBe("hologram");
     expect(survivor.density).toBe(0.4);
     expect(isKnownElementType(survivor.type)).toBe(false);
+    expect(JSON.parse(serializeDocument(round)).slides[0].elements.at(-1)).toEqual(survivor);
+    const report = validateDocument(round);
+    expect(report.valid).toBe(true);
+    expect(report.warnings).toContainEqual(expect.objectContaining({ code: "W240", targetIds: [survivor.id] }));
+    expect(report.warnings).toContainEqual(expect.objectContaining({ code: "W241", targetIds: [survivor.id] }));
   });
 
   it("treats an unknown element type as a warning, not an error", () => {
@@ -96,6 +102,7 @@ describe("forward compatibility", () => {
     const round = JSON.parse(JSON.stringify(PresentationDocumentSchema.parse(doc)));
     // Unknown transition types round-trip; the renderer falls back to a cut.
     expect(round.slides[0].transition.type).toBe("kaleidoscope");
+    expect(validateDocument(round).warnings).toContainEqual(expect.objectContaining({ code: "W241" }));
   });
 
   it("refuses a newer major version outright", () => {

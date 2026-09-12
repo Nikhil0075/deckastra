@@ -5,21 +5,31 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "bin": { "deckastra-export": "./src/cli.ts" },
-  "files": ["src"],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "deckastra-export": "./src/cli.ts"
+  },
+  "files": [
+    "src"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --exclude \"tests/*.browser.test.ts\"",
+    "test:watch": "vitest",
+    "test:browser": "vitest run tests/browser-measurement.browser.test.ts"
   },
   "dependencies": {
     "@deckastra/animation-engine": "*",
     "@deckastra/export-core": "*",
     "@deckastra/export-pdf": "*",
     "@deckastra/export-pptx": "*",
+    "@deckastra/layout-engine": "*",
     "@deckastra/presentation-schema": "*",
     "@deckastra/renderer": "*",
+    "@deckastra/workspace-contracts": "*",
+    "esbuild": "^0.28.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

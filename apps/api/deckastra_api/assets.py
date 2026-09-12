@@ -27,14 +27,15 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable
+from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import quotas
-from .db.models import Asset, Presentation, PresentationVersion, Project
+from . import quotas, store
+from .db.models import Asset, Presentation, PresentationVersion, Project, Workspace
 from .ids import new_id
+from .db.session import supports_row_locks
 
 logger = logging.getLogger("deckastra.assets")
 
@@ -89,6 +90,20 @@ def register(
     if kind not in KINDS:
         raise AssetError(f"{kind!r} is not an asset kind. Choose from: {', '.join(KINDS)}.")
 
+    # Serialize quota decisions per workspace. Two completion requests that each
+    # fit alone must not both pass against the same stale used byte count.
+    #
+    # The lock is real on PostgreSQL and absent on SQLite, where SQLAlchemy drops
+    # the clause. A desktop install is unmetered and single-process, so there is
+    # nothing to serialise; branching says that rather than letting the clause
+    # read as protection it does not provide.
+    locked = select(Workspace).where(Workspace.id == workspace_id)
+    if supports_row_locks(session):
+        locked = locked.with_for_update()
+    workspace = session.execute(locked).scalar_one_or_none()
+    if workspace is None:
+        raise AssetError("No such workspace.")
+    quotas.recount_storage(session, workspace_id)
     quotas.check_storage(session, workspace_id, size_bytes)
 
     asset = Asset(
@@ -143,29 +158,27 @@ def referenced_ids(document: dict[str, Any]) -> set[str]:
 
 
 def recount_references(session: Session, workspace_id: str) -> int:
-    """Recompute every asset's reference count from the documents that cite it.
+    """Count references in every retained version, including operation-only history.
 
-    Every *version*, not just the head. A deck's history is the product's
-    promise, so an image used only by version three is still in use — sweeping it
-    would leave a hole in a version the user can still open.
-
-    Returns how many assets changed, so a caller can log a recount that did
-    nothing differently from one that found drift.
+    Reuse the store's authoritative replay instead of scanning patch values:
+    patches may remove or indirectly introduce references. Corrupt history must
+    abort the recount, never authorize deletion from an incomplete result.
     """
     live: dict[str, int] = {}
-
     versions = session.execute(
-        select(PresentationVersion.snapshot_json)
+        select(PresentationVersion)
         .join(Presentation, Presentation.id == PresentationVersion.presentation_id)
         .join(Project, Project.id == Presentation.project_id)
         .where(Project.workspace_id == workspace_id)
-        .where(PresentationVersion.snapshot_json.isnot(None))
     ).scalars()
 
-    for snapshot in versions:
-        if not snapshot:
-            continue
-        for asset_id in referenced_ids(snapshot):
+    for version in versions:
+        document = version.snapshot_json
+        if document is None:
+            document = store.load_presentation(
+                session, version.presentation_id, at_version=version.id
+            ).document
+        for asset_id in referenced_ids(document):
             live[asset_id] = live.get(asset_id, 0) + 1
 
     changed = 0
@@ -206,7 +219,7 @@ def sweep(
     workspace_id: str,
     *,
     grace_days: int = ORPHAN_GRACE_DAYS,
-    remove: Iterable[str] | None = None,
+    remove: Callable[[str], None] | None = None,
     dry_run: bool = False,
 ) -> SweepResult:
     """Remove assets nothing has referenced for the grace period.
@@ -239,9 +252,15 @@ def sweep(
         result.reclaimed_bytes = sum(asset.bytes or 0 for asset in candidates)
         return result
 
-    keys = [asset.storage_key for asset in candidates]
-
     for asset in candidates:
+        if remove is not None:
+            try:
+                # Bytes first for this one object. If it fails, retain the row so
+                # the next sweep can retry and no cleanup failure is forgotten.
+                remove(asset.storage_key)
+            except Exception:
+                logger.exception("Could not remove asset bytes for %s; retained for retry", asset.id)
+                continue
         result.deleted.append(asset.id)
         result.reclaimed_bytes += asset.bytes or 0
         session.delete(asset)
@@ -249,12 +268,8 @@ def sweep(
     session.flush()
     quotas.recount_storage(session, workspace_id)
 
-    if remove is not None and keys:
-        # Bytes last. If storage removal fails the rows are already gone, which
-        # leaves a file nobody references — wasteful, and recoverable by a later
-        # sweep of the bucket. The reverse order would leave a row pointing at a
-        # file that is not there, which breaks a deck.
-        logger.info("Sweeping %d asset(s) from %s", len(keys), workspace_id)
+    if result.deleted:
+        logger.info("Swept %d asset(s) from %s", len(result.deleted), workspace_id)
 
     return result
 

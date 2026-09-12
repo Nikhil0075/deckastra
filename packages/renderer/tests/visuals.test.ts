@@ -10,6 +10,7 @@ import { findIcon, ICON_NAMES } from "../src/icons";
 import { highlight } from "../src/highlight";
 import { resolveTransition, transitionStylesheet } from "../src/transitions";
 import { resolveTheme } from "../src/theme";
+import { estimateLabelWidth } from "../src/scale";
 
 const technical = loadFixture("technical");
 const theme = resolveTheme(technical.theme);
@@ -40,6 +41,38 @@ const EDGES = [
 // --------------------------------------------------------------------- diagram
 
 describe("diagram layout", () => {
+  it("bounds label search independently of document dimensions", () => {
+    const payload = diagram({
+      transform: { x: 0, y: 0, width: 1200, height: 1e9 },
+      nodes: NODES, edges: EDGES.map(edge => ({ ...edge, label: "Connection" })),
+      layoutHint: { algorithm: "manual" },
+    });
+    expect(payload.edges).toHaveLength(2);
+    expect(payload.edges.every(edge => Number.isFinite(edge.label?.y))).toBe(true);
+  });
+
+  it("keeps reciprocal labels clear of nodes, headings and each other", () => {
+    const payloads = flattenScene(buildDocumentScene(technical).slides[2]!)
+      .map(node => node.renderPayload).filter((p): p is DiagramPayload => p.kind === "diagram");
+    expect(payloads).toHaveLength(1);
+    const payload = payloads[0]!;
+    const boxes = payload.nodes.map(n => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+    for (const group of payload.groups) if (group.label) boxes.push({
+      x: group.label.x, y: group.label.y - group.label.size,
+      width: estimateLabelWidth(group.label.text, group.label.size), height: group.label.size * 1.3,
+    });
+    for (const edge of payload.edges) {
+      if (!edge.label) continue;
+      const l = edge.label;
+      const w = estimateLabelWidth(l.text, l.size);
+      const box = { x: l.x - w / 2, y: l.y - l.size, width: w, height: l.size * 1.3 };
+      expect(boxes.some(b => box.x < b.x + b.width && b.x < box.x + box.width &&
+        box.y < b.y + b.height && b.y < box.y + box.height), l.text).toBe(false);
+      boxes.push(box);
+    }
+    expect(payload.warnings).toEqual([]);
+  });
+
   it("ranks a chain left to right and never overlaps two nodes", () => {
     const payload = diagram({ nodes: NODES, edges: EDGES, layoutHint: { direction: "LR" } });
     const xs = payload.nodes.map((node) => node.x);

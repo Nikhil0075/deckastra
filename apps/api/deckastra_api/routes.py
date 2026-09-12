@@ -13,10 +13,20 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import store
-from .auth import Principal, Role, current_principal, resolve_presentation_access
+from . import store, themes
+from .auth import (
+    Principal,
+    Role,
+    current_principal,
+    resolve_creation_project,
+    resolve_presentation_access,
+    resolve_project_access,
+)
+from .compose import blank_document
+from .db.models import Presentation
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -102,6 +112,29 @@ def _summary(row) -> TransactionSummary:
 # --------------------------------------------------------------------- routes
 
 
+class CreateBlankRequest(BaseModel):
+    title: str = Field(default="Untitled presentation", min_length=1, max_length=255)
+    project_id: str | None = None
+
+
+@router.post("/presentations", status_code=status.HTTP_201_CREATED)
+def create_blank_presentation(
+    request: CreateBlankRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    project = resolve_creation_project(session, user_id=principal.user_id, project_id=request.project_id)
+    default_theme = themes.default_for(session, project.workspace_id)
+    document = blank_document(request.title.strip() or "Untitled presentation",
+                              theme_definition=default_theme.definition_json if default_theme else None,
+                              theme_id=default_theme.id if default_theme else None)
+    errors = validate_document(document)
+    if errors:
+        raise HTTPException(status_code=500, detail="The blank document failed schema validation.")
+    stored = store.create_presentation(session, project_id=project.id, document=document, created_by=principal.user_id, source="user")
+    return {"presentation_id": stored.presentation_id, "version_id": stored.version_id, "document": document}
+
+
 @router.get("/presentations/{presentation_id}")
 def get_presentation(
     presentation_id: str,
@@ -121,6 +154,66 @@ def get_presentation(
         "role": access.role.name.lower(),
         "can_edit": access.can_edit,
     }
+
+
+@router.get("/projects/{project_id}/presentations")
+def list_presentations(
+    project_id: str,
+    limit: int = 200,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """The decks in one project, most recently changed first, without content.
+
+    There was no way to ask this. `/v1/account` names workspaces and projects,
+    and every other read needed a presentation id the caller already had — so an
+    agent over MCP, asked "which decks do I have", could name the one open in the
+    window and nothing else. A real Claude Code session found that and said so.
+
+    Rows only. Listing a project must not cost a replay of every deck in it.
+    """
+    resolve_project_access(session, user_id=principal.user_id, project_id=project_id)
+    rows = session.scalars(
+        select(Presentation)
+        .where(Presentation.project_id == project_id)
+        # `id` breaks ties so two decks touched in the same instant keep one order.
+        .order_by(Presentation.updated_at.desc(), Presentation.id)
+        .limit(min(max(limit, 1), 500))
+    ).all()
+    return {
+        "presentations": [
+            {
+                "id": row.id,
+                "title": row.title,
+                "version_id": row.current_version_id,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.get("/presentations/{presentation_id}/head")
+def get_presentation_head(
+    presentation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Which version is current, without the document.
+
+    An open editor asks this every few seconds so a change made somewhere else —
+    an agent over MCP, a second window — reaches the person looking at the deck.
+    The full read replays operations forward from the nearest snapshot, which is
+    the wrong thing to do on a timer when the answer is almost always "nothing
+    changed". This is one row.
+    """
+    resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id
+    )
+    presentation = session.get(Presentation, presentation_id)
+    if presentation is None or presentation.current_version_id is None:
+        raise HTTPException(status_code=404, detail="No such deck.")
+    return {"presentation_id": presentation_id, "version_id": presentation.current_version_id}
 
 
 @router.post("/presentations/{presentation_id}/transactions", response_model=ApplyTransactionResponse)

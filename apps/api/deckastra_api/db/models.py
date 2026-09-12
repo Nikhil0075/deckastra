@@ -73,6 +73,35 @@ class User(Base, TimestampMixin):
     name: Mapped[str | None] = mapped_column(String(200))
 
     memberships: Mapped[list[WorkspaceMember]] = relationship(back_populates="user")
+    identities: Mapped[list[AuthIdentity]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class AuthIdentity(Base, TimestampMixin):
+    """A stable external login mapped to one Deckastra user.
+
+    Email addresses can change and can be reused. The issuer/subject pair is the
+    identity provider's immutable account key, so authorization never depends on
+    an email claim after the first verified sign-in.
+    """
+
+    __tablename__ = "auth_identities"
+    __table_args__ = (
+        UniqueConstraint("issuer", "subject", name="uq_auth_identity_subject"),
+        Index("ix_auth_identities_user", "user_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    issuer: Mapped[str] = mapped_column(String(512), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(64))
+    email_at_link: Mapped[str] = mapped_column(String(320), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="identities")
 
 
 class Workspace(Base, TimestampMixin):
@@ -519,10 +548,14 @@ class ExportJob(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("kind IN ('pdf', 'pptx')", name="ck_export_kind"),
         CheckConstraint(
-            "status IN ('queued', 'running', 'completed', 'failed')",
+            "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
             name="ck_export_status",
         ),
+        UniqueConstraint(
+            "presentation_id", "created_by", "idempotency_key", name="uq_export_idempotency"
+        ),
         Index("ix_export_jobs_presentation", "presentation_id", "created_at"),
+        Index("ix_export_jobs_claim", "status", "next_attempt_at", "lease_expires_at"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -538,6 +571,14 @@ class ExportJob(Base, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(8), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="queued")
     options_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lease_owner: Mapped[str | None] = mapped_column(String(128))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     stage: Mapped[str | None] = mapped_column(String(24))

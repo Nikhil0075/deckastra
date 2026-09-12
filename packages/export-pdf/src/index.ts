@@ -23,6 +23,7 @@
 import {
   DegradationLedger,
   slidesToExport,
+  sceneUsedEstimatedMetrics,
   type ExportAdapter,
   type ExportCapability,
   type ExportInput,
@@ -126,6 +127,7 @@ export async function buildPdf(
       });
     }
 
+    if (sceneUsedEstimatedMetrics(scene)) ledger.noteEstimatedMetrics();
     renderable.push(slideId);
   }
 

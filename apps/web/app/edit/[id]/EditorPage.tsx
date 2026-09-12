@@ -5,12 +5,10 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { buildDocumentScene } from "@deckastra/renderer";
 
-import { EditorShell } from "../../../components/EditorShell";
-import { PresentMode } from "../../../components/PresentMode";
-import { browserMeasurer } from "../../../lib/measurer";
-import { getSession } from "../../../lib/session";
+import { EditorShell, PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
+import { useWorkspaceClient } from "@deckastra/workspace-client/react";
+import { isWorkspaceError } from "@deckastra/workspace-contracts";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type State =
   | { phase: "loading" }
@@ -19,11 +17,12 @@ type State =
       phase: "ready";
       document: PresentationDocument;
       versionId: string;
-      token: string;
       canEdit: boolean;
     };
 
 export function EditorPage({ presentationId }: { presentationId: string }) {
+  const client = useWorkspaceClient();
+  const measurer = useBrowserMeasurer();
   const [state, setState] = useState<State>({ phase: "loading" });
 
   useEffect(() => {
@@ -31,30 +30,23 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
 
     async function load() {
       try {
-        const { token } = await getSession();
-        const response = await fetch(`${API}/v1/presentations/${presentationId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.status === 404) {
-          // The API answers 404 for both missing and forbidden, so the UI must
-          // not claim to know which — saying "no permission" would leak that it
-          // exists.
-          throw new Error("That deck could not be found.");
-        }
-        if (!response.ok) throw new Error(`Could not load the deck (${response.status}).`);
-
-        const body = await response.json();
+        const body = await client.documents.read(presentationId);
         if (cancelled) return;
 
         setState({
           phase: "ready",
           document: body.document,
           versionId: body.version_id,
-          token,
           canEdit: body.can_edit,
         });
       } catch (error) {
+        if (isWorkspaceError(error) && error.status === 404) {
+          // The API answers 404 for both missing and forbidden, so the UI must
+          // not claim to know which — saying "no permission" would leak that it
+          // exists.
+          if (!cancelled) setState({ phase: "error", message: "That deck could not be found." });
+          return;
+        }
         if (cancelled) return;
         setState({
           phase: "error",
@@ -67,7 +59,7 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [presentationId]);
+  }, [client, presentationId]);
 
   if (state.phase === "loading") {
     return <Centered>Loading…</Centered>;
@@ -93,7 +85,7 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
   if (params.get("presenter") === "1") {
     return (
       <PresentMode
-        scene={buildDocumentScene(state.document, { measurer: browserMeasurer() })}
+        scene={buildDocumentScene(state.document, { measurer })}
         onExit={() => window.close()}
         presenterOnly
         channelName={params.get("channel") ?? `deckastra-present-${presentationId}`}
@@ -112,7 +104,6 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
       initialDocument={state.document}
       presentationId={presentationId}
       initialVersionId={state.versionId}
-      token={state.token}
       onExit={() => {
         window.location.href = "/";
       }}

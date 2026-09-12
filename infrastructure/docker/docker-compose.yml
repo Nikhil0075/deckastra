@@ -83,7 +83,13 @@ services:
       mc mb --ignore-existing local/deckastra-assets &&
       mc mb --ignore-existing local/deckastra-exports &&
       mc mb --ignore-existing local/deckastra-previews &&
-      echo 'buckets ready'
+      mc version enable local/deckastra-assets &&
+      rules="$$(mc ilm rule ls --json local/deckastra-assets)" &&
+      case "$$rules" in
+        *NoncurrentDays*35*) true ;;
+        *) mc ilm rule add --noncurrent-expire-days 35 --expire-delete-marker local/deckastra-assets ;;
+      esac &&
+      echo 'buckets and asset retention ready'
       "
 
 volumes:

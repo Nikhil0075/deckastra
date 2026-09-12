@@ -294,6 +294,129 @@ def _stub_edit_client(request: AgentEditRequest, document: dict[str, Any]) -> An
     return client
 
 
+# ------------------------------------------------- externally authored proposals
+
+
+class AuthoredProposalRequest(BaseModel):
+    """A change an external client worked out for itself (milestone D2.2).
+
+    Deliberately *not* an instruction. `agent/edit` takes words and pays a model
+    to turn them into operations; an MCP client is already a model, and charging
+    the user for a second one to re-derive what the first one already decided is
+    a bill for nothing.
+
+    What is absent from this body is the point: there is no risk tier and no
+    `applied` flag. Both are computed here, from the operations.
+    """
+
+    #: Bounded because this is a public write surface. The cap is generous — a
+    #: whole-deck retheme is a few hundred operations — and a caller that needs
+    #: more is describing a document replacement, which is a different request.
+    operations: list[dict[str, Any]] = Field(min_length=1, max_length=2_000)
+    intent: str = Field(min_length=1, max_length=500)
+    #: The version the caller authored these operations against.
+    #:
+    #: Required, not optional. An external agent reads a deck, thinks for a while
+    #: and comes back — and in that gap the person whose deck it is may have been
+    #: typing. Without this the operations would apply to whatever is there now,
+    #: which is last-write-wins with extra steps. A caller that could omit it
+    #: would eventually omit it.
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    reason: str | None = Field(default=None, max_length=1_000)
+    #: Which client authored it, for the approval UI. Namespaced below so it
+    #: cannot claim to be one of the product's own agents.
+    client_label: str = Field(default="external", max_length=60)
+
+
+@router.post("/presentations/{presentation_id}/proposals", response_model=AgentEditResponse)
+def authored_proposal(
+    presentation_id: str,
+    request: AuthoredProposalRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> AgentEditResponse:
+    """Take operations from an external agent, and treat them like any other.
+
+    This is the whole of the MCP write path, and it is short on purpose. It adds
+    no second way into the store: the operations go to `create_proposal`, which
+    computes the risk tier from them, applies a low-risk change immediately,
+    parks anything else for a human, and gives every applied change an inverse in
+    the ordinary history. An MCP edit therefore undoes like a typed one, expires
+    like any proposal, and is re-validated against the head on approval.
+
+    Three refusals worth naming:
+
+    - **No model is called.** Not "avoided where possible" — there is no client
+      in this function to call.
+    - **The caller cannot declare a tier**, so it cannot mark its own change low
+      risk and skip the human.
+    - **The caller cannot claim to be an internal agent.** The label it gives is
+      prefixed, so an approval prompt saying `mcp:codex` cannot be produced by
+      anything but this route.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+    )
+
+    # Checked before anything is created, and checked here rather than inside
+    # `create_proposal` because the editor's own agent path has no stale base to
+    # guard against — it composes operations from the document it just loaded, in
+    # the same request. The actual write is still conditional on this version in
+    # `store.commit_transaction`, so this is the honest error, not the guarantee.
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "This deck has changed since you read it. Read it again and re-author "
+                    "the change against the current version."
+                ),
+                "code": "E310",
+                "current_version_id": head.version_id,
+            },
+        )
+
+    try:
+        outcome = proposals.create_proposal(
+            session,
+            presentation_id=presentation_id,
+            operations=request.operations,
+            intent=request.intent,
+            created_by=principal.user_id,
+            # Prefixed, always. `agent_id` reaches the approval UI, and "editor"
+            # there would tell a user the product's own edit agent proposed
+            # something an external client did.
+            agent_id=f"mcp:{request.client_label}"[:120],
+            reason=request.reason,
+        )
+    except proposals.ProposalError as error:
+        # 409 rather than 400: the usual cause is that the deck moved under the
+        # caller — an operation addressing an element that is no longer there —
+        # which is a conflict to re-read and retry, not a malformed request.
+        raise HTTPException(
+            status_code=409, detail={"message": str(error), "code": error.code}
+        ) from error
+
+    return AgentEditResponse(
+        run_id="",  # No run: nothing was generated, so there is nothing to trace.
+        status="completed",
+        outcome=outcome["status"],
+        transaction_id=outcome["transaction_id"],
+        version_id=outcome.get("version_id"),
+        document=outcome.get("document"),
+        preview=outcome.get("preview"),
+        risk_tier=outcome["risk_tier"],
+        reasons=outcome.get("reasons") or [],
+        changes=[],
+        warnings=[],
+        expires_at=outcome.get("expires_at"),
+    )
+
+
 # ---------------------------------------------------------------- proposals
 
 

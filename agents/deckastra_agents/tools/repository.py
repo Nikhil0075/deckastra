@@ -29,6 +29,12 @@ _HIT_SCHEMA = {
     "type": "object",
     "properties": {
         "path": {"type": "string"},
+        #: `owner/repo`, and `owner/repo#path:start-end`. Both are on the hit
+        #: because a search spans every connected repository — attributing a hit
+        #: to "the repository" is only correct when there is exactly one.
+        "repository": {"type": "string"},
+        "repository_id": {"type": "string"},
+        "source_id": {"type": "string"},
         "start_line": {"type": "integer"},
         "end_line": {"type": "integer"},
         "language": {"type": "string"},
@@ -71,6 +77,9 @@ def register_repository_tools(
             },
             required_permissions=["repository.read"],
             returns_untrusted_content=True,
+            # A repository's own description, written by whoever owns it.
+            untrusted_fields=("description",),
+            untrusted_kind="github",
         ),
         lambda payload: {"repositories": profile()},
     )
@@ -102,6 +111,8 @@ def register_repository_tools(
             },
             required_permissions=["repository.read"],
             returns_untrusted_content=True,
+            untrusted_fields=("content",),
+            untrusted_kind="github",
         ),
         lambda payload: {
             "query": payload["query"],
@@ -137,6 +148,8 @@ def register_repository_tools(
             },
             required_permissions=["repository.read"],
             returns_untrusted_content=True,
+            untrusted_fields=("content",),
+            untrusted_kind="github",
         ),
         lambda payload: read_file(payload.get("repository_id", ""), payload["path"]),
     )

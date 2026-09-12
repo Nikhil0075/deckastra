@@ -90,6 +90,10 @@ function summarisePayload(node: SceneNode): string {
           .map((node_) => `${node_.id.slice(-6)}@${n(node_.x)},${n(node_.y)},${n(node_.width)},${n(node_.height)}`)
           .join(";")}`,
         `edges=${payload.edges.map((edge) => `${edge.id.slice(-6)}:${edge.d}`).join(";")}`,
+        `edgeLabels=${payload.edges.filter(edge => edge.label).map(edge => {
+          const label = edge.label!;
+          return `${edge.id.slice(-6)}:${JSON.stringify(label.text)}@${n(label.x)},${n(label.y)},${n(label.size)}`;
+        }).join(";")}`,
         `groups=${payload.groups
           .map((group) => `${n(group.x)},${n(group.y)},${n(group.width)},${n(group.height)}`)
           .join(";")}`,

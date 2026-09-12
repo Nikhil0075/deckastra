@@ -1,0 +1,88 @@
+/*
+ * The editor's chrome: theme tokens, resets and the few global rules the
+ * components rely on.
+ *
+ * Part of the package rather than of an app, because two of these rules are load
+ * bearing for components in it — `.present-idle` is how present mode hides the
+ * cursor on a projected slide, and the reduced-motion block is the backstop for
+ * any CSS transition that slips in outside the animation engine. A shell that
+ * forgot to copy them would look fine and behave wrong.
+ *
+ * Deliberately plain otherwise: the slide surface is the product.
+ */
+
+:root {
+  --bg: #08090c;
+  --surface: #12151c;
+  --surface-alt: #1a1f28;
+  --border: #262c37;
+  --fg: #e8eef5;
+  --fg-muted: #98a5b6;
+  --fg-subtle: #6b7889;
+  --accent: #4cc2ff;
+  --accent-fg: #04121c;
+  --danger: #ff6b6b;
+  --warning: #f2c14e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+textarea,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* A visible focus indicator is shared by every native control, including the
+   canvas-adjacent toolbars and the anonymous share journey. */
+:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Motion remains an enhancement. Authors and audiences who request less motion
+   get immediate state changes even when a component accidentally adds a CSS
+   transition outside the animation engine. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Present mode hides the cursor after a moment of stillness, so a projected deck
+   does not show a stray pointer parked over the slide. */
+.present-idle {
+  cursor: none;
+}

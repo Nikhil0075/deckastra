@@ -724,8 +724,8 @@ export function buildDiagramPayload(
         label: edge.label
           ? {
               text: edge.label,
-              x: round((start.x + end.x) / 2),
-              y: round((start.y + end.y) / 2 - 8),
+              x: round(selfEdge ? from.x + from.width + 26 : (start.x + end.x) / 2),
+              y: round(selfEdge ? from.y - 8 : (start.y + end.y) / 2 - 8),
               size: sublabelSize,
               color: edgeLabelColor,
             }
@@ -777,6 +777,53 @@ export function buildDiagramPayload(
       },
     ];
   });
+
+  // Labels are resolved geometry, shared by editor and exports. Reserve node
+  // and group-heading bounds, then choose the nearest clear candidate in
+  // document order. Reciprocal edges must not paint their labels on each other.
+  const overlaps = (a: Placement, b: Placement) =>
+    a.x < b.x + b.width && b.x < a.x + a.width &&
+    a.y < b.y + b.height && b.y < a.y + a.height;
+  const occupied: Placement[] = [...placements.values()];
+  for (const group of groups) {
+    if (group.label) occupied.push({
+      x: group.label.x - 4, y: group.label.y - sublabelSize - 4,
+      width: estimateLabelWidth(group.label.text, sublabelSize) + 8,
+      height: sublabelSize * 1.3 + 8,
+    });
+  }
+  for (const edge of edges) {
+    const label = edge.label;
+    if (!label) continue;
+    const labelWidth = estimateLabelWidth(label.text, label.size) + 12;
+    const labelHeight = label.size * 1.3 + 8;
+    let found = false;
+    // Search nearby horizontal offsets as well: a label wider than a narrow
+    // inter-node gap should not jump above an unrelated edge to find room.
+    const candidates: { x: number; y: number; distance: number }[] = [];
+    // Document dimensions are user data. Cap work even for an enormous box.
+    for (let lane = 0; lane <= Math.min(64, Math.ceil(height / labelHeight) * 2); lane++) {
+      const dy = Math.ceil(lane / 2) * labelHeight * (lane % 2 ? -1 : 1);
+      for (const dx of [0, labelWidth / 4, -labelWidth / 4, labelWidth / 2, -labelWidth / 2]) {
+        candidates.push({ x: label.x + dx, y: label.y + dy, distance: dx * dx + dy * dy });
+      }
+    }
+    candidates.sort((a, b) => a.distance - b.distance);
+    for (const candidate of candidates) {
+      const x = round(candidate.x);
+      const y = round(candidate.y);
+      const bounds = { x: x - labelWidth / 2, y: y - label.size - 4,
+        width: labelWidth, height: labelHeight };
+      if (bounds.x < 0 || bounds.x + bounds.width > width || bounds.y < 0 ||
+          bounds.y + bounds.height > height || occupied.some(other => overlaps(bounds, other))) continue;
+      label.x = round(x);
+      label.y = y;
+      occupied.push(bounds);
+      found = true;
+      break;
+    }
+    if (!found) warnings.push(`Edge ${edge.id} has no clear space for its label; enlarge or rearrange the diagram.`);
+  }
 
   return {
     kind: "diagram",

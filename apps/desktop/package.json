@@ -1,0 +1,40 @@
+{
+  "name": "@deckastra/desktop",
+  "version": "0.0.0",
+  "productName": "Deckastra",
+  "private": true,
+  "type": "module",
+  "description": "The Deckastra desktop shell (milestone D0): a window, a deck on disk, and a presenter window.",
+  "author": "Deckastra",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "package": "npm run build && npm run build:sidecar && electron-builder --publish never",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build:sidecar": "node scripts/build-sidecar.mjs"
+  },
+  "dependencies": {
+    "@deckastra/animation-engine": "*",
+    "@deckastra/editor-ui": "*",
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/renderer": "*",
+    "@deckastra/transactions": "*",
+    "@deckastra/workspace-client": "*",
+    "@deckastra/workspace-contracts": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.2",
+    "jsdom": "^25.0.1",
+    "vite": "^6.0.7",
+    "vitest": "^3.2.7"
+  }
+}

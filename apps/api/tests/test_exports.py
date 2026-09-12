@@ -33,13 +33,12 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'exports.db'}")
     monkeypatch.setenv("DECKASTRA_DEV_SECRET", "test-secret")
     monkeypatch.setenv("DECKASTRA_EXPORT_DIR", str(tmp_path))
+    monkeypatch.setenv("DECKASTRA_EXPORT_INLINE", "1")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
-    # Re-read after the environment changed: the module caches the directory at
-    # import, so a test that only set the variable would write to the real one.
-    from deckastra_api import export_service
-
-    monkeypatch.setattr(export_service, "EXPORT_ROOT", tmp_path / "artifacts")
+    # Setting the variable is enough now: `export_root()` reads it on every call.
+    # It used to be cached at import, which is how every desktop export ended up
+    # in the system temp directory.
 
     db_session.reset_engine()
     db_session.create_all()
@@ -77,7 +76,7 @@ def test_a_pptx_export_produces_a_file_a_real_reader_opens(client, auth, deck, t
     started = client.post(
         f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pptx"}
     )
-    assert started.status_code == 200, started.text
+    assert started.status_code in (200, 202), started.text
     job = started.json()
 
     assert job["status"] == "completed"
@@ -109,7 +108,7 @@ def test_a_pdf_export_keeps_text_as_text(client, auth, deck, tmp_path):
     started = client.post(
         f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pdf"}
     )
-    assert started.status_code == 200, started.text
+    assert started.status_code in (200, 202), started.text
     job = started.json()
     assert job["status"] == "completed"
 
@@ -259,3 +258,108 @@ def test_an_artifact_that_was_cleaned_up_says_so(client, auth, deck):
     # Actionable: the user can re-run it, and the row is still the record that
     # the export happened.
     assert "again" in response.json()["detail"]
+
+
+# --------------------------------------------------------------- durability
+
+
+def test_export_creation_is_idempotent_and_returns_queued(client, auth, deck, monkeypatch):
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
+    body = {"kind": "pdf", "idempotency_key": "same-export-request"}
+    first = client.post(f"/v1/presentations/{deck}/exports", headers=auth, json=body)
+    second = client.post(f"/v1/presentations/{deck}/exports", headers=auth, json=body)
+    assert first.status_code == 202
+    assert first.json()["status"] == "queued"
+    assert second.json()["id"] == first.json()["id"]
+
+
+def test_queued_export_can_be_cancelled_and_retried(client, auth, deck, monkeypatch):
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
+    started = client.post(
+        f"/v1/presentations/{deck}/exports",
+        headers=auth,
+        json={"kind": "pptx", "idempotency_key": "cancel-retry-proof"},
+    ).json()
+    cancelled = client.post(f"/v1/exports/{started['id']}/cancel", headers=auth)
+    assert cancelled.json()["status"] == "cancelled"
+    retried = client.post(f"/v1/exports/{started['id']}/retry", headers=auth)
+    assert retried.status_code == 202
+    assert retried.json()["status"] == "queued"
+
+
+def test_expired_worker_lease_is_recovered(client, auth, deck, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from deckastra_api import export_service
+    from deckastra_api.db.models import ExportJob
+
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
+    job_id = client.post(
+        f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pdf"}
+    ).json()["id"]
+    with db_session.session_scope() as session:
+        job = session.get(ExportJob, job_id)
+        job.status = "running"
+        job.attempts = 1
+        job.lease_owner = "worker-that-crashed"
+        job.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    with db_session.session_scope() as session:
+        assert export_service.recover_expired(session) == 1
+    with db_session.session_scope() as session:
+        recovered = session.get(ExportJob, job_id)
+        assert recovered.status == "queued"
+        assert recovered.lease_owner is None
+        assert "resume" in recovered.message
+
+
+def test_worker_claims_pinned_version_and_completes(client, auth, deck, monkeypatch):
+    from deckastra_api import export_service
+
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
+    job_id = client.post(
+        f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pdf"}
+    ).json()["id"]
+
+    def completed(kind, document, output, options):
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"artifact")
+        return {
+            "filename": "proof.pdf",
+            "contentType": "application/pdf",
+            "bytes": 8,
+            "report": {"durationMs": 1, "warnings": [], "slideCount": len(document["slides"])},
+        }
+
+    monkeypatch.setattr(export_service, "_invoke_worker", completed)
+    with db_session.session_scope() as session:
+        result = export_service.process_one(session, "test-worker")
+        assert result.id == job_id
+        assert result.status == "completed"
+        assert result.attempts == 1
+
+
+# ------------------------------------------------------------------ location
+
+
+@pytest.mark.slow
+def test_a_finished_export_is_stored_where_the_setting_says(client, auth, deck, tmp_path):
+    """Exports land in `DECKASTRA_EXPORT_DIR`, read when the export runs.
+
+    The directory used to be cached at import, so a setting made after the module
+    loaded was ignored and every desktop export went to the system temp folder —
+    outside the data directory a backup copies, and somewhere the OS may clean.
+    The fixture sets the variable and patches nothing, so this passing is the fix.
+    """
+    from deckastra_api.db.models import ExportJob
+
+    started = client.post(
+        f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pptx"}
+    )
+    assert started.status_code in (200, 202), started.text
+    job = started.json()
+    assert job["status"] == "completed"
+
+    with db_session.session_scope() as session:
+        stored = Path(session.get(ExportJob, job["id"]).artifact_path)
+
+    assert stored.parent == tmp_path / "deckastra-exports"
+    assert stored.is_file() and stored.stat().st_size == job["bytes"]

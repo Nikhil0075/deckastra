@@ -24,10 +24,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from .db.models import Theme
+from .db.models import Theme, Workspace
 from .ids import new_id
 from .schema import SchemaUnavailable, validate_theme
 
@@ -69,6 +69,14 @@ def save(
             "This theme does not match the schema: " + "; ".join(errors[:3])
         )
 
+    # Serialize theme writers for this workspace until the caller commits.
+    # A no-op UPDATE acquires a database write lock on SQLite and a row lock on
+    # PostgreSQL, including when two writers create previously absent themes.
+    locked = session.execute(update(Workspace).where(Workspace.id == workspace_id)
+                             .values(name=Workspace.name).execution_options(synchronize_session=False))
+    if locked.rowcount != 1:
+        raise ThemeError("No such workspace.")
+
     existing = session.execute(
         select(Theme).where(Theme.workspace_id == workspace_id, Theme.name == name)
     ).scalar_one_or_none()
@@ -92,11 +100,11 @@ def save(
     session.flush()
 
     if is_default:
-        # Enforced here rather than by a partial unique index: SQLite has none,
-        # and a constraint that exists on one dialect and not the other means the
-        # two databases disagree about what is legal.
-        for other in session.query(Theme).filter(Theme.workspace_id == workspace_id).all():
-            other.is_default = other.id == theme.id
+        # One database statement, not ORM assignments based on possibly stale
+        # identity-map values. Synchronize any instances this caller holds too.
+        session.execute(update(Theme).where(Theme.workspace_id == workspace_id)
+                        .values(is_default=Theme.id == theme.id)
+                        .execution_options(synchronize_session="fetch"))
         session.flush()
 
     return theme

@@ -85,6 +85,8 @@ def test_the_report_says_what_was_spent():
     report = budget.report()
 
     assert report["used_tokens"] == 150
+    assert report["input_tokens"] == 100
+    assert report["output_tokens"] == 50
     assert report["max_total_tokens"] == budget.max_total_tokens
     assert "elapsed_seconds" in report
 

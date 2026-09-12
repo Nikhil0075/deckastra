@@ -239,6 +239,22 @@ describe("degradation is reported, never silent", () => {
     }
   });
 
+  it("never claims a raster it did not write", () => {
+    // The placeholder path reported `rasterized`, which tells a reader the
+    // appearance survived as an image and only the selectable text was lost.
+    // This build embeds no image for those elements — it draws a dashed box —
+    // so the honest action is `dropped`. A report that flatters the file is
+    // worse than no report: it is believed.
+    const rasterized = result.report.warnings.filter(
+      (warning) => warning.action === "rasterized",
+    );
+    expect(rasterized).toEqual([]);
+
+    const dropped = result.report.warnings.filter((warning) => warning.action === "dropped");
+    expect(dropped.length).toBeGreaterThan(0);
+    for (const warning of dropped) expect(warning.message).toMatch(/not in the file/);
+  });
+
   it("lists the elements that were flattened", () => {
     expect(result.report.flattenedElements.length).toBeGreaterThan(0);
     for (const id of result.report.flattenedElements) expect(id).toMatch(/^el_/);

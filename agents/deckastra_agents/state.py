@@ -103,6 +103,12 @@ class PresentationAgentState(TypedDict, total=False):
     #: this TypedDict names, and an undeclared one is silently dropped.
     motion_plan: dict[str, Any]
     critic_results: Annotated[list[dict[str, Any]], _append]
+    #: Every draft the Critic reviewed, with the score it gave it. Kept because
+    #: the fallback has to be able to go *back* to a draft: a later revision can
+    #: score worse than the one it replaced, and the run then tells the user the
+    #: best draft was kept while proposing the worst one. Declared here because
+    #: LangGraph merges only the keys this TypedDict names.
+    reviewed_drafts: Annotated[list[dict[str, Any]], _append]
 
     #: The document as it stands. See the module docstring for why it is here.
     document: dict[str, Any]
@@ -151,6 +157,7 @@ def initial_state(
         "document": document,
         "proposed_operations": [],
         "critic_results": [],
+        "reviewed_drafts": [],
         "current_stage": "orchestrate",
         "awaiting": None,
         "events": [],

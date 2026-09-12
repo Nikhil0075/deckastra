@@ -8,9 +8,13 @@ live, and none of them are exercised by calling the store.
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -98,7 +102,344 @@ def test_dev_session_is_absent_in_production(client: TestClient, monkeypatch):
     assert client.post("/v1/dev/session", json={"email": "x@y.z"}).status_code == 404
 
 
+def _oidc_token(monkeypatch, **overrides) -> str:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_pem = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    monkeypatch.setenv("DECKASTRA_ENV", "production")
+    monkeypatch.setenv("DECKASTRA_OIDC_ISSUER", "https://identity.example.test")
+    monkeypatch.setenv("DECKASTRA_OIDC_AUDIENCE", "deckastra-api")
+    monkeypatch.setenv("DECKASTRA_OIDC_PUBLIC_KEY", public_pem)
+    now = datetime.now(timezone.utc)
+    claims = {
+        "iss": "https://identity.example.test",
+        "sub": "provider-user-123",
+        "aud": "deckastra-api",
+        "iat": now,
+        "exp": now + timedelta(minutes=5),
+        "email": "Signed.In@Example.com",
+        "email_verified": True,
+        "name": "Signed In",
+        "provider": "google",
+        **overrides,
+    }
+    return jwt.encode(claims, private_key, algorithm="RS256")
+
+
+def test_a_verified_oidc_identity_bootstraps_one_personal_account(client, monkeypatch):
+    from deckastra_api.db.models import AuthIdentity
+
+    token = _oidc_token(monkeypatch)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first = client.get("/v1/workspace/usage", headers=headers)
+    second = client.get("/v1/workspace/usage", headers=headers)
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    with db_session.session_scope() as session:
+        identity = session.query(AuthIdentity).one()
+        user = session.get(User, identity.user_id)
+        assert identity.issuer == "https://identity.example.test"
+        assert identity.subject == "provider-user-123"
+        assert identity.provider == "google"
+        assert user.email == "signed.in@example.com"
+        assert session.query(WorkspaceMember).filter_by(user_id=user.id).count() == 1
+        assert session.query(Project).filter_by(created_by=user.id).count() == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"aud": "some-other-api"},
+        {"email_verified": False},
+        {"exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
+    ],
+)
+def test_invalid_oidc_claims_are_rejected_without_provisioning(client, monkeypatch, overrides):
+    from deckastra_api.db.models import AuthIdentity
+
+    token = _oidc_token(monkeypatch, **overrides)
+    response = client.get(
+        "/v1/workspace/usage", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token."
+    with db_session.session_scope() as session:
+        assert session.query(AuthIdentity).count() == 0
+        assert session.query(User).count() == 0
+
+
+def test_a_development_token_is_never_accepted_in_production(client, monkeypatch):
+    from deckastra_api.auth import issue_dev_token
+
+    dev = client.post("/v1/dev/session", json={"email": "dev-only@example.com"}).json()
+    monkeypatch.setenv("DECKASTRA_ENV", "production")
+    response = client.get(
+        "/v1/workspace/usage",
+        headers={"Authorization": f"Bearer {issue_dev_token(dev['user_id'])}"},
+    )
+    assert response.status_code == 401
+
+
+def test_account_context_and_workspace_project_creation_are_explicit(
+    client, auth, session_token
+):
+    initial = client.get("/v1/account", headers=auth)
+    assert initial.status_code == 200, initial.text
+    assert initial.json()["user"]["id"] == session_token["user_id"]
+    assert initial.json()["workspaces"] == [
+        {
+            "id": session_token["workspace_id"],
+            "name": "dev's workspace",
+            "role": "owner",
+            "projects": [
+                {
+                    "id": session_token["project_id"],
+                    "name": "My first project",
+                    "description": None,
+                }
+            ],
+        }
+    ]
+
+    created_workspace = client.post(
+        "/v1/workspaces", headers=auth, json={"name": "Client work"}
+    )
+    assert created_workspace.status_code == 201, created_workspace.text
+    workspace_id = created_workspace.json()["workspace_id"]
+
+    created_project = client.post(
+        f"/v1/workspaces/{workspace_id}/projects",
+        headers=auth,
+        json={"name": "Launch deck", "description": "Q4 launch"},
+    )
+    assert created_project.status_code == 201, created_project.text
+    assert created_project.json()["name"] == "Launch deck"
+
+    refreshed = client.get("/v1/account", headers=auth).json()
+    selected = next(item for item in refreshed["workspaces"] if item["id"] == workspace_id)
+    assert selected["role"] == "owner"
+    assert [project["name"] for project in selected["projects"]] == [
+        "Launch deck",
+        "My first project",
+    ]
+
+
+def test_project_creation_checks_the_named_workspace_role(client, auth, session_token):
+    other = client.post("/v1/dev/session", json={"email": "project-owner@example.com"}).json()
+    with db_session.session_scope() as session:
+        session.add(
+            WorkspaceMember(
+                id=new_id("mbr"),
+                workspace_id=other["workspace_id"],
+                user_id=session_token["user_id"],
+                role="viewer",
+            )
+        )
+
+    assert (
+        client.get(f"/v1/workspaces/{other['workspace_id']}/projects", headers=auth).status_code
+        == 200
+    )
+    refused = client.post(
+        f"/v1/workspaces/{other['workspace_id']}/projects",
+        headers=auth,
+        json={"name": "Not allowed"},
+    )
+    assert refused.status_code == 404
+
+
+def test_repository_picker_uses_the_explicit_selected_workspace(client, auth, session_token):
+    other = client.post("/v1/dev/session", json={"email": "repository-owner@example.com"}).json()
+    assert (
+        client.get(
+            f"/v1/repositories?workspace_id={other['workspace_id']}", headers=auth
+        ).status_code
+        == 404
+    )
+    with db_session.session_scope() as session:
+        session.add(
+            WorkspaceMember(
+                id=new_id("mbr"),
+                workspace_id=other["workspace_id"],
+                user_id=session_token["user_id"],
+                role="viewer",
+            )
+        )
+    response = client.get(
+        f"/v1/repositories?workspace_id={other['workspace_id']}", headers=auth
+    )
+    assert response.status_code == 200
+    assert response.json()["repositories"] == []
+
+
+def test_workspace_and_project_names_cannot_be_whitespace(client, auth, session_token):
+    assert client.post("/v1/workspaces", headers=auth, json={"name": "   "}).status_code == 422
+    assert (
+        client.post(
+            f"/v1/workspaces/{session_token['workspace_id']}/projects",
+            headers=auth,
+            json={"name": "\t"},
+        ).status_code
+        == 422
+    )
+
+
 # -------------------------------------------------------------- generate + read
+
+
+@pytest.mark.parametrize("mode", ["blank", "graph", "single-shot"])
+def test_new_decks_adopt_a_portable_default_theme(client, auth, mode):
+    from copy import deepcopy
+    from deckastra_api.theme import neo_technical_theme
+    definition = neo_technical_theme()
+    definition["colors"]["accent"] = "#FF6600"
+    saved = client.post("/v1/workspace/themes", headers=auth, json={"name": "Default brand", "definition": definition, "is_default": True})
+    assert saved.status_code == 200, saved.text
+    if mode == "blank":
+        created = client.post("/v1/presentations", headers=auth, json={})
+    else:
+        created = client.post("/v1/generate", headers=auth, json={"instruction": "Explain the pipeline", "slide_count": 1, "use_graph": mode == "graph"})
+    assert created.status_code in (200, 201), created.text
+    result = created.json()
+    assert result["document"]["theme"] == definition
+    assert result["document"]["metadata"]["themeId"] == saved.json()["id"]
+    changed = deepcopy(definition)
+    changed["colors"]["accent"] = "#00AAFF"
+    assert client.post("/v1/workspace/themes", headers=auth, json={"name": "Default brand", "definition": changed, "is_default": True}).status_code == 200
+    stored = client.get(f"/v1/presentations/{result['presentation_id']}", headers=auth).json()
+    assert stored["document"]["theme"] == definition
+
+
+def test_default_theme_does_not_cross_workspace_boundary(client, auth):
+    from deckastra_api.theme import neo_technical_theme
+    other = client.post("/v1/dev/session", json={"email": "default-brand-other@localhost"}).json()
+    saved = client.post("/v1/workspace/themes", headers={"Authorization": f"Bearer {other['token']}"}, json={"name": "Other default", "definition": neo_technical_theme(), "is_default": True})
+    assert saved.status_code == 200
+    created = client.post("/v1/presentations", headers=auth, json={})
+    assert created.status_code == 201
+    assert "themeId" not in created.json()["document"]["metadata"]
+
+
+def test_checkpoint_shell_freezes_the_resolved_theme_for_resume():
+    from deckastra_api import agent_service
+    from deckastra_api.main import _empty_document
+    from deckastra_api.models import GenerateRequest
+    from deckastra_api.theme import neo_technical_theme
+
+    request = GenerateRequest(instruction="Checkpointed deck", slide_count=1)
+    definition = neo_technical_theme()
+    definition["colors"]["accent"] = "#AA3300"
+    shell = _empty_document(request, theme_definition=definition, theme_id="thm_frozen")
+
+    # A default edited while the run is paused cannot mutate its checkpoint.
+    definition["colors"]["accent"] = "#00AAFF"
+    produced = {}
+    compose = agent_service._composer(
+        request,
+        produced,
+        theme_definition=shell["theme"],
+        theme_id=shell["metadata"]["themeId"],
+    )
+    compose(
+        {
+            "title": "Checkpointed deck",
+            "narrative_arc": "Open and close.",
+            "slides": [{
+                "layout": "statement",
+                "purpose": "State the point",
+                "key_message": "The snapshot stays fixed",
+                "headline": "The snapshot stays fixed",
+                "eyebrow": "", "subtitle": "", "body": "", "bullets": [],
+                "metrics": [], "quote": "", "attribution": "", "code": "",
+                "language": "", "caption": "", "speaker_notes": "",
+            }],
+        },
+        {},
+        {},
+    )
+    assert produced["document"]["theme"]["colors"]["accent"] == "#AA3300"
+    assert produced["document"]["metadata"]["themeId"] == "thm_frozen"
+
+
+@pytest.mark.parametrize("use_graph", [True, False])
+def test_viewer_cannot_generate_or_spend_in_a_project(client, auth, session_token, monkeypatch, use_graph):
+    from deckastra_api import main
+    from deckastra_api.db.models import AgentRunRow, Presentation
+    with db_session.session_scope() as session:
+        membership = session.query(WorkspaceMember).filter(WorkspaceMember.user_id == session_token["user_id"]).one()
+        membership.role = "viewer"
+    def forbidden_work(*args, **kwargs):
+        pytest.fail("Unauthorized request reached a paid/work-producing path")
+    monkeypatch.setattr(main.quotas, "check_generation", forbidden_work)
+    monkeypatch.setattr(main.agent_service, "run_deck_generation", forbidden_work)
+    monkeypatch.setattr(main, "generate_story_plan", forbidden_work)
+    for project in (None, session_token["project_id"]):
+        response = client.post("/v1/generate", headers=auth, json={"instruction": "Create a deck", "project_id": project, "use_graph": use_graph})
+        assert response.status_code == 404, response.text
+    with db_session.session_scope() as session:
+        assert session.query(AgentRunRow).count() == 0
+        assert session.query(Presentation).count() == 0
+
+
+def test_explicit_generation_uses_the_authorized_target_workspace(client, auth, session_token):
+    from deckastra_api.db.models import Presentation, WorkspaceQuota
+    other = client.post("/v1/dev/session", json={"email": "generation-target@localhost"}).json()
+    with db_session.session_scope() as session:
+        membership = session.query(WorkspaceMember).filter(WorkspaceMember.user_id == session_token["user_id"]).one()
+        membership.role = "viewer"
+        session.add(WorkspaceMember(id=new_id("mbr"), workspace_id=other["workspace_id"], user_id=session_token["user_id"], role="editor"))
+    # The default target must not silently skip a viewer workspace to obtain
+    # editor authority elsewhere. An explicit authorized target is allowed.
+    assert client.post("/v1/generate", headers=auth, json={"instruction": "Default target"}).status_code == 404
+    response = client.post("/v1/generate", headers=auth, json={"instruction": "Create in the target workspace", "project_id": other["project_id"], "slide_count": 1})
+    assert response.status_code == 200, response.text
+    with db_session.session_scope() as session:
+        presentation = session.get(Presentation, response.json()["presentation_id"])
+        assert presentation.project_id == other["project_id"]
+        quota = session.get(WorkspaceQuota, other["workspace_id"])
+        assert quota.used_generations == 1
+        original_quota = session.get(WorkspaceQuota, session_token["workspace_id"])
+        assert original_quota is None or original_quota.used_generations == 0
+
+
+def test_blank_creation_persists_and_accepts_manual_edits_without_a_run(client, auth):
+    from deckastra_api.db.models import AgentRunRow
+    from deckastra_api.schema import validate_document
+    response = client.post("/v1/presentations", headers=auth, json={"title": "My blank deck"})
+    assert response.status_code == 201, response.text
+    deck = response.json()
+    assert validate_document(deck["document"]) == []
+    assert len(deck["document"]["slides"]) == 1
+    assert deck["document"]["slides"][0]["elements"] == []
+    assert "deckastra.generation" not in deck["document"].get("extensions", {})
+    fetched = client.get(f"/v1/presentations/{deck['presentation_id']}", headers=auth)
+    assert fetched.json()["document"] == deck["document"]
+    assert fetched.json()["version_id"] == deck["version_id"]
+    assert fetched.json()["can_edit"] is True
+    changed = client.post(f"/v1/presentations/{deck['presentation_id']}/transactions", headers=auth, json={
+        "expected_version_id": deck["version_id"], "intent": "Rename blank slide",
+        "operations": [{"op": "replace", "path": "/slides/0/name", "value": "My opening"}],
+    })
+    assert changed.status_code == 200, changed.text
+    assert client.get(f"/v1/presentations/{deck['presentation_id']}", headers=auth).json()["document"]["slides"][0]["name"] == "My opening"
+    with db_session.session_scope() as session:
+        assert session.query(AgentRunRow).count() == 0
+
+
+def test_blank_creation_requires_editor_access_and_hides_foreign_projects(client, auth, session_token):
+    assert client.post("/v1/presentations", json={}).status_code == 401
+    other = client.post("/v1/dev/session", json={"email": "blank-other@localhost"}).json()
+    assert client.post("/v1/presentations", headers=auth, json={"project_id": other["project_id"]}).status_code == 404
+    with db_session.session_scope() as session:
+        membership = session.query(WorkspaceMember).filter(WorkspaceMember.user_id == session_token["user_id"]).one()
+        membership.role = "viewer"
+    for payload in ({}, {"project_id": session_token["project_id"]}):
+        assert client.post("/v1/presentations", headers=auth, json=payload).status_code == 404
 
 
 def test_generate_persists_a_deck(client: TestClient, auth, deck):

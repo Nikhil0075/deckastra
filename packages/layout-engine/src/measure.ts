@@ -188,15 +188,17 @@ export class DomMeasurer implements TextMeasurementService {
   private readonly cache = new MeasurementCache();
   private host: HTMLElement | null = null;
   private revision = 0;
+  private readonly fontsChanged = () => {
+    this.revision += 1;
+    this.cache.clear();
+  };
 
   constructor(private readonly document: Document) {
     // Metrics taken against a fallback font are wrong once the real font
     // arrives, so a font load invalidates everything.
     const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-    fonts?.addEventListener?.("loadingdone", () => {
-      this.revision += 1;
-      this.cache.clear();
-    });
+    fonts?.addEventListener?.("loadingdone", this.fontsChanged);
+    fonts?.addEventListener?.("loadingerror", this.fontsChanged);
   }
 
   get fontRevision(): number {
@@ -316,6 +318,8 @@ export class DomMeasurer implements TextMeasurementService {
   }
 
   dispose(): void {
+    this.document.fonts?.removeEventListener?.("loadingdone", this.fontsChanged);
+    this.document.fonts?.removeEventListener?.("loadingerror", this.fontsChanged);
     this.host?.remove();
     this.host = null;
     this.cache.clear();

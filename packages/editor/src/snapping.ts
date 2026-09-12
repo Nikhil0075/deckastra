@@ -234,6 +234,7 @@ export function findEqualSpacing(
   if (aligned.length < 2) return undefined;
 
   const sorted = [...aligned].sort((a, b) => start(a) - start(b));
+  let best: { delta: number; guide: SpacingGuide } | undefined;
 
   for (let i = 0; i < sorted.length - 1; i += 1) {
     const left = sorted[i]!;
@@ -243,18 +244,45 @@ export function findEqualSpacing(
     const gapAfter = start(right) - (start(dragged) + size(dragged));
 
     const target = (start(right) - (start(left) + size(left)) - size(dragged)) / 2;
+    // Negative gaps are overlapping boxes, not an equal-spacing opportunity.
+    if (target < 0) continue;
     const desiredStart = start(left) + size(left) + target;
     const delta = desiredStart - start(dragged);
 
     if (Math.abs(delta) <= threshold && Math.abs(gapBefore - gapAfter) <= threshold * 2) {
-      return {
+      if (best && Math.abs(best.delta) <= Math.abs(delta)) continue;
+      const snapped = { ...dragged, [axis]: start(dragged) + delta };
+      best = {
         delta,
-        guide: { axis, gap: Math.round(target * 100) / 100, between: [left, dragged, right] },
+        guide: { axis, gap: Math.round(target * 100) / 100, between: [left, snapped, right] },
       };
     }
   }
 
-  return undefined;
+  return best;
+}
+
+/** Select one target per axis across alignment, spacing and grid candidates.
+ * Existing alignment priorities win exact ties; spacing wins a grid tie. */
+export function snapRectWithSpacing(
+  rect: Rect, lines: readonly SnapLine[], neighbours: readonly Rect[], options: SnapOptions,
+): SnapResult & { spacingGuides: SpacingGuide[] } {
+  const result = snapRect(rect, lines, options);
+  const spacingGuides: SpacingGuide[] = [];
+  if (options.disabled) return { ...result, spacingGuides };
+  for (const axis of ["x", "y"] as const) {
+    const spacing = findEqualSpacing(rect, neighbours.slice(0, MAX_NEIGHBOURS), axis, SNAP_THRESHOLD / Math.max(options.zoom, 0.01));
+    if (!spacing) continue;
+    const alignment = result.guides.find(guide => guide.axis === axis);
+    const difference = Math.abs(spacing.delta) - Math.abs(result.delta[axis]);
+    if (alignment && (difference > 0.001 || (Math.abs(difference) <= 0.001 && alignment.kind !== "grid"))) continue;
+    result.delta[axis] = spacing.delta;
+    result.guides = result.guides.filter(guide => guide.axis !== axis);
+    spacingGuides.push(spacing.guide);
+  }
+  // Both axes may snap. Draw indicators at the final box, not the pre-snap box.
+  for (const guide of spacingGuides) guide.between[1] = { ...rect, x: rect.x + result.delta.x, y: rect.y + result.delta.y };
+  return { ...result, spacingGuides };
 }
 
 /**

@@ -9,18 +9,24 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import asynccontextmanager
+from copy import deepcopy
 from typing import Any
 
 from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import store
-from .auth import Principal, current_principal, issue_dev_token
+from . import local_mode, store, themes
+from .auth import (
+    Principal,
+    current_principal,
+    issue_dev_token,
+    provision_personal_account,
+    resolve_creation_project,
+)
 from .compose import compose_document
-from .db.models import Project, User, Workspace, WorkspaceMember
 from .db.session import database_url, get_session, session_middleware
-from .ids import new_id
 from .models import GenerateRequest, GenerateResponse, GenerationDiagnostics
 from deckastra_agents import ProjectMemory
 from deckastra_agents.router import MODELS as router_models
@@ -36,16 +42,26 @@ from .story import StoryGenerationError, api_key_available, generate_story_plan
 
 logger = logging.getLogger("deckastra")
 
+
+@asynccontextmanager
+async def _lifespan(application: FastAPI):
+    telemetry.configure()
+    try:
+        yield
+    finally:
+        telemetry.shutdown()
+
+
 app = FastAPI(
     title="Deckastra API",
     version="0.2.0",
     description="Documents, transactions and versioned history.",
+    lifespan=_lifespan,
 )
 
-# Doc 05 §32, gap register S3. A no-op unless OpenTelemetry is installed, so a
-# fresh clone starts without a collector — an observability layer that blocks
-# startup is one people delete rather than configure.
-telemetry.configure(app)
+# Providers start/flush with application lifespan. The manual middleware records
+# only fixed operation names, HTTP method/status; no headers, URLs or bodies.
+app.middleware("http")(telemetry.http_middleware)
 
 # Added before CORS so CORS ends up the outer layer: a preflight is answered
 # without opening a database session, and every response — including an error —
@@ -99,54 +115,45 @@ def dev_session(
     if os.environ.get("DECKASTRA_ENV") == "production":
         raise HTTPException(status_code=404, detail="Not found.")
 
-    user = session.query(User).filter(User.email == email).one_or_none()
+    # Local mode already has its one account, seeded at launch. Bootstrapping a
+    # second here would create a second workspace that owns none of the decks —
+    # and the caller would not find out until a read returned 404.
+    if local_mode.enabled():
+        raise HTTPException(status_code=404, detail="Not found.")
 
-    if user is None:
-        user = User(id=new_id("usr"), email=email, name=email.split("@")[0])
-        session.add(user)
-
-        workspace = Workspace(id=new_id("wsp"), name=f"{user.name}'s workspace", owner_id=user.id)
-        session.add(workspace)
-        session.add(
-            WorkspaceMember(
-                id=new_id("mbr"), workspace_id=workspace.id, user_id=user.id, role="owner"
-            )
-        )
-        session.add(
-            Project(
-                id=new_id("prj"),
-                workspace_id=workspace.id,
-                name="My first project",
-                created_by=user.id,
-            )
-        )
-        session.flush()
-
-    membership = (
-        session.query(WorkspaceMember).filter(WorkspaceMember.user_id == user.id).first()
-    )
-    project = (
-        session.query(Project)
-        .filter(Project.workspace_id == membership.workspace_id)
-        .first()
+    user, workspace, project = provision_personal_account(
+        session, email=email, name=email.split("@", 1)[0]
     )
 
     return {
         "token": issue_dev_token(user.id),
         "user_id": user.id,
-        "workspace_id": membership.workspace_id,
-        "project_id": project.id if project else None,
+        "workspace_id": workspace.id,
+        "project_id": project.id,
     }
 
 
-def _empty_document(request: GenerateRequest) -> dict[str, Any]:
+def _empty_document(
+    request: GenerateRequest,
+    *,
+    theme_definition: dict[str, Any] | None = None,
+    theme_id: str | None = None,
+) -> dict[str, Any]:
     """A minimal document for a run that is creating a deck rather than editing one.
 
     The graph's tools read the current document, and a new deck has none. An
     empty shell is more honest than passing `None` and making every tool handle
     the absence.
     """
-    return {"metadata": {"title": request.instruction[:80]}, "slides": []}
+    metadata: dict[str, Any] = {"title": request.instruction[:80]}
+    if theme_id is not None:
+        metadata["themeId"] = theme_id
+    document: dict[str, Any] = {"metadata": metadata, "slides": []}
+    if theme_definition is not None:
+        # This exact resolved snapshot enters the checkpoint. A resumed run must
+        # never look up a newer default and silently change brand mid-generation.
+        document["theme"] = deepcopy(theme_definition)
+    return document
 
 
 @app.post("/v1/generate", response_model=GenerateResponse)
@@ -155,39 +162,22 @@ def generate(
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> GenerateResponse:
-    membership = (
-        session.query(WorkspaceMember)
-        .filter(WorkspaceMember.user_id == principal.user_id)
-        .first()
-    )
-    if membership is None:
-        raise HTTPException(status_code=403, detail="You are not a member of any workspace.")
-
-    project_id = request.project_id
-    if project_id is None:
-        project = (
-            session.query(Project)
-            .filter(Project.workspace_id == membership.workspace_id)
-            .first()
-        )
-        if project is None:
-            raise HTTPException(status_code=400, detail="No project to generate into.")
-        project_id = project.id
-    else:
-        project = session.get(Project, project_id)
-        if project is None or project.workspace_id != membership.workspace_id:
-            # 404 rather than 403: a 403 on a project you cannot see confirms it
-            # exists.
-            raise HTTPException(status_code=404, detail="No such project.")
+    project = resolve_creation_project(session, user_id=principal.user_id, project_id=request.project_id)
+    project_id = project.id
+    workspace_id = project.workspace_id
+    default_theme = themes.default_for(session, workspace_id)
+    # Freeze one portable definition for every candidate and any final fallback.
+    theme_definition = deepcopy(default_theme.definition_json) if default_theme else None
+    theme_id = default_theme.id if default_theme else None
 
     # Refused before the work, not after (gap register doc 01 S3). Checking
     # afterwards means paying for the request that broke the limit, and the
     # user has no way to tell a limit from a failure.
     try:
-        quotas.check_generation(session, membership.workspace_id)
+        quotas.check_generation(session, workspace_id)
     except quotas.QuotaExceeded as exceeded:
         telemetry.record_quota_refusal(
-            workspace_id=membership.workspace_id, limit=exceeded.limit
+            workspace_id=workspace_id, limit=exceeded.limit
         )
         # 429 rather than 403: this is a rate the caller can wait out, and the
         # detail carries the numbers so the message can say which limit and when
@@ -216,7 +206,7 @@ def generate(
     repositories = [
         repository
         for repository in repository_service.resolve_many(
-            session, membership.workspace_id, request.repository_ids
+            session, workspace_id, request.repository_ids
         )
         if repository.index_status == "ready"
     ]
@@ -229,12 +219,17 @@ def generate(
                 user_id=principal.user_id,
                 project_id=project_id,
                 presentation_id="",
-                document=_empty_document(request),
+                document=_empty_document(
+                    request, theme_definition=theme_definition, theme_id=theme_id
+                ),
                 memory=ProjectMemory(
                     agent_store.SqlMemoryStore(session, principal.user_id), project_id
                 ),
                 session=session,
                 repositories=repositories,
+                workspace_id=workspace_id,
+                theme_definition=theme_definition,
+                theme_id=theme_id,
             )
         except Exception as exc:  # noqa: BLE001 - reported with its reason, not a bare 500
             logger.exception("Agent run failed")
@@ -281,12 +276,24 @@ def generate(
         if records:
             document = provenance.attach(document, records)
 
+        structured = result.budget.get("structured_requests", [])
+        plans = [entry for entry in structured if entry["stage"] == "story"]
         diagnostics = GenerationDiagnostics(
             source="model" if outcome.source == "model" else "stub",
             model=router_models.get("planning", "") if outcome.source == "model" else "",
             duration_ms=int(result.budget.get("elapsed_seconds", 0) * 1000),
-            input_tokens=0,
-            output_tokens=result.budget.get("used_tokens", 0),
+            # Maximum schema attempts for any structured request, not the number
+            # of graph nodes or provider-internal transport retries. Empty
+            # observations cannot establish first-attempt validity.
+            attempts=max((entry["attempts"] for entry in structured), default=0),
+            valid_first_attempt=bool(structured) and all(entry["valid_first_attempt"] for entry in structured),
+            plan_valid_first_attempt=bool(plans) and all(entry["valid_first_attempt"] for entry in plans),
+            input_tokens=result.budget.get("input_tokens", 0),
+            output_tokens=result.budget.get("output_tokens", 0),
+            validation_errors=[
+                f"{entry['stage']}: {entry['contract']} required schema repair."
+                for entry in structured if entry["attempts"] > 1
+            ],
             warnings=list(result.warnings),
         )
     else:
@@ -298,7 +305,7 @@ def generate(
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
         agent_store.finish_run(session, run_row, status="completed", stage="story")
-        document = compose_document(plan, instruction=request.instruction)
+        document = compose_document(plan, instruction=request.instruction, theme_definition=theme_definition, theme_id=theme_id)
 
     try:
         errors = validate_document(document)
@@ -332,7 +339,7 @@ def generate(
     # workspace permanently poorer.
     quotas.record_generation(
         session,
-        membership.workspace_id,
+        workspace_id,
         tokens=diagnostics.input_tokens + diagnostics.output_tokens,
     )
 
@@ -340,7 +347,7 @@ def generate(
     # party, and a span attribute is the easiest place in a system to leak a
     # customer's words without noticing.
     telemetry.record_generation(
-        workspace_id=membership.workspace_id,
+        workspace_id=workspace_id,
         run_id=run_row.id,
         duration_ms=diagnostics.duration_ms,
         tokens_in=diagnostics.input_tokens,

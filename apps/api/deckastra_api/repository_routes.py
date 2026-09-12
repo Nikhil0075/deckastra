@@ -23,8 +23,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from . import provenance, quotas, repository_service, retrieval, store
-from .auth import Principal, Role, current_principal, resolve_presentation_access
-from .db.models import WorkspaceMember
+from .auth import (
+    Principal,
+    Role,
+    current_principal,
+    ensure_workspace_membership,
+    resolve_presentation_access,
+    resolve_workspace_access,
+)
+
 from .db.session import get_session
 
 logger = logging.getLogger("deckastra.repositories")
@@ -46,13 +53,24 @@ class SearchRequest(BaseModel):
     limit: int = Field(default=8, ge=1, le=20)
 
 
-def _workspace_of(session: Session, user_id: str) -> str:
-    membership = (
-        session.query(WorkspaceMember).filter(WorkspaceMember.user_id == user_id).first()
-    )
-    if membership is None:
-        raise HTTPException(status_code=403, detail="You are not a member of any workspace.")
-    return membership.workspace_id
+def _workspace_of(
+    session: Session,
+    user_id: str,
+    require: Role = Role.VIEWER,
+    workspace_id: str | None = None,
+) -> str:
+    """The caller's workspace, at the role this route needs.
+
+    Connecting, indexing and disconnecting a repository all change what the
+    workspace holds — an index is content we are storing on someone else's
+    behalf — so they are EDITOR. Reading the list is VIEWER.
+    """
+    if workspace_id is not None:
+        ensure_workspace_membership(
+            session, user_id=user_id, workspace_id=workspace_id, require=require
+        )
+        return workspace_id
+    return resolve_workspace_access(session, user_id=user_id, require=require).workspace_id
 
 
 def _error(error: repository_service.RepositoryError) -> HTTPException:
@@ -65,10 +83,11 @@ def _error(error: repository_service.RepositoryError) -> HTTPException:
 
 @router.get("/repositories")
 def list_repositories(
+    workspace_id: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    workspace_id = _workspace_of(session, principal.user_id)
+    workspace_id = _workspace_of(session, principal.user_id, Role.VIEWER, workspace_id)
     credentials = AppCredentials.from_environment()
 
     return {
@@ -94,6 +113,7 @@ def list_repositories(
 @router.post("/repositories/local")
 def connect_local_repository(
     request: ConnectLocalRequest,
+    workspace_id: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -103,7 +123,8 @@ def connect_local_repository(
     indexes arbitrary host paths on request is a file-read primitive for anyone
     with an account.
     """
-    workspace_id = _workspace_of(session, principal.user_id)
+    # EDITOR: connecting a repository starts storing its content.
+    workspace_id = _workspace_of(session, principal.user_id, Role.EDITOR, workspace_id)
 
     try:
         quotas.check_repository(session, workspace_id)
@@ -123,6 +144,7 @@ def connect_local_repository(
 @router.post("/repositories/{repository_id}/index")
 def index_repository_now(
     repository_id: str,
+    workspace_id: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -132,7 +154,7 @@ def index_repository_now(
     endpoint that returns 202 and never finishes is worse than a slow one. It is
     the obvious thing to move to a worker when there is one.
     """
-    workspace_id = _workspace_of(session, principal.user_id)
+    workspace_id = _workspace_of(session, principal.user_id, Role.EDITOR, workspace_id)
 
     try:
         repository = repository_service.for_workspace(session, workspace_id, repository_id)
@@ -161,10 +183,13 @@ def index_repository_now(
 @router.delete("/repositories/{repository_id}")
 def disconnect_repository(
     repository_id: str,
+    workspace_id: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, str]:
-    workspace_id = _workspace_of(session, principal.user_id)
+    # EDITOR: disconnecting deletes the index, and with it every
+    # citation's ability to be re-checked.
+    workspace_id = _workspace_of(session, principal.user_id, Role.EDITOR, workspace_id)
     try:
         repository = repository_service.for_workspace(session, workspace_id, repository_id)
     except repository_service.RepositoryError as error:
@@ -177,6 +202,7 @@ def disconnect_repository(
 @router.post("/repositories/search")
 def search_repositories(
     request: SearchRequest,
+    workspace_id: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -185,7 +211,7 @@ def search_repositories(
     Useful on its own, and the fastest way to see whether an index is any good
     before generating a deck from it.
     """
-    workspace_id = _workspace_of(session, principal.user_id)
+    workspace_id = _workspace_of(session, principal.user_id, Role.VIEWER, workspace_id)
 
     repositories = (
         repository_service.resolve_many(session, workspace_id, request.repository_ids)
@@ -205,7 +231,11 @@ def search_repositories(
         "hits": [
             {
                 "path": hit.path,
+                # Which repository, per hit. A workspace can connect several and
+                # a search spans all of them.
+                "repository": hit.repository_full_name,
                 "reference": hit.reference,
+                "source_id": hit.source_id,
                 "start_line": hit.start_line,
                 "end_line": hit.end_line,
                 "language": hit.language,
@@ -234,7 +264,7 @@ def slide_sources(
     Read from the document rather than a side table (doc 02 §30), so it survives
     export and duplication and cannot drift from the deck it describes.
     """
-    resolve_presentation_access(
+    access = resolve_presentation_access(
         session,
         user_id=principal.user_id,
         presentation_id=presentation_id,
@@ -244,7 +274,7 @@ def slide_sources(
     loaded = store.load_presentation(session, presentation_id)
     records = provenance.for_slide(loaded.document, slide_id)
 
-    workspace_id = _workspace_of(session, principal.user_id)
+    workspace_id = access.workspace_id
     # Only GitHub repositories get a link. A local checkout has no branch and no
     # public URL, and a link built from its placeholder branch name would 404 —
     # which is worse than no link, because a citation the user clicks and finds
@@ -330,7 +360,13 @@ def github_callback(
     callback arrives with an installation id and no idea whose it is — so a
     missing or mismatched state is refused rather than guessed.
     """
-    workspace_id = _workspace_of(session, principal.user_id)
+    # EDITOR: an installation is a standing grant of access to code.
+    workspace_id = _workspace_of(
+        session,
+        principal.user_id,
+        Role.EDITOR,
+        state or None,
+    )
 
     if state and state != workspace_id:
         raise HTTPException(

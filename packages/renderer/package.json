@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude tests/pixels.test.ts",
     "test:watch": "vitest",
-    "test:pixels": "vitest run tests/pixels.test.ts"
+    "test:pixels": "vitest run tests/pixels.test.ts --maxWorkers=1 --minWorkers=1"
   },
   "dependencies": {
     "@deckastra/layout-engine": "*",
@@ -27,6 +27,7 @@
     "react-dom": ">=18"
   },
   "devDependencies": {
+    "@deckastra/animation-engine": "*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "playwright": "^1.63.0",

@@ -19,6 +19,7 @@ cannot do anything with a run that never finished.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from ..contracts import CriticResult
@@ -157,6 +158,17 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         warnings.extend(notes)
 
     verdict = payload["verdict"]
+    # Snapshot the complete reviewed input, not references that a later node can
+    # mutate. The selected review and source metadata must follow its content.
+    candidate = deepcopy({
+        "score": result.score,
+        "story_plan": plan,
+        "creative_direction": state.get("creative_direction") or {},
+        "motion_plan": state.get("motion_plan") or {},
+        "layout_result": state.get("layout_result") or {},
+        "research": research,
+        "review": payload,
+    })
     slide_ids = {issue.get("slide_id") for issue in payload.get("issues") or []} - {""}
     target_slide = next(iter(sorted(slide_ids)), None)
 
@@ -177,6 +189,7 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         return {
             "current_stage": STAGE,
             "critic_results": [payload],
+            "reviewed_drafts": [candidate],
             "revision_target": None,
             "warnings": warnings + ctx.budget.warnings,
         }
@@ -189,6 +202,10 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
     return {
         "current_stage": STAGE,
         "critic_results": [payload],
+        # The draft this score belongs to. Recorded on every review, not only the
+        # forced one, because by the time the fallback fires the earlier drafts
+        # are gone from state — `story_plan` holds only the latest.
+        "reviewed_drafts": [candidate],
         "revision_target": None if verdict == "pass" else verdict,
         "warnings": warnings,
     }
@@ -197,11 +214,37 @@ def critic(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
 def best_result(state: PresentationAgentState) -> dict[str, Any] | None:
     """The highest-scoring review this run produced.
 
-    Used by the fallback to choose which draft to keep. Ties go to the later
-    result, because a later draft incorporates the earlier feedback even when the
-    score did not move.
+    Ties go to the later result, because a later draft incorporates the earlier
+    feedback even when the score did not move.
     """
     results = state.get("critic_results") or []
     if not results:
         return None
     return max(results, key=lambda result: (result.get("score", 0.0), results.index(result)))
+
+
+def best_draft(state: PresentationAgentState) -> dict[str, Any] | None:
+    """The highest-scoring *story plan* this run produced.
+
+    This is what the fallback's promise actually needs. `best_result` returns a
+    review; a review cannot be composed. For a long time nothing called either,
+    and the run proposed whatever the last revision happened to produce while
+    telling the user the best draft had been kept — a claim that is false exactly
+    when it matters, which is when the reviewer and the writer did not converge.
+
+    Same tie-break as `best_result`, for the same reason.
+    """
+    candidate = best_candidate(state)
+    return candidate.get("story_plan") if candidate else None
+
+
+def best_candidate(state: PresentationAgentState) -> dict[str, Any] | None:
+    """Return all inputs and the review of the best candidate; later ties win."""
+    drafts = [
+        draft
+        for draft in (state.get("reviewed_drafts") or [])
+        if (draft.get("story_plan") or {}).get("slides")
+    ]
+    if not drafts:
+        return None
+    return max(enumerate(drafts), key=lambda item: (item[1].get("score", 0.0), item[0]))[1]

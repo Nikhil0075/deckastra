@@ -21,6 +21,7 @@ it testable without an API key and reproducible in CI.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from copy import deepcopy
 from typing import Any
 
 from .ids import new_id
@@ -39,6 +40,17 @@ CONTENT_X = SAFE["left"]
 CONTENT_W = VIEWPORT_W - SAFE["left"] - SAFE["right"]
 CONTENT_TOP = SAFE["top"]
 CONTENT_BOTTOM = VIEWPORT_H - SAFE["bottom"]
+
+
+def blank_document(title: str = "Untitled presentation", *, theme_definition: dict[str, Any] | None = None, theme_id: str | None = None) -> dict[str, Any]:
+    """Reuse the canonical document shell without generated content or provenance."""
+    document = compose_document(StoryPlan(title=title, audience="", objective="", narrative_arc="", slides=[]), instruction="", theme_definition=theme_definition, theme_id=theme_id)
+    document["metadata"] = {"title": title, "language": "en"}
+    if theme_id is not None:
+        document["metadata"]["themeId"] = theme_id
+    document["extensions"] = {}
+    document["slides"] = [{"id": new_id("sld"), "name": "Slide 1", "elements": []}]
+    return document
 
 
 def _now() -> str:
@@ -555,6 +567,8 @@ def compose_document(
     *,
     instruction: str = "",
     motion_plan: dict[str, Any] | None = None,
+    theme_definition: dict[str, Any] | None = None,
+    theme_id: str | None = None,
 ) -> dict[str, Any]:
     """Compose a document, and animate it if the Motion Agent had an opinion.
 
@@ -581,6 +595,7 @@ def compose_document(
         "id": new_id("doc"),
         "metadata": {
             "title": plan.title,
+            **({"themeId": theme_id} if theme_id is not None else {}),
             "description": plan.narrative_arc,
             "language": "en",
             "presentationType": "technical",
@@ -598,7 +613,7 @@ def compose_document(
             "aspectRatio": "16:9",
             "safeArea": SAFE,
         },
-        "theme": neo_technical_theme(),
+        "theme": deepcopy(theme_definition) if theme_definition is not None else neo_technical_theme(),
         "slides": slides,
         "assets": [],
         "components": [],

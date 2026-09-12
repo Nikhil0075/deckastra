@@ -103,10 +103,19 @@ def create_share(
     except ValueError as error:
         raise ShareError(f"{role!r} is not a role a link can carry.") from error
 
-    if parsed > Role.EDITOR:
-        # A link that grants admin is a link that can revoke the workspace's
-        # other links. Membership is the only route to that.
-        raise ShareError("A share link can grant viewing or editing, nothing more.")
+    if parsed > Role.VIEWER:
+        # Closed deliberately, and not because editing by link is a bad idea.
+        # Nothing can redeem an editor link: `/v1/shared/{token}` returns a
+        # document and the shared page only presents it. Storing a role the
+        # product cannot honour tells the person who created the link that they
+        # granted something they did not.
+        #
+        # The column and the `Role` plumbing stay, so token-scoped editing needs
+        # no migration — only a write path that authenticates a token instead of
+        # a session, and a UI that knows it is editing as a link holder.
+        raise ShareError(
+            "A share link can grant viewing only. Editing by link is not available yet."
+        )
 
     if expires_in_days is not None and not (1 <= expires_in_days <= MAX_EXPIRY_DAYS):
         raise ShareError(f"An expiry must be between 1 and {MAX_EXPIRY_DAYS} days.")

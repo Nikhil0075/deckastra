@@ -121,6 +121,10 @@ def register_presentation_tools(
                 "required": ["id", "index", "elements"],
             },
             returns_untrusted_content=True,
+            # Deck text is untrusted for the same reason a README is: whoever
+            # wrote the slide is not necessarily whoever is running the agent.
+            untrusted_fields=("text", "key_message", "name"),
+            untrusted_kind="slide",
         ),
         get_slide,
     )
@@ -152,6 +156,10 @@ def register_presentation_tools(
                 "required": ["slides"],
             },
             returns_untrusted_content=True,
+            # Deck text is untrusted for the same reason a README is: whoever
+            # wrote the slide is not necessarily whoever is running the agent.
+            untrusted_fields=("key_message", "name", "title"),
+            untrusted_kind="slide",
         ),
         get_outline,
     )
@@ -192,6 +200,10 @@ def register_presentation_tools(
                 "required": ["slide_id", "element"],
             },
             returns_untrusted_content=True,
+            # Deck text is untrusted for the same reason a README is: whoever
+            # wrote the slide is not necessarily whoever is running the agent.
+            untrusted_fields=("text", "name"),
+            untrusted_kind="element",
         ),
         get_element,
     )

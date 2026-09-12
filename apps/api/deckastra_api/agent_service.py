@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -39,7 +41,7 @@ from deckastra_agents.tools.presentation import register_presentation_tools
 from deckastra_agents.tools.repository import register_repository_tools
 from sqlalchemy.orm import Session
 
-from . import retrieval
+from . import retrieval, telemetry
 from .compose import compose_document
 from .db.models import Repository
 from .models import GenerateRequest, StoryPlan
@@ -187,31 +189,73 @@ class AgentOutcome:
 
 
 def _checkpointer() -> Any | None:
-    """The durable checkpointer, when the database can carry one.
+    """The durable checkpointer, matched to whichever database is configured.
 
-    Postgres only. SQLite is the local-development database and LangGraph has no
-    saver for it, so a run there simply cannot pause — which is worth saying out
-    loud rather than discovering when a checkpoint silently does nothing.
+    The human checkpoint before the story is approved is a *product* feature, not
+    a deployment detail: a run that cannot pause cannot be reviewed. So both
+    engines the product runs on carry a saver — Postgres for the deployed
+    service, SQLite for the desktop, which is one process on one machine and does
+    not need a server to hold a paused graph.
+
+    A failure here is downgraded rather than raised, because a run without
+    checkpoints still produces a deck and a run that refused to start produces
+    nothing. `resume` is where the absence becomes an error, and only for the one
+    operation that genuinely cannot proceed without one.
     """
     url = os.environ.get("DATABASE_URL", "")
-    if not url.startswith("postgresql"):
-        return None
 
-    try:
-        from langgraph.checkpoint.postgres import PostgresSaver
-    except ImportError:  # pragma: no cover - the package is a hard dependency
-        logger.warning("langgraph-checkpoint-postgres is not installed; runs cannot pause.")
-        return None
+    if url.startswith("postgresql"):
+        try:
+            from langgraph.checkpoint.postgres import PostgresSaver
+        except ImportError:  # pragma: no cover - the package is a hard dependency
+            logger.warning("langgraph-checkpoint-postgres is not installed; runs cannot pause.")
+            return None
+        try:
+            # psycopg wants its own URL, without SQLAlchemy's driver suffix.
+            saver = PostgresSaver.from_conn_string(url.replace("+psycopg", ""))
+            checkpointer = saver.__enter__()
+            checkpointer.setup()
+            return checkpointer
+        except Exception as exc:  # noqa: BLE001 - a run without checkpoints beats no run
+            logger.warning("Could not open the LangGraph checkpointer: %s", exc)
+            return None
 
-    try:
-        # psycopg wants its own URL, without SQLAlchemy's driver suffix.
-        saver = PostgresSaver.from_conn_string(url.replace("+psycopg", ""))
-        checkpointer = saver.__enter__()
-        checkpointer.setup()
-        return checkpointer
-    except Exception as exc:  # noqa: BLE001 - a run without checkpoints beats no run
-        logger.warning("Could not open the LangGraph checkpointer: %s", exc)
+    if url.startswith("sqlite"):
+        path = _sqlite_checkpoint_path(url)
+        if path is None:
+            # An in-memory database, which the test suite uses. Each connection
+            # would get its own empty database, so a checkpoint written by one
+            # would be invisible to the next — worse than none, because it would
+            # look durable.
+            return None
+        try:
+            from langgraph.checkpoint.sqlite import SqliteSaver
+        except ImportError:
+            logger.warning("langgraph-checkpoint-sqlite is not installed; runs cannot pause.")
+            return None
+        try:
+            saver = SqliteSaver.from_conn_string(str(path))
+            checkpointer = saver.__enter__()
+            checkpointer.setup()
+            return checkpointer
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not open the LangGraph checkpointer: %s", exc)
+            return None
+
+    return None
+
+
+def _sqlite_checkpoint_path(url: str) -> Path | None:
+    """Where a SQLite install keeps its graph checkpoints.
+
+    Beside the application database rather than inside it. They are LangGraph's
+    tables, on LangGraph's schema, migrated by LangGraph — putting them in a file
+    Alembic owns would make every `alembic check` see tables it did not create.
+    """
+    location = url.split("///", 1)[-1] if "///" in url else ""
+    if not location or location.startswith(":memory:"):
         return None
+    return Path(location).with_name(Path(location).name + ".checkpoints")
 
 
 def _emitter(run_id: str) -> Emitter | None:
@@ -288,12 +332,17 @@ def add_repository_tools(
         return [
             {
                 "path": hit.path,
+                # The repository is part of the answer, not context the caller is
+                # expected to remember: a search spans all of them.
+                "repository": hit.repository_full_name,
+                "repository_id": hit.repository_id,
                 "start_line": hit.start_line,
                 "end_line": hit.end_line,
                 "language": hit.language,
                 "content": hit.content,
                 "similarity": hit.similarity,
                 "reference": hit.reference,
+                "source_id": hit.source_id,
                 "why_selected": hit.selection_reason,
             }
             for hit in retrieval.search(session, ids, query, limit=limit)
@@ -349,7 +398,8 @@ def add_repository_tools(
 
 
 def _composer(
-    request: GenerateRequest, produced: dict[str, Any]
+    request: GenerateRequest, produced: dict[str, Any], *,
+    theme_definition: dict[str, Any] | None = None, theme_id: str | None = None,
 ) -> Callable[[dict[str, Any], dict[str, Any], dict[str, Any]], list[dict[str, Any]]]:
     """Story plan -> patch operations.
 
@@ -384,6 +434,8 @@ def _composer(
             story_plan,
             instruction=request.instruction,
             motion_plan=motion_plan,
+            theme_definition=theme_definition,
+            theme_id=theme_id,
         )
 
         # Kept for the caller. The composer runs once; asking main.py to compose
@@ -411,6 +463,9 @@ def run_deck_generation(
     human_checkpoint: bool = False,
     session: Session | None = None,
     repositories: list[Repository] | None = None,
+    workspace_id: str | None = None,
+    theme_definition: dict[str, Any] | None = None,
+    theme_id: str | None = None,
 ) -> AgentOutcome:
     """Run the graph for a whole-deck generation."""
     state_document = document
@@ -427,9 +482,9 @@ def run_deck_generation(
         add_repository_tools(registry, session, repositories)
 
     run = AgentRun(
-        client=client,
+        client=telemetry.TracedModelClient(client, run_id),
         registry=registry,
-        compose=_composer(request, produced),
+        compose=_composer(request, produced, theme_definition=theme_definition, theme_id=theme_id),
         budget=budget or RunBudget(),
         memory=memory,
         emit=fan_out(emitter) if emitter else None,
@@ -437,24 +492,35 @@ def run_deck_generation(
         human_checkpoint=human_checkpoint,
     )
 
-    result = run_generation(
-        run,
-        initial_state(
-            run_id=run_id,
-            user_id=user_id,
-            project_id=project_id,
-            presentation_id=presentation_id,
-            request=request.model_dump(mode="json"),
-            document=document,
-        ),
-    )
+    with telemetry.span("agent.run", **{telemetry.RUN_ID: run_id, telemetry.WORKSPACE_ID: workspace_id}) as current:
+        result = run_generation(
+            run,
+            initial_state(
+                run_id=run_id,
+                user_id=user_id,
+                project_id=project_id,
+                presentation_id=presentation_id,
+                request=request.model_dump(mode="json"),
+                document=document,
+            ),
+        )
+        current.set_attribute(telemetry.OUTCOME, result.status)
 
     operations = result.operations
     assessment = assess_risk(operations) if operations else assess_risk([])
+    final_document = produced.get("document")
+    if final_document is not None:
+        # Proposal metadata is appended after composition. Persist the final
+        # validated proposal, including extensions, rather than its earlier
+        # composer snapshot. Keep the composer's generated document metadata.
+        final_document, _ = apply_patch(final_document, operations)
+        errors = validate_document(final_document)
+        if errors:
+            raise ValueError(f"Generated proposal is invalid: {errors}")
 
     return AgentOutcome(
         result=result,
-        document=produced.get("document"),
+        document=final_document,
         operations=operations,
         risk_tier=assessment.tier,
         requires_approval=assessment.requires_approval,
@@ -471,10 +537,20 @@ def resume(run_id: str, decision: dict[str, Any], request: GenerateRequest, docu
             "this server is not using it."
         )
 
+    checkpoint_theme = document.get("theme")
+    checkpoint_theme_id = (document.get("metadata") or {}).get("themeId")
     run = AgentRun(
-        client=default_client() if api_key_available() else _stub_answers(request),
+        client=telemetry.TracedModelClient(default_client() if api_key_available() else _stub_answers(request), run_id),
         registry=build_registry(lambda: document),
-        compose=_composer(request, {}),
+        compose=_composer(
+            request,
+            {},
+            theme_definition=deepcopy(checkpoint_theme) if isinstance(checkpoint_theme, dict) else None,
+            theme_id=str(checkpoint_theme_id) if checkpoint_theme_id else None,
+        ),
         checkpointer=checkpointer,
     )
-    return resume_generation(run, run_id, decision)
+    with telemetry.span("agent.run", **{telemetry.RUN_ID: run_id}) as current:
+        result = resume_generation(run, run_id, decision)
+        current.set_attribute(telemetry.OUTCOME, result.status)
+        return result

@@ -23,15 +23,18 @@
  *   Otherwise a render catches whatever frame the entrance happened to be on.
  */
 
+import { openRenderBrowser, type RenderBrowser, type RenderPage } from "./render-page";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { AnimationTrack, PresentationDocument } from "@deckastra/presentation-schema";
-import { buildDocumentScene, type SlideScene } from "@deckastra/renderer";
+import type { DocumentScene, SlideScene } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
+import { buildCriticReport, type CriticRenderReport } from "./critic-report";
 import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine";
 import type { ExportWarning, FontSpec } from "@deckastra/export-core";
-import { fontManifest } from "@deckastra/export-core";
+import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
+import { buildBrowserScene } from "./text-measurement";
 
 export type RenderFormat = "png" | "jpeg";
 
@@ -59,6 +62,8 @@ export interface RenderResponse {
   fontsUsed: FontSpec[];
   /** True when any text fell back to the estimator rather than a real measurement. */
   metricsEstimated: boolean;
+  /** Measurements from the same resolved scene and fonts as the rendered bytes. */
+  criticReport: CriticRenderReport;
 }
 
 /** Doc 04 §41.3. A render that has not finished by here is a render that hung. */
@@ -73,9 +78,26 @@ export const PREVIEW_SIZES = {
 
 // ------------------------------------------------------------------ the pool
 
-interface PoolEntry {
-  browser: import("playwright").Browser;
-  page: import("playwright").Page;
+export interface PoolEntry {
+  browser: RenderBrowser;
+  page: RenderPage;
+  scale: number;
+}
+
+export interface RenderPoolOptions {
+  timeoutMs?: number;
+  /**
+   * Test seam. Production opens the backend `openRenderBrowser` selects:
+   * Playwright's pinned Chromium, or the desktop app's own Chromium.
+   */
+  open?: (scale: number) => Promise<PoolEntry>;
+}
+
+export class RenderTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Render exceeded its ${timeoutMs}ms total deadline.`);
+    this.name = "RenderTimeoutError";
+  }
 }
 
 /**
@@ -90,66 +112,159 @@ interface PoolEntry {
 export class RenderPool {
   private entry: PoolEntry | undefined;
   private opening: Promise<PoolEntry> | undefined;
+  private active = false;
+  private closed = false;
+  private readonly waiters: Array<{
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }> = [];
+  private readonly timeoutMs: number;
+  private readonly opener: (scale: number) => Promise<PoolEntry>;
 
-  async acquire(scale: number): Promise<PoolEntry> {
+  constructor(options: RenderPoolOptions = {}) {
+    this.timeoutMs = options.timeoutMs ?? RENDER_TIMEOUT_MS;
+    this.opener = options.open ?? ((scale) => this.open(scale));
+  }
+
+  /**
+   * Run one complete render while holding the sole page lease.
+   *
+   * The deadline begins before queueing, so saturation cannot turn a 20-second
+   * limit into 20 seconds plus an unbounded wait. A timed-out page is destroyed:
+   * releasing it back to the next caller while Playwright is still unwinding
+   * would recreate the cross-job corruption the lease prevents.
+   */
+  async withPage<T>(
+    scale: number,
+    operation: (page: RenderPage) => Promise<T>,
+    timeoutMs = this.timeoutMs,
+  ): Promise<T> {
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new RangeError("timeoutMs must be positive.");
+    const deadline = Date.now() + timeoutMs;
+    await this.acquireLease(deadline, timeoutMs);
+    try {
+      const entry = await beforeDeadline(this.ensureEntry(scale), deadline, timeoutMs, () => {
+        void this.invalidate();
+      });
+      return await beforeDeadline(operation(entry.page), deadline, timeoutMs, () => {
+        void this.invalidate();
+      });
+    } catch (error) {
+      // A failed navigation/capture can leave page state ambiguous. Preserve the
+      // warm browser only for successful work; the next lease opens cleanly.
+      await this.invalidate();
+      throw error;
+    } finally {
+      this.releaseLease();
+    }
+  }
+
+  private async ensureEntry(scale: number): Promise<PoolEntry> {
+    if (this.closed) throw new Error("Render pool is closed.");
+    if (this.entry?.scale === scale && !this.entry.page.isClosed()) return this.entry;
     if (this.entry) {
-      // Device scale is a page property, so a different scale needs a new page
-      // rather than a resize. Cheap: the browser stays warm.
-      await this.entry.page.close();
-      this.entry.page = await newPage(this.entry.browser, scale);
+      await this.entry.page.close().catch(() => undefined);
+      this.entry.page = await this.entry.browser.newPage(scale);
+      this.entry.scale = scale;
       return this.entry;
     }
+    const opening = this.opening ??= this.opener(scale);
+    try {
+      const entry = await opening;
+      if (this.opening !== opening || this.closed) {
+        await entry.page.close().catch(() => undefined);
+        await entry.browser.close().catch(() => undefined);
+        throw new Error("Render pool opening was cancelled.");
+      }
+      this.entry = entry;
+      return entry;
+    } finally {
+      if (this.opening === opening) this.opening = undefined;
+    }
+  }
 
-    this.opening ??= this.open(scale);
-    this.entry = await this.opening;
-    return this.entry;
+  private acquireLease(deadline: number, timeoutMs: number): Promise<void> {
+    if (this.closed) return Promise.reject(new Error("Render pool is closed."));
+    if (!this.active) {
+      this.active = true;
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const waiter = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          const index = this.waiters.indexOf(waiter);
+          if (index >= 0) this.waiters.splice(index, 1);
+          reject(new RenderTimeoutError(timeoutMs));
+        }, Math.max(0, deadline - Date.now())),
+      };
+      this.waiters.push(waiter);
+    });
+  }
+
+  private releaseLease(): void {
+    const waiter = this.waiters.shift();
+    if (waiter) {
+      clearTimeout(waiter.timer);
+      waiter.resolve();
+      return;
+    }
+    this.active = false;
   }
 
   private async open(scale: number): Promise<PoolEntry> {
-    const { chromium } = await import("playwright");
-    const browser = await chromium.launch({
-      args: [
-        // Fonts and rasterisation should not depend on the host's GPU: doc 04
-        // §32.3 wants the same input to produce the same bytes, and a GPU path
-        // makes that machine-dependent.
-        "--disable-gpu",
-        "--font-render-hinting=none",
-        "--disable-lcd-text",
-      ],
-    });
-    return { browser, page: await newPage(browser, scale) };
+    const browser = await openRenderBrowser();
+    try {
+      return { browser, page: await browser.newPage(scale), scale };
+    } catch (error) {
+      // A browser that started but could not give us a page is still a
+      // process; leaving it running would orphan one per failed export.
+      await browser.close().catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async invalidate(): Promise<void> {
+    const entry = this.entry;
+    this.entry = undefined;
+    this.opening = undefined;
+    await entry?.page.close().catch(() => undefined);
+    await entry?.browser.close().catch(() => undefined);
   }
 
   async close(): Promise<void> {
-    await this.entry?.page.close().catch(() => undefined);
-    await this.entry?.browser.close().catch(() => undefined);
-    this.entry = undefined;
-    this.opening = undefined;
+    this.closed = true;
+    for (const waiter of this.waiters.splice(0)) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("Render pool is closed."));
+    }
+    await this.invalidate();
   }
 }
 
-async function newPage(
-  browser: import("playwright").Browser,
-  scale: number,
-): Promise<import("playwright").Page> {
-  const page = await browser.newPage({
-    viewport: { width: 1920, height: 1080 },
-    deviceScaleFactor: scale,
-    // Set explicitly rather than inherited (doc 04 §41.3). A render that picked
-    // up the *server's* preference would bake one machine's accessibility
-    // setting into every user's export.
-    reducedMotion: "reduce",
-    colorScheme: "dark",
+function beforeDeadline<T>(
+  promise: Promise<T>,
+  deadline: number,
+  timeoutMs: number,
+  onTimeout: () => void,
+): Promise<T> {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) {
+    onTimeout();
+    return Promise.reject(new RenderTimeoutError(timeoutMs));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout();
+      reject(new RenderTimeoutError(timeoutMs));
+    }, remaining);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
   });
-
-  // No network at render time. A document that could make the render server
-  // fetch a URL is an SSRF primitive as well as a source of nondeterminism;
-  // assets arrive inline, from our own storage, before the page is set.
-  await page.route("**/*", (route) =>
-    route.request().url().startsWith("data:") ? route.continue() : route.abort(),
-  );
-
-  return page;
 }
 
 /**
@@ -161,7 +276,7 @@ async function newPage(
  * decode. Neither throws, neither is visible in a log, and both are fixed by
  * waiting for the two things the browser can tell us about.
  */
-async function settle(page: import("playwright").Page): Promise<void> {
+async function settle(page: RenderPage): Promise<void> {
   await page.evaluate(async () => {
     await globalThis.document.fonts.ready;
     await Promise.all(
@@ -180,46 +295,37 @@ export async function render(
 ): Promise<RenderResponse> {
   const startedAt = Date.now();
   const scale = request.scale ?? 1;
-  const { page } = await pool.acquire(scale);
+  return pool.withPage(scale, async (page) => {
+    const scene = await buildBrowserScene(request.document, page);
+    const wanted = request.slideIds ? new Set(request.slideIds) : undefined;
+    const slides = scene.slides.filter((slide) => !wanted || wanted.has(slide.slideId));
 
-  const scene = buildDocumentScene(request.document);
-  const wanted = request.slideIds ? new Set(request.slideIds) : undefined;
-  const slides = scene.slides.filter((slide) => !wanted || wanted.has(slide.slideId));
+    const artifacts: RenderArtifact[] = [];
+    const warnings: ExportWarning[] = [];
+    let metricsEstimated = false;
 
-  const artifacts: RenderArtifact[] = [];
-  const warnings: ExportWarning[] = [];
-  let metricsEstimated = false;
+    for (const slide of slides) {
+      if (sceneUsedEstimatedMetrics(slide)) metricsEstimated = true;
+      const html = slideHtml(slide, request.atTimeMs ?? "final", warnings);
+      await page.setContent(html, { waitUntil: "load" });
+      await settle(page);
+      const bytes = await page.screenshot({
+        type: request.format === "jpeg" ? "jpeg" : "png",
+        clip: { x: 0, y: 0, width: slide.width, height: slide.height },
+        animations: "disabled",
+      });
+      artifacts.push({
+        slideId: slide.slideId, bytes: new Uint8Array(bytes),
+        width: slide.width, height: slide.height,
+      });
+    }
 
-  for (const slide of slides) {
-    if (usedEstimatedMetrics(slide)) metricsEstimated = true;
-
-    const html = slideHtml(slide, request.atTimeMs ?? "final", warnings);
-
-    await page.setContent(html, { waitUntil: "load", timeout: RENDER_TIMEOUT_MS });
-
-    await settle(page);
-
-    const bytes = await page.screenshot({
-      type: request.format === "jpeg" ? "jpeg" : "png",
-      clip: { x: 0, y: 0, width: slide.width, height: slide.height },
-      animations: "disabled",
-    });
-
-    artifacts.push({
-      slideId: slide.slideId,
-      bytes: new Uint8Array(bytes),
-      width: slide.width,
-      height: slide.height,
-    });
-  }
-
-  return {
-    artifacts,
-    warnings,
-    renderMs: Date.now() - startedAt,
-    fontsUsed: fontManifest(slides),
-    metricsEstimated,
-  };
+    return {
+      artifacts, warnings, renderMs: Date.now() - startedAt,
+      fontsUsed: fontManifest(slides), metricsEstimated,
+      criticReport: buildCriticReport(scene),
+    };
+  });
 }
 
 /**
@@ -323,17 +429,6 @@ function cssEscape(value: string): string {
   return value.replace(/["\\]/g, "\\$&");
 }
 
-function usedEstimatedMetrics(slide: SlideScene): boolean {
-  const walk = (nodes: SlideScene["nodes"]): boolean =>
-    nodes.some(
-      (node) =>
-        (node.renderPayload.kind === "text" && node.renderPayload.metrics.estimated) ||
-        (node.children ? walk(node.children) : false),
-    );
-  return walk(slide.nodes);
-}
-
-
 // ------------------------------------------------------------------- to PDF
 
 /**
@@ -351,16 +446,25 @@ export async function renderPdf(
   atTime: number | "final" | "initial",
   pool: RenderPool,
 ): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
-  const { page } = await pool.acquire(1);
+  return pool.withPage(1, async (page) => {
+    const scene = await buildBrowserScene(deck, page);
+    return renderPdfScene(scene, slideIds, atTime, page);
+  });
+}
 
-  const scene = buildDocumentScene(deck);
+/** Print the same measured scene consumed by the export adapter/report. */
+export async function renderPdfScene(
+  scene: DocumentScene,
+  slideIds: string[],
+  atTime: number | "final" | "initial",
+  page: RenderPage,
+): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
   const wanted = new Set(slideIds);
   const slides = scene.slides.filter((slide) => wanted.has(slide.slideId));
   const warnings: ExportWarning[] = [];
 
   await page.setContent(deckHtml(slides, atTime, warnings), {
     waitUntil: "load",
-    timeout: RENDER_TIMEOUT_MS,
   });
 
   await settle(page);

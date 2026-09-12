@@ -95,6 +95,31 @@ def check_schema_has_teeth(validator: Draft202012Validator, document: dict) -> b
     return all_rejected
 
 
+def check_element_boundary(validator: Draft202012Validator) -> bool:
+    """Known-type failures must not use the future-type preservation branch.
+
+    Use the reported fixture, without changing the generated fixture on disk.
+    The unknown case also protects against replacing the fallback with rejection.
+    """
+    document = load_json(FIXTURE_DIR / "animation-test.mydeck.json")
+    broken = copy.deepcopy(document)
+    line = next(e for e in broken["slides"][1]["elements"] if e["type"] == "line")
+    line["start"] = line.pop("from")
+    line["end"] = line.pop("to")
+    rejected = not validator.is_valid(broken)
+    print(f"  {'ok' if rejected else 'LEAK'}    rejects known line with start/end instead of from/to")
+
+    future = copy.deepcopy(broken)
+    unknown = next(e for e in future["slides"][1]["elements"] if e["type"] == "line")
+    unknown["type"] = "hologram"
+    unknown["semanticRole"] = "futureRole"
+    unknown["futurePayload"] = {"density": 0.4, "layers": [1, {"keep": True}]}
+    before = copy.deepcopy(future)
+    accepted = validator.is_valid(future) and json.loads(json.dumps(future)) == before
+    print(f"  {'ok' if accepted else 'FAIL'}    preserves genuine future element and enum values")
+    return rejected and accepted
+
+
 def main() -> int:
     if not DOCUMENT_SCHEMA.exists():
         print(
@@ -155,9 +180,13 @@ def main() -> int:
         )
         return 1
 
+    if not check_element_boundary(validator):
+        print("Known/future element boundary differs from the TypeScript contract.", file=sys.stderr)
+        return 1
+
     print(
         f"{len(fixtures)} fixtures validate; "
-        f"schema rejects all {len(NEGATIVE_CASES)} negative cases."
+        f"schema rejects all {len(NEGATIVE_CASES)} base negative cases and passes both element-boundary checks."
     )
     return 0
 

@@ -1,0 +1,47 @@
+# Packaging for the D0 spike.
+#
+# Unsigned on purpose: signing and notarization are D6, they need real
+# credentials and a real Mac, and pretending to have done them is worse than
+# saying they are outstanding. What this file has to get right now is the
+# *shape* — that `dist/` alone is enough to run, so the exit gate "no dev
+# server" is something the installer proves rather than something we assert.
+appId: com.deckastra.desktop
+# Pinned because npm workspaces hoist `electron` to the repo root, where
+# electron-builder does not look — it probes `apps/desktop/node_modules` and
+# concludes nothing is installed. Keep in step with the devDependency.
+electronVersion: 33.4.11
+productName: Deckastra
+directories:
+  output: release
+  buildResources: build
+# Only the built bundles. Everything else — workspace packages, node_modules,
+# TypeScript source — is already inside them.
+files:
+  - dist/**/*
+  - package.json
+asar: true
+# The workspace service, beside the app rather than inside the archive. An
+# executable cannot be run from within an asar, and `sidecar.ts` looks for it at
+# exactly this path.
+extraResources:
+  - from: dist/sidecar/deckastra-service
+    to: sidecar
+  # The exporter, outside the archive as well. `ELECTRON_RUN_AS_NODE` does not
+  # mount asar, so a worker inside it is a path the runtime cannot open — and the
+  # export failed at "Rendering slides" with nothing saying why.
+  - from: dist/worker
+    to: worker
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+  category: public.app-category.productivity
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}

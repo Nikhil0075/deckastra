@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { buildDocumentScene, type DocumentScene } from "@deckastra/renderer";
 import { ScaledSlide } from "@deckastra/renderer/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
-import { GenerationFailed, QuotaReached } from "../components/EmptyState";
-import { PresentMode } from "../components/PresentMode";
-import { RepositoryPanel } from "../components/RepositoryPanel";
-import { SourcesPanel } from "../components/SourcesPanel";
-import { browserMeasurer } from "../lib/measurer";
-import { getSession } from "../lib/session";
+import {
+  AccountPicker,
+  GenerationFailed,
+  PresentMode,
+  QuotaReached,
+  RepositoryPanel,
+  SourcesPanel,
+  useBrowserMeasurer,
+} from "@deckastra/editor-ui";
+import { useWorkspaceClient } from "@deckastra/workspace-client/react";
+import { quotaDetail, type GenerationDiagnostics, type QuotaDetail } from "@deckastra/workspace-contracts";
+
 
 /**
  * The generation surface: prompt in, deck out, present or edit.
@@ -21,31 +28,10 @@ import { getSession } from "../lib/session";
  * which files each slide was written from (`SourcesPanel`).
  */
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-interface Diagnostics {
-  source: "model" | "stub";
-  model: string;
-  attempts: number;
-  plan_valid_first_attempt: boolean;
-  validation_errors: string[];
-  warnings: string[];
-  input_tokens: number;
-  output_tokens: number;
-  duration_ms: number;
-}
-
-interface QuotaDetail {
-  limit: string;
-  used: number;
-  allowed: number;
-  resets_at: string;
-}
-
 type Status =
   | { phase: "idle" }
   | { phase: "generating" }
-  | { phase: "ready"; document: PresentationDocument; diagnostics: Diagnostics }
+  | { phase: "ready"; document: PresentationDocument; diagnostics: GenerationDiagnostics }
   // A quota refusal is the system working, not a failure, and it gets its own
   // message rather than a red box that says something broke.
   | { phase: "quota"; detail: QuotaDetail }
@@ -58,6 +44,11 @@ const EXAMPLES = [
 ];
 
 export default function Home() {
+  const client = useWorkspaceClient();
+  const router = useRouter();
+  const blankPending = useRef(false);
+  const [creatingBlank, setCreatingBlank] = useState(false);
+  const [blankError, setBlankError] = useState<string | null>(null);
   const [instruction, setInstruction] = useState("");
   const [audience, setAudience] = useState("");
   const [slideCount, setSlideCount] = useState(5);
@@ -66,60 +57,43 @@ export default function Home() {
   const [generationMode, setGenerationMode] = useState<"model" | "stub" | null>(null);
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [repositoryIds, setRepositoryIds] = useState<string[]>([]);
+  const [target, setTarget] = useState<{ workspaceId: string; projectId: string } | null>(null);
 
   // Ask the API up front whether it has a key, so the user learns their deck will
   // be stub-composed *before* they wait for it rather than after.
   useEffect(() => {
-    fetch(`${API}/health`)
-      .then((r) => r.json())
-      .then((d) => setGenerationMode(d.generation))
+    client
+      .health()
+      .then((report) => setGenerationMode(report.generation))
       .catch(() => setGenerationMode(null));
-  }, []);
+  }, [client]);
 
+  const measurer = useBrowserMeasurer();
   const scene: DocumentScene | null = useMemo(() => {
     if (status.phase !== "ready") return null;
-    return buildDocumentScene(status.document, { measurer: browserMeasurer() });
-  }, [status]);
+    return buildDocumentScene(status.document, { measurer });
+  }, [status, measurer]);
 
   async function generate() {
     setStatus({ phase: "generating" });
     try {
-      const { token } = await getSession();
-
-      const response = await fetch(`${API}/v1/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          instruction,
-          audience,
-          slide_count: slideCount,
-          repository_ids: repositoryIds,
-        }),
+      const body = await client.generation.run({
+        instruction,
+        audience,
+        slide_count: slideCount,
+        repository_ids: repositoryIds,
+        project_id: target?.projectId ?? null,
       });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        const detail = body.detail;
-
-        if (response.status === 429 && detail?.limit) {
-          setStatus({ phase: "quota", detail: detail as QuotaDetail });
-          return;
-        }
-
-        throw new Error(
-          typeof detail === "string"
-            ? detail
-            : (detail?.message ?? `Request failed (${response.status})`),
-        );
-      }
-
-      const body = await response.json();
       setPresentationId(body.presentation_id);
       setStatus({ phase: "ready", document: body.document, diagnostics: body.diagnostics });
     } catch (error) {
+      // A quota refusal is the system working, not a failure, and it gets its own
+      // message rather than a red box that says something broke.
+      const quota = quotaDetail(error);
+      if (quota) {
+        setStatus({ phase: "quota", detail: quota });
+        return;
+      }
       setStatus({
         phase: "error",
         message:
@@ -127,6 +101,25 @@ export default function Home() {
             ? error.message
             : "Could not reach the API. Is it running on port 8000?",
       });
+    }
+  }
+
+  async function startBlank() {
+    if (blankPending.current || status.phase === "generating") return;
+    blankPending.current = true;
+    setCreatingBlank(true);
+    setBlankError(null);
+    try {
+      const body = await client.documents.create({
+        title: "Untitled presentation",
+        project_id: target?.projectId ?? null,
+      });
+      if (typeof body.presentation_id !== "string" || !body.presentation_id) throw new Error("The server did not return a presentation ID.");
+      router.push(`/edit/${encodeURIComponent(body.presentation_id)}`);
+    } catch (error) {
+      setBlankError(error instanceof Error ? error.message : "Could not create the blank deck.");
+      blankPending.current = false;
+      setCreatingBlank(false);
     }
   }
 
@@ -158,6 +151,11 @@ export default function Home() {
           came from.
         </p>
       </header>
+
+      <AccountPicker onSelectionChange={(selection) => {
+        setTarget(selection);
+        setRepositoryIds([]);
+      }} />
 
       {generationMode === "stub" ? (
         <div style={noticeStyle}>
@@ -222,15 +220,19 @@ export default function Home() {
 
           <button
             onClick={() => void generate()}
-            disabled={!instruction.trim() || status.phase === "generating"}
+            disabled={!target || !instruction.trim() || status.phase === "generating" || creatingBlank}
             style={primaryButtonStyle}
           >
             {status.phase === "generating" ? "Generating…" : "Generate deck"}
           </button>
+          <button onClick={() => void startBlank()} disabled={!target || creatingBlank || status.phase === "generating"} style={exampleStyle}>
+            {creatingBlank ? "Creating blank deck…" : "Start blank"}
+          </button>
         </div>
+        {blankError ? <p role="alert">{blankError} Try “Start blank” again.</p> : null}
       </section>
 
-      <RepositoryPanel selected={repositoryIds} onSelectionChange={setRepositoryIds} />
+      <RepositoryPanel selected={repositoryIds} onSelectionChange={setRepositoryIds} workspaceId={target?.workspaceId} />
 
       {status.phase === "generating" ? (
         <p style={{ color: "var(--fg-muted)", marginTop: 28 }}>
@@ -257,7 +259,7 @@ export default function Home() {
           <GenerationFailed
             reason={status.message}
             onRetry={() => void generate()}
-            onStartBlank={() => setStatus({ phase: "idle" })}
+            onStartBlank={() => void startBlank()}
           />
         </div>
       ) : null}
@@ -283,7 +285,7 @@ function Deck({
   onEdit,
 }: {
   scene: DocumentScene;
-  diagnostics: Diagnostics;
+  diagnostics: GenerationDiagnostics;
   presentationId: string | null;
   onPresent: () => void;
   onEdit?: () => void;

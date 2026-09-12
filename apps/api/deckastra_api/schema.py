@@ -16,8 +16,10 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from .paths import resource_root
+
 # apps/api/deckastra_api/schema.py -> repo root
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = resource_root()
 SCHEMA_PATH = (
     REPO_ROOT / "packages" / "presentation-schema" / "generated" / "mydeck-document.schema.json"
 )

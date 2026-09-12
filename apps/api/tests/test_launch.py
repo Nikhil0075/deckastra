@@ -12,11 +12,13 @@ turns a private deck public, and where the failure is silent.
 from __future__ import annotations
 
 import copy
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+import httpx
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -173,6 +175,75 @@ def test_a_link_cannot_be_made_more_powerful_than_an_editor(client, auth, deck):
     # 422 from the schema: the role is a closed set, so it never reaches the
     # service at all.
     assert response.status_code == 422
+
+
+def test_a_link_cannot_grant_editing_while_nothing_can_redeem_it(client, auth, deck):
+    """The role has to mean something, or it is a promise the product breaks.
+
+    `/v1/shared/{token}` returns a document and the shared page only presents it,
+    so an "can edit" link would grant exactly what a view link grants — while
+    telling whoever created it that they had shared more.
+    """
+    response = client.post(
+        f"/v1/presentations/{deck}/shares", headers=auth, json={"role": "editor"}
+    )
+    assert response.status_code == 422
+
+    # And the service refuses it too, so the narrowing is not only in the schema.
+    from deckastra_api import sharing
+
+    with db_session.session_scope() as session:
+        with pytest.raises(sharing.ShareError):
+            sharing.create_share(
+                session, presentation_id=deck, created_by="usr_x", role="editor"
+            )
+
+
+@pytest.mark.parametrize("admin_elsewhere", [False, True])
+def test_a_workspace_viewer_cannot_sweep_or_theme(client, auth, deck, admin_elsewhere):
+    """Role checks on the workspace-scoped routes.
+
+    These routes take no workspace id, so they resolve the caller's own — and
+    that resolution used to check no role at all. A viewer could write a
+    workspace-wide theme and run the sweeper, which deletes files.
+    """
+    from deckastra_api.db.models import WorkspaceMember
+
+    with db_session.session_scope() as session:
+        membership = session.query(WorkspaceMember).first()
+        membership.role = "viewer"
+        if admin_elsewhere:
+            from deckastra_api.db.models import Workspace
+            # Sort after the workspace the read routes selected.
+            other = Workspace(id="zzz_other", name="Other workspace", owner_id=membership.user_id)
+            session.add(other)
+            session.flush()
+            session.add(WorkspaceMember(id="member_other", workspace_id=other.id,
+                                        user_id=membership.user_id, role="admin"))
+
+    # Reads stay open: a user who cannot see the limits cannot tell a refusal
+    # from a bug.
+    assert client.get("/v1/workspace/usage", headers=auth).status_code == 200
+    assert client.get("/v1/workspace/themes", headers=auth).status_code == 200
+    assert client.get("/v1/workspace/assets", headers=auth).status_code == 200
+
+    assert (
+        client.post(
+            "/v1/workspace/themes",
+            headers=auth,
+            json={"name": "Sneaky", "definition": {}},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post("/v1/workspace/assets/sweep?dry_run=true", headers=auth).status_code == 404
+    )
+    assert (
+        client.post(
+            "/v1/repositories/local", headers=auth, json={"path": ".", "name": "x"}
+        ).status_code
+        == 404
+    )
 
 
 def test_a_viewer_cannot_widen_who_can_read_a_deck(client, auth, deck, stranger):
@@ -412,6 +483,84 @@ def test_an_asset_a_document_cites_is_never_swept(client, auth, deck):
         assert session.get(Asset, asset_id).reference_count == 1
 
 
+@pytest.mark.parametrize("remove_after_placement", [False, True])
+def test_an_asset_placed_after_the_last_snapshot_is_never_swept(client, auth, deck, remove_after_placement):
+    """The head document counts, not only the stored snapshots.
+
+    Snapshots are written every `store.SNAPSHOT_EVERY` operations, so an image
+    placed by an ordinary edit right after one exists in the **current deck** and
+    in no `snapshot_json` at all. Counting snapshots alone reported zero
+    references for a file the user is looking at, and the sweeper deletes on zero.
+
+    The edit here goes through the real transaction route, because that is the
+    path that produces a version without a snapshot.
+    """
+    from deckastra_api import assets
+    from deckastra_api.db.models import Asset, PresentationVersion, WorkspaceMember
+
+    with db_session.session_scope() as session:
+        workspace_id = session.query(WorkspaceMember).first().workspace_id
+        asset = assets.register(
+            session,
+            workspace_id=workspace_id,
+            created_by="usr_x",
+            storage_key="uploads/just-placed.png",
+            size_bytes=2048,
+        )
+        asset.created_at = datetime.now(timezone.utc) - timedelta(days=90)
+        asset_id = asset.id
+
+    document = client.get(f"/v1/presentations/{deck}", headers=auth).json()
+    slide_id = document["document"]["slides"][0]["id"]
+
+    applied = client.post(
+        f"/v1/presentations/{deck}/transactions",
+        headers=auth,
+        json={
+            "operations": [
+                {
+                    "op": "add",
+                    "path": f"/slides/id:{slide_id}/elements/-",
+                    "value": {
+                        "id": "el_00000000000000000000000001",
+                        "type": "image",
+                        "assetId": asset_id,
+                        "transform": {"x": 10, "y": 10, "width": 100, "height": 100},
+                    },
+                }
+            ],
+            "intent": "Place an image",
+            "expected_version_id": document["version_id"],
+            "client_id": "test",
+        },
+    )
+    assert applied.status_code == 200, applied.text
+
+    # The premise: this version carries no snapshot, so a snapshot-only recount
+    # cannot see the asset. If this ever stops holding the test proves nothing.
+    with db_session.session_scope() as session:
+        head = session.get(PresentationVersion, applied.json()["version_id"])
+        assert head.snapshot_json is None
+
+    if remove_after_placement:
+        removed = client.post(f"/v1/presentations/{deck}/transactions", headers=auth, json={
+            "operations": [{"op": "remove", "path": f"/slides/id:{slide_id}/elements/id:el_00000000000000000000000001"}],
+            "intent": "Remove image", "expected_version_id": applied.json()["version_id"], "client_id": "test",
+        })
+        assert removed.status_code == 200, removed.text
+        from deckastra_api import store
+        with db_session.session_scope() as session:
+            historical = store.load_presentation(session, deck, at_version=applied.json()["version_id"])
+            assert asset_id in assets.referenced_ids(historical.document)
+            assert asset_id not in assets.referenced_ids(store.load_presentation(session, deck).document)
+
+    swept = client.post("/v1/workspace/assets/sweep?dry_run=true", headers=auth).json()
+    assert asset_id not in swept["deleted"]
+
+    with db_session.session_scope() as session:
+        assert session.get(Asset, asset_id).reference_count == 1
+
+
 def test_storage_is_recounted_from_the_assets_themselves(client, auth):
     from deckastra_api import assets, quotas
     from deckastra_api.db.models import WorkspaceMember
@@ -448,6 +597,135 @@ def test_an_upload_over_the_storage_allowance_is_refused(client, auth):
                 storage_key="uploads/huge.png",
                 size_bytes=2000,
             )
+
+
+def test_real_object_upload_delete_restore_and_eventual_cleanup(client, auth):
+    """Exercise the same presigned S3 lifecycle the browser uses against MinIO."""
+    if os.environ.get("RUN_OBJECT_STORAGE_TESTS") != "1":
+        pytest.skip("Set RUN_OBJECT_STORAGE_TESTS=1 with MinIO/S3 available.")
+
+    from deckastra_api import object_storage
+    from deckastra_api.db.models import Asset
+
+    workspace_id = client.get("/v1/account", headers=auth).json()["workspaces"][0]["id"]
+    payload = b"not-a-real-png-but-valid-storage-bytes"
+    begun = client.post(
+        "/v1/workspace/assets/uploads",
+        headers=auth,
+        json={
+            "workspace_id": workspace_id,
+            "filename": "proof.png",
+            "content_type": "image/png",
+            "size_bytes": len(payload),
+            "kind": "image",
+            "width": 10,
+            "height": 10,
+        },
+    )
+    assert begun.status_code == 201, begun.text
+    intent = begun.json()
+    uploaded = httpx.put(intent["upload_url"], headers=intent["headers"], content=payload)
+    assert uploaded.status_code == 200, uploaded.text
+
+    completed = client.post(
+        "/v1/workspace/assets/uploads/complete",
+        headers=auth,
+        json={"upload_token": intent["upload_token"]},
+    )
+    assert completed.status_code == 201, completed.text
+    asset_id = completed.json()["id"]
+    assert completed.json()["bytes"] == len(payload)
+
+    download = client.get(
+        f"/v1/workspace/assets/{asset_id}/download?workspace_id={workspace_id}", headers=auth
+    )
+    assert httpx.get(download.json()["url"]).content == payload
+
+    deleted = client.delete(
+        f"/v1/workspace/assets/{asset_id}?workspace_id={workspace_id}", headers=auth
+    )
+    assert deleted.json()["deleted_at"] is not None
+    restored = client.post(
+        f"/v1/workspace/assets/{asset_id}/restore?workspace_id={workspace_id}", headers=auth
+    )
+    assert restored.json()["deleted_at"] is None
+
+    client.delete(f"/v1/workspace/assets/{asset_id}?workspace_id={workspace_id}", headers=auth)
+    with db_session.session_scope() as session:
+        asset = session.get(Asset, asset_id)
+        storage_key = asset.storage_key
+        old = datetime.now(timezone.utc) - timedelta(days=90)
+        asset.created_at = old
+        asset.deleted_at = old
+
+    swept = client.post(
+        f"/v1/workspace/assets/sweep?dry_run=false&workspace_id={workspace_id}", headers=auth
+    )
+    assert swept.status_code == 200, swept.text
+    assert asset_id in swept.json()["deleted"]
+    with pytest.raises(object_storage.ObjectStorageError):
+        object_storage.metadata(storage_key)
+
+
+# --------------------------------------------------------------- telemetry
+
+
+def test_a_metric_recorded_after_configure_actually_reaches_the_meter():
+    """The instruments are declared at import; the meter arrives at startup.
+
+    Created eagerly, every instrument captured the no-op meter and stayed a no-op
+    for the life of the process — so every metric the product records went
+    nowhere, whatever was configured afterwards. Nothing failed and nothing was
+    logged, which is the only way an observability layer can break unnoticed.
+    """
+    from deckastra_api import telemetry
+    from deckastra_api.ids import new_id
+
+    workspace_id = new_id("wsp")
+
+    recorded: list[tuple[str, float, dict]] = []
+
+    class FakeInstrument:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def add(self, amount, attributes=None):
+            recorded.append((self.name, amount, attributes or {}))
+
+        def record(self, amount, attributes=None):
+            recorded.append((self.name, amount, attributes or {}))
+
+    class FakeMeter:
+        def create_counter(self, name, unit="1", description=""):
+            return FakeInstrument(name)
+
+        def create_histogram(self, name, unit="ms", description=""):
+            return FakeInstrument(name)
+
+    previous = (telemetry._meter, telemetry._enabled, telemetry._configuration)
+    try:
+        telemetry._meter = FakeMeter()
+        telemetry._enabled = True
+        telemetry._configuration += 1
+
+        telemetry.record_generation(
+            workspace_id=workspace_id,
+            run_id="run_1",
+            duration_ms=12.5,
+            tokens_in=100,
+            tokens_out=50,
+            outcome="completed",
+        )
+    finally:
+        telemetry._meter, telemetry._enabled, telemetry._configuration = previous
+
+    names = {name for name, _, _ in recorded}
+    assert "deckastra.generations" in names
+    assert "deckastra.generation_duration" in names
+    assert ("deckastra.tokens", 150, {"workspace_id": workspace_id, "outcome": "completed", "direction": "total"}) in recorded
+
+    # And with no meter it is silent again rather than raising.
+    telemetry.record_quota_refusal(workspace_id="wsp_1", limit="monthly_generations")
 
 
 # ------------------------------------------------------------------- themes
@@ -552,3 +830,24 @@ def test_a_theme_from_another_workspace_cannot_be_applied(client, auth, deck, st
         f"/v1/presentations/{deck}/theme/{theirs.json()['id']}", headers=auth
     )
     assert response.status_code == 404
+    assert client.get(f"/v1/presentations/{deck}/themes/{theirs.json()['id']}", headers=auth).status_code == 404
+    assert client.get(f"/v1/presentations/{deck}/themes", headers=stranger).status_code == 404
+
+
+def test_theme_proposal_is_read_only_and_client_transaction_is_versioned(client, auth, deck):
+    original = client.get(f"/v1/presentations/{deck}", headers=auth).json()
+    definition = {**original["document"]["theme"], "name": "Editor theme"}
+    saved = client.post(f"/v1/presentations/{deck}/themes", headers=auth, json={"name": "Editor theme", "definition": definition})
+    assert saved.status_code == 200, saved.text
+    theme_id = saved.json()["id"]
+    listing = client.get(f"/v1/presentations/{deck}/themes", headers=auth)
+    assert [theme["id"] for theme in listing.json()["themes"]] == [theme_id]
+    proposal = client.get(f"/v1/presentations/{deck}/themes/{theme_id}", headers=auth)
+    assert proposal.status_code == 200, proposal.text
+    assert client.get(f"/v1/presentations/{deck}", headers=auth).json() == original
+    applied = client.post(f"/v1/presentations/{deck}/transactions", headers=auth, json={
+        "operations": proposal.json()["operations"], "intent": "Apply editor theme", "expected_version_id": original["version_id"],
+    })
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["document"]["theme"] == definition
+    assert applied.json()["document"]["metadata"]["themeId"] == theme_id

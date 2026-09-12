@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from .db.models import Presentation, PresentationVersion, TransactionRow
@@ -245,12 +245,9 @@ def commit_transaction(
     if presentation is None:
         raise NotFound(f"No presentation {presentation_id}")
 
-    if expected_version_id is not None and expected_version_id != presentation.current_version_id:
-        raise VersionConflict(expected_version_id, presentation.current_version_id)
-
     parent = session.get(PresentationVersion, parent_version_id)
-    if parent is None:
-        raise NotFound(f"No version {parent_version_id}")
+    if parent is None or parent.presentation_id != presentation_id:
+        raise NotFound(f"No version {parent_version_id} for {presentation_id}")
 
     # A snapshot every N operations keeps a cold read to a handful of replays, and
     # writing one around an agent run means a bad generation can be rolled back to
@@ -258,46 +255,71 @@ def commit_transaction(
     ops_since = parent.ops_since_snapshot + 1
     take_snapshot = ops_since >= SNAPSHOT_EVERY or source == "agent"
 
-    version_id = new_id("ver")
-    session.add(
-        PresentationVersion(
-            id=version_id,
-            presentation_id=presentation_id,
-            parent_version_id=parent_version_id,
-            snapshot_json=document if take_snapshot else None,
-            ops_since_snapshot=0 if take_snapshot else ops_since,
-            created_by=created_by,
-            source=source,
-            label=label or intent[:200],
+    # The loaded ORM head can be stale while another request commits. Advance
+    # it with one conditional UPDATE, including the actual composition base even
+    # when the caller omitted its optional expected-version token. A savepoint
+    # removes the losing candidate/history if the caller catches the conflict
+    # and commits other work in its outer transaction.
+    connection = session.connection()
+    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
+        # sqlite3's legacy transaction mode does not BEGIN on SELECT/SAVEPOINT.
+        # Without an actual outer transaction, releasing the savepoint commits
+        # the write even if the request subsequently rolls back.
+        connection.exec_driver_sql("BEGIN")
+    with session.begin_nested():
+        version_id = new_id("ver")
+        session.add(
+            PresentationVersion(
+                id=version_id,
+                presentation_id=presentation_id,
+                parent_version_id=parent_version_id,
+                snapshot_json=document if take_snapshot else None,
+                ops_since_snapshot=0 if take_snapshot else ops_since,
+                created_by=created_by,
+                source=source,
+                label=label or intent[:200],
+            )
         )
-    )
 
-    transaction_id = new_id("txn")
-    session.add(
-        TransactionRow(
-            id=transaction_id,
-            presentation_id=presentation_id,
-            status="applied",
-            parent_version_id=parent_version_id,
-            result_version_id=version_id,
-            source=source,
-            agent_id=agent_id,
-            client_id=client_id,
-            user_instruction=user_instruction,
-            intent=intent,
-            operations_json=operations,
-            inverse_operations_json=inverse_operations,
-            reason=reason,
-            confidence=confidence,
-            risk_tier=risk_tier,
-            created_by=created_by,
-            applied_at=_now(),
+        transaction_id = new_id("txn")
+        session.add(
+            TransactionRow(
+                id=transaction_id,
+                presentation_id=presentation_id,
+                status="applied",
+                parent_version_id=parent_version_id,
+                result_version_id=version_id,
+                source=source,
+                agent_id=agent_id,
+                client_id=client_id,
+                user_instruction=user_instruction,
+                intent=intent,
+                operations_json=operations,
+                inverse_operations_json=inverse_operations,
+                reason=reason,
+                confidence=confidence,
+                risk_tier=risk_tier,
+                created_by=created_by,
+                applied_at=_now(),
+            )
         )
-    )
 
-    presentation.current_version_id = version_id
-    presentation.title = document["metadata"]["title"]
-    session.flush()
+        session.flush()
+        advance = update(Presentation).where(
+            Presentation.id == presentation_id,
+            Presentation.current_version_id == parent_version_id,
+        )
+        if expected_version_id is not None:
+            advance = advance.where(Presentation.current_version_id == expected_version_id)
+        changed = session.execute(advance.values(
+            current_version_id=version_id, title=document["metadata"]["title"],
+        ).execution_options(synchronize_session=False))
+        if changed.rowcount != 1:
+            actual = session.scalar(select(Presentation.current_version_id).where(
+                Presentation.id == presentation_id,
+            ))
+            raise VersionConflict(expected_version_id or parent_version_id, actual)
+    session.expire(presentation, ["current_version_id", "title"])
 
     return CommitResult(
         document=document,

@@ -644,11 +644,10 @@ function buildPayload(
       //
       // Both endpoints are required by the schema and are still checked here,
       // because "required by the schema" and "present in this object" are not the
-      // same claim. `ElementSchema` is a union ending in `UnknownElementSchema`,
-      // which accepts any `type: string` — so a `line` missing `from` fails the
-      // line branch, matches the unknown branch, and arrives here having passed
-      // validation. Reading `.x` off it throws and takes the whole deck down; a
-      // placeholder loses one element and names the problem.
+      // same claim. The unknown-element fallback now rejects known types, but
+      // callers can still pass unchecked objects or data saved before that fix.
+      // Reading `.x` off a missing endpoint would take the whole deck down; a
+      // placeholder contains the damage and names the problem.
       const from = el.from as { x?: number; y?: number } | undefined;
       const to = el.to as { x?: number; y?: number } | undefined;
 

@@ -142,3 +142,17 @@ def reset_engine() -> None:
         _engine.dispose()
     _engine = None
     _SessionLocal = None
+
+def supports_row_locks(session: Session) -> bool:
+    """Whether `SELECT ... FOR UPDATE` means anything on this engine.
+
+    PostgreSQL locks rows; SQLite has no such statement and SQLAlchemy **silently
+    drops the clause**, so code written as though it locks simply does not. That
+    is safe here for one reason worth stating rather than assuming: a SQLite
+    install is one desktop app with one service process, and SQLite itself
+    serialises writers. It is not safe if either of those stops being true.
+
+    Callers branch on this so the difference is visible in the code that depends
+    on it, instead of being a clause that reads as protection and is not.
+    """
+    return session.get_bind().dialect.name == "postgresql"

@@ -27,7 +27,9 @@ behind the authorisation chain.
 from __future__ import annotations
 
 import logging
+import math
 import os
+import re
 import time
 from contextlib import contextmanager
 from typing import Any, Iterator
@@ -53,7 +55,46 @@ OUTCOME = "deckastra.outcome"
 #: Attributes that must never carry user text. Enforced rather than remembered:
 #: a trace store is a third party, and a span attribute is the easiest place in a
 #: system to leak a customer's words.
-_MAX_ATTRIBUTE_LENGTH = 200
+_ID_PREFIXES = {
+    "presentation_id": "prs", "workspace_id": "wsp", "run_id": "run",
+    "version_id": "ver", "user_id": "usr", "project_id": "prj", "slide_id": "sld",
+}
+_ENUMS = {
+    "outcome": {"completed", "failed", "refused", "exhausted", "awaiting_approval", "model", "stub"},
+    "stage": {"orchestrator", "research", "story", "creative", "layout", "motion", "critic", "propose", "edit", "unknown"},
+    "task_type": {"planning", "structured", "critique", "fast"},
+    "direction": {"input", "output", "total"},
+    "kind": {"png", "pdf", "pptx", "mydeck"},
+    "limit": {"monthly_generations", "monthly_tokens", "storage_bytes", "daily_credits"},
+    "http.request.method": {"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"},
+}
+_COUNTS = {"tokens_in", "tokens_out", "slide_count", "http.response.status_code"}
+_SPAN_NAMES = {"http.request", "export", "generation", "agent.run", "agent.model", "agent.edit", "index"}
+
+
+def _safe_attributes(attributes: dict[str, Any] | None) -> dict[str, Any]:
+    """Allow known dimensions and values, not arbitrary short strings.
+
+    This applies equally to initial attributes, later writes and metric labels.
+    Unknown keys are dropped without logging their names or their contents.
+    """
+    result: dict[str, Any] = {}
+    for key, value in (attributes or {}).items():
+        if not isinstance(key, str):
+            continue
+        bare = key.removeprefix("deckastra.")
+        if bare in _ID_PREFIXES and isinstance(value, str):
+            if re.fullmatch(_ID_PREFIXES[bare] + r"_[0-9A-HJKMNP-TV-Z]{26}", value):
+                result[key] = value
+        elif bare in _ENUMS and isinstance(value, str) and value in _ENUMS[bare]:
+            result[key] = value
+        elif bare in _COUNTS and type(value) is int and value >= 0:
+            result[key] = value
+        elif bare == "model" and isinstance(value, str):
+            from deckastra_agents.router import MODELS
+            if value in {*MODELS.values(), "stub"}:
+                result[key] = value
+    return result
 
 
 class _NoopSpan:
@@ -67,6 +108,9 @@ class _NoopSpan:
     def set_attribute(self, key: str, value: Any) -> None:  # noqa: D102
         return None
 
+    def set_attributes(self, attributes: dict[str, Any]) -> None:
+        return None
+
     def record_exception(self, error: BaseException) -> None:  # noqa: D102
         return None
 
@@ -77,49 +121,125 @@ class _NoopSpan:
 _tracer: Any | None = None
 _meter: Any | None = None
 _enabled = False
+#: Bumped by every successful `configure()`. Instruments compare against it so a
+#: reconfigured meter replaces what they resolved against a previous one.
+_configuration = 0
+_providers: tuple[Any, ...] = ()
 
 
-def configure(app: Any | None = None) -> bool:
-    """Wire up OpenTelemetry if it is available.
+def configure(
+    app: Any | None = None, *, force: bool = False,
+    trace_exporter: Any | None = None, metric_exporter: Any | None = None,
+) -> bool:
+    """Own real SDK providers and exporters, without replacing global providers.
 
-    Returns whether it was. Called once at startup; safe to call again.
-
-    The exporter is configured entirely by the standard `OTEL_*` environment
-    variables rather than by arguments here, because that is how every other
-    OpenTelemetry deployment is configured and inventing a second mechanism would
-    mean operators had to learn both.
+    Deployment uses OTLP HTTP/protobuf and standard OTEL endpoint/header/timeout
+    variables. No collector is contacted on an unconfigured fresh clone. Explicit
+    exporters support embedded deployments and real SDK delivery tests. `force`
+    rebuilds providers; ordinary repeated startup calls are idempotent.
     """
-    global _tracer, _meter, _enabled
-
-    if _enabled:
-        return True
-
+    global _tracer, _meter, _enabled, _configuration, _providers
     if os.environ.get("DECKASTRA_TELEMETRY", "").lower() in ("0", "off", "false"):
-        logger.info("Telemetry is switched off by DECKASTRA_TELEMETRY.")
+        shutdown()
         return False
-
+    explicit = trace_exporter is not None or metric_exporter is not None
+    if _enabled and not force and not explicit:
+        return True
+    requested = os.environ.get("DECKASTRA_TELEMETRY", "").lower() in {"1", "on", "true"}
+    endpoints = any(os.environ.get(key) for key in (
+        "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+    ))
+    if not (explicit or requested or endpoints):
+        shutdown()
+        return False
+    default_protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+    protocols = [os.environ.get(key, default_protocol) for key in (
+        "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL",
+    )]
+    if not explicit and any(protocol != "http/protobuf" for protocol in protocols):
+        shutdown()
+        logger.warning("Telemetry requires OTLP http/protobuf; configuration was not enabled.")
+        return False
     try:
-        from opentelemetry import metrics, trace
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+        if not explicit:
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+            trace_exporter = OTLPSpanExporter()
+            metric_exporter = OTLPMetricExporter()
     except ImportError:
-        # Not an error. A fresh clone should start, and an observability layer
-        # that blocks that is one people remove rather than configure.
-        logger.info("OpenTelemetry is not installed; traces and metrics are no-ops.")
+        shutdown()
+        logger.warning("Telemetry SDK/exporter unavailable; telemetry is disabled.")
         return False
-
-    _tracer = trace.get_tracer(SERVICE_NAME)
-    _meter = metrics.get_meter(SERVICE_NAME)
+    except (ValueError, TypeError):
+        shutdown()
+        logger.warning("Invalid telemetry exporter configuration; telemetry is disabled.")
+        return False
+    shutdown()
+    try:
+        resource = Resource({"service.name": SERVICE_NAME})
+        tracer_provider = TracerProvider(resource=resource)
+        _providers = (tracer_provider,)
+        if trace_exporter is not None:
+            tracer_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
+        readers = [PeriodicExportingMetricReader(metric_exporter)] if metric_exporter is not None else []
+        meter_provider = MeterProvider(resource=resource, metric_readers=readers)
+        _providers = (tracer_provider, meter_provider)
+    except (ValueError, TypeError):
+        shutdown()
+        logger.warning("Invalid telemetry SDK configuration; telemetry is disabled.")
+        return False
+    _tracer = tracer_provider.get_tracer(SERVICE_NAME)
+    _meter = meter_provider.get_meter(SERVICE_NAME)
     _enabled = True
-
-    if app is not None:
-        try:
-            from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-            FastAPIInstrumentor.instrument_app(app)
-        except ImportError:
-            logger.info("FastAPI instrumentation is not installed; spans are manual only.")
-
-    logger.info("OpenTelemetry is configured for %s.", SERVICE_NAME)
+    _configuration += 1
+    logger.info("OpenTelemetry SDK providers configured for %s.", SERVICE_NAME)
     return True
+
+
+def flush(timeout_millis: int = 5_000) -> bool:
+    outcomes = [provider.force_flush(timeout_millis=timeout_millis) for provider in _providers]
+    return all(outcome is not False for outcome in outcomes)
+
+
+def shutdown() -> None:
+    global _providers, _tracer, _meter, _enabled, _configuration
+    previous, _providers = _providers, ()
+    _enabled, _tracer, _meter = False, None, None
+    _configuration += 1
+    for provider in previous:
+        provider.shutdown()
+
+
+async def http_middleware(request: Any, call_next: Any) -> Any:
+    # Fixed operation name; never capture a URL/query, authorization header,
+    # request/response body or a user-controlled path segment.
+    with span("http.request", **{"http.request.method": request.method}) as current:
+        response = await call_next(request)
+        current.set_attribute("http.response.status_code", response.status_code)
+        current.set_attribute(OUTCOME, "failed" if response.status_code >= 500 else "completed")
+        return response
+
+
+class TracedModelClient:
+    """Measure model calls at the API boundary without tracing prompt content."""
+
+    def __init__(self, client: Any, run_id: str) -> None:
+        self._client, self._run_id = client, run_id
+
+    def complete(self, request: Any, budget: Any) -> Any:
+        with span("agent.model", **{RUN_ID: self._run_id, "task_type": request.task_type}) as current:
+            response = self._client.complete(request, budget)
+            current.set_attributes({
+                MODEL: response.model, TOKENS_IN: response.input_tokens,
+                TOKENS_OUT: response.output_tokens,
+                OUTCOME: "refused" if response.refusal else "completed",
+            })
+            return response
 
 
 def enabled() -> bool:
@@ -136,6 +256,7 @@ def span(name: str, **attributes: Any) -> Iterator[Any]:
     infrastructure at all.
     """
     started = time.perf_counter()
+    name = name if name in _SPAN_NAMES else "operation"
 
     if not _enabled or _tracer is None:
         current = _NoopSpan()
@@ -145,62 +266,113 @@ def span(name: str, **attributes: Any) -> Iterator[Any]:
             logger.debug("%s took %.1fms", name, (time.perf_counter() - started) * 1000)
         return
 
-    with _tracer.start_as_current_span(name) as current:
-        for key, value in attributes.items():
-            _set(current, key, value)
+    # SDK defaults record exception text and stack traces automatically. Disable
+    # those defaults as well as shielding the object returned to callers.
+    with _tracer.start_as_current_span(name, record_exception=False, set_status_on_exception=False) as current:
+        safe = _SafeSpan(current)
+        safe.set_attributes(attributes)
         try:
-            yield current
+            yield safe
         except Exception as error:
-            current.record_exception(error)
+            safe.record_exception(error)
             raise
 
 
-def _set(current: Any, key: str, value: Any) -> None:
-    """Set one attribute, refusing anything that looks like user content.
+class _SafeSpan:
+    def __init__(self, current: Any) -> None:
+        self._current = current
 
-    A string longer than a couple of hundred characters is not an id, and this is
-    the boundary where a prompt or a slide's copy would leave the machine.
+    def set_attribute(self, key: str, value: Any) -> None:
+        self.set_attributes({key: value})
+
+    def set_attributes(self, attributes: dict[str, Any]) -> None:
+        self._current.set_attributes(_safe_attributes(attributes))
+
+    def record_exception(self, error: BaseException) -> None:
+        from opentelemetry.trace import StatusCode
+        # Error category only. No message, stack, request body or exception args.
+        category = "timeout" if isinstance(error, TimeoutError) else "error"
+        self._current.add_event("exception", {"error.type": category})
+        self._current.set_status(StatusCode.ERROR)
+
+    def set_status(self, status: Any, description: str | None = None) -> None:
+        from opentelemetry.trace import StatusCode
+        code = getattr(status, "status_code", status)
+        if isinstance(code, StatusCode):
+            self._current.set_status(code)
+
+
+class _Instrument:
+    """A metric that resolves itself the first time it is used.
+
+    The reason this is not just `_meter.create_counter(...)`: the instruments
+    below are declared at import, and `configure()` runs at startup — later. An
+    instrument created eagerly captured the no-op meter and stayed a no-op for
+    the life of the process, whatever telemetry was configured afterwards. Every
+    metric the product records went nowhere, silently, which is the one way an
+    observability layer can fail that nobody notices.
+
+    Resolving on first use also means an instrument is never created for a
+    process that has no meter — a test run, a CLI, a fresh clone.
     """
-    if value is None:
-        return
 
-    if isinstance(value, str) and len(value) > _MAX_ATTRIBUTE_LENGTH:
-        logger.warning("Refused an oversized span attribute %r; ids and counts only.", key)
-        return
+    def __init__(self, kind: str, name: str, description: str, unit: str) -> None:
+        self._kind = kind
+        self._name = name
+        self._description = description
+        self._unit = unit
+        self._real: Any | None = None
+        #: The generation of `configure()` this was resolved against, so a
+        #: reconfigure (a test, mostly) does not leave a stale instrument behind.
+        self._generation = -1
 
-    current.set_attribute(key, value)
+    def _resolve(self) -> Any | None:
+        if not _enabled or _meter is None:
+            return None
+        if self._real is not None and self._generation == _configuration:
+            return self._real
+
+        factory = (
+            _meter.create_counter if self._kind == "counter" else _meter.create_histogram
+        )
+        self._real = factory(self._name, unit=self._unit, description=self._description)
+        self._generation = _configuration
+        return self._real
+
+    def add(self, amount: Any, attributes: Any = None) -> None:
+        if type(amount) not in (int, float) or not math.isfinite(amount) or amount < 0:
+            return
+        instrument = self._resolve()
+        if instrument is not None:
+            instrument.add(amount, _safe_attributes(attributes))
+
+    def record(self, amount: Any, attributes: Any = None) -> None:
+        if type(amount) not in (int, float) or not math.isfinite(amount) or amount < 0:
+            return
+        instrument = self._resolve()
+        if instrument is not None:
+            instrument.record(amount, _safe_attributes(attributes))
 
 
-def counter(name: str, description: str, unit: str = "1") -> Any:
+def counter(name: str, description: str, unit: str = "1") -> _Instrument:
     """A metric, or a no-op that swallows the call.
 
     Named after what it measures rather than where it is measured from — doc 04
     §31.5 makes the point that an untracked budget regresses quietly, and a metric
     called `api_handler_3_total` is untracked in every way that matters.
     """
-    if not _enabled or _meter is None:
-        return _NoopInstrument()
-    return _meter.create_counter(name, unit=unit, description=description)
+    return _Instrument("counter", name, description, unit)
 
 
-def histogram(name: str, description: str, unit: str = "ms") -> Any:
-    if not _enabled or _meter is None:
-        return _NoopInstrument()
-    return _meter.create_histogram(name, unit=unit, description=description)
-
-
-class _NoopInstrument:
-    def add(self, *args: Any, **kwargs: Any) -> None:  # noqa: D102
-        return None
-
-    def record(self, *args: Any, **kwargs: Any) -> None:  # noqa: D102
-        return None
+def histogram(name: str, description: str, unit: str = "ms") -> _Instrument:
+    return _Instrument("histogram", name, description, unit)
 
 
 # --------------------------------------------------------------- the metrics
 
 #: Doc 05 §32's list, as instruments. Declared at import so the names exist in
-#: one place and a dashboard can be built against them before any data arrives.
+#: one place and a dashboard can be built against them before any data arrives —
+#: and lazily bound, because at import there is no meter to bind to yet.
 GENERATIONS = counter("deckastra.generations", "Deck generations started")
 GENERATION_MS = histogram("deckastra.generation_duration", "How long a generation took")
 TOKENS = counter("deckastra.tokens", "Model tokens spent", unit="{token}")

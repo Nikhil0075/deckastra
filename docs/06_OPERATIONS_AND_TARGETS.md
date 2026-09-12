@@ -182,7 +182,41 @@ Three rules the implementation encodes:
 3. **No user text in an attribute, ever.** Not a title, not a prompt, not a
    retrieved chunk. Traces leave the machine and land in a third party, and a
    span attribute is the easiest place in a system to leak a customer's words.
-   Enforced by a length guard rather than a convention.
+   Enforced by allowlisted keys and enum values, validated product IDs and numeric
+   counts. The same filter applies to late span writes and metric labels. SDK
+   automatic exception capture is disabled; only an error category is emitted.
+
+### 5.1 Collector configuration and lifecycle
+
+Telemetry starts during the API lifespan and flushes/shuts down with it. A fresh
+clone with no telemetry configuration remains disabled; importing the OpenTelemetry
+API package alone no longer counts as a configured exporter. Runtime dependencies
+include matching SDK and OTLP HTTP/protobuf exporter versions in the API manifest.
+
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to a collector's base URL (for example,
+`http://localhost:4318`). The HTTP exporter appends `/v1/traces` and `/v1/metrics`.
+Standard signal-specific endpoint, header, timeout and compression variables are
+handled by the exporters. This integration supports `http/protobuf`; gRPC is not
+silently substituted. `DECKASTRA_TELEMETRY=off` disables it explicitly.
+`DECKASTRA_TELEMETRY=1` enables the exporters' default local collector addresses
+when no endpoint is specified.
+
+Ordinary `configure()` calls are idempotent. `configure(force=True)` rebuilds
+owned providers and rebinds existing instruments; use it during a controlled
+configuration transition, since in-flight spans from the old provider may no
+longer export after shutdown. Providers are not installed as process-global
+singletons. The app records fixed HTTP operation names and method/status, never
+URLs, query parameters, authorization headers or document bodies. Agent run and
+model-call spans carry the same run ID; generation spans also carry the workspace
+ID. Model spans retain approved model/task names and token counts, not prompts,
+responses, refusal text or exception messages.
+
+`apps/api/tests/test_telemetry.py` exercises real SDK exporters against a local
+HTTP/protobuf collector, provider reconfiguration/disable, sensitive-content
+filtering and the HTTP generation path. These tests do not establish a deployed
+collector/dashboard or LangSmith/Langfuse integration. Vendor-specific agent
+inspection, complete failure/spend accounting and unused metric call sites remain
+tracked in F11/F12 and G02/G14.
 
 ---
 

@@ -164,7 +164,12 @@ interface ResolvedMotionTheme {
 }
 
 function motionThemeOf(scene: SlideScene): ResolvedMotionTheme {
-  const motion = (scene.theme as { motion?: Record<string, unknown> }).motion ?? {};
+  // Scenes carry resolved tokens, not a raw ThemeDefinition. Reading a raw
+  // `motion` field silently discards document preferences and inherited values.
+  const motion = Object.fromEntries(
+    ["defaultDurationMs", "defaultEasing", "staggerMs", "maxSlideDurationMs", "reducedMotionFallback"]
+      .map(key => [key, scene.theme.tokens.get(`motion.${key}`)]),
+  );
   return {
     defaultDurationMs: typeof motion.defaultDurationMs === "number" ? motion.defaultDurationMs : 400,
     defaultEasing: typeof motion.defaultEasing === "string" ? motion.defaultEasing : DEFAULT_EASING,

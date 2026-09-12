@@ -3,10 +3,10 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { buildDocumentScene, type DocumentScene } from "@deckastra/renderer";
 import { ScaledSlide } from "@deckastra/renderer/react";
-import type { PresentationDocument } from "@deckastra/presentation-schema";
+import { useWorkspaceClient } from "@deckastra/workspace-client/react";
+import type { SharedDocument } from "@deckastra/workspace-contracts";
 
-import { PresentMode } from "../../../components/PresentMode";
-import { browserMeasurer } from "../../../lib/measurer";
+import { PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
 
 /**
  * A deck opened from a share link (gap register doc 01 S2).
@@ -28,22 +28,13 @@ import { browserMeasurer } from "../../../lib/measurer";
  * confirms that a deck exists behind the id they tried.
  */
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-interface SharedDeck {
-  presentation_id: string;
-  title: string;
-  document: PresentationDocument;
-  version_id: string;
-  role: "viewer" | "editor";
-}
-
 type State =
   | { phase: "loading" }
-  | { phase: "ready"; deck: SharedDeck }
+  | { phase: "ready"; deck: SharedDocument }
   | { phase: "unavailable" };
 
 export default function SharedPage({ params }: { params: Promise<{ token: string }> }) {
+  const client = useWorkspaceClient();
   const { token } = use(params);
   const [state, setState] = useState<State>({ phase: "loading" });
   const [presenting, setPresenting] = useState(false);
@@ -52,24 +43,27 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`${API}/v1/shared/${encodeURIComponent(token)}`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("gone"))))
-      .then((deck: SharedDeck) => {
+    client.shares
+      .redeem(token)
+      .then((deck) => {
         if (!cancelled) setState({ phase: "ready", deck });
       })
       .catch(() => {
+        // Expired, revoked and never-existed answer alike on purpose, so there is
+        // deliberately nothing here that could tell them apart.
         if (!cancelled) setState({ phase: "unavailable" });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [client, token]);
 
+  const measurer = useBrowserMeasurer();
   const scene: DocumentScene | null = useMemo(() => {
     if (state.phase !== "ready") return null;
-    return buildDocumentScene(state.deck.document, { measurer: browserMeasurer() });
-  }, [state]);
+    return buildDocumentScene(state.deck.document, { measurer });
+  }, [state, measurer]);
 
   if (state.phase === "loading") {
     return (

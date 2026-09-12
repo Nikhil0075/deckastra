@@ -312,6 +312,7 @@ def test_model_path_retries_once_with_the_validation_errors(fake_anthropic):
 
     assert diagnostics.attempts == 2
     assert diagnostics.plan_valid_first_attempt is False
+    assert diagnostics.valid_first_attempt is False
     assert diagnostics.validation_errors
     assert len(plan.slides) == 3
 

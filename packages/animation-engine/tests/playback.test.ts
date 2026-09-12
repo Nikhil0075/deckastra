@@ -40,7 +40,7 @@ const SCENE: SlideScene = {
   height: 1080,
   nodes: [node("el_a"), node("el_b"), node("el_c")],
   paintOrder: ["el_a", "el_b", "el_c"],
-  theme: { motion: {} } as unknown as SlideScene["theme"],
+  theme: { tokens: new Map() } as unknown as SlideScene["theme"],
   fonts: [],
 };
 

@@ -20,11 +20,12 @@ import {
   type ExportReport,
 } from "@deckastra/export-core";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
-import { buildDocumentScene, type SlideScene } from "@deckastra/renderer";
+import type { SlideScene } from "@deckastra/renderer";
 import { buildPdf } from "@deckastra/export-pdf";
 import { buildPptx } from "@deckastra/export-pptx";
 
-import { RenderPool, renderPdf } from "./render";
+import { RenderPool, renderPdfScene } from "./render";
+import { buildBrowserScene } from "./text-measurement";
 
 export type ExportKind = "pdf" | "pptx";
 
@@ -61,39 +62,40 @@ export async function runExport(
 ): Promise<ExportOutcome> {
   onProgress({ progress: 0, stage: "resolving", message: "Resolving slides" });
 
-  // Scenes are built once and handed to the adapter (doc 04 §32.1). An adapter
-  // that resolved its own would be a second layout engine, free to disagree with
-  // what the author approved on screen.
-  const scene = buildDocumentScene(job.document);
-  const scenes = new Map<string, SlideScene>(
-    scene.slides.map((slide) => [slide.slideId, slide]),
-  );
-
-  const input = {
-    document: job.document,
-    scenes,
-    fontManifest: fontManifest(scenes.values()),
-    options: job.options,
-  };
-
-  const filename = `${safeName(job.document.metadata.title)}.${job.kind}`;
-
-  if (job.kind === "pptx") {
-    onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
-    const artifact = buildPptx(input);
-    onProgress({ progress: 1, stage: "done", message: "Done" });
-    return {
-      bytes: artifact.bytes,
-      report: artifact.result.report,
-      filename,
-      contentType: CONTENT_TYPES.pptx,
-    };
-  }
-
   const owned = pool ?? new RenderPool();
-  const ids = slidesToExport(job.document, job.options);
-
   try {
+    return await owned.withPage(1, async (page) => {
+    // Final measured scenes are shared with the adapter (doc 04 §32.1). An adapter
+    // that resolved its own would be a second layout engine, free to disagree with
+    // what the author approved on screen.
+    const scene = await buildBrowserScene(job.document, page);
+    const scenes = new Map<string, SlideScene>(
+      scene.slides.map((slide) => [slide.slideId, slide]),
+    );
+
+    const input = {
+      document: job.document,
+      scenes,
+      fontManifest: fontManifest(scenes.values()),
+      options: job.options,
+    };
+
+    const filename = `${safeName(job.document.metadata.title)}.${job.kind}`;
+
+    if (job.kind === "pptx") {
+      onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
+      const artifact = buildPptx(input);
+      onProgress({ progress: 1, stage: "done", message: "Done" });
+      return {
+        bytes: artifact.bytes,
+        report: artifact.result.report,
+        filename,
+        contentType: CONTENT_TYPES.pptx,
+      };
+    }
+
+    const ids = slidesToExport(job.document, job.options);
+
     onProgress({
       progress: 0.2,
       stage: "rendering",
@@ -101,7 +103,7 @@ export async function runExport(
     });
 
     const artifact = await buildPdf(input, async ({ slideIds, atTime }) => {
-      const rendered = await renderPdf(job.document, slideIds, atTime, owned);
+      const rendered = await renderPdfScene(scene, slideIds, atTime, page);
       return rendered.bytes;
     });
 
@@ -112,6 +114,7 @@ export async function runExport(
       filename,
       contentType: CONTENT_TYPES.pdf,
     };
+    });
   } finally {
     // Only close a pool this call created. A caller that passed one is running
     // several exports through a warm browser, and closing it here would make
@@ -139,5 +142,21 @@ export function safeName(title: string): string {
   return cleaned || "presentation";
 }
 
-export { RenderPool, render, renderPdf, deckHtml, slideHtml, PREVIEW_SIZES } from "./render";
-export type { RenderRequest, RenderResponse, RenderArtifact } from "./render";
+export {
+  RenderPool,
+  RenderTimeoutError,
+  render,
+  renderPdf,
+  deckHtml,
+  slideHtml,
+  PREVIEW_SIZES,
+} from "./render";
+export type {
+  PoolEntry,
+  RenderPoolOptions,
+  RenderRequest,
+  RenderResponse,
+  RenderArtifact,
+} from "./render";
+export { buildCriticReport } from "./critic-report";
+export type { CriticRenderReport, CriticSlideSignals } from "./critic-report";

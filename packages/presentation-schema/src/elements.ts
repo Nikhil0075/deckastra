@@ -772,11 +772,6 @@ export const ComponentInstanceElementSchema: z.ZodType<ComponentInstanceElement>
   detachedFrom: IdSchema.optional(),
 }) as unknown as z.ZodType<ComponentInstanceElement>;
 
-const UnknownElementSchema = z.looseObject({
-  ...baseElementShape,
-  type: z.string(),
-}) as unknown as z.ZodType<UnknownElement>;
-
 const KNOWN_ELEMENT_SCHEMAS = [
   TextElementSchema,
   ShapeElementSchema,
@@ -820,10 +815,27 @@ export const ELEMENT_SCHEMA_BY_TYPE: Record<string, z.ZodType<unknown>> = {
   componentInstance: ComponentInstanceElementSchema as unknown as z.ZodType<unknown>,
 };
 
-/**
- * Known types are tried first; UnknownElement is the fallback that satisfies
- * §0.8. Order matters — a loose UnknownElement would otherwise swallow everything.
- */
+// Define the registry before the fallback. Recursive children/slots use getters,
+// so they do not evaluate PresentationElementSchema during this initialization.
+const knownElementTypes = Object.keys(ELEMENT_SCHEMA_BY_TYPE);
+const knownElementTypeSet = new Set(knownElementTypes);
+
+const UnknownElementSchema = z.looseObject({
+  ...baseElementShape,
+  // Doc 02 §0.8 preserves future types, not malformed instances of known types.
+  // Refinements alone disappear in JSON Schema. Emit the equivalent exclusion
+  // from the same registry so Python enforces exactly the same type boundary.
+  type: z.string()
+    .refine((type) => !knownElementTypeSet.has(type), {
+      message: "Known element types must satisfy their specific element schema",
+      // Abort this branch so Zod reports the union failure for member expansion,
+      // rather than selecting this fallback's continuable refinement issue.
+      abort: true,
+    })
+    .meta({ not: { enum: knownElementTypes } }),
+}) as unknown as z.ZodType<UnknownElement>;
+
+/** Known types validate strictly; only future types use the §0.8 fallback. */
 export const PresentationElementSchema: z.ZodType<PresentationElement> = z.union([
   ...KNOWN_ELEMENT_SCHEMAS,
   UnknownElementSchema,

@@ -219,6 +219,7 @@ def generate_story_plan(
         except (json.JSONDecodeError, ValidationError) as exc:
             errors = [str(exc)[:500]]
             diagnostics.plan_valid_first_attempt = False
+            diagnostics.valid_first_attempt = False
             diagnostics.validation_errors.extend(errors)
             continue
 

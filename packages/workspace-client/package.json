@@ -1,0 +1,33 @@
+{
+  "name": "@deckastra/workspace-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "One implementation of the workspace authority contract, over HTTP. The web app points it at the API; the desktop shell points it at its loopback sidecar.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.tsx",
+    "./testing": "./src/testing/index.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/workspace-contracts": "*"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "react": "^19.0.0"
+  }
+}

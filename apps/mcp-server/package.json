@@ -1,0 +1,35 @@
+{
+  "name": "@deckastra/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Agent access to a running Deckastra desktop app, over MCP (milestone D2).",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "deckastra-mcp": "./src/cli.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "acceptance": "node scripts/acceptance.mjs"
+  },
+  "dependencies": {
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/workspace-client": "*",
+    "@deckastra/workspace-contracts": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -4,6 +4,7 @@ build/
 .next/
 out/
 coverage/
+.artifacts/
 *.tsbuildinfo
 
 __pycache__/
@@ -30,3 +31,18 @@ Thumbs.db
 # Next.js
 .next/
 next-env.d.ts
+
+# Pixel hashes a run computed when no baseline existed. An artifact for
+# recording the first baseline on a platform, never a committed file.
+*.computed
+packages/renderer/baselines/pixels/artifacts/
+
+# Electron packaging output (apps/desktop). Installers are build artifacts.
+release/
+
+# Local MCP wiring: absolute paths for one machine, and it names how this
+# checkout is reached. Each developer writes their own (apps/mcp-server/README).
+.mcp.json
+
+# Claude Code's scratch worktrees.
+.claude/worktrees/

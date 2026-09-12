@@ -59,6 +59,11 @@ IMPORTANCE_SCALE = 200.0
 @dataclass
 class RetrievedChunk:
     chunk_id: str
+    #: Which repository this came from. Carried on the hit rather than inferred
+    #: by the caller: a search spans every connected repository, and a citation
+    #: that names the wrong one is worse than no citation at all.
+    repository_id: str
+    repository_full_name: str
     path: str
     start_line: int
     end_line: int
@@ -73,6 +78,11 @@ class RetrievedChunk:
     def reference(self) -> str:
         """`path:start-end`, the form a provenance record carries (doc 02 §30)."""
         return f"{self.path}:{self.start_line}-{self.end_line}"
+
+    @property
+    def source_id(self) -> str:
+        """`owner/repo#path:start-end` — the whole citation (doc 02 §30)."""
+        return f"{self.repository_full_name}#{self.reference}"
 
 
 def _pgvector_available(session: Session) -> bool:
@@ -128,9 +138,19 @@ def search(
         # different things and return noise, so the *index* decides the method.
         rows = _search_lexical(session, repository_ids, query, limit * 3)
 
+    # One lookup for the names, rather than one per hit. The rows carry an id;
+    # a citation has to carry `owner/repo`.
+    names = dict(
+        session.query(Repository.id, Repository.full_name)
+        .filter(Repository.id.in_(repository_ids))
+        .all()
+    )
+
     ranked = [
         RetrievedChunk(
             chunk_id=chunk.id,
+            repository_id=chunk.repository_id,
+            repository_full_name=names.get(chunk.repository_id, ""),
             path=chunk.path,
             start_line=chunk.start_line,
             end_line=chunk.end_line,
@@ -148,17 +168,24 @@ def search(
         if similarity >= min_similarity
     ]
 
-    ranked.sort(key=lambda chunk: (-chunk.score, chunk.path, chunk.start_line))
+    ranked.sort(
+        key=lambda chunk: (-chunk.score, chunk.repository_full_name, chunk.path, chunk.start_line)
+    )
 
     # At most two chunks per file. Three chunks of one long file crowd out three
     # different files, and a deck grounded in one file is a deck about one file.
-    seen: dict[str, int] = {}
+    #
+    # Keyed by repository *and* path: two repositories both containing a
+    # `README.md` are two files, and keying on the path alone would let the first
+    # one silently cap the second.
+    seen: dict[tuple[str, str], int] = {}
     chosen: list[RetrievedChunk] = []
     for chunk in ranked:
-        count = seen.get(chunk.path, 0)
+        key = (chunk.repository_id, chunk.path)
+        count = seen.get(key, 0)
         if count >= 2:
             continue
-        seen[chunk.path] = count + 1
+        seen[key] = count + 1
         chosen.append(chunk)
         if len(chosen) >= limit:
             break

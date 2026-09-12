@@ -56,6 +56,10 @@ class RunBudget:
     daily_credit: int = 200
 
     used_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    # Structured requests, including repair outcomes; no prompts or response text.
+    structured_requests: list[dict[str, object]] = field(default_factory=list)
     revisions_this_run: int = 0
     revisions_by_slide: dict[str, int] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
@@ -64,6 +68,8 @@ class RunBudget:
     # ------------------------------------------------------------- hard stops
 
     def spend_tokens(self, input_tokens: int, output_tokens: int) -> None:
+        self.input_tokens += input_tokens
+        self.output_tokens += output_tokens
         self.used_tokens += input_tokens + output_tokens
         if self.used_tokens > self.max_total_tokens:
             raise BudgetExceeded("token", self.max_total_tokens, self.used_tokens)
@@ -122,6 +128,9 @@ class RunBudget:
     def report(self) -> dict[str, object]:
         return {
             "used_tokens": self.used_tokens,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "structured_requests": [dict(request) for request in self.structured_requests],
             "max_total_tokens": self.max_total_tokens,
             "revisions": self.revisions_this_run,
             "max_revisions": self.max_revisions_per_run,

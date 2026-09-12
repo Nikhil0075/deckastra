@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { createElement } from "react";
+import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine";
+import type { AnimationTrack } from "@deckastra/presentation-schema";
 import type { Browser, Page } from "playwright";
 
 import { buildDocumentScene } from "../src/scene";
@@ -29,24 +31,33 @@ import { SlideView } from "../src/react/SlideView";
  *
  * **The baseline is per-platform.** Font rasterisation differs between Windows,
  * macOS and Linux, so a hash taken on one does not hold on another. The baseline
- * file is named for the platform that produced it, and a run on a platform with
- * no baseline reports that rather than failing — a gate that fails for a reason
- * nobody can act on gets disabled within a week. CI pins one platform, which is
- * where the gate has teeth.
+ * file is named for the platform that produced it, and a developer's run on a
+ * platform with no baseline reports that rather than failing — a gate that fails
+ * for a reason nobody can act on gets disabled within a week.
+ *
+ * `REQUIRE_PIXEL_BASELINE=1` turns that report into a failure, and CI sets it.
+ * Without it the gate was worth nothing anywhere: CI runs on Linux, no Linux
+ * baseline was committed, and a missing baseline passed silently — so the job
+ * was green while comparing against nothing. A missing baseline in CI is a
+ * finding, not a shrug; the run writes the hashes it computed so the first one
+ * can be committed from the artifact.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASELINES = join(HERE, "..", "baselines", "pixels");
+const ARTIFACTS = join(BASELINES, "artifacts", `${process.platform}-${process.arch}`);
 
 const ENABLED = process.env.PIXELS === "1";
 const UPDATE = process.env.UPDATE_PIXELS === "1";
+//: A missing baseline is a failure where one is expected to exist — CI.
+const REQUIRED = process.env.REQUIRE_PIXEL_BASELINE === "1";
 
 const FIXTURES = ["technical", "repository", "animation"] as const;
 
 /** 2× device pixel ratio, as doc 04 §39 specifies for the reload test. */
 const SCALE = 2;
 
-/** Fonts are pinned so the render does not depend on what the machine has. */
+/** Deterministic scene fallback; the CI image pins the actual browser fonts. */
 const FONTS = { available: new Set<string>(), unknown: true };
 
 let browser: Browser | undefined;
@@ -91,11 +102,28 @@ async function shoot(fixture: (typeof FIXTURES)[number], slideIndex: number): Pr
   );
 
   await page!.evaluate(() => document.fonts.ready);
+  // Capture the same explicit final frame used by default headless exports.
+  // Otherwise an entrance fixture can be entirely invisible and still pass.
+  const timeline = compileTimeline(slide, (slide.animations ?? []) as AnimationTrack[], { userMotionPreference: "full" });
+  const styles = [...sampleAt(timeline, timeline.durationMs + 1).values()].map(target => ({
+    id: target.targetId, style: toStyle(target.values),
+  }));
+  await page!.evaluate(items => {
+    for (const item of items) {
+      const element = document.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(item.id)}"]`);
+      if (element) Object.assign(element.style, item.style);
+    }
+  }, styles);
 
-  return page!.screenshot({
-    clip: { x: 0, y: 0, width: slide.width / 2, height: slide.height / 2 },
+  const png = await page!.screenshot({
+    clip: { x: 0, y: 0, width: slide.width, height: slide.height },
     animations: "disabled",
   });
+  // DPR changes density, not CSS clip coordinates. The old /2 clip captured
+  // only a quarter of the slide and missed regressions on its right/bottom.
+  expect(png.readUInt32BE(16)).toBe(slide.width * SCALE);
+  expect(png.readUInt32BE(20)).toBe(slide.height * SCALE);
+  return png;
 }
 
 function hash(png: Buffer): string {
@@ -109,32 +137,48 @@ describe.skipIf(!ENABLED)("pixel regression", () => {
     // The property doc 04 §39 actually asks for, and the one that makes every
     // other pixel comparison meaningful. If this fails, nothing below is signal.
     for (const fixture of FIXTURES) {
-      const first = await shoot(fixture, 0);
-      const second = await shoot(fixture, 0);
-      expect(hash(second), `${fixture} slide 0 differed between two renders`).toBe(hash(first));
+      const count = loadFixture(fixture).slides.length;
+      for (let i = 0; i < count; i++) {
+        const first = await shoot(fixture, i);
+        const second = await shoot(fixture, i);
+        expect(hash(second), `${fixture}/${i} differed between two renders`).toBe(hash(first));
+      }
     }
-  }, 120_000);
+  }, 300_000);
 
   it("renders byte-identical PNGs after a full page reload", async () => {
     // A reload discards every cache the first render warmed: layout, font
     // shaping, the rasteriser's glyph atlas. A difference here is a real
     // nondeterminism that a same-page second shot would hide.
-    const before = await shoot("technical", 1);
-    await page!.reload();
-    const after = await shoot("technical", 1);
-    expect(hash(after)).toBe(hash(before));
-  }, 120_000);
+    for (const fixture of FIXTURES) {
+      for (let i = 0; i < loadFixture(fixture).slides.length; i++) {
+        const before = await shoot(fixture, i);
+        await page!.reload();
+        const after = await shoot(fixture, i);
+        expect(hash(after), `${fixture}/${i} changed after reload`).toBe(hash(before));
+      }
+    }
+  }, 300_000);
 
   it("matches the committed pixel baseline for this platform", async () => {
     const path = join(BASELINES, `${platformKey}.json`);
 
     const current: Record<string, string> = {};
+    mkdirSync(ARTIFACTS, { recursive: true });
     for (const fixture of FIXTURES) {
       const scene = buildDocumentScene(loadFixture(fixture), { fonts: FONTS });
       for (let i = 0; i < scene.slides.length; i += 1) {
-        current[`${fixture}/${i}`] = hash(await shoot(fixture, i));
+        const png = await shoot(fixture, i);
+        current[`${fixture}/${i}`] = hash(png);
+        writeFileSync(join(ARTIFACTS, `${fixture}-${i}.png`), png);
       }
     }
+    writeFileSync(`${path}.computed`, `${JSON.stringify(current, null, 2)}\n`, "utf8");
+    writeFileSync(join(ARTIFACTS, "runtime.json"), JSON.stringify({
+      chromium: browser!.version(), node: process.version, platform: platformKey, deviceScaleFactor: SCALE,
+      animationFrame: "final",
+      logicalSize: { width: 1920, height: 1080 }, captureSize: { width: 3840, height: 2160 },
+    }, null, 2));
 
     if (UPDATE) {
       mkdirSync(BASELINES, { recursive: true });
@@ -143,6 +187,21 @@ describe.skipIf(!ENABLED)("pixel regression", () => {
     }
 
     if (!existsSync(path)) {
+      // Written either way, so the first baseline for a platform can be taken
+      // from a CI artifact rather than needing that machine in front of you.
+      mkdirSync(BASELINES, { recursive: true });
+      writeFileSync(`${path}.computed`, `${JSON.stringify(current, null, 2)}
+`, "utf8");
+
+      if (REQUIRED) {
+        // Where a baseline is expected, its absence is the finding. Passing here
+        // is what let this gate run green against nothing for a whole phase.
+        throw new Error(
+          `No pixel baseline for ${platformKey}. The hashes this run computed are ` +
+            `in ${path}.computed — review them and commit them as ${platformKey}.json.`,
+        );
+      }
+
       // Font rasterisation is platform-specific, so a hash from another machine
       // proves nothing here. Saying so beats failing for a reason nobody can act
       // on — that is how a gate gets disabled.
@@ -175,13 +234,14 @@ describe.skipIf(!ENABLED)("pixel regression", () => {
       await page!.evaluate(() => document.fonts.ready);
       return hash(
         await page!.screenshot({
-          clip: { x: 0, y: 0, width: slide.width / 2, height: slide.height / 2 },
+          clip: { x: 0, y: 0, width: slide.width, height: slide.height },
         }),
       );
     };
 
     const plain = await shootMarkup("");
-    const nudged = await shootMarkup("[data-element-id]{transform:translateX(1px)!important}");
+    // A change outside the old top-left crop must fail the gate.
+    const nudged = await shootMarkup("[data-deckastra-slide]::after{content:'';position:absolute;right:0;bottom:0;width:40px;height:40px;background:#ff00ff;z-index:2147483647}");
     expect(nudged).not.toBe(plain);
   }, 120_000);
 });

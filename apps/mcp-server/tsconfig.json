@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    // DOM, in a process that has no DOM. `@deckastra/workspace-client` ships raw
+    // TypeScript and its `fetch` types are the DOM's (`RequestInit`,
+    // `RequestCache`), so a Node-only lib set fails to compile a dependency this
+    // package does not own. The cost is that `window` typechecks here and would
+    // throw at runtime; nothing in `src` refers to it, and the tests run under
+    // Node with no DOM, so the mistake fails immediately rather than shipping.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["src", "tests"]
+}

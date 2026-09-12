@@ -321,6 +321,122 @@ def test_the_critic_falls_back_rather_than_looping_forever():
     assert any("did not converge" in warning for warning in produced["warnings"])
 
 
+def test_the_fallback_proposes_the_best_draft_and_not_merely_the_last():
+    """The Critic's fallback promises "the best draft was kept".
+
+    Nothing kept it: `propose` composed whatever the final revision produced, and
+    a later revision can score worse than the one it replaced. The warning was
+    therefore false exactly when it mattered — when reviewer and writer did not
+    converge, which is the only time it is shown.
+    """
+    from deckastra_agents.nodes.propose import propose
+
+    good = {**STORY_PLAN, "title": "The better draft"}
+    worse = {**STORY_PLAN, "title": "The later, worse draft"}
+
+    composed: list[dict[str, Any]] = []
+
+    def compose(plan, direction, motion):
+        composed.append(plan)
+        return [{"op": "replace", "path": "/slides", "value": []}]
+
+    ctx, _ = context(stub())
+    produced = propose(
+        state(
+            story_plan=worse,
+            reviewed_drafts=[
+                {"score": 0.82, "story_plan": good, "review": {
+                    "issues": [{"slide_id": "sld_1", "message": "Earlier draft issue."}]
+                }},
+                {"score": 0.41, "story_plan": worse},
+            ],
+            critic_results=[
+                {"verdict": "revise_story", "score": 0.82, "issues": []},
+                {
+                    "verdict": "pass",
+                    "forced": True,
+                    "score": 0.41,
+                    "issues": [{"slide_id": "sld_1", "message": "Still dense."}],
+                },
+            ],
+        ),
+        ctx,
+        compose,
+    )
+
+    assert composed[0]["title"] == "The better draft"
+    assert any("scored lower" in warning for warning in produced["warnings"])
+
+    # And the unresolved issues reach the document, not only graph state. State
+    # ends with the run; the editor reads a document.
+    attach = [
+        operation
+        for operation in produced["proposed_operations"]
+        if operation["path"] == "/extensions"
+    ]
+    assert attach, produced["proposed_operations"]
+    assert attach[0]["op"] == "add"
+    assert attach[0]["value"]["deckastra.unresolvedIssues"]["sld_1"]
+    assert attach[0]["value"]["deckastra.unresolvedIssues"]["sld_1"][0]["message"] == "Earlier draft issue."
+
+
+def test_candidate_snapshot_restores_all_composition_inputs_and_sources():
+    from copy import deepcopy
+    from deckastra_agents.nodes.propose import propose
+
+    ctx, _ = context(stub(critique={**PASS, "verdict": "revise_story"}))
+    original = state(story_plan=deepcopy(STORY_PLAN), creative_direction={"mood": "calm"},
+                     motion_plan={"slides": [{"style": "quiet"}]}, research={"sources": [{"id": "original"}]})
+    reviewed = critic(original, ctx)["reviewed_drafts"][0]
+    original["story_plan"]["title"] = "Mutated later"
+    original["creative_direction"]["mood"] = "loud"
+    composed = []
+    output = propose(state(**{**original, "reviewed_drafts": [reviewed],
+                             "critic_results": [{"forced": True}]}), ctx,
+                     lambda p, d, m: composed.append((p, d, m)) or [])
+    assert composed[0][0]["title"] == "Deck"
+    assert composed[0][1] == {"mood": "calm"}
+    assert composed[0][2] == {"slides": [{"style": "quiet"}]}
+    assert output["story_plan"]["title"] == "Deck"
+    assert output["research"] == {"sources": [{"id": "original"}]}
+
+
+def test_default_revision_budget_completes_full_graph_with_forced_candidate():
+    from deckastra_agents.runner import AgentRun, run_generation
+    run = AgentRun(client=stub(fast=ROUTE_ALL, planning=STORY_PLAN, structured=DIRECTION,
+                              critique={**PASS, "verdict": "revise_story"}),
+                   registry=ToolRegistry(), compose=lambda p, d, m: [], human_checkpoint=False)
+    result = run_generation(run, state())
+    assert result.status == "completed"
+    assert len(result.state["reviewed_drafts"]) == 4
+    assert result.state["critic_results"][-1]["forced"] is True
+
+
+def test_an_unforced_run_proposes_what_it_just_wrote():
+    """No fallback, no substitution. The latest draft is the one that passed."""
+    from deckastra_agents.nodes.propose import propose
+
+    latest = {**STORY_PLAN, "title": "The approved draft"}
+    composed: list[dict[str, Any]] = []
+
+    ctx, _ = context(stub())
+    produced = propose(
+        state(
+            story_plan=latest,
+            reviewed_drafts=[
+                {"score": 0.99, "story_plan": {**STORY_PLAN, "title": "An earlier draft"}},
+                {"score": 0.5, "story_plan": latest},
+            ],
+            critic_results=[{"verdict": "pass", "score": 0.5, "issues": []}],
+        ),
+        ctx,
+        lambda plan, direction, motion: (composed.append(plan) or []),
+    )
+
+    assert composed[0]["title"] == "The approved draft"
+    assert produced["warnings"] == []
+
+
 def test_dismissed_issue_categories_are_filtered_and_counted():
     memory = ProjectMemory(InMemoryStore(), "p")
     memory.record_dismissed_issue("style", "too loud")

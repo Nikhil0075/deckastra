@@ -98,13 +98,9 @@ def edit(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
                     f"role: {element.get('semanticRole', '(none)')}",
                     f"slide: {found['slide_id']}",
                     "text:",
-                    registry.untrusted(
-                        "presentation.getElement",
-                        text,
-                        Source(id=element["id"], kind="element", label=element.get("name")),
-                    )
-                    if text
-                    else "(no text)",
+                    # `presentation.getElement` declares `text` untrusted, so it
+                    # arrived enveloped. Wrapping it twice would nest.
+                    text if text else "(no text)",
                 ]
             )
         )

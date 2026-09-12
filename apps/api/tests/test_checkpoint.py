@@ -75,11 +75,30 @@ ANSWERS = {
         "choices": [],
         "warnings": [],
     },
-    "critique": {"verdict": "pass", "score": 0.9, "issues": [], "summary": "Ready."},
+    "critique": {
+        "verdict": "pass",
+        # The eight dimensions of doc 03 §13. `score` is derived from these, not
+        # supplied — a stub that supplies it does not validate.
+        "scores": {
+            "hierarchy": 0.9,
+            "readability": 0.9,
+            "contrast": 0.9,
+            "alignment": 0.9,
+            "density": 0.9,
+            "consistency": 0.9,
+            "narrative_clarity": 0.9,
+            "motion_quality": None,
+        },
+        "issues": [],
+        "summary": "Ready.",
+    },
 }
 
 
-def compose(plan, direction):
+def compose(plan, direction, motion):
+    # Three arguments since Phase 7 widened `Composer` to carry the motion plan.
+    # These tests only run with POSTGRES_TEST_URL set, which is how the signature
+    # drifted without anything going red locally.
     return [{"op": "replace", "path": "/slides", "value": plan.get("slides", [])}]
 
 
@@ -214,3 +233,46 @@ def test_the_postgres_url_is_configured_for_ci():
     # skip silently and this is the only thing that notices.
     if POSTGRES_URL:
         assert POSTGRES_URL.startswith("postgresql")
+
+# --------------------------------------------------------------- SQLite saver
+
+
+class TestSqliteCheckpointer:
+    """The human checkpoint is a product feature, so both engines have to carry it.
+
+    Before D1 this was Postgres-only, which meant the desktop build — one user, one
+    process — could generate a deck but never pause to have its story approved. A
+    run that cannot pause cannot be reviewed, and review is the point.
+    """
+
+    def test_a_file_backed_sqlite_database_gets_a_saver(self, tmp_path, monkeypatch):
+        from deckastra_api import agent_service
+
+        monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(tmp_path / 'app.db').as_posix()}")
+        checkpointer = agent_service._checkpointer()
+        assert checkpointer is not None
+
+        # Beside the application database, never inside it: these are LangGraph's
+        # tables on LangGraph's schema, and Alembic would see tables it did not
+        # create.
+        assert (tmp_path / "app.db.checkpoints").exists()
+
+    def test_an_in_memory_database_gets_none_rather_than_something_that_looks_durable(
+        self, monkeypatch
+    ):
+        from deckastra_api import agent_service
+
+        # Every connection would open its own empty database, so a checkpoint
+        # written by one would be invisible to the next. Worse than no saver,
+        # because it would look like one.
+        monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
+        assert agent_service._checkpointer() is None
+
+        monkeypatch.setenv("DATABASE_URL", "sqlite://")
+        assert agent_service._checkpointer() is None
+
+    def test_an_unknown_engine_still_gets_none(self, monkeypatch):
+        from deckastra_api import agent_service
+
+        monkeypatch.setenv("DATABASE_URL", "mysql://localhost/deckastra")
+        assert agent_service._checkpointer() is None

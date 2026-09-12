@@ -230,3 +230,12 @@ export function fontManifest(scenes: Iterable<SlideScene>): FontSpec[] {
 
   return [...byFamily.values()].sort((left, right) => left.family.localeCompare(right.family));
 }
+
+/** Includes nested text, so reports reflect actual measurement fallbacks. */
+export function sceneUsedEstimatedMetrics(scene: SlideScene): boolean {
+  const walk = (nodes: SlideScene["nodes"]): boolean => nodes.some((node) =>
+    (node.renderPayload.kind === "text" && node.renderPayload.metrics.estimated) ||
+    (node.children ? walk(node.children) : false),
+  );
+  return walk(scene.nodes);
+}

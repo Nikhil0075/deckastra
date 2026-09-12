@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 9 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `agents/`, `integrations/`, `apps/api`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 9 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/editor-ui`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `packages/workspace-contracts`, `packages/workspace-client`, `agents/`, `integrations/`, `apps/api`, `apps/desktop`, `apps/mcp-server`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
 The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
 
@@ -25,6 +25,7 @@ npm run fixtures:build
 
 npm run dev:api         # FastAPI on :8000 (needs DATABASE_URL)
 npm run dev:web         # Next on :3000
+npm run dev:desktop     # build all three Electron bundles, then launch
 npm run db:migrate      # alembic upgrade head
 npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
@@ -170,6 +171,23 @@ worth handing over — so the Critic accepts the best draft and attaches the
 unresolved issues (gap S3). A user can act on an attached issue; they can do
 nothing with a run that never finished.
 
+"The best draft was kept" has to be true of something. Every reviewed draft is
+retained in `reviewed_drafts` with its score, and on a forced acceptance
+`propose` composes the highest-scoring one — a later revision can score *worse*
+than the one it replaced, and the sentence is shown exactly when reviewer and
+writer did not converge. The unresolved issues go into the document under
+`extensions["deckastra.unresolvedIssues"]`, keyed by slide: graph state ends with
+the run, and the editor reads a document.
+
+Candidates are deep snapshots of story, creative direction, motion, layout,
+research and the matching review. Proposal returns the selected inputs into
+graph state so provenance describes the selected content. The API applies all
+final proposal operations to the composed document and validates it before
+persistence. Planning slide indexes in unresolved issues resolve to generated
+slide IDs; `CriticIssues` displays deck-wide and selected-slide findings. The
+runner's traversal limit scales with the supported revision budget, including
+the multi-node story revision path.
+
 ### The proposal lifecycle
 
 An agent change becomes a *pending* transaction unless the risk tier says it can
@@ -179,6 +197,30 @@ fix trains them to approve without reading, which is worse than not asking.
 A proposal expires after 24 hours and is **re-validated on approval** against the
 document as it stands. Between proposing and approving the deck may have moved,
 and applying blind would apply a patch to something the approver never saw.
+
+### The autosave queue is emptied by an acknowledgement, never by an attempt
+
+`packages/editor-ui/src/lib/useEditor.ts`. It used to clear `pending.current` before the
+request, so a 409, a 500 or a dropped connection discarded the operations
+permanently — and because the in-memory document still looked right, nothing
+appeared wrong until a reload.
+
+- A failed batch goes back on the **front** of the queue. Operations added while
+  it was in flight are newer and must apply after it; a reordered patch is a
+  different document.
+- A 409 is retained and **never re-sent with a refreshed version**. That is
+  last-write-wins, which is the one failure mode this persistence design exists
+  to refuse.
+- One drain at a time. Two concurrent flushes carry the same
+  `expected_version_id`, and the user is told their deck changed elsewhere when
+  nobody touched it.
+- `saveNow()` returns whether the queue emptied, and anything about to let the
+  server replace the document — approving an AI change, reverting one — must
+  await it and stop on `false`. A queued operation is addressed against the
+  version it was authored on; once that version is superseded it can never be
+  sent, and `adoptDocument` says so rather than dropping it silently.
+- Unload uses `keepalive`, because a browser cancels ordinary in-flight fetches
+  from a page it is tearing down.
 
 ### One path mutates a document
 
@@ -262,6 +304,16 @@ Structural enums stay **closed**: patch op codes, paint variants, constraint kin
 
 Unknown element types and enum values are preserved and reported as `W240`/`W241` — warnings, never errors. Refusing them would delete the user's content.
 
+The unknown-element fallback excludes every own key of `ELEMENT_SCHEMA_BY_TYPE`.
+A malformed known type must fail its specific schema, including inside groups and
+component slots. The fallback's string refinement and JSON Schema `not`/`enum`
+metadata use the same registry-derived list: refinements alone are not emitted.
+The refinement aborts its union branch so validation can expand the known member's
+field errors instead of reporting only a fallback refinement error on `type`.
+Keep both together so Python rejects the same malformed elements without a second
+handwritten type list. `scripts/validate_fixtures.py` checks both this rejection
+and preservation of genuine future types against the generated artifact.
+
 
 
 ### Ordering has exactly one authority
@@ -294,12 +346,13 @@ Three things there that look incidental and are not:
 - **Groups paint their own fill, stroke and radius** via `positionStyle`, because
   a group draws no content of its own — its children are separate scene nodes.
 
-### Text is measured in the browser and estimated in Node
+### Text measurement uses the browser when one is available
 
 `buildDocumentScene` takes a `TextMeasurer`. The app passes `browserMeasurer()`,
 which puts the real string in a real off-screen element and reads the line boxes
-back; Node has no DOM, so it falls back to the estimator and flags
-`metricsEstimated: true` so an export knows it is looking at a guess.
+back. A plain Node scene build uses the estimator. Headless exports use the
+worker batch service below to obtain browser measurements before the final build.
+Only text that actually uses the estimator carries `estimated: true`.
 
 Both paths quantize font size the same way, so a document that shrank to 93px in
 Node does not shrink to 93.0001 in the browser and produce a spurious diff.
@@ -344,7 +397,7 @@ many, a dangling edge is dropped and named, an uncurated icon draws its own name
 ### In-place text editing
 
 The model half is in `packages/editor/src/text-editing.ts` and the surface is
-`apps/web/components/TextEditor.tsx`. Three rules there are not negotiable:
+`packages/editor-ui/src/components/TextEditor.tsx`. Three rules there are not negotiable:
 
 - **The DOM is never the document.** The user types into a browser-owned tree; on
   commit that tree is read back into blocks and spans and handed over as a patch.
@@ -367,13 +420,23 @@ node moved and how.
 It digests the **scene**, not pixels. `tests/pixels.test.ts` covers the rest:
 real Chromium, PNGs compared byte for byte — twice in a row, and across a page
 reload, which discards the caches a same-page second shot would leave warm. It
-carries a negative control (a 1px nudge must change the hash) so the gate cannot
-quietly stop being able to see anything.
+carries a negative control in the bottom-right corner so a cropped capture
+cannot silently pass. All ten slides are captured at 1920×1080 CSS pixels and
+DPR 2 (3840×2160 PNG), with animations sampled at their explicit final frame.
+Diagram edge-label text and positions are included in scene digests.
 
-Pixel baselines are **per platform**, because font rasterisation is. A platform
-with no recorded baseline reports that and still enforces the determinism
-properties; failing for a reason nobody on that OS can act on is how a gate gets
-switched off.
+Pixel baselines are **per platform**, because font rasterisation is. A developer
+on a platform with no recorded baseline gets a report and still runs the
+determinism properties; failing for a reason nobody on that OS can act on is how
+a gate gets switched off.
+
+`REQUIRE_PIXEL_BASELINE=1` turns that report into a failure, and **CI sets it**.
+Without it the gate protected nothing anywhere: CI runs on Linux, only a Windows
+baseline was committed, and a missing baseline passed silently — a green job
+comparing against nothing. The run writes the hashes it computed to
+`<platform>.json.computed`, plus full PNGs and browser runtime information under
+`baselines/pixels/artifacts/`. CI uploads these on failure. The pixel job pins
+the Playwright Linux image by digest to stabilize Chromium and installed fonts.
 
 Regenerate either baseline only after reading the diff: one updated reflexively
 is a gate that has been turned off while still looking on.
@@ -395,7 +458,8 @@ evaluated.
 
 `packages/editor` is pure interaction logic — selection, hit testing, transforms,
 snapping, clipboard, keyboard — with no React and no document mutation. It hands
-back transforms; `apps/web/components/EditorCanvas.tsx` turns them into patches.
+back transforms; `packages/editor-ui/src/components/EditorCanvas.tsx` turns them into
+patches.
 
 The one thing to get right when touching any of it: **an element's `transform`
 is local to its parent group, while every editor surface — hit testing, the
@@ -423,6 +487,512 @@ Two more that are easy to undo:
   exactly those boxes, so making them inert everywhere leaves nothing on the
   canvas selectable; making them live everywhere lets a click land on an element
   in present and export.
+
+### The desktop runs the API, it does not reimplement it
+
+`apps/desktop` is a window, a supervised child process, and a presenter window.
+
+D0 answered one question — is `WorkspaceClient` the right seam? — by driving the
+editor from a JSON file. It was, and no component changed. D1 threw that stand-in
+away: the desktop now speaks the same HTTP the web app does, to `apps/api`
+running as a child process on SQLite. The store, the version chain, the
+authorization ladder and the agent graph are worth trusting precisely because
+there is one of each, and a local reimplementation would have been a second set
+of bugs in the code that owns people's documents.
+
+**Local mode is a posture, not a fork** (`apps/api/deckastra_api/local_mode.py`).
+Same routes, same `resolve_*` chain, same roles — the caller is a singleton
+account seeded through `provision_personal_account`, the same function real
+sign-in uses. Three refusals are structural: it cannot combine with
+`DECKASTRA_ENV=production`, the launch secret has no default, and a dev token
+does not work in local mode. Two ways in is one more than a single-user service
+should have. Sharing and `/v1/dev/session` return 404 — a link this machine mints
+leads nowhere, and the product's only unauthenticated read has no business on a
+personal machine.
+
+**The renderer reaches the service through a proxy on its own origin**
+(`deckastra://app/__api/…`, `main/protocol.ts`). A reserved path rather than a
+second host, and that is the design: same origin means no CORS and
+`connect-src 'self'`, but far more importantly **the page never learns the
+loopback port or the bearer token**. The main process holds both and injects the
+`Authorization` header itself, discarding any the page sent. A compromised
+renderer cannot reach the service except through requests the proxy is willing to
+make; nothing else on the machine can reach it at all.
+
+**"Ready" means answering.** The service binds and listens *before* printing its
+ready line, then the supervisor polls `/health`. The obvious version — pick a
+port, print it, start uvicorn — has a race that is not theoretical: the first
+request is refused because uvicorn has not bound yet. That cost a debugging cycle.
+
+**A crash is visible.** `sidecar.ts` restarts with backoff and pushes state to the
+window, which renders it. A packaged app whose backend died must say so; a blank
+window with no explanation is the worst thing it can do.
+
+**Exports need a worker, and locally nobody was starting one.** The deployed
+product runs `python -m deckastra_api.export_worker` as its own process. A
+desktop install has one user and one machine, so `local_server.py` runs the same
+loop on a daemon thread — without it a local export sat at `queued` forever while
+the editor reported progress that would never arrive.
+
+**The exporter is bundled, not shelled out to.** `export_service` runs
+`npx tsx apps/worker/src/cli.ts` in a checkout and a bundled JavaScript entry
+point in a packaged app (`DECKASTRA_WORKER_CMD`), executed by Electron's own
+binary in Node mode (`DECKASTRA_WORKER_NODE` + `ELECTRON_RUN_AS_NODE=1`), so no
+second runtime ships. Two things had to change for that to work at all: React's
+CommonJS needs a real `require` in an ESM bundle (a `createRequire` banner), and
+the worker **esbuilds its DOM measurer at runtime** from a `.ts` file a bundle
+does not carry — so the measurer is pre-built and passed as
+`DECKASTRA_MEASURER_JS`. It is never generated into the repository: a committed
+build artifact beside its source is a second definition, and the two drift.
+
+**Row locks are branched on, not assumed.** `supports_row_locks()` in
+`db/session.py`. SQLAlchemy **silently drops** `FOR UPDATE` on SQLite, so
+`export_service.claim_next` and `assets.register` read as though they lock and did
+not. They now ask, and the code says why the unlocked path is safe: one desktop
+app, one service process, and SQLite serialises writers. It is not safe if either
+stops being true.
+
+**`resource_root()` (`paths.py`) is the one answer to "where are the data files".**
+Three things are read by path rather than imported — Alembic's migrations, the
+generated JSON Schema, and the agent prompts — so a frozen build finds none of
+them without help. One function, because the answer cannot be right in two places
+and wrong in a third.
+
+**The CSP had two bugs that nothing failed on.** `script-src` named the scheme as
+a quoted source (`'deckastra:'`), which is not valid CSP — Chromium ignored the
+entry. And `style-src 'unsafe-inline'` with no source list allowed inline styles
+while **refusing the app's own stylesheet**, so the desktop build ran unthemed
+from D0 until the acceptance harness started recording console output. Both were
+visible in the console the entire time. The harness now **fails on any
+content-security-policy message**, excluding the one the offline probe
+deliberately provokes: a console nobody reads is not a check.
+
+**The exporter bundle is `.mjs`, and that is load-bearing.** Node decides module
+kind from the extension or the nearest `package.json`. A checkout is covered by
+the desktop package's `"type": "module"`; the installed app puts the exporter in
+a resources directory with no `package.json` at all, and Node parsed the first
+`import` as a CommonJS syntax error. It is also shipped **outside the asar** —
+`ELECTRON_RUN_AS_NODE` runs a plain Node, which has no asar support, so a path
+into the archive does not exist to it.
+
+**An outage must not unmount the editor.** D1's first crash test lost work,
+because the app swapped `EditorShell` for a status screen when the service went
+down — throwing away the document, the undo history and the autosave queue, which
+is precisely the work the queue exists to protect. It now shows a banner and
+leaves the editor mounted. For the same reason the deck is **opened once**: a
+reconnect must not re-read the document, because remounting with the server's
+copy discards anything still queued locally.
+
+**Packaging the service** (`scripts/build-sidecar.mjs`, `npm run build:sidecar`).
+PyInstaller `onedir`, so no per-launch unpack. Excludes matter as much as
+includes: `jax`, `scipy`, `tensorstore` and `pandas` arrived transitively through
+optional branches nothing here executes, and were **330MB of a 480MB build**.
+It is 103MB now. `psycopg` and `boto3` are excluded too — this binary can only
+ever be SQLite and a local directory.
+
+`local_server.py` is the entry point: it configures the process, migrates on
+every launch (a desktop app has no operator to run migrations), seeds the
+account, and prints one JSON line — the same narrow contract the export worker
+uses. Everything lives under one directory, so a backup is a directory copy.
+Assets go to `DECKASTRA_ASSET_DIR` through `object_storage.py`'s local backend,
+where a "presigned" URL is an ordinary authenticated API path: there is nothing
+to sign, and a second signing scheme would be a second thing to get wrong. The
+URL is relative so it can never carry the loopback port into a stored document.
+
+Three bundles, because Electron runs three things under three sets of rules
+(`scripts/build.mjs`). The one that bites: **the preload must be CommonJS.** With
+`sandbox: true` a preload runs in a restricted context with no ESM loader, so an
+`.mjs` preload does not fail loudly — it simply never loads, and the bridge is
+absent at runtime.
+
+**The renderer is served from a custom scheme, not `file://`.** A `file://` page
+has an opaque origin, and three things the editor already depends on stop working
+there: `localStorage` throws (so the recovery journal cannot be written),
+`navigator.locks` is unavailable outside a secure context (so nothing can own the
+journal), and `BroadcastChannel` never delivers (so present mode's two windows
+never find each other). `deckastra://app`, registered `standard` + `secure`, fixes
+all three and — unlike a loopback HTTP server — is not reachable from anything
+else on the machine. The CSP is served with it, and has no `connect-src` at all:
+D0 talks to the main process and to nothing else.
+
+The IPC surface (`src/shared/ipc.ts`) is the allowlist, and it is small on
+purpose. **No path crosses it** — the renderer names no file, so document content
+cannot steer a read or a write. No `openExternal`, no `shell`, no `exec`. A
+`.mydeck` file is a document other people send you, and an imported deck must not
+gain filesystem access by being opened.
+
+**`unavailable()` returns a rejected promise rather than throwing.** Every method
+it stands in for is declared to return one, and callers written against the HTTP
+client attach `.catch` to the returned value; a synchronous throw escapes before
+that handler exists and takes the surface down instead of showing a message. The
+local client's tests caught this, and any future stand-in has the same shape of
+bug available to it.
+
+`src/main/smoke.ts` is the D0 acceptance harness, inert without
+`DECKASTRA_SMOKE_DIR`. D0's exit gate is a claim about an *installed application* —
+opens the fixture, edits it, restarts with the edit intact, presents in a second
+window — and none of that can be asserted from a unit test. It observes the
+rendered DOM from the main process, exactly as an external driver would, and
+grants the page nothing:
+
+```bash
+cd apps/desktop && npm run build
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=open   npx electron .
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=edit   npx electron .   # adds a shape, waits for "Saved"
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=verify npx electron .   # relaunch; the edit must still be there
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=present npx electron .  # a real second BrowserWindow
+
+# Rendering parity: rebuild all three baselines inside Electron's Chromium and
+# compare byte for byte. Needs the repository, so it runs against a dev build.
+DECKASTRA_SMOKE_FIXTURES=packages/presentation-schema/fixtures DECKASTRA_SMOKE_BASELINES=packages/renderer/baselines DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=digest npx electron .
+```
+
+**D0 measured, on Windows 11 x64, from the installed app (2026-09-08):**
+
+| Gate | Result |
+| --- | --- |
+| Runs from the installer | Yes — `packaged: true`, no dev server, no `node_modules` |
+| Network | `connect-src` absent from the CSP; a `fetch` from the page fails |
+| Scene digests | All three fixtures byte-identical to the committed Node baselines |
+| Cold start | 549ms to window, 1376ms to an editable deck (first run); 242/787ms warm |
+| Memory | ~375MB across 4 processes; ~485MB across 5 while presenting |
+| Edit survives restart | Yes — added shape present after quit and relaunch |
+
+**D1 measured, same machine, development build (2026-09-09):**
+
+| | D0 (file-backed) | D1 (installed app) |
+| --- | --- | --- |
+| Cold start to an editable deck | 787ms warm | 2522ms warm, 3802ms first launch |
+| Memory | ~375MB | ~383MB |
+| Installer | 82MB | 247MB |
+
+The ~1.7s is the service process starting, and it is the honest price of running
+the real store rather than a local imitation of it. First launch is longer again
+because it migrates and seeds.
+
+**Verified on the installed app**, with no Python on the machine: open, edit,
+restart-with-the-edit, present in a second window, a service killed mid-session
+without losing work, and two editor windows with separate recovery journals.
+
+**A packaged build exports with the app's own Chromium** (2026-09-12). It used to
+fail installed, because the exporter needed Playwright's Chromium — a ~290MB
+browser the installer never carried — while the app it ran inside already had
+one.
+
+It fails *honestly*: `explain_export_failure` recognises a missing browser on both
+routes a failure can take (the exporter's own JSON answer, and an exporter that
+printed nothing) and says "this build cannot render", keeping the original text
+for a bug report. Retrying will never help, so the message must not read like a
+transient failure.
+
+That message still covers a checkout without Playwright. A packaged build no
+longer reaches it: `sidecar.ts` sets `DECKASTRA_RENDER_BACKEND=electron`, and the
+exporter starts the app's own binary in **render-host mode**
+(`DECKASTRA_RENDER_HOST=1`, `main/render-host.ts`) and drives it over Node's IPC
+channel (`apps/worker/src/electron-backend.ts`). `RenderPage` (`render-page.ts`)
+is the handful of page operations the exporter performs; Playwright and Electron
+both implement it, and the message shapes live in `workspace-contracts` so the
+two sides compile against one definition.
+
+**Not Playwright's Electron driver, and not a debugging port.** That driver starts
+Electron with `--inspect=0` and `--remote-debugging-port=0`: an unauthenticated
+Node inspector on loopback for the length of every export — code execution for
+anything on the machine that finds the port. D1's posture is that nothing else on
+the machine can reach the service, and a render path that reopened that door would
+undo it. An IPC channel belongs to the two processes that share it.
+
+Five facts decided the design, each found by a probe against this Electron
+version rather than assumed:
+
+- **An Electron main process never receives piped stdin on Windows** — the
+  request arrives as an immediate end-of-file. Node's IPC channel works. So the
+  exporter stays Node-mode (where stdin does work) and the browser is a child.
+- **An installed Electron app ignores a script path on its command line** and
+  always runs its own bundle. The host is therefore *in* the main bundle, and
+  `main/index.ts` is only a dispatcher that `import()`s either `render-host.ts` or
+  `app.ts`. Dynamically, because a static import of `app.ts` would run its
+  single-instance lock in the host, which would then find the user's running app
+  holding it and quit. The built bundle keeps `app.ts` inside a lazy `__esm`
+  wrapper; a host was verified to run beside a live app and leave it running.
+- **A hidden window never produces a frame**, so a CDP screenshot of one waits
+  forever. `capturePage({ stayHidden })` returns pixels at the *monitor's* scale —
+  2400×1350 on a 125% display — which would bake one machine's settings into every
+  export. **Offscreen** windows paint, and gave exactly 3840×2160 at scale 2.
+- **`Emulation.setDeviceMetricsOverride` before the first navigation kills the
+  browser process.** The host loads `about:blank`, then attaches and emulates.
+- **The host needs its own profile**, or it fights the running app over the cache
+  ("Unable to move the cache: Access is denied"). It makes a throwaway one and
+  reports it; the exporter deletes it after the host exits, because Chromium holds
+  it open until then.
+
+The host's page gets what the Playwright path's did and nothing more: no network
+except `data:`, no permissions, no pop-ups, no navigation, no preload and no Node,
+reduced motion and dark scheme set explicitly. The exporter discards the host's
+stdout and keeps only a tail of its stderr — its own stdout is the export's single
+JSON answer and its stderr is progress, one object per line.
+
+**A second packaging bug was hiding behind the first.** The bundle imported
+`esbuild` *statically*, for a fallback the packaged app never takes. A static
+import resolves before any code runs, so the installed exporter could not load at
+all — and a checkout could not show it, because a checkout has `node_modules`. The
+missing-browser message had been masking it. It was found by running the bundle
+from a directory with nothing beside it, which is what an installed app is.
+`scripts/build.mjs` now reads esbuild's metafile and **fails the build if the
+exporter statically imports any external package**; externals are allowed only as
+dynamic `import()`. The guard was shown to flag a static import and ignore a
+dynamic one before it was trusted.
+
+**Measured, 2026-09-12**, the bundle run from an isolated directory with no
+`node_modules`, on `technical-deck`: PDF 5 pages, all 1440×810pt, read by `pypdf`
+with its text; PPTX 5 slides at 13.33×7.5in, read by `python-pptx`. Text was
+browser-measured in both (`metricsEstimated: false`). Against the Playwright
+backend on the same deck the slide counts, estimate flags and degradation warnings
+are identical — PPTX's four (code and groups flattened, a diagram and a table
+dropped) belong to the adapter, not the renderer. Byte and pixel identity across
+the two browsers is **not** claimed: they are different Chromium builds, and pixel
+baselines are per browser as well as per platform.
+
+The same run from the **packaged pieces alone** — `release/win-unpacked`'s own
+`Deckastra.exe` running its own `resources/worker/cli.mjs` in Node mode, and
+lending itself as the render host with no arguments, which is exactly how an
+installed app is configured — gave the same answers: PDF 5 × 1440×810pt,
+PPTX 5 slides, browser-measured text, the same warnings, no profile left behind.
+**Then from the installed app itself, 2026-09-12** — the NSIS build installed
+silently (`/S`, 27s), launched with `DECKASTRA_SMOKE_STEP=export`: the export
+panel's PDF ran through the packaged service, the packaged exporter and the app's
+own Chromium, and finished — "3 slides · 31 KB", with the report naming two
+animated slides flattened to a single frame, which is what a PDF can hold. No
+console errors, no CSP violations, 7s from launch, ~382MB across 4 processes, no
+render profile left behind. The stored artifact itself, read back through the
+export row's `artifact_path` by `pypdf`: 3 pages at 1440×810pt, 31,797 bytes,
+with its text. **D1's last gate is met.**
+
+**Exports live in the data directory** (2026-09-12). That run showed them going to
+`%TEMP%\deckastra-exports`: outside the one directory D1 promised a backup could
+copy, on the system drive, and in a folder Windows' own cleanup may empty — so a
+finished export's "Download" could outlive its file. The cause was not a missing
+setting so much as a fragile one: the directory was a module constant read at
+import, so anything that set `DECKASTRA_EXPORT_DIR` after `export_service` first
+loaded was silently ignored (the export tests had to patch the module to cope).
+It is now `export_root()`, read when an export runs — the same rule
+`object_storage.local_root()` already followed — and `local_server` points it at
+the data directory, so exports land in `workspace/deckastra-exports` beside the
+database and assets. Rows written before the change keep their absolute temp
+paths and download from there for as long as those files survive.
+
+Verified on the **installed** app after a rebuilt service and a reinstall: an
+export from its own UI stored its artifact at
+`%APPDATA%\Deckastra\workspace\deckastra-exports\exp_….pdf` — inside the data
+directory, nowhere under `%TEMP%` — and `pypdf` read it: 3 pages at 1440×810pt,
+the byte count matching the export row. The dev app has to be
+closed for this run, because it and the installed app share one single-instance
+lock.
+
+macOS is **not** measured and cannot be from here: it needs real hardware, and a
+passing Windows run says nothing about it. Pixel parity inside Electron's Chromium
+is also still open — the digest gate covers the scene, not the paint.
+
+
+
+Two environment notes that cost an hour each if unknown:
+
+- **`electron`'s binary comes from GitHub releases.** Where that is unreachable,
+  `ELECTRON_MIRROR=https://registry.npmmirror.com/-/binary/electron/ npm install`
+  works.
+- **Packaging needs symlink privilege on Windows.** `electron-builder` always
+  fetches its `winCodeSign` bundle, which contains macOS symlinks that 7-Zip
+  cannot create without Developer Mode or an elevated shell. `electronVersion` is
+  pinned in `electron-builder.yml` for a separate reason: npm workspaces hoist
+  `electron` to the repo root, where electron-builder does not look.
+
+Signing and notarization are D6 and are **not** done. The packaging config
+describes the shape only.
+
+### An agent reaches the app the way a person does
+
+`apps/mcp-server` is milestone D2: Claude Code and Codex drive the same command
+authority a human does, over stdio. It is a **thin adapter over
+`WorkspaceClient`** — every tool is one call on that interface, so optimistic
+concurrency, proposal-before-apply, server-computed risk and the authorization
+ladder hold for an agent without any of them being restated. A second write path
+would have been a second set of the bugs those rules exist to prevent.
+
+**If the app is not running, it refuses.** The tempting alternative — starting a
+headless service of its own — puts two processes on one SQLite database, which is
+the corruption case the single-instance lock already exists to prevent.
+
+That refusal was first described here as also solving the *stale editor*. It did
+not, and running the app showed it: an agent renamed the deck over MCP, the store
+had the new title, and the open window went on showing the old one — so the
+user's next edit would have met a conflict they did not cause. An editor learned
+the head only from its own saves, which was enough while it was the only writer.
+
+**An open editor now watches the head** (`useEditor`, `watchHeadMs`, default 4s).
+It polls `GET /presentations/{id}/head` — one row, where the full read replays the
+version chain — and asks again on window focus, because returning from the
+terminal where you told an agent what to change is exactly when a stale deck is
+noticed. A hidden window does not poll. A poll rather than a push: it works the
+same through the web app's HTTP and the desktop's proxy, and needs no channel a
+service restart could silently drop.
+
+Three rules keep it from becoming the data loss it exists to prevent:
+
+- **It only replaces a document with nothing unsaved in it.** With operations
+  queued, in flight, or under conflict review, it does nothing; the next save
+  carries a stale `expected_version_id`, the server refuses it, and the existing
+  conflict review keeps both versions.
+- **It cannot mistake the editor's own save for someone else's.** An acknowledged
+  save moves the head too. A save generation counter, plus the version known when
+  the poll began, discards any answer that raced one.
+- **Local undo is cleared on adoption.** Its inverses were computed against the
+  document before the outside change, and some are index-addressed; replaying one
+  against a document that has moved is how a patch lands on the wrong element.
+  The user's own edits are already saved, so what goes is stepping back past
+  someone else's change — the honest limit.
+
+**The attachment file is the one deliberate way in** (`main/attachment.ts`). D1's
+posture is that the service is unreachable: a random loopback port, a per-launch
+secret, and a renderer that learns neither because the main process proxies for
+it. D2 does not relax that; it adds one door and writes down the cost. The file
+lives in `userData` (inside the user's own profile, `0o600` where that means
+anything), carries the **launch** secret rather than a durable one — so a copy
+recovered from a backup authorises nothing — and is withdrawn when the service
+stops. A crash withdraws nothing, so the reader verifies rather than trusting:
+the pid must be alive, the version must match, and `/health` must answer *with
+that secret*. Only the last one distinguishes our service from whatever else was
+given that port.
+
+**Publishing tracks the service, not the app.** A restart comes back on a
+different port, and the `ready` status the window renders is the only moment that
+knows the new one. The first launch is the exception and needed its own call: the
+supervisor reports `ready` from inside `startSidecar`, while the assignment of
+`sidecar` is still pending.
+
+**The single-instance lock now guards the whole of startup.** It used to sit at
+the bottom of `index.ts`, which quit the second instance correctly and then let
+its `whenReady` handler run anyway — starting a service, broadcasting a status,
+and **withdrawing the first instance's attachment on the way out**. An agent
+attached to the running app lost it because someone double-clicked the icon. The
+lock is decided before anything else and `startup()` is behind it.
+
+**Results are bounded summaries, never whole documents.** `outline.ts` answers a
+deck read with slides, roles, text and — the load-bearing part — the *ids*, since
+every operation this product accepts is id-addressed. A `.mydeck` document is
+mostly geometry and token references; the animation fixture in full is tens of
+thousands of tokens, and an agent that spends its context reading a deck has none
+left to change it. Full geometry is one slide at a time, asked for deliberately.
+
+**An external client supplying its own intelligence must not trigger a paid model
+call.** `POST /v1/presentations/{id}/proposals` (`agent_routes.py`) takes
+caller-authored operations straight to `create_proposal`. `agent/edit` exists for
+words and pays a model to turn them into operations; a caller that has already
+done that work would be billed twice, and the second bill buys a worse answer.
+There is no client in that function to call, and a test makes any model call an
+error.
+
+Three refusals in that route are structural rather than conventional:
+
+- **`expected_version_id` is required**, and checked against the head before
+  anything is created. `create_proposal` derives its own base version, which is
+  right for the editor's agent — it composes operations from the document it just
+  loaded, in the same request — and is last-write-wins for an agent that read the
+  deck thirty seconds ago while the user was typing. A caller that could omit it
+  would eventually omit it.
+- **The caller cannot declare a risk tier**, so it cannot mark a destructive
+  change low-risk and skip the human who would have caught it.
+- **The caller cannot claim to be an internal agent.** Its label is prefixed
+  `mcp:`, because `agent_id` reaches the approval prompt and "editor" there would
+  tell a user the product's own edit agent proposed something an external client
+  did.
+
+**`workspace_list` returns every deck, and for a while it did not.** It promised
+decks and returned only workspaces and projects, because `/v1/account` carries no
+decks and no route listed them — so an agent asked "which decks do I have" could
+name the one open in the window and nothing else. The first real Claude Code
+session over this server found that and said so. `GET /projects/{id}/presentations`
+(`routes.py`) answers from rows, newest first, through `resolve_project_access`;
+titles are content, so a stranger gets the same 404 as for the deck itself. The
+tool caps each project at 50 and counts the rest. Titles stay accurate because
+`commit_transaction` copies `metadata.title` onto the row on every commit.
+
+**What the tool surface omits is the feature.** No approval tool — an agent that
+could approve its own pending proposal reduces "a human stays in control" to a
+delay. No sharing — a share link is a bearer credential to a document. No path
+anywhere, for an export destination or a repository: document content reaches this
+process, and a tool that took a path would let a deck someone emailed you choose
+where bytes are written. A test asserts each absence, so none is restored by
+someone wiring up "the missing tool".
+
+**D2 measured, Windows 11 x64, development build (2026-09-10).** The claims are
+about software someone is using, so `scripts/acceptance.mjs` drives the real
+stdio transport against a running app rather than a mock — 13/13: attach, name
+the open deck, read an outline, apply a low-risk change and see it in the store,
+be refused for a stale one *without losing the earlier change*, watch a
+destructive change become a pending proposal attributed to `mcp:acceptance`, and
+export a 25KB PDF.
+
+Still open, and not claimed: a rendered image preview for a proposal — no longer
+blocked by a missing browser now that a packaged build renders with its own, but
+not wired (`PREVIEW_SIZES.mcp` exists; the textual outline of what a change
+*would produce* is what ships) — motion tools, and a real **Codex** session.
+
+**A real Claude Code session, 2026-09-12**, against the running dev build: it
+found the server, listed the workspace, read a six-slide deck as an outline, and
+authored a restyle — gradient backgrounds, radial glows, italic gold accent words,
+shadowed cards — as one patch across every slide. The server rated it high risk
+because it touched all six, so it became a pending proposal rather than applying;
+the user approved it in the app, the agent re-read the stored document to confirm
+it landed, and the user checked the rendered result. That is the whole design
+exercised by someone other than its author: the agent brought its own
+intelligence, paid for no second model call, could not choose its own risk tier,
+and could not approve its own change. The session also found the `workspace_list`
+gap above, which is the other thing a real session is for.
+
+### The editor is a package; the shell decides where it runs
+
+`packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.
+`apps/web` is four routes. That split exists because a second shell is coming
+(doc `PHASE_0_TO_9_FIX_PROGRESS.md` / the desktop plan, milestone D0), and the
+only way to know the editor is portable is to have moved it somewhere it cannot
+reach the things it used to.
+
+Two rules keep it that way, and both are checkable in a diff:
+
+- **No `next/*` import in `packages/editor-ui`, ever.** Routing belongs to the
+  shell. The one `useRouter` in the product is in `apps/web/app/page.tsx`.
+- **No `fetch` and no environment variable in `packages/editor-ui`.** Requests go
+  through the `WorkspaceClient` in React context (`@deckastra/workspace-client`),
+  which is HTTP against the API today and the same HTTP against a loopback
+  sidecar on the desktop. `apps/web/lib/client.ts` is the only place in the app
+  that reads `NEXT_PUBLIC_API_URL`; there used to be ten, which is exactly how
+  many places had to be found before anything could be mounted elsewhere.
+
+`@deckastra/workspace-contracts` holds the shapes and nothing else — no runtime,
+no React — so the web app, the desktop shell and the future MCP adapter agree at
+compile time rather than at runtime. Document payloads there are
+`presentation-schema` types and are never restated: doc 02 is the source of truth
+and a second description of a slide is a second definition to drift.
+
+Where the browser genuinely differs from a packaged app, the difference is an
+**injected default**, not a branch:
+
+- `PresentMode` takes `openPresenter`, defaulting to `browserPresenterWindow`
+  (`window.open`). It is synchronous and returns `null` on failure on purpose — a
+  browser only honours `window.open` inside the task that handled the click, and a
+  blocked pop-up is something the user did rather than an error.
+- `PresentChannel` already took a `BroadcastChannel` factory.
+- `HostBridge` (in the contracts) is the allowlist for everything else a shell can
+  do — a native save dialog, a second window. It is deliberately separate from
+  `WorkspaceClient` and deliberately tiny: an imported deck must not gain
+  filesystem access by being opened, so nothing on it takes a path from document
+  content and there is no general "open URL".
+
+Tests moved with the code. `packages/editor-ui/tests` owns the editor's
+behaviour; `apps/web/tests` keeps only what a route does with the answers it
+gets. The shared harness is `@deckastra/workspace-client/testing`, which builds a
+**real** client over a stubbed `fetch` rather than a fake client — these suites
+exist to check what reached the server, and a fake would let a changed request
+body pass every one of them.
 
 ### Validation is a product surface
 
@@ -520,6 +1090,13 @@ factor — so:
 - **Revoked, not deleted.** "Who could see this, and when did that stop" is the
   question asked after a leak.
 
+- **Viewer only, for now.** Nothing can redeem an editing link:
+  `/v1/shared/{token}` returns a document and the shared page only presents it.
+  Storing a role the product cannot honour tells whoever made the link that they
+  granted something they did not. The column and the `Role` plumbing stay, so
+  token-scoped editing needs no migration — only a write path that authenticates
+  a token instead of a session.
+
 `/v1/shared/{token}` is the only unauthenticated read in the product, and it
 returns one document and nothing about the workspace around it. The role on a
 share is a real `Role` from the membership ladder, so a shared viewer and a
@@ -547,9 +1124,15 @@ needed and they are different controls.
 `assets.py`. Version history is the product's promise, so a deck's third version
 can cite an image its fifth deleted, and an undo has to bring the picture back.
 
-- **References are recounted from every stored snapshot**, not incremented on
-  edit. An increment missed once is wrong forever; a recount is right every time.
-  And from every *version*, not just the head.
+- **References are recounted from every stored snapshot and every materialised
+  head**, not incremented on edit. An increment missed once is wrong forever; a
+  recount is right every time. Both passes are needed: history keeps an image a
+  later version deleted, and snapshots are only written every
+  `store.SNAPSHOT_EVERY` operations — so an image placed by an ordinary edit
+  after the last one is in the *current deck* and in no snapshot at all.
+- **`JsonColumn` stores a Python `None` as JSON `null`, which is not SQL NULL.**
+  `snapshot_json.is_(None)` matches none of those rows. Both passes test
+  emptiness in Python; a SQL-side filter here silently skips every head.
 - **Zero references starts a clock.** Only the sweeper removes bytes, after
   `ORPHAN_GRACE_DAYS`, so an undo inside that window finds the file.
 - `referenced_ids` walks the whole document rather than its asset manifest,
@@ -593,15 +1176,31 @@ whose own examples are inaccessible cannot ask anyone else to comply.
 
 ### Telemetry is optional, and carries no user text
 
-`telemetry.py`. A no-op unless OpenTelemetry is installed, because an
-observability layer that blocks a fresh clone from starting is one people delete.
+`telemetry.py` owns real OpenTelemetry SDK providers and OTLP HTTP/protobuf
+exporters. It stays disabled without an endpoint or `DECKASTRA_TELEMETRY=1`;
+`DECKASTRA_TELEMETRY=off` explicitly disables it. API lifespan starts and flushes
+the providers. Ordinary `configure()` is idempotent; `configure(force=True)`
+replaces providers and rebinds instruments during a controlled transition.
 Spans carry `presentation_id`, `run_id`, `workspace_id`, `version_id` — a trace
 saying "the API was slow" is not actionable; one naming the generation is.
 
 **No user text in a span attribute, ever** — not a title, not a prompt, not a
 retrieved chunk. Traces land in a third party, and an attribute is the easiest
-place in a system to leak a customer's words. Enforced with a length guard rather
-than a convention.
+place in a system to leak a customer's words. Keys and enum values are allowlisted,
+product IDs validated, and numeric counts checked. Filtering includes metric
+labels and late writes through the returned span. Automatic SDK exception capture
+is disabled: error categories are recorded without messages/stacks. HTTP spans
+exclude URLs, bodies and headers; model spans exclude prompts and responses.
+Real collector and API/agent trace tests are in `apps/api/tests/test_telemetry.py`.
+Vendor-specific LLM inspection and deployed dashboards remain separate open work;
+the metadata-only OpenTelemetry model spans do not claim to implement them.
+
+**The instruments resolve on first use, not at import.** `GENERATIONS` and its
+siblings are module-level, and `configure()` runs at startup — later. Created
+eagerly they captured the no-op meter and stayed no-ops for the life of the
+process: every metric the product recorded went nowhere, with nothing failing and
+nothing logged. Anything else declared at import that depends on `configure()`
+has the same shape of bug.
 
 ### Export: resolved scenes in, a reported degradation out
 
@@ -657,11 +1256,33 @@ incidental:
 - **Animations resolve to a chosen frame** (`final` by default). Otherwise a
   render catches whatever frame the entrance happened to be on.
 
-Text metrics are still estimated there — the scene is built in Node, where there
-is no DOM — so every export reports `metricsEstimated: true`. The visual result
-currently matches the editor because of the Phase 4 estimator calibration, but a
-warning that fires every time is a warning nobody reads; closing it means the
-batch text-measurement service doc 04 §31.2 describes.
+Text measurement uses two synchronous scene builds around one asynchronous
+browser batch (`apps/worker/src/text-measurement.ts`, doc 04 §31.2). The first
+records complete requests while answering with the estimator. The browser runs
+the shared `createDomMeasurer` over those requests, including paragraph layout
+and the entire shrink-to-fit search. The second build reads a synchronous cache.
+The key includes content, typography, width, height, fit and font bounds; caching
+only text/width or the estimator's intermediate font sizes can mismeasure fit.
+
+Font availability is captured in the same browser and supplied to the final
+scene. The cache is local to that page and document. Any second-pass miss uses
+the estimator and retains its flag; both PDF and PPTX reports inspect the actual
+exported scene, including nested text. Image rendering uses the same service.
+The PDF renderer consumes the adapter's measured scene rather than rebuilding it.
+
+Both export formats need a browser, including PPTX — Playwright's Chromium in a
+checkout and CI, the desktop app's own in a packaged build (see "The desktop runs
+the API"). The worker
+bundles the shared DOM measurer in memory with its direct `esbuild` dependency;
+no generated measurement implementation or network script is maintained. Fonts
+must be installed on the render host, as before. Browser measurement does not
+promise identical results across machines with different installed fonts.
+
+Run `npm run test:browser --workspace @deckastra/worker` after installing Chromium.
+It compares worker scene digests with the editor's actual `browserMeasurer()` in
+Chromium, checks fit modes, and verifies PNG/PDF/PPTX report no estimates. Unit
+tests cover cache misses and their PDF report flag. CI's export job runs the
+browser tests; plain `npm test` keeps browser tests separate.
 
 ### The API reaches the worker through a subprocess
 
@@ -723,6 +1344,13 @@ Five things there are load-bearing:
   uninstall, a suspension or a repository deletion. An index that outlives its
   permission is data we are no longer allowed to hold.
 
+A hit carries **its own repository** (`repository_full_name`, `source_id`), and
+deduplication is keyed on `(repository, reference)`. A search spans every
+connected repository: attributing every hit to the first one is correct only when
+there is exactly one, and with two it cites a file that is not in the repository
+it names — while collapsing two same-named files into one citation. A citation
+naming the wrong repository is worse than no citation.
+
 Provenance lives in the document (`provenance.py`, doc 02 §30) as
 `owner/repo#path:12-48`, attached to the element carrying the claim — not to the
 slide, because the schema targets an element. A slide that cites nothing gets no
@@ -774,11 +1402,28 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 - Relative imports inside packages are **extensionless** (`from "./scene"`), matching `moduleResolution: "Bundler"`. Turbopack does not map `.js` → `.ts`, so extensions break the web build.
 - Authorization resolves `User → Workspace → Project → Presentation` through `resolve_presentation_access`, by **membership and role**, never by `owner_id`. A missing resource and a forbidden one both return 404: a 403 on something you cannot see confirms it exists.
 - Risk tier is computed server-side from the operations. Never accept one from a caller.
+- The workspace-scoped routes take no workspace id, so they resolve the caller's
+  own through `resolve_workspace_access`, which **requires a `Role`**. Each of
+  them used to carry a private `_workspace_of` that returned the first membership
+  and checked nothing, so a viewer could write a workspace-wide theme and run the
+  asset sweeper. A new workspace route cannot forget the check by omission: it
+  has to pass a `require` to get a workspace id at all.
+  Legacy unqualified routes select the first membership by workspace ID before
+  checking its role; they never switch workspaces to satisfy a write privilege.
 - Content an agent did not write goes through `envelope()` — and the envelope
   escapes the delimiter, because content that can close its own tag continues
-  outside it, where the model reads it as the operator talking. Detection of an
+  outside it, where the model reads it as the operator talking.
+- **A tool declares which leaves of its result are untrusted** (`untrusted_fields`,
+  `untrusted_kind`) and the registry envelopes them in `_invoke`. The boolean
+  `returns_untrusted_content` was declared on six tools and read by nothing;
+  every node called `untrusted()` by hand, which is a boundary that lasts until
+  someone writes a node without reading the others. `untrusted()` is still public
+  for content that never passes a tool — the user's brief, slide text read from
+  state — and calling it on tool output now nests one envelope inside another. Detection of an
   injection attempt **warns and never filters**: the envelope is what makes it
   safe, and a filter would block a legitimate deck about prompt injection.
+  Registration now rejects an untrusted tool without field declarations and
+  rejects blank field names. This is a configuration error before any tool call.
 - Durable checkpoints need PostgreSQL. LangGraph has no SQLite saver, so a run on
   the local database cannot pause — `agent_service._checkpointer` returns None
   and says so, rather than letting a checkpoint silently do nothing.
@@ -802,3 +1447,162 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 
 - **npm workspaces**, not pnpm + Turborepo — pnpm is not installed in the dev environment and npm workspaces cover a single-track solo build with no setup step.
 - **Zod-first**, though doc 02 §34.4 calls TypeScript normative. Types are `z.infer`red, so there is one definition rather than two hand-synced ones. Recursive types (`GroupElement.children`, `Slide.elements`, `ComponentDefinition.template`) need an explicit interface plus a `z.ZodType<T>` annotation on the schema.
+
+## Gap remediation — 2026-09-06
+
+Current implementation work is tracked in `docs/PHASE_0_TO_9_FIX_PROGRESS.md`.
+This does not declare all audited phases complete.
+
+Autosave callers share an active drain promise. An AI document arriving during
+unsaved/in-flight edits is refused rather than clearing local work, and AskPanel
+reports that refusal. A versioned browser recovery journal holds the local
+snapshot, operations and base version before sending. A successful acknowledgement
+removes only acknowledged work from recovery. Reload on the same base recovers the
+queue; another server version recovers the local snapshot as a conflict, without
+replaying on a refreshed version. Browser storage failure is reported. A native
+modal compares the historical base, local copy and current server version;
+independent edits merge automatically, conflicting fields require explicit
+choices, and the reviewed result uses the server version's concurrency check.
+A stale review or a second conflict retains the local copy. The modal includes
+rendered previews and a local-document download. Each editor owns a separate
+localStorage journal. A sessionStorage pointer supports reload, while an exclusive
+Web Lock prevents duplicated tabs from sharing that pointer's writable journal.
+Closed-tab copies can be explicitly recovered; active copies cannot be taken.
+Recovery writes the new journal before removing the exclusively owned old copy.
+Legacy shared journals are copied and retained; browsers without Web Locks use
+fresh keys and retain sources on explicit recovery. Storage quota failures keep
+the original. These fallbacks prioritize retention and can leave duplicate copies.
+Small saves use keepalive;
+unload journals larger/in-flight batches and does not start competing saves.
+
+Version advancement in `store.commit_transaction` uses a conditional database
+UPDATE against the composition base and any supplied expected version. An ORM
+identity-map read alone is not a concurrency check. A savepoint keeps a rejected
+candidate out of version/history tables even if a caller handles the conflict.
+SQLite's legacy transaction mode needs a physical outer BEGIN before that
+savepoint so releasing it cannot bypass request rollback. The PostgreSQL conflict
+and SQLite rollback regressions pass with the existing persistence tests (26
+tests). Broader verification status is tracked in the remediation report.
+
+Asset recount now loads every retained version, using store replay for
+operation-only versions. An image added and removed between snapshots remains
+protected while that historical version is accessible. Actual storage deletion
+and its retry/accounting workflow remain open; reference counting alone does not
+prove reclaimed bytes.
+
+Generation diagnostics derive graph schema-attempt counts and first-attempt
+validity from observations in `RunBudget.structured_requests`. Each entry describes
+one structured request; critic revisions are separate requests. `attempts` in the
+HTTP response is the maximum schema attempts for any request, excluding provider
+transport retries. The overall validity flag includes repaired structured output;
+the plan flag covers story requests. Single-shot repairs clear both flags.
+Observations retain stage/contract/count/outcome, never prompts or model text.
+Budget input/output totals include charged invalid responses and are reported
+separately. Stub token counts are simulated and must be excluded from real-model
+validity/cost studies. Cross-resume cumulative measurement and provider-internal
+retry measurement are still open; these fields do not establish either.
+
+Canvas resize previews and commits share
+`packages/editor-ui/src/lib/resize-operations.ts`.
+Free groups default to `scaleChildren`; container groups default to
+`resizeContainer`, with an explicit inspector override. Scaling an ancestor
+recursively scales descendant boxes and text (minimum axis factor), including
+font limits and letter spacing. A nested group's own resize preference applies
+when directly resized, not when its ancestor scales the entire subtree. The
+active-slide scene is rebuilt for resize previews so geometry/text match the
+eventual patch; ordinary moves retain their fast scene overlay. Group resizing is
+covered by interaction/undo tests; full browser performance and remaining group
+semantics are still open in the remediation ledger.
+
+Equal-gap snapping is now wired through `snapRectWithSpacing` in the editor
+package. It chooses one target per axis alongside alignment/grid, uses a constant
+screen threshold, rejects negative gaps, and draws final-position arrow/number
+indicators in canvas chrome. The canvas ranks its spatial candidates by rectangle
+distance and caps them at 40. Ctrl/Cmd disables snapping; Shift prevents either
+alignment or spacing from moving the constrained axis. Local model/component
+tests establish this wiring; full browser performance and additional distribution
+and transformed-parent cases remain in the remediation ledger.
+
+React scene builders use `useBrowserMeasurer`, not a one-time singleton lookup.
+Font readiness/loadingdone/loadingerror changes its wrapper identity to invalidate
+scene useMemo dependencies while retaining one underlying measurement host/cache.
+All current editor/preview/share/presenter consumers use the hook. Subscription
+cleanup ignores late readiness callbacks after the last consumer unmounts.
+`DomMeasurer` clears cache on successful or failed font loading and removes its
+own listeners on disposal. An unavailable initialization attempt can be retried.
+This implements scene invalidation, not a complete font manifest/loading barrier;
+live delayed-font and hydration acceptance remain open in the progress report.
+
+Blank authoring uses `POST /v1/presentations`, not the generation endpoint. It
+requires project/workspace editor access, creates one empty slide in the canonical
+document shell and saves a user-attributed initial version without an agent run.
+The home and generation-failure actions open the persisted editor route; a failed
+request retains the brief and exposes retry. Blank documents omit fabricated
+generation provenance. HTTP/component tests cover creation, persistence, editing,
+role boundaries and retry; the full live authoring/onboarding journey remains open.
+
+Generated and blank deck creation share `resolve_creation_project`. Both require
+editor access before any run/model/quota work. Explicit projects can belong to
+any authorized workspace; omitted projects follow stable default workspace
+selection and cannot skip a viewer-only membership to gain authority. Generation
+quota/repository/telemetry scope comes from the authorized project's workspace,
+not an unrelated first membership. Regression tests cover both graph/single-shot
+viewer rejection and correctly scoped second-workspace generation/accounting.
+
+`ThemePanel` uses presentation-scoped theme list/save/proposal endpoints, so a
+deck in a second workspace never silently uses the first workspace's theme list.
+Fetching a theme proposal is read-only; its portable definition and themeId patch
+are applied to the current local document through `editor.apply`, preserving
+pending edits, undo and normal autosave. Archived/foreign themes are refused.
+Saving the current theme explicitly replaces a matching workspace name, as stated
+beside the control. Live rendering/export acceptance remains open.
+
+Default adoption is now implemented for blank and synchronous generated creation:
+resolve the authorized workspace's default, freeze its definition once, and pass
+the snapshot into the canonical composer for graph candidates or single-shot
+composition. Store the resolved definition plus themeId so later workspace-theme
+changes cannot silently alter existing decks. The editor can mark its current
+theme as default when saving. Concurrent default selection and durable resumed-run
+retention are still open; current tests cover new synchronous/blank creation.
+
+Theme saves serialize same-workspace writers with a no-op workspace UPDATE held
+through the caller's transaction. Default flags change in one database UPDATE
+with session synchronization, avoiding stale assignments that could leave two
+defaults. SQLite stale-session and parallel-writer regressions pass; PostgreSQL
+counterparts await a test database. This is a service-level invariant, not a new
+database constraint or historical-data repair.
+
+Canvas pointer cancellation/capture loss discards the in-flight preview and
+queued frame rather than committing it. It leaves prior document/history edits
+intact and resets snap exclusions/guides/sampling before another gesture. Normal
+pointer-up still flushes the final queued movement and commits one transaction.
+
+
+### Motion timing controls
+
+MotionPanel edits source startMs and optional clip delayMs through ID-addressed
+transactions with ordinary undo. Compiled absolute start times must not be used
+as source offsets because they include preceding tracks and trigger timing.
+Invalid/negative numeric input does not mutate the document. Reorder/keyframe
+authoring and full browser motion acceptance remain open.
+
+
+MotionPanel also moves the selected clip's whole source track earlier/later using
+one move transaction. Clips, future fields and relative trigger semantics survive;
+the compiler resolves the new order. This does not implement timeline dragging,
+keyframes or all doc 04 section 25.2 operations.
+
+
+Clip duplication preserves source timing/content and assigns a new clip ID;
+normal overlap diagnostics apply. Stagger child bars address the source clip for
+all edits, because compiled child IDs are not document IDs. Duplication selects
+the corresponding generated child of the new source clip. Both paths are covered
+by component/transaction tests; keyframe editing and remaining timeline tools are
+still outstanding.
+
+
+Animation compilation reads motion.* from resolved scene theme tokens, including
+inherited settings. Raw theme.motion is not present on ResolvedTheme. Full-motion
+fixture assertions explicitly select full motion; document fallback preferences
+otherwise take effect. The duration inspector edits the source duration, not the
+shortened compiled duration under reduced motion.

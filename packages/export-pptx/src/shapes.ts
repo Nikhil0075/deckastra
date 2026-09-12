@@ -414,8 +414,15 @@ function unsupported(node: SceneNode, context: ShapeContext): string {
     slideId: context.scene.slideId,
     elementId: node.id,
     feature: kind,
-    action: "rasterized",
-    message: `${kind} elements are exported as a placeholder box in this build.`,
+    // `dropped`, not `rasterized`. "Rasterized" tells a reader the appearance
+    // was preserved as an image and only the selectable text was lost — this
+    // adapter embeds no image at all, it draws a labelled dashed box. Reporting
+    // the friendlier word is the exact failure `DegradationLedger` exists to
+    // prevent: the report has to be true about the file it just wrote.
+    action: "dropped",
+    message:
+      `${kind} elements are replaced by a labelled placeholder box in this ` +
+      `build — the content is not in the file.`,
   });
 
   const { units } = context;

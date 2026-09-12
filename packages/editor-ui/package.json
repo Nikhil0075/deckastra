@@ -1,0 +1,43 @@
+{
+  "name": "@deckastra/editor-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The editor, present mode and their panels \u2014 React, no routing, no transport. Mounted by the web app today and by the desktop shell next.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@deckastra/animation-engine": "*",
+    "@deckastra/editor": "*",
+    "@deckastra/presentation-core": "*",
+    "@deckastra/presentation-schema": "*",
+    "@deckastra/renderer": "*",
+    "@deckastra/transactions": "*",
+    "@deckastra/workspace-client": "*",
+    "@deckastra/workspace-contracts": "*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@deckastra/layout-engine": "*",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vitest": "^3.2.7"
+  }
+}

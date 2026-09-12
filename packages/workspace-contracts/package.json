@@ -1,0 +1,18 @@
+{
+  "name": "@deckastra/workspace-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The shapes the workspace authority speaks. One definition, shared by the web app, the desktop shell and the MCP adapter.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@deckastra/presentation-schema": "*"
+  }
+}

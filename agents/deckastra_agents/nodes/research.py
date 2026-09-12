@@ -179,7 +179,7 @@ def _repository_stage(
     )
 
     findings: list[dict[str, Any]] = []
-    seen_references: set[str] = set()
+    seen_references: set[tuple[str, str]] = set()
 
     for question in plan.questions[:MAX_QUESTIONS]:
         ctx.budget.check_clock()
@@ -201,11 +201,19 @@ def _repository_stage(
 
         for hit in hits:
             reference = hit.get("reference", "")
-            if reference in seen_references:
+            # The hit says which repository it came from. This used to name the
+            # *first* connected repository for every hit, so with two connected
+            # a citation could point at a file that does not exist in the
+            # repository it named — and the deduplication below collapsed two
+            # different `README.md` files into one.
+            repository = hit.get("repository") or (names[0] if names else "")
+            if (repository, reference) in seen_references:
                 continue
-            seen_references.add(reference)
+            seen_references.add((repository, reference))
 
-            source_id = f"{names[0]}#{reference}" if names else reference
+            source_id = hit.get("source_id") or (
+                f"{repository}#{reference}" if repository else reference
+            )
             sources.append(
                 {
                     "id": source_id,
@@ -218,13 +226,11 @@ def _repository_stage(
                 }
             )
 
-            blocks.append(
-                registry.untrusted(
-                    "repository.search",
-                    hit.get("content", ""),
-                    Source(id=source_id, kind="github", label=reference),
-                )
-            )
+            # Already enveloped: `repository.search` declares `content` as
+            # untrusted, so the registry wrapped it on the way out. Wrapping it
+            # again here would nest one envelope inside another and put the
+            # delimiter into the content it is meant to delimit.
+            blocks.append(hit.get("content", ""))
 
             if contains_injection_attempt(hit.get("content", "")):
                 warnings.append(

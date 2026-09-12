@@ -220,7 +220,11 @@ export function validateDocument(input: unknown): ValidationReport {
   if (!parsed.success) {
     for (const issue of expandUnionIssues(input, parsed.error.issues)) {
       const path = "/" + issue.path.join("/");
-      c.add(structuralCode(input, issue.path), path, issue.message);
+      const code = structuralCode(input, issue.path);
+      const message = code === "E002"
+        ? `Missing required field "${String(issue.path.at(-1))}": ${issue.message}`
+        : issue.message;
+      c.add(code, path, message);
     }
     return { valid: false, errors: c.errors, warnings: c.warnings, checkedAt };
   }
@@ -266,8 +270,8 @@ function valueAt(input: unknown, path: readonly PropertyKey[]): unknown {
  * the one member its `type` field selects recovers the actual path and message
  * ("transform.x is NaN"), and the recovered paths are then absolute again.
  *
- * An element whose `type` matches no member is left as-is: that is the
- * UnknownElement case, and it is not an error.
+ * Unknown types retain the original issue (they can still have invalid base
+ * fields). Nested groups/slots recurse so the actual child field is reported.
  */
 function expandUnionIssues(
   input: unknown,
@@ -284,7 +288,9 @@ function expandUnionIssues(
     const value = valueAt(input, issue.path);
     const type =
       value && typeof value === "object" ? (value as { type?: unknown }).type : undefined;
-    const member = typeof type === "string" ? ELEMENT_SCHEMA_BY_TYPE[type] : undefined;
+    const member = typeof type === "string" && Object.hasOwn(ELEMENT_SCHEMA_BY_TYPE, type)
+      ? ELEMENT_SCHEMA_BY_TYPE[type]
+      : undefined;
 
     if (!member) {
       out.push({ path: issue.path, message: issue.message });
@@ -297,7 +303,7 @@ function expandUnionIssues(
       continue;
     }
 
-    for (const innerIssue of inner.error.issues) {
+    for (const innerIssue of expandUnionIssues(value, inner.error.issues)) {
       out.push({
         path: [...issue.path, ...innerIssue.path],
         message: innerIssue.message,

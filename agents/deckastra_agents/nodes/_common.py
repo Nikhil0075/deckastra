@@ -14,7 +14,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from ..budgets import RunBudget
+from ..budgets import BudgetExceeded, RunBudget
 from ..contracts import strict_schema
 from ..events import AgentEvent, Emitter
 from ..memory import ProjectMemory
@@ -109,8 +109,14 @@ def ask_model(
     )
 
     errors: list[str] = []
+    observation: dict[str, Any] = {
+        "stage": stage, "contract": model.__name__, "attempts": 0,
+        "valid_first_attempt": False, "outcome": "pending",
+    }
+    ctx.budget.structured_requests.append(observation)
 
     for attempt in (1, 2):
+        observation["attempts"] = attempt
         if errors:
             request.messages = [
                 *request.messages,
@@ -126,7 +132,11 @@ def ask_model(
 
         try:
             response: ModelResponse = ctx.client.complete(request, ctx.budget)
+        except BudgetExceeded:
+            observation["outcome"] = "budget_exhausted"
+            raise
         except ModelError as exc:
+            observation["outcome"] = "provider_error"
             raise NodeFailure(
                 stage,
                 "model_failure",
@@ -136,6 +146,7 @@ def ask_model(
             ) from exc
 
         if response.refusal:
+            observation["outcome"] = "refusal"
             raise NodeFailure(
                 stage,
                 "model_failure",
@@ -145,8 +156,12 @@ def ask_model(
             )
 
         try:
-            return model.model_validate(json.loads(response.text))
+            validated = model.model_validate(json.loads(response.text))
+            observation["valid_first_attempt"] = attempt == 1
+            observation["outcome"] = "valid"
+            return validated
         except (json.JSONDecodeError, ValidationError) as exc:
+            observation["outcome"] = "invalid"
             errors = [str(exc)[:600]]
             if attempt == 2:
                 raise NodeFailure(

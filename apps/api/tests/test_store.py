@@ -166,6 +166,21 @@ def test_a_committed_edit_advances_the_head(db: Session, presentation):
     assert reloaded.document["slides"][0]["keyMessage"] == "changed"
 
 
+def test_a_store_save_does_not_commit_the_callers_outer_transaction(db: Session, presentation):
+    # Start a fresh read-only transaction, as an HTTP request does. SQLite's
+    # legacy driver does not issue BEGIN for that SELECT; savepoint release must
+    # still not escape a later rollback of the request.
+    db.commit()
+    with Session(db.get_bind()) as request:
+        loaded = store.load_presentation(request, presentation.presentation_id)
+        commit_edit(request, loaded, "Must roll back")
+        request.rollback()
+    with Session(db.get_bind()) as check:
+        loaded = store.load_presentation(check, presentation.presentation_id)
+        assert loaded.version_id == presentation.version_id
+        assert loaded.document == presentation.document
+
+
 def test_intermediate_versions_store_operations_not_copies(db: Session, presentation):
     # Saving a full copy of a 12MB document for every nudge is the thing the
     # operation log exists to avoid (doc 05 §22).

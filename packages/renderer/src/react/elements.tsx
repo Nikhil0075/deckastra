@@ -317,6 +317,7 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
                 fontFamily: payload.typography.fontFamily,
                 fontSize: Math.round(payload.typography.fontSize * 0.8),
                 fontWeight: 500,
+                color: payload.colors.plain,
                 opacity: 0.7,
               }}
             >

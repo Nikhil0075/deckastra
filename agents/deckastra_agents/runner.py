@@ -114,6 +114,10 @@ def run_generation(
     )
 
     config = _thread(state["run_id"]) if run.checkpointer is not None else {}
+    # The longest revision route traverses story, checkpoint, creative, layout,
+    # motion and critic. Reserve a full pass per allowed revision plus startup
+    # and proposal; LangGraph's default 25 can interrupt the default budget.
+    config["recursion_limit"] = 12 + 7 * (max(0, run.budget.max_revisions_per_run) + 1)
 
     try:
         final = graph.invoke(state, config=config)
@@ -173,6 +177,7 @@ def resume_generation(
 
     graph = build_graph(run.context(), run.compose, checkpointer=run.checkpointer)
     config = _thread(run_id)
+    config["recursion_limit"] = 12 + 7 * (max(0, run.budget.max_revisions_per_run) + 1)
 
     graph.update_state(config, {"human_decision": decision, "awaiting": None})
 

@@ -375,6 +375,59 @@ def test_disconnecting_removes_the_content(client, auth, indexed):
         )
 
 
+def test_a_hit_names_the_repository_it_actually_came_from(client, auth, indexed, tmp_path):
+    """Two repositories, two files with the same name, two distinct citations.
+
+    Every hit used to be attributed to the *first* connected repository, and the
+    deduplication keyed on `path:lines` alone — so a second repository's
+    `README.md` was either mis-attributed or dropped as a duplicate. A citation
+    naming the wrong repository is worse than no citation: it is a claim a reader
+    will check and find is not there.
+    """
+    second = tmp_path / "billing-core"
+    (second / "src").mkdir(parents=True)
+    (second / "README.md").write_text(
+        "# billing-core\n\n"
+        "## Retries\n\n"
+        "Failed settlements are retried with exponential backoff here too.\n",
+        encoding="utf-8",
+    )
+    (second / "src" / "retry.py").write_text(
+        "BACKOFF_SECONDS = [1, 2, 4, 8]\n", encoding="utf-8"
+    )
+
+    # The free plan connects one repository, and one repository is exactly the
+    # condition under which this bug is invisible.
+    from deckastra_api.db.models import WorkspaceQuota
+
+    with db_session.session_scope() as session:
+        session.query(WorkspaceQuota).update({WorkspaceQuota.max_repositories: 5})
+
+    connected = client.post(
+        "/v1/repositories/local",
+        headers=auth,
+        json={"path": str(second), "label": "acme/billing-core"},
+    )
+    assert connected.status_code == 200, connected.text
+    assert client.post(
+        f"/v1/repositories/{connected.json()['id']}/index", headers=auth
+    ).status_code == 200
+
+    hits = client.post(
+        "/v1/repositories/search", headers=auth, json={"query": "backoff retries"}
+    ).json()["hits"]
+
+    names = {hit["repository"] for hit in hits}
+    assert names == {"acme/ledger-recon", "acme/billing-core"}, hits
+
+    # Each citation is whole, and the two same-named files are two citations.
+    for hit in hits:
+        assert hit["source_id"] == f"{hit['repository']}#{hit['reference']}"
+
+    readmes = {hit["source_id"] for hit in hits if hit["path"] == "README.md"}
+    assert len(readmes) == len({hit["repository"] for hit in hits if hit["path"] == "README.md"})
+
+
 # ------------------------------------------------------- grounded generation
 
 
