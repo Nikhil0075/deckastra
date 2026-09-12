@@ -91,9 +91,15 @@ export function mintGrant(
   scopes: readonly string[] = GRANT_SCOPES,
   ttlSeconds: number = GRANT_TTL_SECONDS,
 ): { grant: string; expiresAt: Date } {
-  const expires = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const issued = Math.floor(Date.now() / 1000);
+  const expires = issued + ttlSeconds;
+  // `iat` is not decoration: revocation names a moment and refuses every grant
+  // issued before it, so a grant that cannot say when it was issued cannot be
+  // reasoned about and the authority refuses it. Leaving it out made every
+  // credential this app published dead on arrival, and nothing failed loudly —
+  // the app kept publishing, the agent kept being told it was unauthenticated.
   const payload = base64url(
-    Buffer.from(JSON.stringify({ s: [...scopes].sort(), exp: expires }), "utf8"),
+    Buffer.from(JSON.stringify({ s: [...scopes].sort(), exp: expires, iat: issued }), "utf8"),
   );
   const signature = base64url(createHmac("sha256", secret).update(payload).digest());
   return { grant: `dk1.${payload}.${signature}`, expiresAt: new Date(expires * 1000) };

@@ -663,6 +663,11 @@ DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=present npx electron .  # a real 
 # Rendering parity: rebuild all three baselines inside Electron's Chromium and
 # compare byte for byte. Needs the repository, so it runs against a dev build.
 DECKASTRA_SMOKE_FIXTURES=packages/presentation-schema/fixtures DECKASTRA_SMOKE_BASELINES=packages/renderer/baselines DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=digest npx electron .
+
+# D2.3: the consent flow, driven through the button a person presses. Off by
+# default, allowed produces a working credential, stopped kills one already
+# issued. Delete userData/agent-access.json first to start where a user does.
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=consent npx electron .
 ```
 
 **D0 measured, on Windows 11 x64, from the installed app (2026-09-08):**
@@ -900,6 +905,34 @@ the pid must be alive, the version must match, and `/health` must answer *with
 that secret*. Only the last one distinguishes our service from whatever else was
 given that port.
 
+**Nothing is published until the user allows it** (`main/agent-access.ts`, D2.3).
+The grant is narrow, and narrow is not the same as asked for: an app that
+published a credential the moment it started would have decided on the user's
+behalf that anything able to read one file may edit their decks. The window
+carries the switch, it is **off on a fresh install and after an update**, and the
+permission **lapses after twelve hours** — a permission that never expires is one
+nobody revisits.
+
+Stopping means stopping: the app withdraws the attachment *and* calls
+`POST /v1/local/agent-access/revoke`, which refuses every grant issued up to that
+moment. Withdrawing the file alone would stop only the next reader, while whoever
+already held a twelve-hour grant kept working. That route needs `administer`,
+which no grant carries — an agent that could revoke grants could revoke someone
+else's.
+
+**The grant format is written twice, and it drifted.** `mint_grant` is Python and
+`mintGrant` is TypeScript, because the desktop signs the credential it publishes
+and the service verifies it. Adding revocation added an `iat` claim, and only one
+side learned it: the desktop kept minting grants without one, `scopes_for`
+defaulted the missing claim to `0`, and `0 <= _revoked_before` is true of the
+initial `0.0` — so **every credential the app published was refused by every
+request**, while the app went on publishing and the window went on saying agents
+could work. Nothing failed loudly; an agent was simply told it was
+unauthenticated. The claim is now required rather than defaulted, both sides have
+a test naming it, and the `consent` acceptance step below is what actually runs
+the two implementations against each other. Treat these two functions the way the
+patch appliers are treated: a change to one is a change to both.
+
 **Publishing tracks the service, not the app.** A restart comes back on a
 different port, and the `ready` status the window renders is the only moment that
 knows the new one. The first launch is the exception and needed its own call: the
@@ -1048,6 +1081,17 @@ applied edit has no Undo button in the app; the MCP server runs from a checkout
 through `tsx`, so an installed app on a machine that never cloned this repository
 has no server; and D2.3's scoped session grant is met only by omission — no tool
 shares, exports to a path, or changes access, so nothing yet needs a grant.
+
+**D2.3 measured, 2026-09-12**, development build, by the `consent` step driving
+the window's own button: no attachment file before anyone allowed one; after
+"Allow agent access" the published grant read `/v1/account` (200) while an
+approval it does not carry was refused by the service (403, `required_scope:
+approve`); after "Stop agent access" the file was withdrawn *and* the grant
+already handed out answered 401. Then, with access allowed, the full MCP
+acceptance journey against the running app: **13/13** — attach, list, author,
+be refused for a stale read, plan motion in roles, render a preview, leave a
+destructive change pending as `mcp:acceptance`, cancel a running export, and
+finish one (10,133 bytes).
 
 **A real Claude Code session, 2026-09-12**, against the running dev build: it
 found the server, listed the workspace, read a six-slide deck as an outline, and

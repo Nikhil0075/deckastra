@@ -44,7 +44,12 @@ CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:   from whoever already read it.
 #: - **export** writes a file and can be large and slow; worth being able to hand
 #:   over separately from ordinary editing.
+#: - **administer** is the app's own: granting and revoking agent access. No
+#:   grant carries it, which is what stops an agent from managing its own leash.
 RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
+    # Only the app itself. A grant that could revoke grants could revoke someone
+    # else's access, or turn its own refusals into a thing it decides about.
+    (re.compile(r"^/v1/local/agent-access(/|$)"), CHANGING, "administer"),
     (
         re.compile(r"^/v1/presentations/[^/]+/proposals/[^/]+/(approve|reject)$"),
         frozenset({"POST"}),

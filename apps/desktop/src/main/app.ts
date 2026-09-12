@@ -4,6 +4,8 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 
 import {
   IPC,
+  type AgentAccess,
+  type AgentAccessRequest,
   type CurrentPresentation,
   type DesktopInfo,
   type OpenPresenterRequest,
@@ -11,6 +13,7 @@ import {
   type SaveFileResult,
   type ServiceStatus,
 } from "../shared/ipc";
+import { readAgentAccess, revokeIssuedGrants, setAgentAccess } from "./agent-access";
 import { publishAttachment, withdrawAttachment } from "./attachment";
 import { registerAppScheme, serveRenderer } from "./protocol";
 import { runSmoke, smokeDir } from "./smoke";
@@ -73,19 +76,26 @@ function broadcast(next: ServiceStatus): void {
     if (!window.webContents.isDestroyed()) window.webContents.send(IPC.serviceStatus, next);
   }
 
-  /*
-    The attachment tracks the service, not the app (milestone D2.1).
+  // The attachment tracks the service *and* the user's decision; see below.
+  void refreshAttachment();
+}
 
-    Published here rather than after `startSidecar` because a restart comes back
-    on a *different port* — the same `ready` status the window renders is the
-    only moment that knows the new one. And withdrawn on anything else, so an
-    agent connecting during an outage is told the app is unavailable instead of
-    being handed a port that stopped answering.
-  */
-  if (next.state === "ready" && sidecar) {
-    void publishAttachment(sidecar, openPresentationId);
+/**
+ * Publish the way in, or take it away.
+ *
+ * Two things have to be true at once: the service must be answering, and the
+ * user must have allowed agent access. The first is why this runs on every
+ * status change — a restarted service comes back on a different port, and the
+ * `ready` status is the only moment that knows it. The second is why publishing
+ * is not automatic: a credential nobody asked for is not narrow, it is just
+ * quiet.
+ */
+async function refreshAttachment(): Promise<void> {
+  const access = await readAgentAccess();
+  if (access.allowed && sidecar && status.state === "ready") {
+    await publishAttachment(sidecar, openPresentationId);
   } else {
-    void withdrawAttachment();
+    await withdrawAttachment();
   }
 }
 
@@ -110,13 +120,37 @@ function registerHandlers(): void {
       // open, and guessing wrong means editing a deck nobody is looking at.
       if (openPresentationId !== presentationId) {
         openPresentationId = presentationId;
-        void publishAttachment(sidecar, presentationId);
+        void refreshAttachment();
       }
       return { presentationId };
     } catch (error) {
       presentation = undefined; // A failed attempt must not be cached.
       throw error;
     }
+  });
+
+  ipcMain.handle(IPC.agentAccess, (): Promise<AgentAccess> => readAgentAccess());
+
+  ipcMain.handle(IPC.agentAccessSet, async (_event, request: AgentAccessRequest): Promise<AgentAccess> => {
+    const next = await setAgentAccess(request.allow);
+    if (!request.allow && sidecar) {
+      // Withdrawing the file only stops the *next* reader. A grant lasts hours,
+      // so stopping has to reach the ones already handed out.
+      await revokeIssuedGrants(sidecar);
+    }
+    await refreshAttachment();
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.webContents.isDestroyed()) window.webContents.send(IPC.agentAccessChanged, next);
+    }
+    return next;
+  });
+
+  // Sent on request as well as on change, so a window that opened later is not
+  // showing a default nobody chose.
+  ipcMain.on(IPC.agentAccessChanged, (event) => {
+    void readAgentAccess().then((access) => {
+      if (!event.sender.isDestroyed()) event.sender.send(IPC.agentAccessChanged, access);
+    });
   });
 
   ipcMain.handle(IPC.saveFile, async (event, request: SaveFileRequest): Promise<SaveFileResult> => {
@@ -177,12 +211,12 @@ async function startup(): Promise<void> {
 
   try {
     sidecar = await startSidecar({ dataDir: dataDir(), onStatus: broadcast });
-    // Published here as well as in `broadcast`, and this is the one that fires on
+    // Refreshed here as well as in `broadcast`, and this is the one that fires on
     // a first launch: the supervisor reports `ready` from inside `startSidecar`,
     // while this assignment is still pending, so the broadcast at that moment
     // sees no sidecar and withdraws. Restarts go the other way — the variable is
     // set and only the broadcast knows the new port.
-    await publishAttachment(sidecar, openPresentationId);
+    await refreshAttachment();
   } catch (error) {
     // The window is already open, so the failure is reported into a surface the
     // user can read instead of a process that exits with nothing on screen.

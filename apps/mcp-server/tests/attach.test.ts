@@ -58,12 +58,18 @@ afterEach(async () => {
 });
 
 describe("attaching to a running app", () => {
-  it("refuses when the app is not running, and says to start it", async () => {
+  it("refuses when there is no attachment, and names both reasons there might not be", async () => {
     // The most common case by far, and the message has to reach a person: an MCP
     // client shows a failed server's stderr, and "ENOENT" there tells the user
     // nothing they can act on.
+    //
+    // There is no file in two quite different situations — the app is closed, and
+    // the app is open with agent access turned off (D2.3) — and this process
+    // cannot tell them apart, because the absence is the same absence. Naming
+    // only the first sends someone to stare at an app that is already running.
     await expect(attach()).rejects.toThrow(NotRunning);
-    await expect(attach()).rejects.toThrow(/ask the user to start Deckastra/i);
+    await expect(attach()).rejects.toThrow(/not running/i);
+    await expect(attach()).rejects.toThrow(/agent access/i);
   });
 
   it("refuses a file left behind by a process that is gone", async () => {

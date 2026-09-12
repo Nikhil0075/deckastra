@@ -41,7 +41,35 @@ export const IPC = {
   presenterClosed: "deckastra:presenter:closed",
   /** Main → renderer: the workspace service started, stopped or failed. */
   serviceStatus: "deckastra:service:status",
+  /** Whether agents may reach this install, and until when. */
+  agentAccess: "deckastra:agents:get",
+  /** Allow agents, or stop them. The user's decision, made in the window. */
+  agentAccessSet: "deckastra:agents:set",
+  /** Main → renderer: that decision changed, including when it lapses. */
+  agentAccessChanged: "deckastra:agents:changed",
 } as const;
+
+/**
+ * Whether an agent may reach this install.
+ *
+ * Off until the user says otherwise. The credential an agent holds is already
+ * narrow — read, write and export, never approve or share — but "narrow" is not
+ * "asked for", and an app that published one the moment it started would have
+ * decided on the user's behalf.
+ */
+export interface AgentAccess {
+  allowed: boolean;
+  /** What an attached agent may do while this is on. */
+  scopes: string[];
+  /** When it lapses, ISO 8601. Null when nothing is allowed. */
+  expiresAt: string | null;
+  /** When the user last decided, ISO 8601. */
+  decidedAt: string | null;
+}
+
+export interface AgentAccessRequest {
+  allow: boolean;
+}
 
 export interface DesktopInfo {
   appVersion: string;
@@ -113,6 +141,17 @@ export interface DesktopBridge {
   onPresenterClosed(listener: (id: string) => void): () => void;
   /** Returns an unsubscribe function. Fires immediately with the current state. */
   onServiceStatus(listener: (status: ServiceStatus) => void): () => void;
+  agentAccess(): Promise<AgentAccess>;
+  /**
+   * Allow agents, or stop them.
+   *
+   * Stopping withdraws the attachment *and* tells the service to refuse every
+   * grant it has already issued — one lasts hours, so withdrawing the file alone
+   * would leave whoever holds one working for the rest of the day.
+   */
+  setAgentAccess(request: AgentAccessRequest): Promise<AgentAccess>;
+  /** Returns an unsubscribe function. Fires immediately with the current state. */
+  onAgentAccess(listener: (access: AgentAccess) => void): () => void;
 }
 
 declare global {

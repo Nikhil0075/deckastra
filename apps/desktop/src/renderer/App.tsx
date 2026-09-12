@@ -5,7 +5,7 @@ import { WorkspaceClientProvider } from "@deckastra/workspace-client/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import type { HostBridge, WorkspaceClient } from "@deckastra/workspace-contracts";
 
-import type { DesktopBridge, ServiceStatus } from "../shared/ipc";
+import type { AgentAccess, DesktopBridge, ServiceStatus } from "../shared/ipc";
 import { createDesktopClient } from "./client";
 import { desktopHost } from "./host";
 
@@ -40,6 +40,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   const host = useMemo<HostBridge>(() => desktopHost(bridge), [bridge]);
   const client = useMemo<WorkspaceClient>(() => createDesktopClient(), []);
   const [service, setService] = useState<ServiceStatus>({ state: "starting", attempt: 0 });
+  const [access, setAccess] = useState<AgentAccess | null>(null);
   const [state, setState] = useState<State>({ phase: "opening" });
   const [attempt, setAttempt] = useState(0);
   /**
@@ -57,6 +58,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   const presenterChannel = params.get("presenter") === "1" ? params.get("channel") : null;
 
   useEffect(() => bridge.onServiceStatus(setService), [bridge]);
+  useEffect(() => bridge.onAgentAccess(setAccess), [bridge]);
 
   useEffect(() => {
     // Nothing can be opened until the service is up, and trying anyway would show
@@ -136,6 +138,10 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             how to fail a save and keep the edit; it only needs to stay mounted.
           */}
           {service.state !== "ready" ? <ServiceBanner status={service} /> : null}
+          <AgentAccessBar
+            access={access}
+            onChange={(allow) => void bridge.setAgentAccess({ allow }).then(setAccess)}
+          />
           <EditorShell
             initialDocument={state.deck.document}
             presentationId={state.deck.presentationId}
@@ -145,6 +151,68 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         </>
       )}
     </WorkspaceClientProvider>
+  );
+}
+
+/**
+ * Whether agents may reach this install, and the switch that decides it.
+ *
+ * The credential an agent gets is already narrow — read, write and export, never
+ * approving its own work and never minting a share link, refused by the service
+ * rather than by which tools an adapter registered. But narrow is not the same as
+ * asked for, so nothing is published until this says yes, and it says no on a
+ * fresh install and after every update.
+ *
+ * It lapses after twelve hours. A permission that never expires is one nobody
+ * revisits, and the honest place to say when it ends is next to the switch that
+ * started it.
+ */
+function AgentAccessBar({
+  access,
+  onChange,
+}: {
+  access: AgentAccess | null;
+  onChange: (allow: boolean) => void;
+}) {
+  if (!access) return null;
+
+  const until = access.expiresAt
+    ? new Date(access.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "6px 16px",
+        background: "var(--surface-alt)",
+        borderBottom: "1px solid var(--border)",
+        fontSize: 13,
+        color: "var(--fg-subtle)",
+      }}
+    >
+      <span role="status">
+        {access.allowed
+          ? `Agents can read, edit and export your decks until ${until}. They cannot approve their own changes or share a deck.`
+          : "Agents cannot reach this app. Turn this on to let Claude Code or Codex work on your decks."}
+      </span>
+      <button
+        onClick={() => onChange(!access.allowed)}
+        style={{
+          marginLeft: "auto",
+          padding: "3px 10px",
+          background: "transparent",
+          border: "1px solid var(--border)",
+          borderRadius: 4,
+          color: access.allowed ? "var(--warning)" : "var(--fg)",
+          cursor: "pointer",
+        }}
+      >
+        {access.allowed ? "Stop agent access" : "Allow agent access"}
+      </button>
+    </div>
   );
 }
 

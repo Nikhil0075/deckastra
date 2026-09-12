@@ -206,3 +206,77 @@ def test_expiry_is_carried_in_the_grant_itself(client):
     assert local_mode.scopes_for(short) == frozenset({"read"})
     time.sleep(1.1)
     assert local_mode.scopes_for(short) is None
+
+
+# ----------------------------------------------------------------- revocation
+
+
+def test_revoking_stops_a_grant_that_was_already_handed_out(client, deck):
+    """What revoking has to mean.
+
+    A grant lasts hours. Withdrawing the attachment file only stops the *next*
+    reader; whoever already holds one would keep working for the rest of the day
+    after the user said stop. So revocation names a moment, and every grant
+    issued up to it is refused.
+    """
+    token = local_mode.mint_grant({"read", "write"}, ttl_seconds=3_600)
+    assert client.get("/v1/account", headers=bearer(token)).status_code == 200
+
+    revoked = client.post("/v1/local/agent-access/revoke", headers=bearer(SECRET))
+    assert revoked.status_code == 200, revoked.text
+
+    time.sleep(1.1)  # the moment is whole seconds, as the grant's own claim is
+    refused = client.get("/v1/account", headers=bearer(token))
+    assert refused.status_code == 401, refused.text
+
+    # And access can be given again without restarting anything.
+    fresh = local_mode.mint_grant({"read"}, ttl_seconds=3_600)
+    assert client.get("/v1/account", headers=bearer(fresh)).status_code == 200
+
+
+def test_an_agent_cannot_revoke(client):
+    """Otherwise a credential could manage its own leash — or someone else's."""
+    token = local_mode.mint_grant({"read", "write", "export"}, ttl_seconds=60)
+    refused = client.post("/v1/local/agent-access/revoke", headers=bearer(token))
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["detail"]["required_scope"] == "administer"
+
+    # And the refusal did not quietly revoke anything on the way past.
+    assert client.get("/v1/account", headers=bearer(token)).status_code == 200
+
+
+def test_a_grant_that_cannot_say_when_it_was_issued_is_refused(client):
+    """The claim the desktop forgot, and nothing said so.
+
+    `iat` is what places a grant either side of a revocation. The desktop mints
+    its own grants in TypeScript against this format, and for a while it omitted
+    this one — so every credential it published was refused by every request,
+    while the app went on publishing and the window went on saying agents could
+    work. Two implementations of one format need a test on each side.
+    """
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    payload = base64.urlsafe_b64encode(
+        json.dumps({"s": ["read"], "exp": int(time.time()) + 60}, separators=(",", ":")).encode()
+    ).decode().rstrip("=")
+    signature = (
+        base64.urlsafe_b64encode(
+            hmac.new(SECRET.encode(), payload.encode("ascii"), hashlib.sha256).digest()
+        )
+        .decode()
+        .rstrip("=")
+    )
+    # Correctly signed, unexpired, and still not a credential.
+    assert local_mode.scopes_for(f"dk1.{payload}.{signature}") is None
+
+
+def test_no_grant_carries_administer(client):
+    from deckastra_api import local_mode as mode
+
+    for scopes in ({"read"}, {"read", "write"}, {"read", "write", "export"}):
+        assert "administer" not in mode.scopes_for(mode.mint_grant(scopes, ttl_seconds=60))
+    # The app's own credential has it, which is how the desktop revokes.
+    assert "administer" in mode.scopes_for(SECRET)

@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app, BrowserWindow } from "electron";
 
+import type { Attachment } from "./attachment";
+
 /**
  * The D0 acceptance harness.
  *
@@ -27,7 +29,8 @@ export type SmokeStep =
   | "digest"
   | "export"
   | "resilience"
-  | "windows";
+  | "windows"
+  | "consent";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -168,6 +171,8 @@ export async function runSmoke(
       await runDigest(window, record);
     } else if (current === "resilience") {
       await runResilience(window, dir, record, controls);
+    } else if (current === "consent") {
+      await runConsent(window, record);
     } else if (current === "windows") {
       await runWindows(window, record, controls);
     } else if (current === "export") {
@@ -397,6 +402,84 @@ async function runExport(
 }
 
 /** Click a toolbar button by its exact label, from the main process. */
+/**
+ * The user-visible half of agent access (D2.3).
+ *
+ * The scoping and the refusals are covered by the API's own tests. What cannot be
+ * asserted from there is the part a person actually performs: that nothing is
+ * published until someone presses the button, that pressing it produces a working
+ * credential, and — the one that matters most — that pressing *stop* reaches a
+ * grant already handed out. Withdrawing the file only stops the next reader,
+ * while whoever holds a twelve-hour grant would keep working for the rest of the
+ * day after the user said no.
+ *
+ * So this drives the button in the rendered page and then uses the published
+ * credential against the service directly, which is exactly what an attached
+ * agent does with it.
+ */
+async function runConsent(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
+  const file = join(app.getPath("userData"), "attachment.json");
+  const read = async (): Promise<Attachment | null> => {
+    try {
+      return JSON.parse(await readFile(file, "utf8")) as Attachment;
+    } catch {
+      return null;
+    }
+  };
+  const reaches = async (attachment: Attachment): Promise<number> => {
+    const answer = await fetch(`http://127.0.0.1:${attachment.port}/v1/account`, {
+      headers: { authorization: `Bearer ${attachment.grant}` },
+    });
+    return answer.status;
+  };
+
+  await until(window, `document.querySelectorAll("[data-element-id]").length > 0`);
+
+  // Off by default, including on an install that used to work.
+  record.publishedBeforeConsent = (await read()) !== null;
+  record.offerText = await window.webContents.executeJavaScript(
+    `document.querySelector("[role=status]")?.textContent ?? null`,
+  );
+
+  record.allowed = await window.webContents.executeJavaScript(clickButton("Allow agent access"));
+  if (!(await waitFor(async () => (await read()) !== null))) {
+    throw new Error("Allowing agent access published no attachment.");
+  }
+  const granted = (await read())!;
+  record.grantedText = await window.webContents.executeJavaScript(
+    `document.querySelector("[role=status]")?.textContent ?? null`,
+  );
+  record.grantWorks = await reaches(granted);
+
+  // And a capability the credential does not carry, refused by the service
+  // rather than by which tools an adapter happened to register.
+  const approval = await fetch(
+    `http://127.0.0.1:${granted.port}/v1/presentations/prs_whatever/proposals/txn_whatever/approve`,
+    { method: "POST", headers: { authorization: `Bearer ${granted.grant}` } },
+  );
+  record.approvalRefused = approval.status;
+
+  record.stopped = await window.webContents.executeJavaScript(clickButton("Stop agent access"));
+  if (!(await waitFor(async () => (await read()) === null))) {
+    throw new Error("Stopping agent access left the attachment published.");
+  }
+
+  // Revocation names a moment, and the claim inside a grant is whole seconds —
+  // so a grant minted in the same second as the stop is not yet before it.
+  await new Promise((done) => setTimeout(done, 1_200));
+  record.grantAfterStop = await reaches(granted);
+
+  await capture(window, join(smokeDir()!, "consent.png"));
+
+  if (record.publishedBeforeConsent) throw new Error("An attachment existed before anyone allowed one.");
+  if (record.allowed !== true || record.stopped !== true) throw new Error("The switch was not on screen.");
+  if (record.grantWorks !== 200) throw new Error(`An allowed agent was refused: ${record.grantWorks}`);
+  if (record.approvalRefused !== 403) throw new Error(`Approval was not refused: ${record.approvalRefused}`);
+  if (record.grantAfterStop !== 401) {
+    throw new Error(`A grant issued before the user stopped access still works: ${record.grantAfterStop}`);
+  }
+}
+
 function clickButton(label: string): string {
   return `(() => {
     const button = [...document.querySelectorAll("button")].find(b => b.textContent?.trim() === ${JSON.stringify(label)});
@@ -525,10 +608,16 @@ async function runWindows(
   second.destroy();
 }
 
-async function waitFor(predicate: () => boolean, timeoutMs = 15_000): Promise<boolean> {
+async function waitFor(
+  // Awaited, because a predicate that reads a file returns a promise — and an
+  // unawaited promise is truthy, so the wait would pass instantly and every
+  // assertion after it would be about a state that had not arrived yet.
+  predicate: () => boolean | Promise<boolean>,
+  timeoutMs = 15_000,
+): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (predicate()) return true;
+    if (await predicate()) return true;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   return false;

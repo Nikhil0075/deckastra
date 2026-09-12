@@ -60,6 +60,16 @@ describe("the attachment file", () => {
     const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     expect(claims.s).toEqual(["export", "read", "write"]);
     expect(claims.exp * 1000).toBeGreaterThan(Date.now());
+    // Every claim the authority reads, including this one. Revocation refuses
+    // every grant issued before a moment, so `local_mode.scopes_for` requires
+    // `iat` — and a grant minted without one was refused by *every* request,
+    // which is how agent access came to be silently dead: the file was published,
+    // the bar said agents could work, and the service answered 401 to all of it.
+    // These are two implementations of one format; the only thing keeping them
+    // together is a test on each side and the consent acceptance step across
+    // both.
+    expect(claims.iat).toBeLessThanOrEqual(Math.ceil(Date.now() / 1000));
+    expect(claims.iat).toBeLessThan(claims.exp);
     expect(new Date(written.expiresAt).getTime()).toBeGreaterThan(Date.now());
     // The pid is what lets a reader tell a live app from a file a crash left
     // behind, and the port it names may since have gone to something else.

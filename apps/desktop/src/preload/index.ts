@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import {
   IPC,
+  type AgentAccess,
+  type AgentAccessRequest,
   type CurrentPresentation,
   type DesktopBridge,
   type DesktopInfo,
@@ -52,6 +54,20 @@ const bridge: DesktopBridge = {
     const wrapped = (_event: unknown, id: string): void => listener(id);
     ipcRenderer.on(IPC.presenterClosed, wrapped);
     return () => ipcRenderer.off(IPC.presenterClosed, wrapped);
+  },
+
+  agentAccess: () => ipcRenderer.invoke(IPC.agentAccess) as Promise<AgentAccess>,
+
+  setAgentAccess: (request: AgentAccessRequest) =>
+    ipcRenderer.invoke(IPC.agentAccessSet, request) as Promise<AgentAccess>,
+
+  onAgentAccess: (listener: (access: AgentAccess) => void) => {
+    const wrapped = (_event: unknown, access: AgentAccess): void => listener(access);
+    ipcRenderer.on(IPC.agentAccessChanged, wrapped);
+    // Ask for the current decision too, so a window that opened later does not
+    // sit on a default that was never true.
+    ipcRenderer.send(IPC.agentAccessChanged);
+    return () => ipcRenderer.off(IPC.agentAccessChanged, wrapped);
   },
 
   onServiceStatus: (listener: (status: ServiceStatus) => void) => {

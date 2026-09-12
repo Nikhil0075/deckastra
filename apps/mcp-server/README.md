@@ -84,6 +84,18 @@ exits with a message saying so.
 `DECKASTRA_ATTACHMENT` overrides where that file is looked for — a portable
 install, an unusual profile, or a test.
 
+## The user has to allow it
+
+Deckastra publishes nothing until someone presses **Allow agent access** in its
+window, and that permission lapses after twelve hours. A fresh install — and an
+install that has just updated — starts with it off, so the first connection after
+an update needs one click.
+
+Pressing **Stop agent access** withdraws the attachment *and* tells the service to
+refuse every grant it has already signed. Withdrawing the file alone would only
+stop the next reader: a grant lasts hours, so whoever held one would keep working
+for the rest of the day.
+
 ## What the credential allows
 
 The app publishes a **grant**, not its own launch secret: `read`, `write` and

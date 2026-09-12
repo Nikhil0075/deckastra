@@ -104,8 +104,10 @@ export async function attach(fetchImpl: typeof fetch = fetch): Promise<Attached>
     raw = await readFile(path, "utf8");
   } catch {
     throw new NotRunning(
-      "Deckastra is not running. Its workspace is only reachable while the app is open — " +
-        "ask the user to start Deckastra, then try again.",
+      "Deckastra is not reachable. Either it is not running, or agent access is turned off in " +
+        "its window — the app publishes nothing until someone allows it, and the permission " +
+        "lapses after twelve hours. Ask the user to open Deckastra and press 'Allow agent " +
+        "access', then try again.",
     );
   }
 

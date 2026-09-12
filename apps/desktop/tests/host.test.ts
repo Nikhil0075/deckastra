@@ -28,6 +28,14 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     closePresenter: () => {},
     onPresenterClosed: () => () => {},
     onServiceStatus: () => () => {},
+    agentAccess: async () => ({ allowed: false, scopes: [], expiresAt: null, decidedAt: null }),
+    setAgentAccess: async ({ allow }) => ({
+      allowed: allow,
+      scopes: allow ? ["read", "write", "export"] : [],
+      expiresAt: allow ? new Date(Date.now() + 3_600_000).toISOString() : null,
+      decidedAt: new Date().toISOString(),
+    }),
+    onAgentAccess: () => () => {},
     ...overrides,
   };
 }

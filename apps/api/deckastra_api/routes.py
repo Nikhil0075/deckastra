@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import export_service, motion, proposals, store, themes
+from . import export_service, local_mode, motion, proposals, store, themes
 from .auth import (
     Principal,
     Role,
@@ -189,6 +189,29 @@ def _slides_touched(operations: list[dict[str, Any]]) -> list[str]:
 #: element may carry any semantic role, and these are the ones the Motion Agent
 #: is taught and the ones a deck this product composes actually uses.
 MOTION_ROLES = ["eyebrow", "headline", "subtitle", "body", "metric", "quote", "caption"]
+
+
+@router.post("/local/agent-access/revoke")
+def revoke_agent_access(
+    principal: Principal = Depends(current_principal),
+) -> dict[str, Any]:
+    """Stop honouring every grant issued so far.
+
+    What "revoke" has to mean. A grant lasts hours, so withdrawing the attachment
+    file only stops *new* readers: whoever already holds one would keep working
+    for the rest of the day after the user said stop. This refuses everything
+    issued up to now, and the desktop calls it when access is turned off.
+
+    Reachable only by the app's own credential — `grants.py` requires
+    `administer` here and no grant carries it. An agent that could revoke grants
+    could revoke someone else's.
+    """
+    if not local_mode.enabled():
+        # There is nothing to revoke in a deployment: grants are a local-mode
+        # idea, and a route that pretended otherwise would be a lie in the API.
+        raise HTTPException(status_code=404, detail="Not found.")
+    assert principal.user_id
+    return {"revoked_before": local_mode.revoke_grants()}
 
 
 @router.get("/motion/capabilities")

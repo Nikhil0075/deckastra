@@ -82,13 +82,31 @@ def launch_secret() -> str:
 #: What a credential may do. Coarse on purpose: a capability nobody can explain
 #: in a sentence is one nobody can decide about, and this list is read by a person
 #: deciding what to hand an agent.
-SCOPES = ("read", "write", "export", "approve", "share")
+SCOPES = ("read", "write", "export", "approve", "share", "administer")
 
 #: The app's own secret carries everything. A *grant* carries a subset.
 FULL_SCOPES = frozenset(SCOPES)
 
 #: `dk1` so a future format can be told apart rather than guessed at.
 GRANT_PREFIX = "dk1"
+
+#: Grants issued before this moment are refused. Revocation has to reach the ones
+#: already out there: a grant lasts hours, so "stop issuing them" would leave
+#: whoever holds one working for the rest of the day after the user said stop.
+#: In memory because it belongs to this process, and the secret that signs grants
+#: dies with it anyway — a restart revokes everything by itself.
+_revoked_before: float = 0.0
+
+
+def revoke_grants() -> float:
+    """Refuse every grant issued up to now. Returns the moment it took effect."""
+    global _revoked_before
+    _revoked_before = time.time()
+    return _revoked_before
+
+
+def revoked_before() -> float:
+    return _revoked_before
 
 
 def _b64(raw: bytes) -> str:
@@ -114,9 +132,12 @@ def mint_grant(scopes: "frozenset[str] | set[str] | tuple[str, ...]", ttl_second
     unknown = sorted(set(scopes) - FULL_SCOPES)
     if unknown:
         raise LocalModeMisconfigured(f"Unknown scopes: {', '.join(unknown)}.")
+    issued = int(time.time())
     payload = _b64(
         json.dumps(
-            {"s": sorted(set(scopes)), "exp": int(time.time()) + int(ttl_seconds)},
+            # `iat` so a revocation can name a moment rather than a list of
+            # credentials it would have to keep.
+            {"s": sorted(set(scopes)), "exp": issued + int(ttl_seconds), "iat": issued},
             separators=(",", ":"),
         ).encode("utf-8")
     )
@@ -151,10 +172,18 @@ def scopes_for(token: str) -> "frozenset[str] | None":
         claims = json.loads(_unb64(payload))
         granted = frozenset(str(scope) for scope in claims["s"])
         expires = int(claims["exp"])
+        # Required, not defaulted. A grant with no `iat` cannot be placed either
+        # side of a revocation, and guessing zero for it would mean a credential
+        # that silently stops working the first time anyone revokes anything.
+        issued = int(claims["iat"])
     except (ValueError, KeyError, TypeError):
         return None
 
     if expires <= time.time():
+        return None
+    if issued <= _revoked_before:
+        # Revoked. Said the same way as expired, because to the holder it is the
+        # same fact: this credential no longer works and asking again is the fix.
         return None
     # A grant cannot widen itself by naming a scope this build does not have.
     return granted & FULL_SCOPES
