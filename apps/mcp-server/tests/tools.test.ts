@@ -75,9 +75,11 @@ const decks = [
 const attached: Attached = {
   baseUrl: "http://127.0.0.1:51234",
   attachment: {
-    version: 1,
+    version: 2,
     port: 51_234,
-    secret: "launch-secret",
+    grant: "dk1.payload.signature",
+    scopes: ["read", "write", "export"],
+    expiresAt: "2099-01-01T00:00:00.000Z",
     pid: process.pid,
     appVersion: "0.0.0",
     presentationId: "pres_open",
@@ -141,6 +143,68 @@ describe("the tool surface", () => {
     expect(sent.some((request) => request.url.endsWith("/v1/projects/prj_local/presentations"))).toBe(true);
   });
 
+  it("offers motion in roles, and gives an agent no way to send a duration", async () => {
+    const client = await connect({
+      "/v1/motion/capabilities": {
+        presets: ["fade", "springIn"],
+        pacing: { tight: { durationMs: 300, gapMs: 60 } },
+        roles: ["headline", "body"],
+        entrance_budget_ms: 2500,
+        read_immediately_words: 24,
+        notes: [],
+      },
+      "/v1/presentations/pres_open/motion": {
+        outcome: "applied",
+        risk_tier: "low",
+        transaction_id: "txn_m",
+        version_id: "ver_2",
+        track_count: 2,
+        warnings: ["body on a slide is long enough that the audience needs it immediately"],
+      },
+    });
+
+    const capabilities = JSON.parse(
+      text(await client.callTool({ name: "motion_capabilities", arguments: {} })),
+    );
+    expect(capabilities.entrance_budget_ms).toBe(2500);
+
+    const tools = (await client.listTools()).tools;
+    const propose = tools.find((tool) => tool.name === "motion_propose")!;
+    const fields = Object.keys(propose.inputSchema.properties ?? {});
+    // The split this whole surface exists to keep: roles and pacing in,
+    // milliseconds computed. A duration field here would move that line.
+    expect(fields).toContain("sequence");
+    expect(fields).toContain("pacing");
+    expect(fields.filter((field) => /ms$|duration|delay|easing/i.test(field))).toEqual([]);
+
+    const result = JSON.parse(
+      text(
+        await client.callTool({
+          name: "motion_propose",
+          arguments: {
+            presentation_id: "pres_open",
+            slide_id: "sld_1",
+            expected_version_id: "ver_1",
+            sequence: ["headline", "body"],
+            pacing: "tight",
+          },
+        }),
+      ),
+    );
+    expect(result.outcome).toBe("applied");
+    // What the composer left alone reaches the agent rather than being dropped.
+    expect(result.warnings[0]).toMatch(/needs it immediately/);
+
+    const sentMotion = sent.find((request) => request.url.endsWith("/motion"))!;
+    expect(sentMotion.body).toMatchObject({
+      slide_id: "sld_1",
+      expected_version_id: "ver_1",
+      sequence: ["headline", "body"],
+      pacing: "tight",
+      client_label: "codex",
+    });
+  });
+
   it("answers with an outline, not the whole document", async () => {
     const result = await (await connect()).callTool({
       name: "document_read",
@@ -157,6 +221,49 @@ describe("the tool surface", () => {
     expect(outline.slides[0].id).toMatch(/^sld_/);
     expect(outline.slides[0].elements[0].id).toMatch(/^el_/);
     expect(outline.versionId).toBe("ver_1");
+  });
+
+  it("hands back a slide as an image the model can look at", async () => {
+    // Two real sessions had to ask the user whether the result looked right,
+    // because the agent could describe its change and not see it.
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString("base64");
+    const client = await connect({
+      "/v1/presentations/pres_open/preview": {
+        slide_id: "sld_1",
+        image_base64: png,
+        width: 1024,
+        height: 576,
+        version_id: "ver_1",
+        changed_slide_ids: ["sld_1", "sld_2"],
+        metrics_estimated: false,
+      },
+    });
+
+    const result = (await client.callTool({
+      name: "slide_preview",
+      arguments: { presentation_id: "pres_open", slide_id: "sld_1", proposal_id: "txn_7" },
+    })) as { content: { type: string; text?: string; data?: string; mimeType?: string }[] };
+
+    const picture = result.content.find((part) => part.type === "image")!;
+    expect(picture.data).toBe(png);
+    expect(picture.mimeType).toBe("image/png");
+    // And a caption, because an image with no version or size is a picture of
+    // something the agent cannot place.
+    expect(result.content[0]!.text).toMatch(/Slide sld_1 at version ver_1, 1024×576/);
+    expect(result.content[0]!.text).toMatch(/proposal txn_7 applied to a copy/);
+    expect(result.content[0]!.text).toMatch(/Other slides it changes: sld_2/);
+
+    const sent_preview = sent.find((request) => request.url.endsWith("/preview"))!;
+    expect(sent_preview.body).toEqual({ slide_id: "sld_1", proposal_id: "txn_7" });
+
+    // Without a proposal it must not describe one. "Other slides this proposal
+    // changes: none" on a plain preview reads as a bug in the answer.
+    const plain = (await client.callTool({
+      name: "slide_preview",
+      arguments: { presentation_id: "pres_open", slide_id: "sld_1" },
+    })) as { content: { type: string; text?: string }[] };
+    expect(plain.content[0]!.text).toMatch(/the deck as it stands/);
+    expect(plain.content[0]!.text).not.toMatch(/proposal/);
   });
 
   it("carries the base version into a proposal, so a stale change cannot overwrite", async () => {

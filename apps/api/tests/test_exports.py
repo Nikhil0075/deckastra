@@ -319,7 +319,10 @@ def test_worker_claims_pinned_version_and_completes(client, auth, deck, monkeypa
         f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pdf"}
     ).json()["id"]
 
-    def completed(kind, document, output, options):
+    # `**rest` because the real one also takes a cancellation check now: a stub
+    # that pins an exact signature turns any change to the caller into a failure
+    # here rather than where the change is.
+    def completed(kind, document, output, options, **rest):
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_bytes(b"artifact")
         return {

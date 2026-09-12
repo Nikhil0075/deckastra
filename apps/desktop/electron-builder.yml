@@ -31,6 +31,11 @@ extraResources:
   # export failed at "Rendering slides" with nothing saying why.
   - from: dist/worker
     to: worker
+  # The MCP server, so an installed app can be driven by an agent without this
+  # repository. Outside the archive for the same reason as the exporter: it runs
+  # under `ELECTRON_RUN_AS_NODE`, which has no asar support.
+  - from: dist/mcp
+    to: mcp
 win:
   target:
     - nsis

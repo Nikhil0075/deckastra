@@ -97,25 +97,45 @@ const worker = await esbuild({
 });
 
 /*
-  The installed exporter has no `node_modules` beside it. An external package
-  it imports *statically* is resolved before a line of it runs, so the whole
-  exporter fails to load — even when the code that uses the package is on a
-  path the packaged app never takes. That shipped once: a top-level
-  `import { build } from "esbuild"` broke every packaged export, hidden behind
-  the missing-browser error, and a checkout could not show it because a
-  checkout has node_modules. Externals are allowed only as dynamic `import()`,
-  which resolves when — and only if — the branch runs.
+  The MCP server, bundled so an installed app can offer one.
+
+  It used to run only from a checkout, through `tsx` and this repository's
+  `node_modules` — so anyone who installed Deckastra without cloning it had no
+  agent access at all, which is most people who would have it. Electron's binary
+  runs it in Node mode, the same way it runs the exporter, and for the same
+  reason: stdio works there and an Electron main process never receives piped
+  stdin on Windows.
 */
-const staticExternals = Object.values(worker.metafile.outputs)
-  .flatMap((output) => output.imports)
-  .filter((entry) => entry.external && entry.kind === "import-statement" && !entry.path.startsWith("node:"))
-  .map((entry) => entry.path);
-if (staticExternals.length > 0) {
-  console.error(
-    `desktop: the exporter statically imports ${[...new Set(staticExternals)].join(", ")}, which an ` +
-      "installed app does not ship. Import it with a dynamic import() on the path that needs it.",
-  );
-  process.exit(1);
+const mcp = await esbuild({
+  ...shared,
+  entryPoints: [join(root, "..", "mcp-server", "src", "cli.ts")],
+  outfile: join(out, "mcp/cli.mjs"),
+  format: "esm",
+  metafile: true,
+  banner: {
+    // The MCP SDK is published as CommonJS in places and reaches for `require`.
+    js: [
+      "import { createRequire as __createRequire } from 'node:module';",
+      "const require = __createRequire(import.meta.url);",
+    ].join("\n"),
+  },
+});
+
+for (const [label, built] of [
+  ["exporter", worker],
+  ["MCP server", mcp],
+]) {
+  const staticExternals = Object.values(built.metafile.outputs)
+    .flatMap((output) => output.imports)
+    .filter((entry) => entry.external && entry.kind === "import-statement" && !entry.path.startsWith("node:"))
+    .map((entry) => entry.path);
+  if (staticExternals.length > 0) {
+    console.error(
+      `desktop: the ${label} statically imports ${[...new Set(staticExternals)].join(", ")}, which ` +
+        "an installed app does not ship. Import it with a dynamic import() on the path that needs it.",
+    );
+    process.exit(1);
+  }
 }
 
 // The DOM measurer, as a script the exporter injects into its render page.
@@ -134,4 +154,4 @@ await esbuild({
 
 await vite({ root, configFile: join(root, "vite.config.ts") });
 
-console.log("desktop: main, preload, worker and renderer built");
+console.log("desktop: main, preload, worker, MCP server and renderer built");

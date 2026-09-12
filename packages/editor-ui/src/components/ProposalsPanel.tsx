@@ -21,6 +21,8 @@ import type { PendingProposal } from "@deckastra/workspace-contracts";
  */
 
 export interface ProposalsPanelProps {
+  /** The version on screen, sent with an approval. See `approve` below. */
+  currentVersionId: () => string;
   presentationId: string;
   /** Called when the document changed, so the editor can adopt the new state. */
   onApplied: (document: PresentationDocument, versionId: string) => boolean;
@@ -41,7 +43,13 @@ type Status =
   | { kind: "done"; message: string }
   | { kind: "error"; message: string };
 
-export function ProposalsPanel({ presentationId, onApplied, saveNow, pollMs = 10_000 }: ProposalsPanelProps) {
+export function ProposalsPanel({
+  presentationId,
+  onApplied,
+  saveNow,
+  currentVersionId,
+  pollMs = 10_000,
+}: ProposalsPanelProps) {
   const client = useWorkspaceClient();
   const [proposals, setProposals] = useState<PendingProposal[]>([]);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -82,7 +90,15 @@ export function ProposalsPanel({ presentationId, onApplied, saveNow, pollMs = 10
       return;
     }
     try {
-      const applied = await client.agent.approve(presentationId, proposal.id);
+      // The version this panel is showing beside the proposal. The authority
+      // refuses an approval against a deck that has moved since the proposal was
+      // made, because that is a change nobody reviewed; saying what was on screen
+      // is how a surface earns the yes.
+      const applied = await client.agent.approve(
+        presentationId,
+        proposal.id,
+        currentVersionId(),
+      );
       if (!onApplied(applied.document as PresentationDocument, applied.version_id)) {
         throw new Error("The server applied the change, but newer local edits need reconciliation. Your local work has been retained.");
       }

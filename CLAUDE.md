@@ -195,8 +195,26 @@ apply now. Low risk applies immediately on purpose: making someone approve a typ
 fix trains them to approve without reading, which is worse than not asking.
 
 A proposal expires after 24 hours and is **re-validated on approval** against the
-document as it stands. Between proposing and approving the deck may have moved,
-and applying blind would apply a patch to something the approver never saw.
+document as it stands.
+
+**Re-validating the patch was necessary and not sufficient** (found by the D2
+closure audit, 2026-09-12). A patch can still apply cleanly to a deck that moved
+after the preview a human said yes to, and applying it then applies a change to
+something the approver never saw — the one thing this lifecycle exists to
+prevent. So `approve` compares the head with the version the approval is *for*:
+the proposal's own base, or `expected_version_id` when the approver names the
+version they were shown. A blanket refusal would have been wrong in the other
+direction, stranding every pending proposal behind an unrelated edit elsewhere in
+the deck, so the way through is to look again and say what you looked at.
+`ProposalsPanel` and `AskPanel` send what they had on screen.
+
+**The check belongs where the base is loaded.** A route that compared the
+caller's `expected_version_id` against the head and then called `create_proposal`
+was checking a different read: that function loads the document again, and
+anything committed in between became the silent base of the agent's change. The
+version now travels into `create_proposal` and is compared there, before any
+transaction or version row exists. The product's own edit agent is not exempt —
+it passes the version it composed against.
 
 ### The autosave queue is emptied by an acknowledgement, never by an attempt
 
@@ -844,19 +862,39 @@ Three rules keep it from becoming the data loss it exists to prevent:
 - **It cannot mistake the editor's own save for someone else's.** An acknowledged
   save moves the head too. A save generation counter, plus the version known when
   the poll began, discards any answer that raced one.
-- **Local undo is cleared on adoption.** Its inverses were computed against the
-  document before the outside change, and some are index-addressed; replaying one
-  against a document that has moved is how a patch lands on the wrong element.
-  The user's own edits are already saved, so what goes is stepping back past
-  someone else's change — the honest limit.
+- **Local undo is cleared on adoption**, and replaced by one that works. Its
+  inverses were computed against the document before the outside change, and some
+  are index-addressed; replaying one against a document that has moved is how a
+  patch lands on the wrong element. Clearing it alone left the user with a deck
+  that moved under them and nothing to press, so `/head` also names the
+  transaction that produced the version, and `undoExternalChange` reverts *that*
+  through the server — where its inverse was computed, against a pre-state this
+  editor never had, and where `disturbs()` refuses if a later edit would be
+  disturbed. It drains the autosave queue first, like everything that lets the
+  server replace the document.
 
 **The attachment file is the one deliberate way in** (`main/attachment.ts`). D1's
 posture is that the service is unreachable: a random loopback port, a per-launch
 secret, and a renderer that learns neither because the main process proxies for
 it. D2 does not relax that; it adds one door and writes down the cost. The file
-lives in `userData` (inside the user's own profile, `0o600` where that means
-anything), carries the **launch** secret rather than a durable one — so a copy
-recovered from a backup authorises nothing — and is withdrawn when the service
+lives in `userData` — inside the user's own profile, `0o600` where that means
+anything, and on Windows an explicit ACL, because the mode is ignored there and
+an inherited permission is not a decision anyone made.
+
+**What it publishes is a grant, not the launch secret** (D2 closure audit,
+2026-09-12). It used to be the secret, which meant "an agent cannot approve its
+own proposal" and "an agent cannot mint a share link" were true only because the
+MCP adapter registered no such tools — an omission in one file, not a boundary,
+and anything else that read the attachment held the app's whole authority. A
+grant is signed with the launch secret, carries `read`, `write` and `export`, and
+expires; `grants.py` maps method and path to the capability required and refuses
+the rest with 403. One table rather than a check per route, so a route added
+tomorrow inherits `write` from its method and forgetting fails closed. It is a
+second gate, never a replacement: membership and role still decide what the
+*person* may do. A grant is still tied to the launch secret, so a copy recovered
+from a backup authorises nothing.
+
+The attachment is withdrawn when the service
 stops. A crash withdraws nothing, so the reader verifies rather than trusting:
 the pid must be alive, the version must match, and `/health` must answer *with
 that secret*. Only the last one distinguishes our service from whatever else was
@@ -923,6 +961,14 @@ process, and a tool that took a path would let a deck someone emailed you choose
 where bytes are written. A test asserts each absence, so none is restored by
 someone wiring up "the missing tool".
 
+**An installed app ships the server** (`dist/mcp`, `extraResources`). It ran only
+from a checkout through `tsx` and this repository's `node_modules`, so anyone who
+installed Deckastra without cloning it had no agent access at all. It is bundled
+beside the exporter and run the same way — the app's own binary under
+`ELECTRON_RUN_AS_NODE`, which is also the only mode where stdin works. The build
+refuses a bundle that statically imports an external package, for the exporter
+and the server alike, because that is what an installed process cannot resolve.
+
 **D2 measured, Windows 11 x64, development build (2026-09-10).** The claims are
 about software someone is using, so `scripts/acceptance.mjs` drives the real
 stdio transport against a running app rather than a mock — 13/13: attach, name
@@ -931,10 +977,65 @@ be refused for a stale one *without losing the earlier change*, watch a
 destructive change become a pending proposal attributed to `mcp:acceptance`, and
 export a 25KB PDF.
 
-Still open, and not claimed: a rendered image preview for a proposal — no longer
-blocked by a missing browser now that a packaged build renders with its own, but
-not wired (`PREVIEW_SIZES.mcp` exists; the textual outline of what a change
-*would produce* is what ships) — motion tools, and a real **Codex** session.
+**An agent can see its own work** (`slide_preview`, `POST /presentations/{id}/preview`).
+Two real sessions ended with the agent asking the user whether the result looked
+right, because it could describe its change and not look at it — which is the
+review a preview exists to support. The route renders one slide through the same
+worker and browser an export uses; a preview produced any other way would be a
+picture of a deck this product would not export. With a `proposal_id` it replays
+that pending proposal's operations onto a *copy* and renders that, so a change can
+be seen before it is approved — and a proposal that no longer applies is the same
+409 approval gives, because a picture of a patch that cannot apply is worse than
+no picture: someone would approve it.
+
+One slide per call, because rendering starts a browser. The scale comes from the
+deck's own viewport (`PREVIEW_WIDTH / viewport.width`), so a deck authored at any
+size arrives at doc 04 §41.4's 1024×576 rather than its own dimensions. The
+reported size is read from the PNG's IHDR chunk, not computed from the scale the
+caller asked for — the worker reports the slide's *logical* size, and answering
+1920×1080 about a 1024-wide image is telling the caller something false.
+
+**A real Codex session, 2026-09-12**, reported working by the user against the
+same server and the same running app.
+
+What that pair of sessions is evidence *for* is narrower than "the journey":
+between them they listed a workspace, read a deck, authored and approved a
+restyle, and confirmed the tools answer. Nobody has yet recorded one client
+driving create → revise → animate → preview → approve → undo → export end to end,
+including a stale refusal and a cancellation, and the acceptance script does not
+do it either — it edits the deck that happens to be open and exports it. That is
+the remaining interoperability evidence, and it belongs on a scratch workspace
+rather than someone's real deck.
+
+**An agent plans motion in roles** (`motion_capabilities`, `motion_propose`,
+`GET /motion/capabilities`, `POST /presentations/{id}/motion`). The tool surface
+has no field for a duration, a delay or an easing curve, and that absence is the
+feature: doc 04 §24.2's 2.5s entrance budget is enforceable exactly because
+`motion.py` computes the numbers from a pacing word. A plan that could name
+milliseconds could over-run it, and a model asked to respect a budget eventually
+will not. A test asserts the tool's schema has no such field.
+
+The route runs `animate_slide` — the composer's own function — on a *copy* of the
+slide and turns the result into one patch operation, so an agent's motion is the
+product's motion: the same presets, the same restraint rules, the same
+`_fit_to_budget` compression, and the same warnings when long body text is left
+in place. Whatever it left alone is returned rather than dropped. The change then
+becomes an ordinary proposal, with risk computed from the operations and an
+inverse recorded.
+
+Two refusals worth naming: a plan whose roles match nothing on the slide commits
+**no version at all** — an empty change would put a row in the history that every
+later diff has to be read past — and a plan authored against a version that has
+moved is the same 409 every other agent write gives.
+
+Nothing in D2's tool list is now unbuilt. Still open: `export_cancel` does not
+stop a render already under way (`request_cancel` flags it and the worker is
+expected to stop "at the next boundary", but the subprocess runs to completion);
+the editor clears local undo when it adopts an outside change, so an agent's
+applied edit has no Undo button in the app; the MCP server runs from a checkout
+through `tsx`, so an installed app on a machine that never cloned this repository
+has no server; and D2.3's scoped session grant is met only by omission — no tool
+shares, exports to a path, or changes access, so nothing yet needs a grant.
 
 **A real Claude Code session, 2026-09-12**, against the running dev build: it
 found the server, listed the workspace, read a six-slide deck as an outline, and
@@ -1103,6 +1204,24 @@ share is a real `Role` from the membership ladder, so a shared viewer and a
 workspace viewer are the same thing to every downstream check — an `is_public`
 boolean would have been a second thing every authorisation site had to consult,
 and one of them would have missed it.
+
+### Cancelling an export stops the render
+
+`request_cancel` set a flag and said the worker would "stop at the next
+boundary". There was no boundary: `_invoke_worker` blocked in `subprocess.run`
+until the renderer finished or the timeout expired, so a cancelled job went on
+rendering — browser and all — and was marked cancelled once the work nobody
+wanted was already done.
+
+The exporter is now a `Popen` polled between short waits, and cancelling kills
+the process **tree** — `taskkill /T` on Windows, because the renderer starts the
+app's own Chromium and that child outlives its parent otherwise. The half-written
+artifact is deleted rather than published against a job that says "cancelled".
+
+`cancellation_watcher` reads the flag on **its own connection**. The worker holds
+an open transaction while it renders and cannot see a flag another connection set
+after that transaction began, which is exactly how cancellation came to be
+noticed only once the render had finished.
 
 ### Quotas refuse before the work and charge after it
 
@@ -1606,3 +1725,21 @@ inherited settings. Raw theme.motion is not present on ResolvedTheme. Full-motio
 fixture assertions explicitly select full motion; document fallback preferences
 otherwise take effect. The duration inspector edits the source duration, not the
 shortened compiled duration under reduced motion.
+
+## Codex confirmation — 2026-09-12
+
+Codex completed and verified the approved quiet-luxury redesign of the live
+Deckastra deck **“My Life as a Rich Man”** (`doc_01M28YYBR38QF62927S6J5TMEB`).
+The confirmed saved version is `ver_01M2947K198ZTJT7PG76H9C07E`, with no pending
+proposals.
+
+The six-slide 16:9 structure, narrative order, facts, prices, humor, stable IDs,
+and editable elements were preserved. The final deck uses the **Quiet Luxury**
+theme (Georgia display type, Inter body type), no more than three font sizes per
+slide, 450 ms fade transitions, three click reveals on slide 4, and one click
+reveal on slide 5. Full- and reduced-motion timeline compilation retain the same
+click boundaries. A headless Chromium pixel pass found no remaining overlap or
+clipping, the semantic validator reported no issues, and scoped accessibility
+validation reported zero errors. Its five reading-order warnings were already
+present before the redesign, so this work introduced no new accessibility
+findings.

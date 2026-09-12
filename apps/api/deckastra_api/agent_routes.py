@@ -225,6 +225,10 @@ def agent_edit(
             reason="; ".join(reason["reason"] for reason in reasons)[:1000],
             confidence=plan.get("confidence"),
             user_instruction=request.instruction,
+            # The document this run composed its operations from. An internal
+            # agent is not exempt: if a user's edit landed while the model was
+            # thinking, these operations describe a deck that has moved.
+            expected_version_id=loaded.version_id,
         )
     except proposals.ProposalError as error:
         agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(error)}])
@@ -392,6 +396,10 @@ def authored_proposal(
             # something an external client did.
             agent_id=f"mcp:{request.client_label}"[:120],
             reason=request.reason,
+            # Checked again where the base is loaded. The head check above is a
+            # clear early error; this is the one that cannot be raced, because
+            # `create_proposal` reads the document itself.
+            expected_version_id=request.expected_version_id,
         )
     except proposals.ProposalError as error:
         # 409 rather than 400: the usual cause is that the deck moved under the
@@ -432,10 +440,23 @@ def list_proposals(
     return [_summary(row) for row in proposals.pending(session, presentation_id)]
 
 
+class ApprovalRequest(BaseModel):
+    """Which version the approver was looking at when they said yes.
+
+    Optional, and when it is absent the proposal's own base is used instead — so
+    a deck that moved since the proposal was made is refused rather than applied
+    to something nobody reviewed. A client that has shown the user the deck as it
+    stands sends the version it showed, and the approval goes through.
+    """
+
+    expected_version_id: str | None = Field(default=None, max_length=64)
+
+
 @router.post("/presentations/{presentation_id}/proposals/{proposal_id}/approve")
 def approve_proposal(
     presentation_id: str,
     proposal_id: str,
+    request: ApprovalRequest | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -449,6 +470,7 @@ def approve_proposal(
             presentation_id=presentation_id,
             transaction_id=proposal_id,
             approved_by=principal.user_id,
+            expected_version_id=(request.expected_version_id if request else None),
         )
     except proposals.ProposalError as error:
         code = 404 if error.code == "E404" else 409

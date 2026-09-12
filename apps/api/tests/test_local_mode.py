@@ -8,6 +8,8 @@ deployment where the shared secret it trusts is a way in.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -255,14 +257,39 @@ class TestExportLocation:
     empty — so a finished export's "Download" could outlive its file.
     """
 
+    #: What `configure_environment` writes directly into `os.environ`.
+    CONFIGURED = (
+        "DECKASTRA_LOCAL_MODE",
+        "DATABASE_URL",
+        "DECKASTRA_ASSET_DIR",
+        "DECKASTRA_EXPORT_DIR",
+    )
+
+    @pytest.fixture(autouse=True)
+    def restore_environment(self):
+        """Put the process back exactly as it was.
+
+        `configure_environment` sets these on `os.environ` itself — it configures a
+        *process*, which is its job. `monkeypatch.delenv(raising=False)` does not
+        undo that: a variable that was absent to begin with records nothing to
+        restore, so `DECKASTRA_LOCAL_MODE=1` leaked into the rest of the session
+        and every later test that signed in through `/v1/dev/session` got the 404
+        local mode is supposed to give. Thirty-six errors in files that pass on
+        their own, and none of them anywhere near this one.
+        """
+        before = {key: os.environ.get(key) for key in self.CONFIGURED}
+        try:
+            yield
+        finally:
+            for key, value in before.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
     def test_configuring_a_data_directory_puts_exports_inside_it(self, tmp_path, monkeypatch):
         from deckastra_api import export_service
         from deckastra_api.local_server import configure_environment
-
-        # Registered with monkeypatch so the variables configure_environment
-        # writes straight into os.environ are restored after the test.
-        for key in ("DECKASTRA_LOCAL_MODE", "DATABASE_URL", "DECKASTRA_ASSET_DIR", "DECKASTRA_EXPORT_DIR"):
-            monkeypatch.delenv(key, raising=False)
 
         data_dir = tmp_path / "workspace"
         configure_environment(data_dir)

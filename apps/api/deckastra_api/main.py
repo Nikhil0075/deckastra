@@ -17,7 +17,7 @@ from fastapi import Body, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from . import local_mode, store, themes
+from . import grants, local_mode, store, themes
 from .auth import (
     Principal,
     current_principal,
@@ -67,6 +67,10 @@ app.middleware("http")(telemetry.http_middleware)
 # without opening a database session, and every response — including an error —
 # still carries its CORS headers.
 app.middleware("http")(session_middleware)
+# Outside the session middleware, because a credential that may not make this
+# request should be refused before a transaction is opened for it. Only local
+# mode has narrowed credentials; everywhere else this passes everything through.
+app.middleware("http")(grants.scope_middleware)
 
 # Locked to localhost rather than "*" — a permissive default here survives into
 # production because nothing ever visibly breaks.

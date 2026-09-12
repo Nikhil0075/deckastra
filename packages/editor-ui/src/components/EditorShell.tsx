@@ -570,7 +570,11 @@ function Toolbar({
 
       <div style={{ flex: 1 }} />
 
-      <SaveIndicator save={save} onRetry={() => void editor.saveNow()} />
+      <SaveIndicator
+        save={save}
+        onRetry={() => void editor.saveNow()}
+        undoExternal={editor.externalChange ? editor.undoExternalChange : undefined}
+      />
       <button style={primaryButton} onClick={onPresent}>Present</button>
       {onExit ? (
         <button style={toolButton} onClick={onExit}>Close</button>
@@ -579,8 +583,29 @@ function Toolbar({
   );
 }
 
-function SaveIndicator({ save, onRetry }: { save: ReturnType<typeof useEditor>["save"]; onRetry: () => void }) {
+function SaveIndicator({
+  save,
+  onRetry,
+  undoExternal,
+}: {
+  save: ReturnType<typeof useEditor>["save"];
+  onRetry: () => void;
+  /** Present only while there is an adopted outside change to undo. */
+  undoExternal?: () => Promise<{ ok: boolean; message?: string }>;
+}) {
   const base: CSSProperties = { fontSize: 13, color: "var(--fg-subtle)", marginRight: 8 };
+  // Held here rather than threaded through the shell: the only thing that reads
+  // it is the sentence beside this button, and a refusal has to appear where the
+  // user pressed.
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const onUndoExternal = undoExternal
+    ? () => {
+        setRefusal(null);
+        void undoExternal().then((answer) => {
+          if (!answer.ok) setRefusal(answer.message ?? "That change could not be undone.");
+        });
+      }
+    : undefined;
 
   switch (save.status) {
     case "saving":
@@ -590,15 +615,27 @@ function SaveIndicator({ save, onRetry }: { save: ReturnType<typeof useEditor>["
     case "saved":
       return <span style={base}>Saved</span>;
     case "updated":
-      // Said once, plainly. The deck on screen just changed without the user
-      // touching it, and silence would read as the app misbehaving.
+      // Said once, plainly, *and* offered a way back. Announcing the change and
+      // clearing local history left the user with a deck that moved under them
+      // and nothing to press: the toolbar's undo only knows about edits made
+      // here, and this one was made somewhere else.
       return (
-        <span
-          style={{ ...base, color: "var(--accent, var(--fg-muted))" }}
-          role="status"
-          title="Someone else changed this deck — an agent, or another window — and it was taken in. Undo starts fresh from here."
-        >
+        <span style={{ ...base, color: "var(--accent, var(--fg-muted))" }} role="status">
           Updated elsewhere
+          {onUndoExternal ? (
+            <button
+              style={{ ...toolButton, marginLeft: 6 }}
+              onClick={onUndoExternal}
+              title="Undo the change that arrived from elsewhere. Refused if your own later edits would be disturbed."
+            >
+              Undo that change
+            </button>
+          ) : null}
+          {refusal ? (
+            <span style={{ marginLeft: 6, color: "var(--warning)" }} role="status">
+              {refusal}
+            </span>
+          ) : null}
         </span>
       );
     case "conflict":
@@ -855,6 +892,7 @@ function SidePanel({
           presentationId={presentationId}
           onApplied={editor.adoptDocument}
           saveNow={editor.saveNow}
+          currentVersionId={editor.currentVersionId}
         />
         <AskPanel
           presentationId={presentationId}
@@ -862,6 +900,7 @@ function SidePanel({
           slideId={slide?.id}
           onApplied={editor.adoptDocument}
           saveNow={editor.saveNow}
+          currentVersionId={editor.currentVersionId}
         />
       </div>
     </aside>

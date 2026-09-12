@@ -20,9 +20,17 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { runExport, type ExportKind } from "./index";
+import { RenderPool, render } from "./render";
 
 interface Invocation {
-  kind: ExportKind;
+  /**
+   * `png` renders one slide instead of packaging a deck.
+   *
+   * The same contract, because the caller is the same: JSON in, JSON out, bytes
+   * to a file. It exists so a proposal can be *seen* before it is approved —
+   * an agent that cannot look at its own change has to ask the user to.
+   */
+  kind: ExportKind | "png";
   /** Where to write the artifact. */
   output: string;
   /** The document, inline or as a path — a 60-slide deck is large for an argv. */
@@ -40,6 +48,45 @@ async function main(): Promise<void> {
     : invocation.document;
 
   if (!document) throw new Error("no document was supplied");
+
+  if (invocation.kind === "png") {
+    const options = (invocation.options ?? {}) as {
+      slideIds?: string[];
+      scale?: number;
+      atTime?: number | "final" | "initial";
+    };
+    const pool = new RenderPool();
+    try {
+      const rendered = await render(
+        {
+          document: document as never,
+          format: "png",
+          ...(options.slideIds ? { slideIds: options.slideIds } : {}),
+          ...(options.scale ? { scale: options.scale } : {}),
+          atTimeMs: options.atTime ?? "final",
+        },
+        pool,
+      );
+      const [artifact] = rendered.artifacts;
+      if (!artifact) throw new Error("No such slide in this deck.");
+
+      writeFileSync(invocation.output, artifact.bytes);
+      process.stdout.write(
+        JSON.stringify({
+          ok: true,
+          output: invocation.output,
+          bytes: artifact.bytes.length,
+          slideId: artifact.slideId,
+          width: artifact.width,
+          height: artifact.height,
+          metricsEstimated: rendered.metricsEstimated,
+        }),
+      );
+      return;
+    } finally {
+      await pool.close();
+    }
+  }
 
   const outcome = await runExport(
     {

@@ -38,6 +38,14 @@ export interface AskPanelProps {
    * an AI change from quietly eating the user's last keystrokes.
    */
   saveNow: () => Promise<boolean>;
+  /**
+   * The version on screen, read when it is needed.
+   *
+   * Sent with an approval, because the authority refuses one against a deck that
+   * has moved since the proposal was made — applying then would apply a change to
+   * something the person approving never saw.
+   */
+  currentVersionId: () => string;
 }
 
 type Phase =
@@ -53,6 +61,7 @@ export function AskPanel({
   slideId,
   onApplied,
   saveNow,
+  currentVersionId,
 }: AskPanelProps) {
   const client = useWorkspaceClient();
   const [instruction, setInstruction] = useState("");
@@ -121,7 +130,14 @@ export function AskPanel({
     setPhase({ kind: "working" });
     if (!(await persistedFirst())) return;
     try {
-      const applied = await client.agent.approve(presentationId, result.transaction_id);
+      // The version on screen, which is what the user has actually reviewed. The
+      // authority refuses an approval against a deck that has moved since the
+      // proposal was made, and this is how a surface says "I showed them this".
+      const applied = await client.agent.approve(
+        presentationId,
+        result.transaction_id,
+        currentVersionId(),
+      );
       adopt(applied.document as PresentationDocument, applied.version_id);
       setInstruction("");
       setPhase({ kind: "done", message: "Applied.", transactionId: applied.transaction_id });

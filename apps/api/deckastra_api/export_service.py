@@ -25,19 +25,20 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 import subprocess
 import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .db.models import ExportJob
 from .ids import new_id
-from .db.session import supports_row_locks
+from .db.session import session_scope, supports_row_locks
 
 logger = logging.getLogger("deckastra.exports")
 
@@ -66,6 +67,10 @@ EXPORT_TIMEOUT_SECONDS = 300
 LEASE_SECONDS = 60
 
 KINDS = ("pdf", "pptx")
+
+
+class ExportCancelled(RuntimeError):
+    """The user asked for this export to stop, and it did."""
 
 
 class ExportError(RuntimeError):
@@ -121,7 +126,12 @@ def create_job(
     return job
 
 
-def run_job(session: Session, job: ExportJob, document: dict[str, Any]) -> ExportJob:
+def run_job(
+    session: Session,
+    job: ExportJob,
+    document: dict[str, Any],
+    should_cancel: "Callable[[], bool] | None" = None,
+) -> ExportJob:
     """Do the work and record the outcome.
 
     Synchronous. There is no queue yet, and a fake asynchronous endpoint that
@@ -143,7 +153,17 @@ def run_job(session: Session, job: ExportJob, document: dict[str, Any]) -> Expor
     output = root / f"{job.id}.{job.kind}"
 
     try:
-        outcome = _invoke_worker(job.kind, document, output, job.options_json or {})
+        outcome = _invoke_worker(
+            job.kind, document, output, job.options_json or {}, should_cancel=should_cancel
+        )
+    except ExportCancelled:
+        # Nothing to publish: a file from a render the user stopped is a file they
+        # did not ask for, and leaving it would let a late artifact appear against
+        # a job that says "cancelled".
+        output.unlink(missing_ok=True)
+        job.bytes = 0
+        job.artifact_path = None
+        return mark_cancelled(session, job)
     except ExportError as error:
         return record_failure(session, job, error)
 
@@ -224,6 +244,28 @@ def claim_next(session: Session, worker_id: str) -> ExportJob | None:
     return job
 
 
+def cancellation_watcher(job_id: str) -> "Callable[[], bool]":
+    """Ask, on its own connection, whether this job has been cancelled.
+
+    It has to be a separate session. The worker holds an open transaction while it
+    renders, and on SQLite — and under any snapshot isolation — it cannot see a
+    flag another connection set after that transaction began. Reading it through
+    the worker's own session is how "cancel" became a thing noticed only once the
+    render had finished anyway.
+    """
+
+    def asked() -> bool:
+        try:
+            with session_scope() as watcher:
+                row = watcher.get(ExportJob, job_id)
+                return bool(row and row.cancel_requested)
+        except Exception:  # noqa: BLE001 - a failed check must not kill the render
+            logger.exception("Could not check whether export %s was cancelled", job_id)
+            return False
+
+    return asked
+
+
 def process_one(session: Session, worker_id: str) -> ExportJob | None:
     """Claim and execute one durable job; callers commit after every step."""
     job = claim_next(session, worker_id)
@@ -249,7 +291,7 @@ def process_one(session: Session, worker_id: str) -> ExportJob | None:
     job.message = "Rendering slides."
     job.lease_expires_at = _now() + timedelta(seconds=LEASE_SECONDS)
     session.commit()
-    return run_job(session, job, loaded.document)
+    return run_job(session, job, loaded.document, should_cancel=cancellation_watcher(job.id))
 
 
 def request_cancel(session: Session, job: ExportJob) -> ExportJob:
@@ -258,7 +300,10 @@ def request_cancel(session: Session, job: ExportJob) -> ExportJob:
     job.cancel_requested = True
     if job.status == "queued":
         return mark_cancelled(session, job)
-    job.message = "Cancellation requested; the worker will stop at the next boundary."
+    # The running worker polls this flag on its own connection and stops the
+    # renderer — the browser included — rather than letting it finish into a file
+    # nobody will read.
+    job.message = "Stopping the export."
     session.flush()
     return job
 
@@ -385,8 +430,41 @@ def _no_output_reason(exit_code: int, stderr: str) -> str:
     return f"The exporter produced no output (exit {exit_code}). {stderr[-400:]}"
 
 
+def _terminate_tree(process: "subprocess.Popen[str]") -> None:
+    """Stop the renderer and everything it started.
+
+    Killing the exporter alone is not enough: it starts a browser of its own — the
+    app's Chromium in render-host mode — and on Windows that child survives its
+    parent and keeps a profile directory and a GPU process alive. `taskkill /T`
+    takes the tree; elsewhere the process group does.
+    """
+    if process.poll() is not None:
+        return
+    try:
+        if sys.platform == "win32":
+            subprocess.run(  # noqa: S603,S607 - fixed command, pid from our own child
+                ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        else:
+            process.terminate()
+    except Exception:  # noqa: BLE001 - a failed kill must not replace the real answer
+        logger.exception("Could not stop the exporter cleanly")
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+
+
 def _invoke_worker(
-    kind: str, document: dict[str, Any], output: Path, options: dict[str, Any]
+    kind: str,
+    document: dict[str, Any],
+    output: Path,
+    options: dict[str, Any],
+    timeout: int | None = None,
+    should_cancel: "Callable[[], bool] | None" = None,
 ) -> dict[str, Any]:
     """Run the TypeScript exporter and read its answer."""
 
@@ -409,30 +487,56 @@ def _invoke_worker(
     )
 
     command, cwd, needs_shell = _worker_command()
+    limit = timeout or EXPORT_TIMEOUT_SECONDS
 
+    process = subprocess.Popen(  # noqa: S603 - `shell` is decided above, per runtime
+        command,
+        cwd=cwd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        # `npx` is a shell script on Windows; without this the call fails with a
+        # FileNotFoundError that says nothing about npx. A configured binary needs
+        # no shell and must not get one.
+        shell=needs_shell,
+        # Electron's binary is a browser unless told otherwise. Without this it
+        # opens a window and never reads stdin, and the export times out with no
+        # explanation.
+        env={**os.environ, "ELECTRON_RUN_AS_NODE": "1"},
+    )
+
+    # Polled rather than waited on. `subprocess.run` blocks until the renderer is
+    # finished, so "cancel" could only ever be a flag someone noticed afterwards:
+    # the job was marked cancelled while a browser went on rendering a file
+    # nobody would read. This checks between short waits and stops the work.
+    deadline = time.monotonic() + limit
+    stdout = stderr = ""
+    to_send: str | None = invocation
     try:
-        finished = subprocess.run(
-            command,
-            cwd=cwd,
-            input=invocation,
-            capture_output=True,
-            text=True,
-            timeout=EXPORT_TIMEOUT_SECONDS,
-            # `npx` is a shell script on Windows; without this the call fails
-            # with a FileNotFoundError that says nothing about npx. A configured
-            # binary needs no shell and must not get one.
-            shell=needs_shell,
-            # Electron's binary is a browser unless told otherwise. Without this
-            # it opens a window and never reads stdin, and the export times out
-            # with no explanation.
-            env={**os.environ, "ELECTRON_RUN_AS_NODE": "1"},
-        )
-    except subprocess.TimeoutExpired as error:
-        raise ExportError(
-            f"The export did not finish within {EXPORT_TIMEOUT_SECONDS}s."
-        ) from error
+        while True:
+            try:
+                stdout, stderr = process.communicate(to_send, timeout=1)
+                break
+            except subprocess.TimeoutExpired:
+                # stdin is written once; `communicate` is resumed with nothing.
+                to_send = None
+                if should_cancel is not None and should_cancel():
+                    _terminate_tree(process)
+                    raise ExportCancelled("The export was cancelled.")
+                if time.monotonic() > deadline:
+                    _terminate_tree(process)
+                    raise ExportError(f"The export did not finish within {limit}s.")
     finally:
         Path(document_path).unlink(missing_ok=True)
+
+    class _Finished:
+        pass
+
+    finished = _Finished()
+    finished.returncode = process.returncode  # type: ignore[attr-defined]
+    finished.stdout = stdout  # type: ignore[attr-defined]
+    finished.stderr = stderr  # type: ignore[attr-defined]
 
     for line in (finished.stderr or "").splitlines():
         # Progress arrives on stderr, one object per line, so stdout stays a
@@ -459,6 +563,80 @@ def _invoke_worker(
         raise ExportError(explain_export_failure(answer.get("error") or "The export failed."))
 
     return answer
+
+
+#: Doc 04 §41.4's MCP preview size. A slide at 1024 wide is legible to a person
+#: and cheap to hand a model; the deck's own viewport decides the scale.
+PREVIEW_WIDTH = 1024
+
+#: A preview is something a caller waits on, unlike an export, which is a job.
+PREVIEW_TIMEOUT_SECONDS = 90
+
+
+#: The eight bytes every PNG starts with, written as numbers so no escape
+#: sequence can be mangled on its way into this file.
+_PNG_MAGIC = bytes([137, 80, 78, 71, 13, 10, 26, 10])
+
+
+def _png_size(image: bytes) -> tuple[int, int]:
+    """Width and height from the PNG's own IHDR chunk.
+
+    Read from the bytes rather than derived from the requested scale: rounding
+    decides the last pixel, and a caller that trusts a computed number gets a
+    figure the file disagrees with.
+    """
+    if len(image) < 24 or image[:8] != _PNG_MAGIC:
+        raise ExportError("The renderer did not return a PNG.")
+    return int.from_bytes(image[16:20], "big"), int.from_bytes(image[20:24], "big")
+
+
+def render_slide_png(
+    document: dict[str, Any], slide_id: str, *, at_time: str = "final"
+) -> dict[str, Any]:
+    """One slide as a PNG, through the same worker an export uses.
+
+    Deliberately not a second rendering path. The same bundle, the same browser,
+    the same no-network-at-render-time rules — a preview that rendered through
+    anything else would be a picture of a deck this product would not export.
+
+    The scale is derived from the document's own viewport rather than fixed, so a
+    deck authored at a size other than 1920 wide still previews at `PREVIEW_WIDTH`
+    instead of whatever its own dimensions imply.
+    """
+    viewport = document.get("viewport") or {}
+    width = float(viewport.get("width") or 1920)
+    scale = max(0.1, min(3.0, PREVIEW_WIDTH / width)) if width else 1.0
+
+    root = export_root()
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir=root) as handle:
+        output = Path(handle.name)
+
+    try:
+        answer = _invoke_worker(
+            "png",
+            document,
+            output,
+            {"slideIds": [slide_id], "scale": scale, "atTime": at_time},
+            timeout=PREVIEW_TIMEOUT_SECONDS,
+        )
+        image = output.read_bytes()
+        pixels = _png_size(image)
+        return {
+            "bytes": image,
+            # The image's own pixels, not the slide's logical size. The worker
+            # reports the latter — 1920x1080 whatever the scale — and a caller
+            # told that about a 1024-wide image has been told the wrong thing.
+            "width": pixels[0],
+            "height": pixels[1],
+            "slide_width": int(answer.get("width") or 0),
+            "slide_height": int(answer.get("height") or 0),
+            "metrics_estimated": bool(answer.get("metricsEstimated")),
+        }
+    finally:
+        # A preview is not an artifact anyone downloads later; the bytes go back
+        # in the response and the file has no reason to outlive the request.
+        output.unlink(missing_ok=True)
 
 
 def describe(job: ExportJob) -> dict[str, Any]:

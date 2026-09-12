@@ -14,8 +14,13 @@ import type {
   GenerateRequest,
   GenerateResult,
   HealthReport,
+  MotionCapabilities,
+  MotionRequest,
+  MotionResult,
   PendingProposal,
   PresentationSummary,
+  PreviewRequest,
+  PreviewResult,
   Repository,
   RepositoryList,
   RequestOptions,
@@ -202,6 +207,11 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
           `/v1/projects/${q(projectId)}/presentations`,
           { ...request },
         ).then((body) => body.presentations),
+      preview: (presentationId, body: PreviewRequest, request) =>
+        json<PreviewResult>(`/v1/presentations/${q(presentationId)}/preview`, {
+          body,
+          ...request,
+        }),
       head: (presentationId, request) =>
         json<DocumentHead>(`/v1/presentations/${q(presentationId)}/head`, {
           // Polled; a cached answer is a change the editor never hears about.
@@ -223,6 +233,12 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
         json<VersionSummary[]>(`/v1/presentations/${q(presentationId)}/versions`, { ...request }),
     },
 
+    motion: {
+      capabilities: (request) => json<MotionCapabilities>("/v1/motion/capabilities", { ...request }),
+      propose: (presentationId, body: MotionRequest, request) =>
+        json<MotionResult>(`/v1/presentations/${q(presentationId)}/motion`, { body, ...request }),
+    },
+
     generation: {
       run: (body: GenerateRequest, request) => json<GenerateResult>("/v1/generate", { body, ...request }),
     },
@@ -235,10 +251,14 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
         }),
       proposals: (presentationId, request) =>
         json<PendingProposal[]>(`/v1/presentations/${q(presentationId)}/proposals`, { ...request }),
-      approve: (presentationId, proposalId, request) =>
+      approve: (presentationId, proposalId, expectedVersionId, request) =>
         json<AppliedChange>(
           `/v1/presentations/${q(presentationId)}/proposals/${q(proposalId)}/approve`,
-          { method: "POST", ...request },
+          {
+            method: "POST",
+            body: { expected_version_id: expectedVersionId ?? null },
+            ...request,
+          },
         ),
       reject: (presentationId, proposalId, reason, request) =>
         json<unknown>(

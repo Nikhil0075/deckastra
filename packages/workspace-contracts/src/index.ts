@@ -21,4 +21,5 @@ export * from "./roles";
 export * from "./session";
 export * from "./shares";
 export * from "./themes";
+export * from "./motion";
 export * from "./render-host";

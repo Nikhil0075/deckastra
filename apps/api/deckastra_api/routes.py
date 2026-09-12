@@ -9,6 +9,10 @@ two code paths that drift.
 
 from __future__ import annotations
 
+import base64
+import copy
+import re
+
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import store, themes
+from . import export_service, motion, proposals, store, themes
 from .auth import (
     Principal,
     Role,
@@ -26,7 +30,7 @@ from .auth import (
     resolve_project_access,
 )
 from .compose import blank_document
-from .db.models import Presentation
+from .db.models import Presentation, TransactionRow
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -156,6 +160,302 @@ def get_presentation(
     }
 
 
+class PreviewRequest(BaseModel):
+    slide_id: str = Field(min_length=1, max_length=64)
+    #: Render as this pending proposal *would* leave the deck. Nothing is applied.
+    proposal_id: str | None = Field(default=None, max_length=64)
+    #: The version the caller believes it is looking at. When it is given and the
+    #: deck has moved, the picture would be of something else — so it is refused
+    #: rather than returned with a quietly different version id attached.
+    expected_version_id: str | None = Field(default=None, max_length=64)
+
+
+#: `/slides/id:sld_x/...` — the only way an operation names a slide (doc 02 §31.3).
+_SLIDE_IN_PATH = re.compile(r"^/slides/id:([^/]+)")
+
+
+def _slides_touched(operations: list[dict[str, Any]]) -> list[str]:
+    """Which slides a patch reaches, in document order of first mention."""
+    seen: list[str] = []
+    for operation in operations:
+        for path in (operation.get("path"), operation.get("from")):
+            match = _SLIDE_IN_PATH.match(path or "")
+            if match and match.group(1) not in seen:
+                seen.append(match.group(1))
+    return seen
+
+
+#: The role vocabulary a motion plan speaks (doc 03 §12). Not a schema enum: an
+#: element may carry any semantic role, and these are the ones the Motion Agent
+#: is taught and the ones a deck this product composes actually uses.
+MOTION_ROLES = ["eyebrow", "headline", "subtitle", "body", "metric", "quote", "caption"]
+
+
+@router.get("/motion/capabilities")
+def motion_capabilities(
+    principal: Principal = Depends(current_principal),
+) -> dict[str, Any]:
+    """What a motion plan may say — and, by omission, what it may not.
+
+    There are no milliseconds here on purpose. A caller names roles, a preset and
+    one word of pacing; code turns that into durations, which is what makes doc 04
+    §24.2's entrance budget something enforced rather than something a model is
+    asked to respect. A tool surface that accepted timings would move that line.
+    """
+    # `principal` is not read: the dependency is the authentication, and this
+    # answer is the same vocabulary for everyone who may ask at all.
+    return {
+        "presets": sorted(motion.KNOWN_PRESETS),
+        "pacing": {name: dict(values) for name, values in motion.PACING.items()},
+        "roles": MOTION_ROLES,
+        "entrance_budget_ms": motion.ENTRANCE_BUDGET_MS,
+        "read_immediately_words": motion.READ_IMMEDIATELY_WORDS,
+        "notes": [
+            "Sequence by role. Roles you leave out are on screen from the first frame.",
+            "Durations, delays and easing are computed here; a plan cannot name them.",
+            "A sequence that would over-run the entrance budget is compressed, not refused.",
+            "Body text past the word limit is left in place — the audience has to read it.",
+        ],
+    }
+
+
+class MotionRequest(BaseModel):
+    slide_id: str = Field(min_length=1, max_length=64)
+    #: Required, like every other agent write: a plan authored against a version
+    #: that has moved is a plan for a slide that may no longer hold those roles.
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    #: Reveal order by semantic role.
+    sequence: list[str] = Field(min_length=1, max_length=12)
+    entrance: str = Field(default="fade", max_length=40)
+    pacing: Literal["tight", "measured", "deliberate"] = "measured"
+    click_reveals: int = Field(default=0, ge=0, le=6)
+    intent: str = Field(default="Animate a slide", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+
+
+@router.post("/presentations/{presentation_id}/motion")
+def propose_motion(
+    presentation_id: str,
+    request: MotionRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Animate one slide from a plan in roles, through the composer's own code.
+
+    `animate_slide` is what the composer calls, so an agent's motion is the
+    product's motion: the same presets, the same restraint rules, and the same
+    `_fit_to_budget` compression. A second implementation here would be a second
+    set of answers to "how long is a reveal", and one of them would drift.
+
+    The result becomes an ordinary proposal — risk computed from the operations,
+    an inverse recorded, undo like any edit — because that is how every agent
+    change reaches the store.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+    )
+
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "This deck has changed since you read it. Read it again and re-plan "
+                    "the motion against the current version."
+                ),
+                "code": "E310",
+                "current_version_id": head.version_id,
+            },
+        )
+
+    slide = next(
+        (one for one in head.document.get("slides", []) if one.get("id") == request.slide_id),
+        None,
+    )
+    if slide is None:
+        raise HTTPException(status_code=404, detail=f"No slide {request.slide_id} in this deck.")
+
+    # On a copy: `animate_slide` mutates, and the document we hold is the one the
+    # store handed us. Patching is how a change reaches it.
+    animated = copy.deepcopy(slide)
+    warnings = motion.animate_slide(
+        animated,
+        {
+            "sequence": request.sequence,
+            "entrance": request.entrance,
+            "pacing": request.pacing,
+            "click_reveals": request.click_reveals,
+        },
+    )
+
+    before = slide.get("animations")
+    after = animated.get("animations")
+    if after == before:
+        # Nothing matched: roles that are not on this slide, or text long enough
+        # that the rules leave it in place. Said plainly rather than committing an
+        # empty change, which would put a version in the history for nothing.
+        return {
+            "outcome": "none",
+            "warnings": warnings,
+            "refusal": (
+                "None of those roles animate on this slide. Read the slide to see which "
+                "roles its elements carry."
+            ),
+            "version_id": head.version_id,
+        }
+
+    operations = [
+        {
+            # `add` when the slide has no animations yet: `replace` refuses a
+            # property that does not exist (doc 02 §31.3).
+            "op": "replace" if before is not None else "add",
+            "path": f"/slides/id:{request.slide_id}/animations",
+            "value": after,
+        }
+    ]
+
+    try:
+        outcome = proposals.create_proposal(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            intent=request.intent,
+            created_by=principal.user_id,
+            agent_id=f"mcp:{request.client_label}"[:120],
+            reason="; ".join(warnings)[:1000] or None,
+            # The route's own check above is an early, clearer error; this is the
+            # one that cannot be raced, because `create_proposal` loads the base.
+            expected_version_id=request.expected_version_id,
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(
+            status_code=409, detail={"message": str(error), "code": error.code}
+        ) from error
+
+    return {
+        "outcome": outcome["status"],
+        "risk_tier": outcome["risk_tier"],
+        "reasons": outcome.get("reasons") or [],
+        "transaction_id": outcome["transaction_id"],
+        "version_id": outcome.get("version_id"),
+        "expires_at": outcome.get("expires_at"),
+        "track_count": len(after or []),
+        "warnings": warnings,
+    }
+
+
+@router.post("/presentations/{presentation_id}/preview")
+def preview_slide(
+    presentation_id: str,
+    request: PreviewRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """One slide as an image — as stored, or as a pending proposal would leave it.
+
+    The reason this exists is D2's: an agent that cannot see its own change has
+    to ask the person whose deck it is to look, which is exactly the review the
+    preview was supposed to support. It renders through the same worker and the
+    same browser an export uses, because a preview produced any other way is a
+    picture of a deck this product would not export.
+
+    A named proposal needs editor access — it is unapplied work, visible to
+    people who could approve it — while previewing the stored deck needs only the
+    access a read needs.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR if request.proposal_id else Role.VIEWER,
+    )
+
+    loaded = store.load_presentation(session, presentation_id)
+    if request.expected_version_id and loaded.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "This deck has changed since you read it, so this picture would be of "
+                    "a different deck. Read it again."
+                ),
+                "code": "E310",
+                "current_version_id": loaded.version_id,
+            },
+        )
+
+    loaded_document = loaded.document
+    document = loaded_document
+    changed: list[str] = []
+    proposal_base: str | None = None
+    rebased = False
+
+    if request.proposal_id:
+        transaction = session.get(TransactionRow, request.proposal_id)
+        if transaction is None or transaction.presentation_id != presentation_id:
+            raise HTTPException(status_code=404, detail="No such proposal.")
+        if transaction.status != "pending":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": f"This proposal is {transaction.status}, not pending.",
+                    "code": "E409",
+                },
+            )
+        operations = transaction.operations_json or []
+        try:
+            # Onto a copy, and nothing is committed: a preview must not be a
+            # second way to apply a change that has not been approved.
+            document, _inverse = apply_patch(loaded.document, operations)
+        except PatchError as error:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": (
+                        "This change no longer applies — the deck moved since it was "
+                        f"proposed. ({error})"
+                    ),
+                    "code": error.code,
+                },
+            ) from error
+        changed = _slides_touched(operations)
+        proposal_base = transaction.parent_version_id
+        # A preview of a proposal whose base has moved is a preview of a *rebased*
+        # change: it still applies, but it is not the change as it was written.
+        # Approval refuses that silently-different case, so the picture says so.
+        rebased = bool(proposal_base and proposal_base != loaded.version_id)
+
+    if not any(slide.get("id") == request.slide_id for slide in document.get("slides", [])):
+        # Named rather than rendered blank: after a proposal that removes a
+        # slide, asking for it is a reasonable mistake with a specific answer.
+        raise HTTPException(
+            status_code=404, detail=f"No slide {request.slide_id} in this deck."
+        )
+
+    try:
+        rendered = export_service.render_slide_png(document, request.slide_id)
+    except export_service.ExportError as error:
+        # 502: the renderer is a subprocess, and its failure is not the caller's
+        # request being wrong.
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return {
+        "slide_id": request.slide_id,
+        "image_base64": base64.b64encode(rendered["bytes"]).decode("ascii"),
+        "width": rendered["width"],
+        "height": rendered["height"],
+        "version_id": loaded.version_id,
+        "changed_slide_ids": changed,
+        "metrics_estimated": rendered["metrics_estimated"],
+        "proposal_base_version_id": proposal_base,
+        "rebased": rebased,
+    }
+
+
 @router.get("/projects/{project_id}/presentations")
 def list_presentations(
     project_id: str,
@@ -213,7 +513,25 @@ def get_presentation_head(
     presentation = session.get(Presentation, presentation_id)
     if presentation is None or presentation.current_version_id is None:
         raise HTTPException(status_code=404, detail="No such deck.")
-    return {"presentation_id": presentation_id, "version_id": presentation.current_version_id}
+
+    # Which change produced it, so an editor that adopts someone else's work can
+    # offer to undo *that* rather than leaving the user with a deck that changed
+    # under them and no way back. The inverse lives server-side, computed against
+    # the pre-state, so the editor needs only the id.
+    latest = session.scalar(
+        select(TransactionRow).where(
+            TransactionRow.presentation_id == presentation_id,
+            TransactionRow.result_version_id == presentation.current_version_id,
+        )
+    )
+    return {
+        "presentation_id": presentation_id,
+        "version_id": presentation.current_version_id,
+        "transaction_id": latest.id if latest else None,
+        "source": latest.source if latest else None,
+        "intent": latest.intent if latest else None,
+        "client_id": latest.client_id if latest else None,
+    }
 
 
 @router.post("/presentations/{presentation_id}/transactions", response_model=ApplyTransactionResponse)

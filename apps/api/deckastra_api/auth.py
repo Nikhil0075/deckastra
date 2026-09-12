@@ -67,6 +67,10 @@ def parse_role(name: str) -> Role:
 class Principal:
     user_id: str
     email: str
+    #: What this *credential* may do, which is not always what its owner may do.
+    #: Everything, unless a local-mode grant narrowed it — so no existing path
+    #: changes and a bridge credential cannot exceed what it was handed.
+    scopes: frozenset[str] = local_mode.FULL_SCOPES
 
 
 @dataclass(frozen=True)
@@ -309,14 +313,18 @@ def current_principal(
     # below runs exactly as it does for a tenant; nothing is bypassed, the answer
     # is simply always the same person.
     if local_mode.enabled():
-        if not local_mode.authenticates(token):
+        granted = local_mode.scopes_for(token)
+        if granted is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         user, _, _ = local_mode.bootstrap(session)
-        return Principal(user_id=user.id, email=user.email)
+        # Same account, same membership, same `resolve_*` checks. The scopes are a
+        # second, narrower gate on top — a credential the app handed out cannot do
+        # everything its owner can.
+        return Principal(user_id=user.id, email=user.email, scopes=granted)
 
     # Development tokens never cross the production boundary, even if someone
     # accidentally deploys the default development secret.

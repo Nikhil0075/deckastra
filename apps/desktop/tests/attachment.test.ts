@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -38,13 +39,28 @@ describe("the attachment file", () => {
 
     const written = JSON.parse(await readFile(attachmentPath(), "utf8"));
     expect(written).toMatchObject({
-      version: 1,
+      version: 2,
       port: 51_234,
-      secret: "launch-secret",
       pid: process.pid,
       presentationId: "pres_1",
       appVersion: "1.2.3",
+      scopes: ["read", "write", "export"],
     });
+
+    // Never the launch secret itself. That was the hole: anything reading this
+    // file held the app's own authority, and the refusals an agent lives under
+    // were only the tools its adapter happened to register.
+    expect(JSON.stringify(written)).not.toContain("launch-secret");
+
+    // A grant this process signed, for exactly those capabilities, with an end.
+    const parts = String(written.grant).split(".");
+    expect(parts[0]).toBe("dk1");
+    const payload = parts[1]!;
+    expect(createHmac("sha256", "launch-secret").update(payload).digest("base64url")).toBe(parts[2]);
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    expect(claims.s).toEqual(["export", "read", "write"]);
+    expect(claims.exp * 1000).toBeGreaterThan(Date.now());
+    expect(new Date(written.expiresAt).getTime()).toBeGreaterThan(Date.now());
     // The pid is what lets a reader tell a live app from a file a crash left
     // behind, and the port it names may since have gone to something else.
     expect(written.pid).toBe(process.pid);
@@ -70,7 +86,9 @@ describe("the attachment file", () => {
 
     const written = JSON.parse(await readFile(attachmentPath(), "utf8"));
     expect(written.port).toBe(2);
-    expect(written.secret).toBe("second");
+    // Signed by the second secret, so a grant from the first launch is refused.
+    const parts = String(written.grant).split(".");
+    expect(createHmac("sha256", "second").update(parts[1]!).digest("base64url")).toBe(parts[2]);
     expect(written.presentationId).toBeUndefined();
   });
 

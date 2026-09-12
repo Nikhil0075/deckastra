@@ -20,12 +20,21 @@ import { join } from "node:path";
  */
 
 /** The contract the desktop writes. Kept in step with `attachment.ts` there. */
-export const ATTACHMENT_VERSION = 1;
+export const ATTACHMENT_VERSION = 2;
 
 export interface Attachment {
   version: number;
   port: number;
-  secret: string;
+  /**
+   * A scoped, expiring grant — not the app's own launch secret.
+   *
+   * It carries `read`, `write` and `export`. Approving a proposal and minting a
+   * share link are refused by the *authority*, not merely absent from the tools
+   * below, which is what makes those refusals worth anything.
+   */
+  grant: string;
+  scopes: string[];
+  expiresAt: string;
   pid: number;
   presentationId?: string;
   appVersion: string;
@@ -118,6 +127,13 @@ export async function attach(fetchImpl: typeof fetch = fetch): Promise<Attached>
     );
   }
 
+  if (!attachment.grant) {
+    throw new NotRunning(
+      "Deckastra's attachment carries no grant. Update the app: an older one published its own " +
+        "launch secret, which this server will not use.",
+    );
+  }
+
   if (!alive(attachment.pid)) {
     throw new NotRunning(
       "Deckastra left an attachment behind but the process is gone — it was probably killed. " +
@@ -133,7 +149,7 @@ export async function attach(fetchImpl: typeof fetch = fetch): Promise<Attached>
   let health: Response;
   try {
     health = await fetchImpl(`${baseUrl}/health`, {
-      headers: { authorization: `Bearer ${attachment.secret}` },
+      headers: { authorization: `Bearer ${attachment.grant}` },
     });
   } catch (error) {
     throw new NotRunning(
@@ -145,8 +161,8 @@ export async function attach(fetchImpl: typeof fetch = fetch): Promise<Attached>
   if (!health.ok) {
     throw new NotRunning(
       health.status === 401 || health.status === 403
-        ? "Deckastra's workspace service refused this launch secret. The app has restarted since " +
-          "this attachment was written; reconnect to pick up the new one."
+        ? "Deckastra's workspace service refused this grant. It has expired, or the app has " +
+          "restarted since this attachment was written; reconnect to pick up a fresh one."
         : `Deckastra's workspace service answered ${health.status}. The app may still be starting.`,
     );
   }

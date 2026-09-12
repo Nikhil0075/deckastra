@@ -23,11 +23,17 @@ import { outlineDocument, slideOf } from "./outline";
  *   Approval happens in the app, by the person whose deck it is.
  * - **No sharing tool.** Issuing a share link is granting a bearer credential to
  *   a document, and it is not something an agent should do while the user is
- *   looking elsewhere. Local mode 404s it anyway; this refuses it before it
- *   becomes reachable.
+ *   looking elsewhere.
  * - **No path anywhere.** Not for an export destination, not for a repository.
  *   Document content reaches this process, and a tool that took a path would let
  *   a deck someone emailed you choose where bytes are written.
+ *
+ * The first two are **not enforced here**, and that is the point. This process
+ * holds a grant carrying `read`, `write` and `export` (`main/attachment.ts`), and
+ * the authority refuses the rest by capability (`grants.py`). A tool added to
+ * this file tomorrow cannot exceed that, and neither can anything else that reads
+ * the attachment — which was the hole when the file published the launch secret:
+ * the refusals lived in whichever tools this file happened to register.
  */
 
 /** Most recently changed first; the rest are counted, not listed. */
@@ -40,6 +46,16 @@ function failure(message: string) {
 
 function json(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
+}
+
+/** An image the model can actually look at, with a line saying what it is. */
+function image(base64: string, caption: string) {
+  return {
+    content: [
+      { type: "text" as const, text: caption },
+      { type: "image" as const, data: base64, mimeType: "image/png" },
+    ],
+  };
 }
 
 /** Turn a thrown `WorkspaceRequestError` into something worth reading. */
@@ -55,7 +71,7 @@ function explain(error: unknown): string {
   return error.message;
 }
 
-type Result = ReturnType<typeof json> | ReturnType<typeof failure>;
+type Result = ReturnType<typeof json> | ReturnType<typeof image> | ReturnType<typeof failure>;
 
 async function guard(work: () => Promise<Result>): Promise<Result> {
   try {
@@ -163,6 +179,125 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         const read = await client.documents.read(presentation_id, { fresh: true });
         return json({ version_id: read.version_id, slide: slideOf(read.document, slide_id) });
       }),
+  );
+
+  server.registerTool(
+    "slide_preview",
+    {
+      title: "See a slide",
+      description:
+        "Render one slide as an image — the deck as it stands, or, with proposal_id, how a " +
+        "pending proposal would leave it.\n\n" +
+        "Look at your own work before asking the user to. An outline says what a slide contains; " +
+        "it cannot show that a headline now overflows, that gold-on-black went unreadable, or " +
+        "that two elements overlap. This renders through the same browser an export uses, so what " +
+        "you see is what the deck exports as.\n\n" +
+        "One slide per call: rendering starts a browser, and a whole deck is a lot of pictures " +
+        "for a change that touched one slide.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_id: z.string().min(1),
+        proposal_id: z
+          .string()
+          .min(1)
+          .optional()
+          .describe("A pending proposal, to see what it would produce. Nothing is applied."),
+      },
+    },
+    async ({ presentation_id, slide_id, proposal_id }) =>
+      guard(async () => {
+        const preview = await client.documents.preview(
+          presentation_id,
+          { slide_id, ...(proposal_id ? { proposal_id } : {}) },
+          { fresh: true },
+        );
+        // Only said when there is a proposal. "Other slides this proposal
+        // changes: none" on a plain preview describes a proposal that does not
+        // exist, which reads as a bug in the answer.
+        const also = proposal_id
+          ? preview.changed_slide_ids.filter((id) => id !== slide_id).join(", ") || "none"
+          : undefined;
+        return image(
+          preview.image_base64,
+          `Slide ${preview.slide_id} at version ${preview.version_id}, ` +
+            `${preview.width}×${preview.height}` +
+            (proposal_id
+              ? ` — with proposal ${proposal_id} applied to a copy. Other slides it changes: ${also}.`
+              : " — the deck as it stands.") +
+            (preview.metrics_estimated
+              ? " Some text was estimated rather than measured; treat spacing as approximate."
+              : ""),
+        );
+      }),
+  );
+
+  server.registerTool(
+    "motion_capabilities",
+    {
+      title: "What motion a deck can be given",
+      description:
+        "The presets, pacing words and semantic roles a motion plan may use, plus the " +
+        "per-slide entrance budget. Read this before motion_propose. There are no " +
+        "milliseconds in a plan: you name roles, a preset and one word of pacing, and the " +
+        "app computes the timings — which is how every slide stays inside its budget.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {},
+    },
+    async () => guard(async () => json(await client.motion.capabilities())),
+  );
+
+  server.registerTool(
+    "motion_propose",
+    {
+      title: "Animate a slide",
+      description:
+        "Give one slide an entrance sequence, described in semantic roles. " +
+        "sequence is the reveal order — ['headline', 'body', 'metric'] means the headline " +
+        "arrives, then the body, then the numbers. Roles you leave out are on screen from " +
+        "the first frame, which is the right default: a deck where everything moves is one " +
+        "the audience reads none of. " +
+        "Use document_read to see which roles a slide's elements actually carry. " +
+        "The app composes the tracks with the same code its own composer uses, compresses a " +
+        "sequence that would over-run the entrance budget, and leaves long body text in " +
+        "place. It tells you what it left alone. Like any change, the result is applied or " +
+        "becomes a proposal for the user, and you cannot choose which.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        sequence: z
+          .array(z.string().min(1))
+          .min(1)
+          .max(12)
+          .describe("Semantic roles, in the order they should appear."),
+        entrance: z.string().max(40).optional().describe("A preset from motion_capabilities."),
+        pacing: z.enum(["tight", "measured", "deliberate"]).optional(),
+        click_reveals: z
+          .number()
+          .int()
+          .min(0)
+          .max(6)
+          .optional()
+          .describe("How many later steps the presenter reveals by clicking."),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, slide_id, expected_version_id, sequence, entrance, pacing, click_reveals, intent }) =>
+      guard(async () =>
+        json(
+          await client.motion.propose(presentation_id, {
+            slide_id,
+            expected_version_id,
+            sequence,
+            ...(entrance ? { entrance } : {}),
+            ...(pacing ? { pacing } : {}),
+            ...(click_reveals === undefined ? {} : { click_reveals }),
+            ...(intent ? { intent } : {}),
+            client_label: client.clientId.replace(/^mcp:/, ""),
+          }),
+        ),
+      ),
   );
 
   server.registerTool(
@@ -361,7 +496,7 @@ export async function proposeAuthored(
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${attached.attachment.secret}`,
+        authorization: `Bearer ${attached.attachment.grant}`,
       },
       body: JSON.stringify({ ...body, client_label: client.clientId.replace(/^mcp:/, "") }),
     },

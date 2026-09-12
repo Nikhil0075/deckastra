@@ -31,13 +31,13 @@ export function createAttachedClient(attached: Attached, clientLabel: string): W
       const response = await doFetch(`${baseUrl}/v1/account`, {
         headers: {
           accept: "application/json",
-          authorization: `Bearer ${attached.attachment.secret}`,
+          authorization: `Bearer ${attached.attachment.grant}`,
         },
       });
       if (!response.ok) {
         throw new NotRunning(
           response.status === 401 || response.status === 403
-            ? "Deckastra refused this launch secret — the app has restarted. Reconnect to pick up the new one."
+            ? "Deckastra refused this grant — it expired, or the app restarted. Reconnect to pick up a fresh one."
             : `Deckastra's workspace service answered ${response.status} while reading the account.`,
         );
       }
@@ -50,9 +50,10 @@ export function createAttachedClient(attached: Attached, clientLabel: string): W
       }
 
       return {
-        // The real credential, and the only one. Held in this process's memory
-        // for as long as it runs, exactly as long as it is valid for.
-        token: attached.attachment.secret,
+        // The only credential this process has: a grant that can read, write and
+        // export, and cannot approve or share. The authority enforces that, so a
+        // tool added here in future cannot quietly exceed it.
+        token: attached.attachment.grant,
         userId: account.user.id,
         workspaceId: workspace.id,
         projectId: project.id,

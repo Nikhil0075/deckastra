@@ -70,14 +70,29 @@ def create_proposal(
     confidence: float | None = None,
     source_ids: list[str] | None = None,
     user_instruction: str | None = None,
+    expected_version_id: str | None = None,
 ) -> dict[str, Any]:
     """Record an agent's change, applying it now or parking it for approval.
 
     Returns what the caller needs to answer the request: the transaction, whether
     it applied, and — when it did not — the document it *would* produce, so the
     editor can show a preview without a second round trip.
+
+    `expected_version_id` is the version the operations were authored against, and
+    it is checked *here* rather than only by the caller. A route that checked the
+    head and then called this was checking a different read: this function loads
+    the document again, and anything committed in between — a user typing — was
+    silently accepted as the base. The check has to live where the base is loaded.
     """
     loaded = store.load_presentation(session, presentation_id)
+    if expected_version_id is not None and loaded.version_id != expected_version_id:
+        # Before anything is written: a refused proposal must leave no transaction
+        # and no version behind for someone to wonder about later.
+        raise ProposalError(
+            "This deck changed while the change was being prepared. Read it again and "
+            "re-author the change against the current version.",
+            code="E310",
+        )
     assessment = assess_risk(operations)
 
     # Dry run first, always. A proposal that cannot apply is not a proposal, and
@@ -209,13 +224,27 @@ def pending(session: Session, presentation_id: str) -> list[TransactionRow]:
 
 
 def approve(
-    session: Session, *, presentation_id: str, transaction_id: str, approved_by: str
+    session: Session,
+    *,
+    presentation_id: str,
+    transaction_id: str,
+    approved_by: str,
+    expected_version_id: str | None = None,
 ) -> dict[str, Any]:
-    """Apply a pending proposal, re-validating against the document as it is now.
+    """Apply a pending proposal, against the version the approver actually saw.
 
-    The re-validation is the point. Between proposal and approval the document may
-    have moved — another edit, another agent, another person. Applying blind would
-    apply a patch to something the approver never saw.
+    Re-validating the patch is necessary and was not sufficient. A patch can still
+    apply cleanly to a document that has moved since the preview a human said yes
+    to — different words on the slide, a different neighbouring element — and
+    applying it then is applying a change to something the approver never saw,
+    which is the one thing this whole lifecycle exists to prevent.
+
+    So a head that has moved past the proposal's own base is refused, and the way
+    through is to look again: pass `expected_version_id` — the version the
+    approver was shown — and it applies only if that is still the head. A blanket
+    refusal would have been wrong in the other direction, since an unrelated edit
+    elsewhere in the deck would strand every pending proposal with no way to
+    accept it.
     """
     transaction = session.get(TransactionRow, transaction_id)
     if transaction is None or transaction.presentation_id != presentation_id:
@@ -236,6 +265,14 @@ def approve(
         )
 
     loaded = store.load_presentation(session, presentation_id)
+
+    reviewed = expected_version_id or transaction.parent_version_id
+    if reviewed is not None and loaded.version_id != reviewed:
+        raise ProposalError(
+            "This deck has changed since this proposal was reviewed. Look at it again, "
+            "then approve against the version you have seen.",
+            code="E310",
+        )
 
     try:
         document, inverse = apply_patch(loaded.document, transaction.operations_json)
@@ -262,6 +299,8 @@ def approve(
         inverse_operations=inverse,
         document=document,
         parent_version_id=loaded.version_id,
+        # The same version the check above proved the approver was looking at, so
+        # the store's conditional UPDATE refuses anything that lands in between.
         expected_version_id=loaded.version_id,
         intent=transaction.intent,
         source="agent",

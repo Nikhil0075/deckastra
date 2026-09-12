@@ -88,6 +88,32 @@ export interface EditorApi {
    * against the version it was authored on.
    */
   saveNow: () => Promise<boolean>;
+  /**
+   * The version this editor is showing, read at call time.
+   *
+   * For anything that has to tell the server *what the user was looking at* —
+   * approving an agent's change, above all. A stale answer there means approving
+   * a change against a deck nobody reviewed, so this is a function rather than a
+   * value captured at render.
+   */
+  currentVersionId: () => string;
+  /**
+   * The change this editor adopted from somewhere else, if there is one.
+   *
+   * Kept so the user can undo it. Adopting a change silently and clearing the
+   * history left them with a deck that moved under them and no way back — the
+   * toolbar's undo only knows about edits made here.
+   */
+  externalChange: ExternalChange | null;
+  /**
+   * Undo that change, through the server.
+   *
+   * Not a local inverse: the change was applied elsewhere and its inverse was
+   * computed there, against the pre-state this editor never had. The server also
+   * refuses if a later edit disturbed what the revert would touch, which is the
+   * check that makes a deferred undo safe (doc 04 §29.3).
+   */
+  undoExternalChange: () => Promise<{ ok: boolean; message?: string }>;
   recoveryReady: boolean;
   recoveryCopies: RecoveryCopy[];
   refreshRecoveryCopies: () => Promise<void>;
@@ -96,6 +122,16 @@ export interface EditorApi {
   resolveConflict: (review: ConflictReview, choices: Record<string, ConflictChoice>) => Promise<boolean>;
   nodes: SelectableNode[];
   historyEntries: readonly EditCommand[];
+}
+
+/** A change that arrived from another window, another person, or an agent. */
+export interface ExternalChange {
+  transactionId: string;
+  intent: string | null;
+  /** `web-editor`, `desktop-editor`, `mcp:codex` — who made it. */
+  clientId: string | null;
+  source: string | null;
+  at: number;
 }
 
 export interface UseEditorInput {
@@ -119,6 +155,7 @@ export function useEditor(input: UseEditorInput): EditorApi {
   const [save, setSave] = useState<SaveState>({ status: "idle" });
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [recoveryCopies, setRecoveryCopies] = useState<RecoveryCopy[]>([]);
+  const [externalChange, setExternalChange] = useState<ExternalChange | null>(null);
   const [, forceRender] = useState(0);
 
   const history = useRef(new History()).current;
@@ -618,6 +655,19 @@ export function useEditor(input: UseEditorInput): EditorApi {
         if (adoptDocument(read.document, read.version_id)) {
           history.clear();
           setSave({ status: "updated", at: Date.now() });
+          // Remembered rather than only announced: the local history is gone, so
+          // this id is the only way back past someone else's change.
+          setExternalChange(
+            head.transaction_id
+              ? {
+                  transactionId: head.transaction_id,
+                  intent: head.intent ?? null,
+                  clientId: head.client_id ?? null,
+                  source: head.source ?? null,
+                  at: Date.now(),
+                }
+              : null,
+          );
         }
       } catch {
         // Offline, a restarting service, a response that did not validate: the
@@ -640,6 +690,34 @@ export function useEditor(input: UseEditorInput): EditorApi {
       globalThis.document?.removeEventListener("visibilitychange", onReturn);
     };
   }, [adoptDocument, client, history, input.presentationId, input.watchHeadMs]);
+
+  const undoExternalChange = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
+    const change = externalChange;
+    if (!change) return { ok: false, message: "There is no outside change to undo." };
+    // The same rule every path that lets the server replace the document obeys:
+    // an operation still queued here was authored against a version about to be
+    // superseded, and could never be sent afterwards.
+    if (!(await flush())) {
+      return { ok: false, message: "Save your own edits first; they are not saved yet." };
+    }
+    try {
+      const reverted = await client.agent.revert(input.presentationId, change.transactionId);
+      if (!adoptDocument(reverted.document, reverted.version_id)) {
+        return { ok: false, message: "Your local work is unsaved; reconcile it first." };
+      }
+      history.clear();
+      setExternalChange(null);
+      setSave({ status: "saved", at: Date.now() });
+      return { ok: true };
+    } catch (error) {
+      // The server refuses when a later edit disturbed what this would touch.
+      // Said plainly: the alternative is a revert that lands on the wrong element.
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "That change could not be undone.",
+      };
+    }
+  }, [adoptDocument, client, externalChange, flush, history, input.presentationId]);
 
   const reviewConflict = useCallback(async (): Promise<ConflictReview> => {
     // Finish any earlier acknowledgement before capturing the local base. While
@@ -698,6 +776,9 @@ export function useEditor(input: UseEditorInput): EditorApi {
   return {
     document,
     adoptDocument,
+    currentVersionId: () => versionId.current,
+    externalChange,
+    undoExternalChange,
     slideIndex,
     setSlideIndex,
     selection,

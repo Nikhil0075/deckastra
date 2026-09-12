@@ -610,3 +610,47 @@ has been certified.
 15. Fresh PostgreSQL verification remains pending Docker availability (including
     the two new theme-concurrency cases); external acceptance requires configured
     services and credentials. These are verification gaps, not passes.
+
+## Desktop milestones D0–D2 (added 2026-09-12)
+
+New rows, per the desktop plan's ledger discipline. The original phases are not
+renumbered and nothing here is discharged by execution becoming local: the
+authentication, security, performance, accessibility, export and backup
+requirements still apply to the desktop, and several are listed below as open.
+
+| Milestone | Implementation and evidence | Remaining boundary |
+| --- | --- | --- |
+| D0 shell and seam | `WorkspaceClient` is the single transport (`packages/workspace-client`), the editor is a package (`packages/editor-ui`), and `apps/desktop` runs it from a custom scheme with `contextIsolation`, `sandbox` and a CSP. Installed-app acceptance on Windows 11 (2026-09-08): runs from the installer with no dev server, network absent from the CSP, all three scene digests byte-identical to the Node baselines, edit survives restart, present opens a second window. | Pixel parity *inside Electron's Chromium* is unrecorded; the digest gate covers the scene, not the paint. macOS is unmeasured and cannot be measured from this machine. |
+| D1 local authority | `apps/api` runs as a supervised sidecar on SQLite in local mode; the renderer reaches it only through a same-origin proxy that injects the bearer. Packaged export renders with the app's own Chromium (`main/render-host.ts`, `apps/worker/src/electron-backend.ts`); verified from the packaged pieces and then from the installed app, artifact read back by `pypdf`. Exports live in the data directory. | A *freshly built* installed binary has not been re-verified since the render-host change landed in source; the September 12 installed run used the build made that day, and any later source change needs its own run. PostgreSQL row-lock coverage still needs `POSTGRES_TEST_URL`. The MinIO sweeper test fails locally without the compose service. |
+| D2 agent access | `apps/mcp-server` over stdio, 13 tools, attaching to the running app through a published grant. Version identity is carried from proposal through preview to approval; the authority enforces capabilities (`grants.py`); cancellation stops a running render; an adopted outside change can be undone through the server. Suites: MCP 19, desktop 15, editor-ui 94, worker 19, and the API's authored-proposal, version, grant, preview, motion and cancellation files. | One client has not yet driven create → revise → animate → preview → approve → undo → export end to end on a scratch workspace, including a stale refusal and a cancellation. The MCP server still runs from this checkout through `tsx`; an installed app on a machine without the repository has no server. D2.3's scoped *session* grant (user-visible consent, revocation UI) is not built — the credential is scoped, the consent flow is not. |
+
+### Requirement dispositions
+
+- **Retained.** Optimistic concurrency, proposal-before-apply, server-computed
+  risk, inverses and ordinary undo, the authorization ladder, "a missing resource
+  and a forbidden one both answer 404", no expression language, no path from
+  document content to the filesystem. All of these hold for an agent because an
+  agent's request is the same request.
+- **Moved.** The editor's rules moved from `apps/web` into `packages/editor-ui`
+  unchanged; the export contract moved from `npx tsx` to a bundled entry point
+  with the same JSON-in/JSON-out shape; rendering moved from Playwright's
+  Chromium to the app's own *in a packaged build only* — a checkout and CI still
+  use Playwright, and byte-identical output across the two browsers is not
+  claimed.
+- **Replaced by an approved decision.** The generic `proposal.commit` surface in
+  the D2 plan became `document_propose` plus approval in the app: an agent cannot
+  approve, and the low-risk apply-immediately rule stands (making someone approve
+  a typo fix trains them to approve without reading). Recorded here because it is
+  a narrower surface than the plan described, not an oversight.
+- **Still open.** Packaging the MCP server; the full real-client journey on a
+  scratch workspace; a user-visible grant/consent flow with revocation; pixel
+  parity inside Electron; macOS; PostgreSQL row-lock verification; and a freshly
+  built installed binary re-verified after the current source.
+
+### Evidence discipline
+
+Two claims in this repository were previously stronger than their evidence, and
+both were corrected rather than re-argued: "refusing to run headless prevents a
+stale editor" (it does not — the editor now watches the head) and "the tool
+surface's omissions keep an agent from approving or sharing" (they did not — the
+authority now refuses by capability). A tool count is not a closure criterion.

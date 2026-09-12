@@ -38,7 +38,7 @@ it("shows a proposal made over MCP and approving it saves first, then adopts the
   const saveNow = vi.fn(async () => { order.push("save"); return true; });
   const onApplied = vi.fn(() => { order.push("adopt"); return true; });
 
-  render(<ProposalsPanel presentationId={document.id} onApplied={onApplied} saveNow={saveNow} pollMs={0} />,
+  render(<ProposalsPanel presentationId={document.id} onApplied={onApplied} saveNow={saveNow} currentVersionId={() => "v1"} pollMs={0} />,
     { wrapper: withWorkspaceClient() });
 
   expect(await screen.findByText("Rebuild the deck")).toBeTruthy();
@@ -51,6 +51,11 @@ it("shows a proposal made over MCP and approving it saves first, then adopts the
   expect(onApplied).toHaveBeenCalledWith(document, "v2");
   const approve = fetcher.mock.calls.find(([url]) => String(url).endsWith("/proposals/txn_mcp/approve"));
   expect(approve?.[1]?.method).toBe("POST");
+  // The version this panel was showing. Without it the authority refuses an
+  // approval against a deck that moved after the proposal was made — because
+  // that is a change nobody reviewed — so a surface that shows the deck has to
+  // say what it showed.
+  expect(JSON.parse(approve![1]!.body as string)).toEqual({ expected_version_id: "v1" });
   expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
 });
 
@@ -59,7 +64,7 @@ it("does not approve while local edits are unsaved", async () => {
   const fetcher = stubServer(document);
   const onApplied = vi.fn(() => true);
 
-  render(<ProposalsPanel presentationId={document.id} onApplied={onApplied} saveNow={async () => false} pollMs={0} />,
+  render(<ProposalsPanel presentationId={document.id} onApplied={onApplied} saveNow={async () => false} currentVersionId={() => "v1"} pollMs={0} />,
     { wrapper: withWorkspaceClient() });
 
   fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
@@ -73,7 +78,7 @@ it("rejecting records a reason and removes the proposal", async () => {
   const document = loadFixture("technical");
   const fetcher = stubServer(document);
 
-  render(<ProposalsPanel presentationId={document.id} onApplied={() => true} saveNow={async () => true} pollMs={0} />,
+  render(<ProposalsPanel presentationId={document.id} onApplied={() => true} saveNow={async () => true} currentVersionId={() => "v1"} pollMs={0} />,
     { wrapper: withWorkspaceClient() });
 
   fireEvent.click(await screen.findByRole("button", { name: "Reject" }));

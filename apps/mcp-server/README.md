@@ -16,6 +16,29 @@ client cannot spawn `npx` without a `cmd /c` wrapper, and a server that fails to
 start says nothing useful about why. Use absolute paths — the client's working
 directory is not this repository.
 
+### From an installed app (no repository needed)
+
+The installer ships the server beside the exporter, and the app's own binary runs
+it in Node mode. On Windows:
+
+```json
+{
+  "mcpServers": {
+    "deckastra": {
+      "command": "C:/Users/<you>/AppData/Local/Programs/Deckastra/Deckastra.exe",
+      "args": ["C:/Users/<you>/AppData/Local/Programs/Deckastra/resources/mcp/cli.mjs"],
+      "env": { "ELECTRON_RUN_AS_NODE": "1", "DECKASTRA_MCP_CLIENT": "claude-code" }
+    }
+  }
+}
+```
+
+`ELECTRON_RUN_AS_NODE` is required, not decorative: without it the binary starts
+as an app — and an Electron main process never receives piped stdin on Windows,
+so the server would wait for a request that cannot arrive.
+
+### From a checkout
+
 **Claude Code** — a project-scoped `.mcp.json` at the repository root (the
 desktop app asks you to approve it the first time):
 
@@ -60,6 +83,15 @@ exits with a message saying so.
 
 `DECKASTRA_ATTACHMENT` overrides where that file is looked for — a portable
 install, an unusual profile, or a test.
+
+## What the credential allows
+
+The app publishes a **grant**, not its own launch secret: `read`, `write` and
+`export`, signed with the launch secret and expiring after twelve hours. The
+authority enforces it (`apps/api/deckastra_api/grants.py`), so approving a
+proposal and minting a share link are refused with 403 — by the service, not by
+this adapter's choice of tools. A grant recovered from a backup authorises
+nothing, because the key that signed it died with that launch.
 
 ## The tools
 

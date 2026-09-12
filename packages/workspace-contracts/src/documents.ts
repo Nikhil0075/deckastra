@@ -17,6 +17,19 @@ export interface DocumentRead {
 export interface DocumentHead {
   presentation_id: string;
   version_id: string;
+  /**
+   * The change that produced this version, when one is recorded.
+   *
+   * An editor that adopts someone else's work needs it: the inverse was computed
+   * server-side against the pre-state, so undoing that change means naming it,
+   * not recomputing it here.
+   */
+  transaction_id?: string | null;
+  /** "user" or "agent" — who the deck moved under. */
+  source?: string | null;
+  intent?: string | null;
+  /** Which surface authored it: `web-editor`, `desktop-editor`, `mcp:codex`. */
+  client_id?: string | null;
 }
 
 /**
@@ -31,6 +44,45 @@ export interface PresentationSummary {
   title: string;
   version_id: string | null;
   updated_at: string | null;
+}
+
+/**
+ * Render one slide as an image.
+ *
+ * One slide per call on purpose. A whole deck is a browser launch and a dozen
+ * megabytes, and the caller that needs this — an agent showing what a change
+ * would look like — needs the slide it changed, not the deck around it.
+ */
+export interface PreviewRequest {
+  slide_id: string;
+  /** The version the caller believes it is on. A moved deck is a 409, not a picture of something else. */
+  expected_version_id?: string;
+  /**
+   * Render as this pending proposal *would* leave the deck, rather than as it
+   * stands. The proposal is not applied; the operations are replayed onto a copy.
+   */
+  proposal_id?: string | null;
+}
+
+export interface PreviewResult {
+  slide_id: string;
+  /** PNG bytes, base64. The transport is JSON, and this is one image. */
+  image_base64: string;
+  width: number;
+  height: number;
+  /** The version the render was taken from, so a caller can tell it is current. */
+  version_id: string;
+  /** Every slide the proposal touches, so a caller knows what else to look at. */
+  changed_slide_ids: string[];
+  /** True when any text fell back to the estimator rather than a measurement. */
+  metrics_estimated: boolean;
+  /** The version a previewed proposal was written against, when one was named. */
+  proposal_base_version_id?: string | null;
+  /**
+   * True when that base is no longer the head: the change still applies, but this
+   * is not the change as it was written, and approval will ask for a fresh look.
+   */
+  rebased?: boolean;
 }
 
 export interface CreatePresentationRequest {

@@ -25,7 +25,9 @@ async function write(overrides: Record<string, unknown> = {}): Promise<void> {
     JSON.stringify({
       version: ATTACHMENT_VERSION,
       port: 51_234,
-      secret: "launch-secret",
+      grant: "dk1.payload.signature",
+      scopes: ["read", "write", "export"],
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
       pid: process.pid,
       appVersion: "0.0.0",
       presentationId: "pres_1",
@@ -79,11 +81,17 @@ describe("attaching to a running app", () => {
     await expect(attach()).rejects.toThrow(/attachment version/i);
   });
 
-  it("refuses a secret the service no longer accepts", async () => {
+  it("refuses an attachment with no grant, rather than reaching for a secret", async () => {
+    // A v1 app published its own launch secret. This server will not use one.
+    await write({ grant: undefined });
+    await expect(attach()).rejects.toThrow(/no grant|attachment version/i);
+  });
+
+  it("refuses a grant the service no longer accepts", async () => {
     // The app restarted: the file is current-looking, the pid is alive, and the
     // secret died with the previous launch. Only the service's answer catches it.
     await write();
-    await expect(attach(serviceAnswering("a-different-secret"))).rejects.toThrow(/restarted/i);
+    await expect(attach(serviceAnswering("a-different-grant"))).rejects.toThrow(/expired|restarted/i);
   });
 
   it("refuses when nothing answers on the port", async () => {
@@ -96,7 +104,7 @@ describe("attaching to a running app", () => {
 
   it("attaches when the service proves it is ours", async () => {
     await write();
-    const attached = await attach(serviceAnswering("launch-secret"));
+    const attached = await attach(serviceAnswering("dk1.payload.signature"));
     expect(attached.baseUrl).toBe("http://127.0.0.1:51234");
     // The deck the user is looking at. Without it an agent asked to "fix this
     // slide" has to guess which deck "this" is.

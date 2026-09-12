@@ -27,9 +27,19 @@ function withTitle(title: string): PresentationDocument {
 interface Service {
   head: string;
   served: PresentationDocument;
+  /** What a revert gives back, when a test cares. */
+  reverted?: PresentationDocument;
   commit: "ok" | "offline";
   calls: { method: string; url: string }[];
 }
+
+/** What the head route now also reports: the change that produced the version. */
+let headExtras: Record<string, unknown> = {
+  transaction_id: "txn_outside",
+  source: "agent",
+  intent: "Restyle every slide",
+  client_id: "mcp:codex",
+};
 
 function stubService(initial: Partial<Service> = {}) {
   const service: Service = { head: "v0", served: deck, commit: "ok", calls: [], ...initial };
@@ -51,7 +61,17 @@ function stubService(initial: Partial<Service> = {}) {
         service.head = `saved-${saved}`;
         return ok({ transaction_id: `txn_${saved}`, version_id: service.head });
       }
-      if (url.endsWith("/head")) return ok({ presentation_id: "p1", version_id: service.head });
+      if (url.endsWith("/head")) {
+        return ok({ presentation_id: "p1", version_id: service.head, ...headExtras });
+      }
+      if (url.endsWith("/revert")) {
+        service.head = "reverted";
+        return ok({
+          transaction_id: "txn_undo",
+          version_id: service.head,
+          document: service.reverted ?? deck,
+        });
+      }
       return ok({ document: service.served, version_id: service.head, can_edit: true });
     }),
   );
@@ -196,5 +216,74 @@ describe("a change made outside the editor", () => {
     service.head = "v1";
     await new Promise((done) => setTimeout(done, 150));
     expect(service.calls.filter((call) => call.url.endsWith("/head"))).toEqual([]);
+  });
+});
+
+
+describe("undoing a change that arrived from elsewhere", () => {
+  it("offers the change it adopted, and reverts it through the server", async () => {
+    // The local history is cleared on adoption, so the toolbar's undo knows
+    // nothing about this change. Without the server's inverse there is no way
+    // back past someone else's edit at all.
+    const service = stubService();
+    const { result } = open();
+    await waitFor(() => expect(result.current.recoveryReady).toBe(true));
+
+    service.served = withTitle("Renamed by an agent");
+    service.reverted = withTitle("Back to how it was");
+    service.head = "v1";
+    await waitFor(() => expect(title(result.current.document)).toBe("Renamed by an agent"));
+
+    expect(result.current.externalChange).toMatchObject({
+      transactionId: "txn_outside",
+      clientId: "mcp:codex",
+      intent: "Restyle every slide",
+    });
+
+    await act(async () => {
+      expect(await result.current.undoExternalChange()).toEqual({ ok: true });
+    });
+
+    expect(title(result.current.document)).toBe("Back to how it was");
+    expect(result.current.externalChange).toBeNull();
+    expect(
+      service.calls.some((call) => call.url.endsWith("/transactions/txn_outside/revert")),
+    ).toBe(true);
+  });
+
+  it("refuses while the user's own work is unsaved", async () => {
+    const service = stubService({ commit: "offline" });
+    const { result } = open();
+    await waitFor(() => expect(result.current.recoveryReady).toBe(true));
+
+    service.served = withTitle("Renamed by an agent");
+    service.head = "v1";
+    await waitFor(() => expect(title(result.current.document)).toBe("Renamed by an agent"));
+
+    act(() => {
+      result.current.apply([{ op: "replace", path: "/metadata/title", value: "Mine" }], {
+        label: "Retitle",
+      });
+    });
+    await act(() => result.current.saveNow());
+
+    // Reverting would replace the document, and an unsent operation authored
+    // against the version about to be superseded can never be sent afterwards.
+    await act(async () => {
+      const answer = await result.current.undoExternalChange();
+      expect(answer.ok).toBe(false);
+      expect(answer.message).toMatch(/not saved yet/i);
+    });
+    expect(service.calls.some((call) => call.url.endsWith("/revert"))).toBe(false);
+  });
+
+  it("says so when there is nothing to undo", async () => {
+    stubService();
+    const { result } = open();
+    await waitFor(() => expect(result.current.recoveryReady).toBe(true));
+    expect(result.current.externalChange).toBeNull();
+    await act(async () => {
+      expect((await result.current.undoExternalChange()).ok).toBe(false);
+    });
   });
 });

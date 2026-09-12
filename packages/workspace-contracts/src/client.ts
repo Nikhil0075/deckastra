@@ -6,12 +6,15 @@ import type {
   CreatePresentationResult,
   DocumentHead,
   DocumentRead,
+  PreviewRequest,
+  PreviewResult,
   PresentationSummary,
   TransactionRequest,
   TransactionResult,
   VersionSummary,
 } from "./documents";
 import type { ExportJob, ExportRequest } from "./exports";
+import type { MotionCapabilities, MotionRequest, MotionResult } from "./motion";
 import type { GenerateRequest, GenerateResult } from "./generation";
 import type { Repository, RepositoryList, SlideSources } from "./repositories";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
@@ -91,6 +94,12 @@ export interface WorkspaceClient {
       options?: RequestOptions,
     ): Promise<CreatePresentationResult>;
     read(presentationId: string, options?: RequestOptions): Promise<DocumentRead>;
+    /** One slide as a PNG — as stored, or as a pending proposal would leave it. */
+    preview(
+      presentationId: string,
+      body: PreviewRequest,
+      options?: RequestOptions,
+    ): Promise<PreviewResult>;
     /** The decks in one project, most recently changed first. No content. */
     list(projectId: string, options?: RequestOptions): Promise<PresentationSummary[]>;
     /** The current version id and nothing else. Cheap enough to poll. */
@@ -119,6 +128,22 @@ export interface WorkspaceClient {
     run(body: GenerateRequest, options?: RequestOptions): Promise<GenerateResult>;
   };
 
+  /**
+   * Motion, planned in roles and composed into tracks server-side.
+   *
+   * Deliberately its own section rather than a document write: what a caller
+   * sends is intent, and the durations come back computed. A caller that could
+   * send milliseconds would be a caller that could over-run the entrance budget.
+   */
+  readonly motion: {
+    capabilities(options?: RequestOptions): Promise<MotionCapabilities>;
+    propose(
+      presentationId: string,
+      body: MotionRequest,
+      options?: RequestOptions,
+    ): Promise<MotionResult>;
+  };
+
   readonly agent: {
     edit(
       presentationId: string,
@@ -126,9 +151,18 @@ export interface WorkspaceClient {
       options?: RequestOptions,
     ): Promise<AgentEditResult>;
     proposals(presentationId: string, options?: RequestOptions): Promise<PendingProposal[]>;
+    /**
+     * Approve a pending proposal.
+     *
+     * `expectedVersionId` is the version the approver was *shown*. Without it the
+     * authority refuses a deck that has moved since the proposal was made, because
+     * applying then means applying a change to something nobody reviewed. A
+     * surface that has the current deck on screen passes what it displayed.
+     */
     approve(
       presentationId: string,
       proposalId: string,
+      expectedVersionId?: string,
       options?: RequestOptions,
     ): Promise<AppliedChange>;
     reject(
