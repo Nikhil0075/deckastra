@@ -63,6 +63,18 @@ function frameDriver() {
         for (const callback of queued) callback(performance.now());
       });
     },
+    /**
+     * Run the frame *without* letting React re-render.
+     *
+     * `act` flushes state, which is exactly what a real quick drag does not do:
+     * the pointer comes up in the same frame as the last move, before React has
+     * re-rendered. Every test that flushed first passed while the product
+     * committed nothing.
+     */
+    flushWithoutRender() {
+      const queued = pending.splice(0, pending.length);
+      for (const callback of queued) callback(performance.now());
+    },
     get queued() {
       return pending.length;
     },
@@ -150,7 +162,7 @@ describe("dragging a clip", () => {
     fireEvent.pointerUp(bar(), { pointerId: 1 });
     expect(onCommit).toHaveBeenCalledTimes(1);
     const gesture = onCommit.mock.calls[0]![0] as TimelineGesture;
-    expect(gesture.kind).toBe("move");
+    if (gesture.kind === "keyframe") throw new Error("expected a clip move");
     // 200 + 120.6, rounded exactly once at the end rather than per frame.
     expect(gesture.startMs).toBe(321);
     expect(Number.isInteger(gesture.durationMs)).toBe(true);
@@ -199,6 +211,7 @@ describe("dragging a clip", () => {
     fireEvent.pointerUp(bar(), { pointerId: 1 });
 
     const gesture = onCommit.mock.calls[0]![0] as TimelineGesture;
+    if (gesture.kind === "keyframe") throw new Error("expected a trim");
     expect(gesture.kind).toBe("trim");
     expect(gesture.startMs).toBe(200);
     expect(gesture.durationMs).toBe(504);
@@ -215,7 +228,107 @@ describe("dragging a clip", () => {
     frames.flush();
     fireEvent.pointerUp(bar(), { pointerId: 1 });
 
-    expect((onCommit.mock.calls[0]![0] as TimelineGesture).ripple).toBe(true);
+    const rippled = onCommit.mock.calls[0]![0] as TimelineGesture;
+    if (rippled.kind === "keyframe") throw new Error("expected a trim");
+    expect(rippled.ripple).toBe(true);
+  });
+
+  it("drags one keyframe without moving the clip under it", () => {
+    // The failure this guards is specific: a keyframe drag that also repositioned
+    // the bar would slide the clip out from under the handle being aimed at.
+    sizeTheLane();
+    const frames = frameDriver();
+    const onCommit = vi.fn();
+
+    render(
+      <TimelineLanes
+        view={view}
+        selectedClipId="clp_1"
+        playheadMs={0}
+        onSelect={() => {}}
+        onCommit={onCommit}
+        keyframes={{
+          clipId: "clp_1",
+          durationMs: 400,
+          tracks: [
+            {
+              property: "opacity",
+              keyframes: [
+                { offset: 0, value: 0 },
+                { offset: 1, value: 1 },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    const handle = screen.getByRole("slider", { name: /opacity keyframe at 0 milliseconds/ });
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 200 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 300 });
+    frames.flush();
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    const gesture = onCommit.mock.calls[0]![0] as TimelineGesture;
+    if (gesture.kind !== "keyframe") throw new Error("expected a keyframe gesture");
+    expect(gesture.property).toBe("opacity");
+    expect(gesture.fromOffset).toBe(0);
+    // A lane where one pixel is one millisecond: 100px from an offset of 0.
+    expect(gesture.toMs).toBe(100);
+  });
+
+  it("clamps a keyframe to its own clip", () => {
+    // A keyframe outside its clip is not an earlier keyframe; it is an offset
+    // the schema refuses.
+    sizeTheLane();
+    const frames = frameDriver();
+    const onCommit = vi.fn();
+
+    render(
+      <TimelineLanes
+        view={view}
+        selectedClipId="clp_1"
+        playheadMs={0}
+        onSelect={() => {}}
+        onCommit={onCommit}
+        keyframes={{
+          clipId: "clp_1",
+          durationMs: 400,
+          tracks: [{ property: "opacity", keyframes: [{ offset: 0, value: 0 }] }],
+        }}
+      />,
+    );
+
+    const handle = screen.getByRole("slider", { name: /opacity keyframe/ });
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 200 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: -500 });
+    frames.flush();
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+
+    const gesture = onCommit.mock.calls[0]![0] as TimelineGesture;
+    if (gesture.kind !== "keyframe") throw new Error("expected a keyframe gesture");
+    expect(gesture.toMs).toBe(0);
+  });
+
+  it("commits a drag that ends before React has re-rendered", () => {
+    // The regression. `finish` read the preview from state, so a pointer-up
+    // landing in the same frame as the last move saw a handler still closed over
+    // null and wrote nothing — a short, fast nudge, which is the common gesture.
+    sizeTheLane();
+    const frames = frameDriver();
+    const onCommit = vi.fn();
+    mount(onCommit);
+
+    fireEvent.pointerDown(bar(), { pointerId: 1, clientX: 300 });
+    fireEvent.pointerMove(bar(), { pointerId: 1, clientX: 450 });
+    frames.flushWithoutRender();
+    fireEvent.pointerUp(bar(), { pointerId: 1 });
+
+    expect(onCommit).toHaveBeenCalledTimes(1);
+    const gesture = onCommit.mock.calls[0]![0] as TimelineGesture;
+    if (gesture.kind === "keyframe") throw new Error("expected a clip move");
+    expect(gesture.startMs).toBe(350);
   });
 
   it("selects on a plain click, without a drag", () => {

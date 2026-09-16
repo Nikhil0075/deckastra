@@ -552,6 +552,72 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
     );
   }
 
+  // --- keyframe handles, which only exist once the preset is opened
+  record.openedKeyframes = await window.webContents.executeJavaScript(clickButton("Open keyframes"));
+  const HANDLE = "[role=\"slider\"]";
+  if (!(await until(window, `document.querySelector('${HANDLE}') !== null`))) {
+    throw new Error("Opening the preset produced no keyframe handles.");
+  }
+
+  record.keyframeDrag = await window.webContents.executeJavaScript(`(async () => {
+    const handles = () => [...document.querySelectorAll('${HANDLE}')];
+    const before = handles().map((one) => one.getAttribute("aria-valuenow"));
+    const handle = handles()[0];
+    const box = handle.getBoundingClientRect();
+    const y = box.top + box.height / 2;
+    const send = (type, x) => handle.dispatchEvent(new PointerEvent(type, {
+      pointerId: 2, bubbles: true, cancelable: true, clientX: x, clientY: y,
+    }));
+
+    const barBefore = document.querySelector('${BAR}').title;
+    send("pointerdown", box.left + box.width / 2);
+    send("pointermove", box.left + box.width / 2 + 120);
+    await new Promise((r) => requestAnimationFrame(r));
+    // What the surface says it is doing. Empty here means the gesture never
+    // started, which is a different bug from one that started and committed
+    // nothing — and the two took a while to tell apart.
+    const readout = [...document.querySelectorAll("p")]
+      .map((one) => one.textContent)
+      .filter((text) => text && text.indexOf("keyframe at") >= 0);
+    send("pointerup", box.left + box.width / 2 + 120);
+
+    // Polled, not read once. A commit goes through React state and a document
+    // update, and neither has flushed by the next frame — reading immediately
+    // reports "nothing changed" about a change that is on its way.
+    const changed = async () => {
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        await new Promise((r) => setTimeout(r, 50));
+        const now = handles().map((one) => one.getAttribute("aria-valuenow"));
+        if (JSON.stringify(now) !== JSON.stringify(before)) return now;
+      }
+      return handles().map((one) => one.getAttribute("aria-valuenow"));
+    };
+    const settled = await changed();
+
+    return {
+      readout,
+      before,
+      after: settled,
+      barBefore,
+      barAfter: document.querySelector('${BAR}').title,
+    };
+  })()`);
+
+  const keyframes = record.keyframeDrag as {
+    before: string[];
+    after: string[];
+    barBefore: string;
+    barAfter: string;
+  };
+  if (JSON.stringify(keyframes.before) === JSON.stringify(keyframes.after)) {
+    throw new Error("Dragging a keyframe handle changed nothing: " + JSON.stringify(keyframes));
+  }
+  // The clip must not have moved with it. A keyframe drag that also slid the bar
+  // would take the clip out from under the handle being aimed at.
+  if (keyframes.barBefore !== keyframes.barAfter) {
+    throw new Error("Dragging a keyframe moved the clip too: " + keyframes.barAfter);
+  }
+
   await capture(window, join(smokeDir()!, "timeline.png"));
 }
 

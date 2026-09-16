@@ -1421,10 +1421,24 @@ carries no `clientX`, which looks exactly like a component ignoring the pointer)
 the gesture exists and guarded, which is better anyway — and `vi.unstubAllGlobals`
 inside one test removes a polyfill every later test needed.
 
-**Not done:** keyframes are a list, not handles on the bar. Dragging one wants the
-same coalesced, commit-on-pointer-up machinery the bars have, and a second
-simpler drag on the same surface would be two behaviours an author has to tell
-apart by pixel.
+**Keyframes are handles on the bar**, in a layer *over* the bars rather than
+inside them. A bar clips its own content so a long label does not spill into the
+next clip, which also clipped the handles at offset 0 and 1 — the two an author
+reaches for most. As siblings they are outside the bar's own gesture too, so a
+keyframe drag needs no propagation games to avoid starting a clip drag.
+
+**The in-flight gesture lives in a ref, not in state**, and that distinction is
+load-bearing. `setPreview` does not apply until React re-renders, so a
+pointer-up landing in the same frame as the last move read a handler still closed
+over the *previous* value — `null` on a quick drag — and committed nothing. A
+short, fast nudge is the common gesture, and it was silently doing nothing while
+every unit test passed, because a test flushes a frame before letting go and
+React has re-rendered by then. State draws; the ref commits. The regression test
+drives the frame *without* `act`, and was checked against the old component
+before being trusted.
+
+That bug is the argument for the acceptance step: nine tests over the drag
+surface did not find it, and one drag in the app did.
 
 ### A transition is between two slides, so it keeps its own clock
 

@@ -11,6 +11,7 @@ import {
   buildTimelineView,
   clipPatchOperations,
   compileTimeline,
+  moveKeyframeOperations,
   motionThemeOf,
   openPresetOperations,
   removeKeyframeOperations,
@@ -117,6 +118,19 @@ export function MotionPanel({
     if (!slide || !clip || !sourceClip) return;
     const track = slide.animations?.find((one) => one.id === gesture.trackId);
     if (!track) return;
+
+    if (gesture.kind === "keyframe") {
+      const result = moveKeyframeOperations(
+        slide.id,
+        { ...sourceClip, trackId: clip.trackId },
+        gesture.property,
+        gesture.fromOffset,
+        gesture.toMs,
+      );
+      setNotice(result.warning ?? null);
+      if (result.operations.length > 0) apply(result.operations, "Move keyframe");
+      return;
+    }
 
     if (gesture.kind === "move") {
       apply(
@@ -349,6 +363,15 @@ export function MotionPanel({
 
           <TimelineLanes
             view={view}
+            keyframes={
+              sourceClip?.propertyTracks?.length && clip
+                ? {
+                    clipId: clip.id,
+                    durationMs: sourceClip.durationMs,
+                    tracks: sourceClip.propertyTracks,
+                  }
+                : null
+            }
             selectedClipId={selectedClip}
             playheadMs={playheadMs}
             onSelect={setSelectedClip}

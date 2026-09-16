@@ -32,15 +32,34 @@ import { MIN_CLIP_MS, type TimelineView } from "@deckastra/animation-engine";
 /** How close to a bar's edge counts as grabbing the edge rather than the body. */
 const EDGE_PX = 8;
 
-export interface TimelineGesture {
-  kind: "move" | "trim";
+export type TimelineGesture =
+  | {
+      kind: "move" | "trim";
+      clipId: string;
+      trackId: string;
+      /** Where the clip would land, in absolute slide milliseconds. */
+      startMs: number;
+      durationMs: number;
+      /** Whether subsequent clips on the track should follow a trim. */
+      ripple: boolean;
+    }
+  | {
+      /** One keyframe, moved along its own clip. */
+      kind: "keyframe";
+      clipId: string;
+      trackId: string;
+      property: string;
+      /** Which keyframe: its offset before the drag, which is its identity. */
+      fromOffset: number;
+      /** Where it lands, in milliseconds from the clip's own start. */
+      toMs: number;
+    };
+
+/** The source keyframes of one clip, for drawing handles on its bar. */
+export interface ClipKeyframes {
   clipId: string;
-  trackId: string;
-  /** Where the clip would land, in absolute slide milliseconds. */
-  startMs: number;
   durationMs: number;
-  /** Whether subsequent clips on the track should follow a trim. */
-  ripple: boolean;
+  tracks: { property: string; keyframes: { offset: number; value: unknown }[] }[];
 }
 
 export interface TimelineLanesProps {
@@ -50,6 +69,14 @@ export interface TimelineLanesProps {
   onSelect: (clipId: string) => void;
   /** Called once, on pointer-up, with the settled gesture. */
   onCommit: (gesture: TimelineGesture) => void;
+  /**
+   * Keyframes to draw on the selected clip's bar, when it has been opened.
+   *
+   * Only the selected one: a timeline showing every keyframe of every clip is a
+   * row of dots nobody can aim at, and the author has already said which clip
+   * they are working on by selecting it.
+   */
+  keyframes?: ClipKeyframes | null;
   onScrub?: (timeMs: number) => void;
 }
 
@@ -60,20 +87,36 @@ export function TimelineLanes({
   onSelect,
   onCommit,
   onScrub,
+  keyframes = null,
 }: TimelineLanesProps) {
   const [preview, setPreview] = useState<TimelineGesture | null>(null);
+  /**
+   * The same gesture, in a ref.
+   *
+   * State is for drawing; this is for committing. `setPreview` does not apply
+   * until React re-renders, so a pointer-up that lands in the same frame as the
+   * last move reads a handler still closed over the *previous* value — `null` on
+   * a quick drag — and commits nothing. That is not a rare race: a short, fast
+   * drag is the common way to nudge a keyframe, and it was silently doing
+   * nothing while every unit test passed, because a test flushes a frame before
+   * letting go and React has re-rendered by then.
+   */
+  const latest = useRef<TimelineGesture | null>(null);
   const surface = useRef<HTMLDivElement>(null);
 
   // What the gesture started from. Held in a ref because the pointer handlers
   // outlive any one render and must not read a stale closure.
   const origin = useRef<{
-    kind: "move" | "trim";
+    kind: "move" | "trim" | "keyframe";
     clipId: string;
     trackId: string;
     startMs: number;
     durationMs: number;
     clientX: number;
     pixelsPerMs: number;
+    /** Set for a keyframe drag only. */
+    property?: string;
+    fromOffset?: number;
   } | null>(null);
 
   const pendingMove = useRef<number | null>(null);
@@ -96,8 +139,25 @@ export function TimelineLanes({
     if (!from) return;
 
     const deltaMs = (clientX - from.clientX) / from.pixelsPerMs;
+
+    if (from.kind === "keyframe") {
+      const startedAtMs = (from.fromOffset ?? 0) * from.durationMs;
+      latest.current = {
+        kind: "keyframe",
+        clipId: from.clipId,
+        trackId: from.trackId,
+        property: from.property!,
+        fromOffset: from.fromOffset!,
+        // Clamped to the clip: a keyframe outside its own clip is not an
+        // earlier keyframe, it is an offset the schema refuses.
+        toMs: Math.min(from.durationMs, Math.max(0, startedAtMs + deltaMs)),
+      };
+      setPreview(latest.current);
+      return;
+    }
+
     if (from.kind === "move") {
-      setPreview({
+      latest.current = {
         kind: "move",
         clipId: from.clipId,
         trackId: from.trackId,
@@ -106,18 +166,20 @@ export function TimelineLanes({
         startMs: Math.max(0, from.startMs + deltaMs),
         durationMs: from.durationMs,
         ripple: false,
-      });
+      };
+      setPreview(latest.current);
       return;
     }
 
-    setPreview((current) => ({
+    latest.current = {
       kind: "trim",
       clipId: from.clipId,
       trackId: from.trackId,
       startMs: from.startMs,
       durationMs: Math.max(MIN_CLIP_MS, from.durationMs + deltaMs),
       ripple: rippling.current,
-    }));
+    };
+    setPreview(latest.current);
   }, []);
 
   const onPointerMove = useCallback(
@@ -146,7 +208,8 @@ export function TimelineLanes({
         moveFrame.current = null;
       }
       pendingMove.current = null;
-      const settled = preview;
+      const settled = latest.current;
+      latest.current = null;
       origin.current = null;
       setPreview(null);
 
@@ -154,14 +217,19 @@ export function TimelineLanes({
       // is a click that wobbled, not a drag, and committing it would put a
       // pointless entry in the history.
       if (!commit || !settled) return;
-      const rounded: TimelineGesture = {
-        ...settled,
-        startMs: Math.round(settled.startMs),
-        durationMs: Math.round(settled.durationMs),
-      };
-      onCommit(rounded);
+      onCommit(
+        settled.kind === "keyframe"
+          ? { ...settled, toMs: Math.round(settled.toMs) }
+          : {
+              ...settled,
+              startMs: Math.round(settled.startMs),
+              durationMs: Math.round(settled.durationMs),
+            },
+      );
     },
-    [onCommit, preview],
+    // No dependency on the preview *state*: reading it here is what made a quick
+    // drag commit nothing.
+    [onCommit],
   );
 
   const beginGesture = (
@@ -202,6 +270,45 @@ export function TimelineLanes({
     onSelect(bar.clipId);
   };
 
+  /**
+   * Start dragging one keyframe.
+   *
+   * The handles live in a layer over the bars rather than inside them, so this
+   * cannot start a clip drag by accident and needs no propagation games. The
+   * width comes from the *lane*, same as a clip drag, so a millisecond is the
+   * same distance whichever of the two is being moved — anything else makes the
+   * finer gesture the coarser one.
+   */
+  const beginKeyframe = (
+    event: React.PointerEvent,
+    bar: TimelineView["lanes"][number]["bars"][number],
+    property: string,
+    offset: number,
+    durationMs: number,
+  ) => {
+    const lane = (event.currentTarget as HTMLElement).closest("[data-lane-track]");
+    const width = lane?.getBoundingClientRect().width ?? 0;
+    if (width <= 0 || view.durationMs <= 0) return;
+
+    origin.current = {
+      kind: "keyframe",
+      clipId: bar.clipId,
+      trackId: bar.trackId,
+      startMs: bar.startMs,
+      durationMs,
+      clientX: event.clientX,
+      pixelsPerMs: width / view.durationMs,
+      property,
+      fromOffset: offset,
+    };
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // Same reasoning as a clip drag: capture is an enhancement.
+    }
+    onSelect(bar.clipId);
+  };
+
   const scale = view.durationMs > 0 ? 100 / view.durationMs : 0;
 
   return (
@@ -211,9 +318,15 @@ export function TimelineLanes({
           <span style={laneLabel} title={lane.label}>
             {lane.label}
           </span>
-          <div style={laneTrack}>
+          <div style={laneTrack} data-lane-track="">
             {lane.bars.map((bar) => {
-              const dragged = preview?.clipId === bar.clipId ? preview : null;
+              // Only a clip gesture moves the bar. A keyframe drag happens
+              // *inside* it, and letting it reposition the bar would slide the
+              // whole clip under the handle the author is aiming at.
+              const dragged =
+                preview && preview.clipId === bar.clipId && preview.kind !== "keyframe"
+                  ? preview
+                  : null;
               const startMs = dragged ? dragged.startMs : bar.startMs;
               const durationMs = dragged ? dragged.durationMs : bar.endMs - bar.startMs;
 
@@ -257,19 +370,82 @@ export function TimelineLanes({
                 >
                   {bar.label}
                   <span aria-hidden style={trimHandle} />
+
                 </div>
               );
             })}
+            {/*
+              A layer over the bars, not inside them.
+              -------------------------------------
+              The bar clips its own content (`overflow: hidden`) so a long label
+              does not spill into the next clip — which also clipped the handles
+              at offset 0 and 1, the two an author reaches for most, and made
+              them unhittable rather than merely half-drawn. As siblings they are
+              also outside the bar's own gesture, so a keyframe drag needs no
+              propagation games to avoid starting a clip drag.
+            */}
+            {keyframes
+              ? lane.bars
+                  .filter((bar) => bar.clipId === keyframes.clipId)
+                  .map((bar) => (
+                    <div
+                      key={`kf-${bar.clipId}`}
+                      style={{
+                        position: "absolute",
+                        left: `${bar.startMs * scale}%`,
+                        width: `${Math.max(1.5, (bar.endMs - bar.startMs) * scale)}%`,
+                        top: 0,
+                        height: 20,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {keyframes.tracks.flatMap((track) =>
+                        track.keyframes.map((frame) => {
+                          const held =
+                            preview?.kind === "keyframe" &&
+                            preview.property === track.property &&
+                            preview.fromOffset === frame.offset;
+                          const at = held
+                            ? preview.toMs / Math.max(1, keyframes.durationMs)
+                            : frame.offset;
+
+                          return (
+                            <span
+                              key={`${track.property}:${frame.offset}`}
+                              role="slider"
+                              tabIndex={0}
+                              aria-label={`${track.property} keyframe at ${Math.round(frame.offset * keyframes.durationMs)} milliseconds`}
+                              aria-valuenow={Math.round(at * keyframes.durationMs)}
+                              aria-valuemin={0}
+                              aria-valuemax={Math.round(keyframes.durationMs)}
+                              title={`${track.property} · ${Math.round(at * keyframes.durationMs)}ms · drag to move`}
+                              onPointerDown={(event) =>
+                                beginKeyframe(event, bar, track.property, frame.offset, keyframes.durationMs)
+                              }
+                              onPointerMove={onPointerMove}
+                              onPointerUp={() => finish(true)}
+                              onPointerCancel={() => finish(false)}
+                              onLostPointerCapture={() => finish(false)}
+                              style={{ ...keyframeHandle, left: `calc(${at * 100}% - 3px)` }}
+                            />
+                          );
+                        }),
+                      )}
+                    </div>
+                  ))
+              : null}
           </div>
         </div>
       ))}
 
       {preview ? (
         <p aria-live="polite" style={readout}>
-          {preview.kind === "move"
-            ? `Start ${Math.round(preview.startMs)}ms`
-            : `Length ${Math.round(preview.durationMs)}ms`}
-          {preview.ripple ? " · later clips follow" : ""}
+          {preview.kind === "keyframe"
+            ? `${preview.property} keyframe at ${Math.round(preview.toMs)}ms`
+            : preview.kind === "move"
+              ? `Start ${Math.round(preview.startMs)}ms`
+              : `Length ${Math.round(preview.durationMs)}ms`}
+          {preview.kind !== "keyframe" && preview.ripple ? " · later clips follow" : ""}
         </p>
       ) : null}
 
@@ -337,6 +513,21 @@ const trimHandle: CSSProperties = {
   bottom: 0,
   width: EDGE_PX,
   cursor: "ew-resize",
+};
+
+const keyframeHandle: CSSProperties = {
+  position: "absolute",
+  // The layer above is `pointer-events: none` so it never swallows a click
+  // meant for the bar; the handles themselves opt back in.
+  pointerEvents: "auto",
+  top: 2,
+  width: 6,
+  height: 12,
+  borderRadius: 2,
+  background: "var(--accent-fg, #fff)",
+  border: "1px solid var(--accent, #4CC2FF)",
+  cursor: "ew-resize",
+  touchAction: "none",
 };
 
 const readout: CSSProperties = {
