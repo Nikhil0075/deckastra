@@ -946,22 +946,23 @@ def mark_reconciled(
         require=Role.EDITOR,
     )
 
-    state = sync.status(session, presentation_id)
-    if state.state != "diverged":
-        raise HTTPException(
-            status_code=409,
-            detail="That deck has not diverged, so there is nothing to reconcile.",
-        )
-
     version = session.get(PresentationVersion, request.resolving_version_id)
     if version is None or version.presentation_id != presentation_id:
         raise HTTPException(
             status_code=404, detail="That version is not part of this deck's history."
         )
 
-    retired = sync.reconciled(
-        session, presentation_id, resolving_version_id=request.resolving_version_id
-    )
+    # Belonging to the deck is necessary and nowhere near sufficient — the
+    # pre-divergence version belongs to the deck too, and accepting it retired
+    # the whole queue while answering "in sync" (found by review, 2026-09-16).
+    # `sync.reconciled` holds the real rule, because the rule is about the
+    # outbox rather than about the version table.
+    try:
+        retired = sync.reconciled(
+            session, presentation_id, resolving_version_id=request.resolving_version_id
+        )
+    except sync.NotAResolution as refusal:
+        raise HTTPException(status_code=409, detail=str(refusal)) from refusal
     return {
         "presentation_id": presentation_id,
         "retired": retired,

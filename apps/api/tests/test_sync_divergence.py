@@ -34,6 +34,7 @@ from deckastra_api.db.models import SyncOutboxRow, Workspace  # noqa: E402
 @pytest.fixture()
 def client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'diverge.db'}")
+    monkeypatch.setenv("DECKASTRA_ASSET_DIR", str(tmp_path / "assets"))
     monkeypatch.delenv("DECKASTRA_LOCAL_MODE", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     db_session.reset_engine()
@@ -467,3 +468,133 @@ def test_a_transport_failure_after_a_resolution_is_still_only_a_retry(client, di
             session, lambda outgoing: "ver_remote", now=lambda: start + timedelta(minutes=5)
         )
     assert report.sent == 1
+
+
+# ------------------------------------------- what an acknowledgement may retire
+
+
+def test_an_old_version_cannot_acknowledge_away_unsent_work(client, diverged):
+    """Found by review, 2026-09-16, and the worst of the three.
+
+    `mark_reconciled` checked only that the version belonged to the deck. The
+    version from *before* the divergence belongs to the deck, so handing it back
+    — with no merge made and nothing resolved — retired the whole queue and
+    answered `in_sync`. The changes are still in the local document, which is
+    what makes it so bad: nothing looks wrong, and the work is simply no longer
+    owed to anyone.
+    """
+    me, deck = diverged["who"], diverged["deck"]
+
+    before = head_of(client, me, deck)["version_id"]
+    # The deck's very first version — genuinely part of its history, and
+    # resolving nothing.
+    versions = client.get(f"/v1/presentations/{deck}/versions", headers=headers(me)).json()
+    original = versions[-1]["id"]
+
+    refused = reconcile(client, me, deck, original)
+
+    assert refused.status_code == 409, refused.text
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+        assert len(sync.pending_for(session, deck)) == 1
+    assert sync_status(client, me, deck)["state"] == "diverged"
+    assert head_of(client, me, deck)["version_id"] == before
+
+
+def test_an_edit_made_after_the_merge_is_still_owed(client, diverged):
+    """Found by review, 2026-09-16.
+
+    The queue is retired at the moment of acknowledgement, but the merge happened
+    earlier — and between the two, a person can type, another window can save, an
+    MCP client can apply a low-risk change. Those are not incorporated by a merge
+    that predates them, and retiring them discards work nobody reviewed.
+
+    The boundary is the resolving change, not "everything queued when the
+    acknowledgement arrived".
+    """
+    me, deck = diverged["who"], diverged["deck"]
+
+    merged = retitle(client, me, deck, "Resolved")
+    assert merged.status_code == 200, merged.text
+    # ... and then life goes on, before anyone gets round to acknowledging.
+    later = retitle(client, me, deck, "Typed afterwards")
+    assert later.status_code == 200, later.text
+
+    answer = reconcile(client, me, deck, merged.json()["version_id"])
+    assert answer.status_code == 200, answer.text
+
+    sent: list[str] = []
+    with db_session.session_scope() as session:
+        sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "ver")[1])
+
+    assert "Retitle to Typed afterwards" in sent, "an edit after the merge was retired"
+    assert "Retitle to Resolved" in sent
+
+
+def test_the_pictures_a_merged_deck_still_needs_are_not_retired(client, diverged):
+    """Found by review, 2026-09-16.
+
+    An `asset` row is bytes the server has never received, not a change the merge
+    could have incorporated. Retiring one leaves the reconciled document citing a
+    picture that will never be uploaded — the deck arrives whole for its author
+    and broken for everyone else, which is the failure D5.5 exists to prevent.
+    """
+    from deckastra_api import object_storage
+    from deckastra_api.db.models import Asset
+    from deckastra_api.ids import new_id
+
+    me, deck = diverged["who"], diverged["deck"]
+
+    asset_id = new_id("ast")
+    with db_session.session_scope() as session:
+        workspace_id = session.scalar(
+            __import__("sqlalchemy").select(Workspace.id).where(Workspace.name == "Acme")
+        )
+        key = f"workspaces/{workspace_id}/assets/{asset_id}.png"
+        object_storage.put_local(key, b"not really a png", "image/png")
+        session.add(
+            Asset(
+                id=asset_id,
+                workspace_id=workspace_id,
+                created_by=me["user_id"],
+                kind="image",
+                storage_key=key,
+                filename="pixel.png",
+                content_type="image/png",
+                bytes=16,
+            )
+        )
+
+    opened = head_of(client, me, deck)
+    slide_id = opened["document"]["slides"][0]["id"]
+    placed = client.post(
+        f"/v1/presentations/{deck}/transactions",
+        headers=headers(me),
+        json={
+            "expected_version_id": opened["version_id"],
+            "intent": "Place the picture",
+            "operations": [
+                {
+                    "op": "add",
+                    "path": f"/slides/id:{slide_id}/elements/-",
+                    "value": {
+                        "id": new_id("el"),
+                        "type": "image",
+                        "assetId": asset_id,
+                        "transform": {"x": 1, "y": 1, "width": 10, "height": 10},
+                    },
+                }
+            ],
+        },
+    )
+    assert placed.status_code == 200, placed.text
+
+    merged = retitle(client, me, deck, "Resolved with the picture still on it")
+    answer = reconcile(client, me, deck, merged.json()["version_id"])
+    assert answer.status_code == 200, answer.text
+
+    sent: list[str] = []
+    with db_session.session_scope() as session:
+        sync.drain(session, lambda outgoing: (sent.append(outgoing.kind), "ver")[1])
+
+    assert "asset" in sent, "the bytes the merged deck still cites were retired"

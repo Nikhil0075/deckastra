@@ -81,6 +81,18 @@ class LlamaServerClient:
         # Injected by tests; nothing in the product passes one.
         self._transport = transport
 
+    def retarget(self, base_url: str) -> None:
+        """Point at a runtime that has been restarted somewhere else.
+
+        A supervised runtime picks a free port each time it starts, so a client
+        that outlives an idle shutdown holds an address nothing answers on — and
+        the next generation fails with "the local model server is not answering"
+        on a machine where it is. The supervisor knows the new address; this is
+        how it says so, rather than the wrapper reaching into an attribute it
+        does not own.
+        """
+        self.base_url = base_url.rstrip("/")
+
     def _client(self, timeout: float):
         import httpx
 

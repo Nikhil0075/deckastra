@@ -291,3 +291,73 @@ def test_a_cloud_install_starts_nothing(monkeypatch):
     model_server.build_client()
 
     assert model_server._process is None
+
+
+def test_one_long_request_is_not_reaped_out_from_under_itself(local_install, monkeypatch):
+    """The half of the idle bug that the test above does not catch.
+
+    `test_using_a_model_keeps_it_loaded` drives *repeated short* calls, and every
+    one of them touches the supervisor on the way in — so the window never
+    elapses between touches and the test passes on a runtime that is never
+    actually left alone mid-request.
+
+    A real generation is the opposite shape: **one** call lasting minutes. The
+    supervisor was told at the start and heard nothing again, so the window ran
+    down while the work was still going and the reaper stopped the runtime the
+    caller was talking to. That is the same failure the four benchmark crashes
+    were, surviving the fix that was supposed to end it — found by review, 2026-09-16.
+
+    Driven through a slow inner client rather than a slow runtime, because the
+    bug is in the wrapper's relationship with the reaper and nothing about it
+    involves HTTP.
+    """
+    monkeypatch.setenv(model_server.IDLE_ENV, "1")
+    model_server.ensure_ready()
+    started = model_server._process
+    assert started is not None
+
+    class Slow:
+        def complete(self, request, budget):
+            # Comfortably past the idle window, as one story plan is past ten
+            # minutes on the hardware D3 measured.
+            time.sleep(1.6)
+            return "answered"
+
+    kept = model_server._KeptAlive(Slow())
+    assert kept.complete(object(), object()) == "answered"
+
+    assert model_server._process is started, "the runtime was stopped during an active request"
+    assert started.poll() is None, "the runtime process exited while it was answering"
+
+
+def test_a_client_kept_across_an_idle_shutdown_still_reaches_the_new_runtime(
+    local_install, monkeypatch
+):
+    """A restart comes back on a different port.
+
+    `ensure_ready()` answers with the URL for exactly this reason, and the
+    wrapper discarded it — so a client that outlived one idle shutdown went on
+    addressing a port nothing was listening on, and the next generation failed
+    with "the local model server is not answering" on a machine where it was.
+    """
+    monkeypatch.setenv(model_server.IDLE_ENV, "1")
+    client = model_server.build_client()
+    first_url = model_server._base_url
+    assert first_url is not None
+
+    # Left alone long enough to be unloaded, the way a session goes quiet.
+    deadline = time.monotonic() + 4
+    while time.monotonic() < deadline and model_server._process is not None:
+        time.sleep(0.1)
+    assert model_server._process is None, "the idle runtime should have been unloaded"
+
+    from deckastra_agents.budgets import RunBudget
+    from deckastra_agents.router import ModelRequest
+
+    answer = client.complete(
+        ModelRequest(task_type="fast", system="s", messages=[{"role": "user", "content": "go"}]),
+        RunBudget(),
+    )
+
+    assert answer is not None
+    assert model_server._base_url != first_url, "a restart should take a fresh port"

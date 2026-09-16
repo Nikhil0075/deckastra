@@ -75,6 +75,10 @@ _base_url: str | None = None
 _pack_id: str | None = None
 _stderr: deque[str] = deque(maxlen=STDERR_LINES)
 _last_used: float = 0.0
+#: How many requests are in flight. A runtime with work going through it is not
+#: idle however long ago the work started, and the idle window is measured from
+#: when the last one *finished* rather than when it began.
+_active: int = 0
 _reaper: threading.Thread | None = None
 
 
@@ -182,6 +186,14 @@ def _reap() -> None:
         with _lock:
             if _process is None:
                 return
+            if _active:
+                # Busy is not idle. Touching `_last_used` at the *start* of a
+                # request is not enough on its own: one generation outlasts the
+                # window, so the timer ran down while the work was still going
+                # and this stopped the runtime the caller was talking to. Keep
+                # waiting rather than returning — the request will finish, and
+                # the window should start from then.
+                continue
             if time.monotonic() - _last_used > _idle_seconds():
                 _stop_locked("idle")
                 return
@@ -285,8 +297,35 @@ class _KeptAlive:
         self._inner = inner
 
     def complete(self, request, budget):
-        ensure_ready()
-        return self._inner.complete(request, budget)
+        # Three things, and the first version of this did only the first.
+        #
+        # `ensure_ready` answers with the URL, which matters because a restart
+        # comes back on a *different port*: a client that outlived one idle
+        # shutdown went on addressing a port nothing was listening on, and the
+        # next generation failed with "the local model server is not answering"
+        # on a machine where it was.
+        base_url = ensure_ready()
+        retarget = getattr(self._inner, "retarget", None)
+        if retarget is not None:
+            retarget(base_url)
+
+        # Registering the request is what "in use" actually means. Refreshing the
+        # timer on the way in leaves the window running down *during* the call,
+        # which is how the four benchmark crashes happened and how they went on
+        # happening after the fix that was supposed to end them (found by review,
+        # 2026-09-16). One story plan is minutes; the window is ten.
+        global _last_used, _active
+        with _lock:
+            _active += 1
+        try:
+            return self._inner.complete(request, budget)
+        finally:
+            # In a `finally`, so a refusal or a cancellation releases the runtime
+            # as surely as an answer does — a model held busy by an exception is
+            # a model that never unloads.
+            with _lock:
+                _active -= 1
+                _last_used = time.monotonic()
 
 
 def build_client(fallback=None) -> ModelClient:

@@ -348,6 +348,20 @@ def test_a_log_replays_to_the_same_document(replayed):
     ]
     assert cloud["slides"] == device["slides"]
 
+    # The **whole** document, not only the slides. Comparing slides alone was
+    # what this originally did, and it would have passed while theme, viewport,
+    # metadata or extensions drifted — which is most of what a `.mydeck` file is,
+    # and all of it replayed by the same operations (found by review,
+    # 2026-09-16).
+    assert cloud == device
+
+    # And byte-identical in the canonical form, which is the property that makes
+    # content hashing and version diffing mean anything (`serializeDocument`).
+    # Deeply equal documents serialise identically, so the check here is that
+    # nothing survived replay as an equal-but-differently-shaped value — a tuple
+    # where a list was, a key order the applier invented.
+    assert json.dumps(cloud, sort_keys=True) == json.dumps(device, sort_keys=True)
+
 
 def test_the_order_of_operations_is_the_document(tmp_path, monkeypatch):
     """Replaying out of order is not a slower sync, it is a different deck.

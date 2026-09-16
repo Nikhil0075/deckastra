@@ -555,6 +555,10 @@ def remote_document(session: Session, presentation_id: str) -> dict[str, Any] | 
     return blocked.remote_document_json if blocked is not None else None
 
 
+class NotAResolution(Exception):
+    """The version offered does not resolve this deck's divergence (D5.3)."""
+
+
 def reconciled(
     session: Session, presentation_id: str, *, resolving_version_id: str
 ) -> int:
@@ -565,17 +569,36 @@ def reconciled(
     other edit. That commit enqueues itself normally. This then retires what it
     replaced.
 
-    Everything still queued for this deck is superseded, not only the refused
-    change: the merge was made from the local head, so it already contains the
-    effect of every change behind the block. Sending them afterwards would apply
-    each of them a second time — which for an array `add` is a duplicated element
-    nobody asked for.
+    **What it may retire is bounded by the resolving change**, and the first
+    version of this function got that wrong in three ways that a review found
+    (2026-09-16), each of them silent loss:
 
-    The resolving change's own row is the one thing spared, and that is the whole
-    subtlety of this function: superseding it would leave the reconciliation
-    itself stranded on this device, which is the exact failure the person just
-    did the work to avoid.
+    * It accepted any version belonging to the deck. The deck's own *pre-*
+      divergence version belongs to the deck, so handing that back — with no
+      merge made and nothing resolved — retired the whole queue and answered
+      "in sync". The work stayed in the local document, which is what made it so
+      bad: nothing looked wrong, and the changes were simply no longer owed to
+      anyone. A resolution must be a change that sits **after** the refusal.
+    * It retired everything queued at the moment of acknowledgement. But the
+      merge happened earlier, and between the two a person can type, another
+      window can save, an MCP client can apply a low-risk change. A merge cannot
+      incorporate work that did not exist when it was made, so the boundary is
+      the resolving change and not the wall clock.
+    * It retired queued **assets**. Bytes the server has never received are not a
+      change a merge could have incorporated, so retiring one leaves the
+      reconciled deck citing a picture that will never be uploaded — whole for
+      its author and broken for everyone else. They are never retired here. An
+      upload for a picture the merge removed is then sent needlessly, which costs
+      bytes once; the other way costs someone their image.
+
+    The resolving change's own row is spared, which is the older subtlety:
+    superseding it would strand the reconciliation on this device, the exact
+    failure the person just did the work to avoid.
     """
+    blocked = blocking_row(session, presentation_id)
+    if blocked is None:
+        raise NotAResolution("That deck has not diverged, so there is nothing to resolve.")
+
     resolving = session.scalar(
         select(SyncOutboxRow)
         .join(TransactionRow, TransactionRow.id == SyncOutboxRow.transaction_id)
@@ -584,19 +607,41 @@ def reconciled(
             TransactionRow.result_version_id == resolving_version_id,
         )
     )
+    if resolving is None:
+        raise NotAResolution(
+            "That version is not a change this device still owes the server, so it "
+            "cannot be the one that resolved the conflict. Commit the merged deck "
+            "first, then say which version it produced."
+        )
 
-    rows = list(
-        session.scalars(
-            select(SyncOutboxRow).where(
-                SyncOutboxRow.presentation_id == presentation_id,
-                SyncOutboxRow.status.in_(("pending", "blocked")),
-            )
+    def position(row: SyncOutboxRow) -> tuple:
+        return (row.created_at, row.id)
+
+    if position(resolving) <= position(blocked):
+        # A change made before the refusal cannot have resolved it — it is one of
+        # the things that needs resolving.
+        raise NotAResolution(
+            "That version predates the change the server refused, so it cannot be "
+            "the resolution. Merge the two versions, commit the result, and name "
+            "that version instead."
+        )
+
+    boundary = position(resolving)
+    rows = session.scalars(
+        select(SyncOutboxRow).where(
+            SyncOutboxRow.presentation_id == presentation_id,
+            SyncOutboxRow.status.in_(("pending", "blocked")),
         )
     )
 
     retired = 0
     for row in rows:
-        if resolving is not None and row.id == resolving.id:
+        if row.id == resolving.id:
+            continue
+        if row.kind == "asset":
+            continue
+        if position(row) > boundary:
+            # Later than the merge, so the merge did not contain it. Still owed.
             continue
         row.status = "superseded"
         # The remote snapshot has done its job. It is a whole document, and

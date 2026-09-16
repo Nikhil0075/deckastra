@@ -1217,6 +1217,21 @@ reading weights, so readiness is a poll of `/v1/models` rather than a bind.
 `build_client()` is the single entry point the three generation call sites use,
 because three sites each remembering to start a server is two that will not.
 
+**The idle fix was half a fix, and a review found the other half** (2026-09-16).
+`_KeptAlive` touched the supervisor on the way *in*, so the window still ran down
+*during* a call — and one story plan is minutes against a ten-minute window.
+Repeated short calls kept it alive and the regression test drove exactly those,
+so it passed on a runtime that was never left alone mid-request. The supervisor
+now counts requests in flight (`_active`), the reaper waits rather than stopping
+while any are, and the window is measured from when the last one **finished**,
+released in a `finally` so a refusal or a cancellation frees the runtime as
+surely as an answer. The second half: `ensure_ready()` returns the URL for a
+reason — a restart takes a fresh port, and the wrapper discarded it, so a client
+that outlived one idle shutdown addressed a port nothing was listening on and the
+next generation failed with "the local model server is not answering" on a
+machine where it was. `LlamaServerClient.retarget()` is how the supervisor says
+where it moved to.
+
 `scripts/install-model-pack.py` installs a pack, downloading it or taking
 `--from-file` when the bytes arrived another way, and verifying either against
 the size and sha256 HuggingFace publishes. It reads those off the **302 without
@@ -1286,8 +1301,11 @@ product with a conflict surface an order of magnitude larger.
 
 **The content answer is yes.** A log authored on one store, replayed in order
 onto a second store seeded from the same starting document, produces an identical
-deck — including operations that address elements *earlier operations in the same
-log created*, an array `move`, a `remove` whose inverse is index-addressed, an
+deck — compared as the whole document and in canonical key order, not only its
+slides, since theme, viewport, metadata and extensions are most of what a
+`.mydeck` file is and all of them replay through the same operations (tightened
+after review, 2026-09-16). That includes operations addressing elements *earlier
+operations in the same log created*, an array `move`, a `remove` whose inverse is index-addressed, an
 animation track, and a morph pairing two slides. That works because there is one
 API and one applier: the desktop and the cloud run the same `apps/api`, and
 `test_patch_conformance.py` already holds the two languages' appliers to one
@@ -1486,15 +1504,33 @@ documents; the editor merges, commits the result through the **ordinary
 transaction path** (one mutation path, ordinary undo, ordinary provenance); and
 `POST /presentations/{id}/sync/reconciled` says which version did it.
 
-That endpoint retires the refused change *and* everything queued behind it,
-because the merge was made from the local head and already contains their effect
-— sending them afterwards applies each a second time, which for an array `add` is
-a duplicated element nobody asked for. The resolving change's own row is the one
-thing spared, and that is the whole subtlety of the function: superseding it would
-strand the reconciliation on this device, which is the exact failure the person
-just did the work to avoid. A version that is not this deck's history is refused
-rather than accepted on trust, and retiring a queue needs editor rights — reading
-that a deck diverged is not deciding what happens to the work.
+That endpoint retires the refused change and what the merge incorporated, and
+**what it may retire is bounded by the resolving change itself**. A review found
+three ways the first version got that wrong (2026-09-16), each of them silent
+loss:
+
+- **It accepted any version belonging to the deck.** The deck's own
+  *pre-divergence* version belongs to the deck, so handing that back — no merge
+  made, nothing resolved — retired the whole queue and answered "in sync". The
+  work stayed in the local document, which is what made it so bad: nothing looked
+  wrong, and the changes were simply no longer owed to anyone. A resolution must
+  now be a change that is still owed *and* sits after the refusal.
+- **It retired everything queued at the moment of acknowledgement.** The merge
+  happened earlier, and between the two a person can type, another window can
+  save, an MCP client can apply a low-risk change. A merge cannot incorporate
+  work that did not exist when it was made, so the boundary is the resolving
+  change and not the wall clock.
+- **It retired queued assets.** Bytes the server has never received are not a
+  change a merge could have incorporated, so retiring one leaves the reconciled
+  deck citing a picture that will never be uploaded — whole for its author and
+  broken for everyone else. They are never retired. An upload for a picture the
+  merge removed is then sent needlessly, which costs bytes once; the other way
+  costs someone their image.
+
+The resolving change's own row is spared, which is the older subtlety: superseding
+it would strand the reconciliation on this device, the exact failure the person
+just did the work to avoid. Retiring a queue needs editor rights — reading that a
+deck diverged is not deciding what happens to the work.
 
 Two smaller decisions that decide how it reads. `state` is four values rather than
 a boolean, because "not in sync" covers two situations and only one needs a
@@ -1576,6 +1612,11 @@ something they can act on. `access` and `confirmed_at` ride on `AccountWorkspace
 for that. The resource-level refusals are unchanged: still 404, still identical
 to a stranger's, because that rule is about not confirming what exists to someone
 probing for it.
+
+None of this is a substitute for the server checking. A freshness window is an
+**offline policy** — what this device may do while it cannot ask — and a remote
+receiver must re-check current membership on every operation it accepts, because
+the only thing that knows whether someone is still a member is the authority.
 
 **Not done, and not claimed:** revoking a membership does not delete the decks.
 Bytes already on a device are already on the device, and quietly destroying
