@@ -1373,6 +1373,77 @@ mirroring yet, so nothing writes `origin = "cloud"` outside a test. Building a
 move dialog now would be UI for a state no user can reach; it lands with D5.2,
 which is also where the version-id decision D5.0 wrote down has to be made.
 
+### A change has a name, and the outbox owes it to somebody (D5.2)
+
+D5.0 left exactly one decision and this is it: **idempotency keys on a change
+key, not on a version id.** The alternative — letting a caller supply the
+`version_id` so the two chains become one — reads well until divergence, which is
+the case sync exists for. Two devices edit offline, one uploads first, and the
+second's change is applied behind it and lands at a *different version* than it
+did locally. A key naming the version is wrong the moment that happens, and the
+retry applies the change twice. A key naming the change survives being rebased,
+because it is the same change wherever it ends up.
+
+`transactions.change_key` is the receiving half, unique per presentation — a key
+only has to be unique where it is applied, and that is what lets two devices mint
+keys with no coordinator between them. `sync_outbox` is the sending half. Three
+rules, each structural rather than remembered:
+
+- **The outbox row is written in the same database transaction as the change it
+  describes.** `store.commit_transaction` writes the version, the transaction and
+  the outbox row inside one savepoint, so there is no path that produces a
+  syncable change without its row. A device that enqueued afterwards loses the
+  enqueue to any crash in between — silently, because the deck looks right
+  locally and simply never reaches anyone. A test commits and then throws, and
+  neither row survives.
+- **A deck's changes upload in order, and a stuck deck blocks only itself.** A
+  log is a sequence, not a set (D5.0), so a failure stops that deck's queue where
+  it stands — the change behind it may address an element it created. A row
+  waiting out its backoff holds its place rather than letting the next one
+  overtake; "send everything whose `next_attempt_at` has passed" reorders the log
+  the moment one row is delayed.
+- **Nothing is ever abandoned.** There is no `failed` state, only `pending` and
+  `sent`. A change that cannot upload is something a person has to be shown
+  (D5.3), and a queue that quietly gave up would lose what it exists to protect.
+  `last_error` keeps the whole message, because a desktop install has no logs to
+  go and read.
+
+**Only `cloud`-origin decks are enqueued** (D5.1). A local workspace's decks have
+nowhere to go, and an outbox that can never drain makes "3 changes waiting" a
+permanent fixture of the UI. That also falls out correctly on a server: from the
+server's own side its workspaces are `local`, so a received change enqueues
+nothing — the authority owes no one.
+
+Two kinds, because a deck reaches a server in two shapes: `create` carries the
+deck as its **first version** holds it (every change since is queued behind it, so
+a current snapshot would apply them all twice), and `change` carries one applied
+transaction. Rows are kept after sending rather than deleted — "what did this
+device send, and when" is the question asked when two sides disagree — and
+pruning them is not implemented.
+
+**The retry is recognised before the version check, not after**, and that ordering
+is what makes the whole mechanism work. Applying a change is what moves the head,
+so every retry of a change that landed necessarily carries a stale
+`expected_version_id`. A version check running first would answer 409 to every
+retry and the device could never clear its outbox — it would retry a change that
+had already succeeded, forever. The idempotent answer is not a revert: a later
+edit by someone else still stands, and the response says `duplicate: true` because
+"it worked" and "it had already worked" are different facts to a device
+reconciling its queue.
+
+**A local deck cannot be moved into a workspace that syncs.** D5.1's move route
+refuses it, because a deck that lived its whole life locally has no change keys
+and no outbox rows: it would look shared and silently never upload. Seeding one is
+an upload of current state rather than a replay of a keyless history, and it is
+its own work.
+
+**Not done, and not claimed:** there is no transport. There is no cloud server to
+reach and no sign-in to reach one, so `drain` takes the send as a callable and the
+tests drive it with a function — which is the point of taking one, since ordering,
+retry and idempotency then arrive tested rather than alongside a transport later.
+Nothing schedules a drain, nothing writes `origin = "cloud"` outside a test, and
+the divergence a stuck queue eventually produces has no UI: that is D5.3.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.

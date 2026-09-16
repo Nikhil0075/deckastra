@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from . import sync
 from .db.models import Presentation, PresentationVersion, TransactionRow
 from .ids import new_id
 from .patch import PatchError, apply_patch
@@ -107,6 +108,18 @@ def create_presentation(
         )
     )
     session.flush()
+
+    # D5.2. A deck born in a workspace that syncs owes the server the deck
+    # itself, not only the changes after it. Enqueued here, in the same
+    # transaction as the rows it describes, for the reason the whole outbox is a
+    # table: a device that enqueued afterwards loses the enqueue to a crash and
+    # the deck silently never reaches anyone.
+    sync.enqueue(
+        session,
+        presentation_id=presentation_id,
+        kind="create",
+        change_key=sync.new_change_key(),
+    )
 
     return LoadedPresentation(
         document=document,
@@ -234,12 +247,19 @@ def commit_transaction(
     confidence: float | None = None,
     risk_tier: str | None = None,
     label: str | None = None,
+    change_key: str | None = None,
 ) -> CommitResult:
     """Record an already-applied patch as a new version.
 
     The patch is applied by the caller (which holds the document); this writes the
     result. `expected_version_id` is checked here because only the store knows the
     current head.
+
+    `change_key` names the *change* on the wire (D5.2). A caller replaying someone
+    else's change — an upload from another device — supplies the key it arrived
+    under, and `transaction_by_change_key` is how a retry is recognised before it
+    gets here. A local edit supplies none and one is minted, but only for a deck
+    that syncs: a key on a deck with nowhere to send it is a value nothing reads.
     """
     presentation = session.get(Presentation, presentation_id)
     if presentation is None:
@@ -282,9 +302,13 @@ def commit_transaction(
         )
 
         transaction_id = new_id("txn")
+        outbound = change_key
+        if outbound is None and sync.syncs(session, presentation_id):
+            outbound = sync.new_change_key()
         session.add(
             TransactionRow(
                 id=transaction_id,
+                change_key=outbound,
                 presentation_id=presentation_id,
                 status="applied",
                 parent_version_id=parent_version_id,
@@ -303,6 +327,21 @@ def commit_transaction(
                 applied_at=_now(),
             )
         )
+
+        if outbound is not None:
+            # Flush first: the outbox row's foreign key names the transaction
+            # above, and SQLite checks it as the row is written rather than at
+            # commit. Still inside the savepoint, which is what matters — the
+            # version, the change and the record that it is owed to a server
+            # either all exist or none do.
+            session.flush()
+            sync.enqueue(
+                session,
+                presentation_id=presentation_id,
+                kind="change",
+                change_key=outbound,
+                transaction_id=transaction_id,
+            )
 
         session.flush()
         advance = update(Presentation).where(
@@ -326,6 +365,26 @@ def commit_transaction(
         version_id=version_id,
         transaction_id=transaction_id,
         snapshotted=take_snapshot,
+    )
+
+
+def transaction_by_change_key(
+    session: Session, presentation_id: str, change_key: str
+) -> TransactionRow | None:
+    """Has this change already been applied here? (D5.2)
+
+    The receiving half of idempotent sync. A device that uploaded a change and
+    never heard the answer retries it; without this the change applies twice, and
+    "twice" for an array `add` is a duplicated element nobody asked for.
+
+    Scoped to the presentation because that is where the uniqueness constraint
+    is, and a key only has to be unique where it is applied.
+    """
+    return session.scalar(
+        select(TransactionRow).where(
+            TransactionRow.presentation_id == presentation_id,
+            TransactionRow.change_key == change_key,
+        )
     )
 
 

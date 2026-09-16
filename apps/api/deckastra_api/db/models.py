@@ -271,6 +271,12 @@ class TransactionRow(Base, TimestampMixin):
         ),
         Index("ix_transactions_presentation_created", "presentation_id", "created_at"),
         Index("ix_transactions_status", "presentation_id", "status"),
+        # D5.2. The receiving half of idempotent sync: a device that retries an
+        # upload it never heard the answer to must land the change once. Scoped
+        # to the presentation because a key only has to be unique where it is
+        # applied, and nullable because nothing that does not sync needs one —
+        # SQLite and PostgreSQL both allow repeated NULLs in a unique index.
+        UniqueConstraint("presentation_id", "change_key", name="uq_transaction_change_key"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -308,6 +314,19 @@ class TransactionRow(Base, TimestampMixin):
     # The run that produced it, so an agent change can be traced to its events,
     # its budget and its sources.
     run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+
+    #: What this change is called on the wire (D5.2), minted by whichever device
+    #: authored it and stable across every retry of its upload.
+    #:
+    #: **Not the version id, deliberately.** D5.0 found that `commit_transaction`
+    #: mints its own `ver_…` and takes none from a caller, so a replayed change is
+    #: the same content under a different identity. Making the caller supply the
+    #: version id instead would tie idempotency to *where the change landed* —
+    #: and the case sync exists for is divergence, where a change rebased behind
+    #: someone else's edit lands at a different version than it did locally. A key
+    #: that identifies the **change** survives that; one that identifies the
+    #: version does not.
+    change_key: Mapped[str | None] = mapped_column(String(64))
 
     presentation: Mapped[Presentation] = relationship(back_populates="transactions")
 
@@ -799,3 +818,82 @@ class Theme(Base, TimestampMixin):
     #: about what is legal.
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SyncOutboxRow(Base, TimestampMixin):
+    """One thing this device owes the server (D5.2).
+
+    The outbox exists because of one ordering rule: **the record of what to send
+    is written in the same database transaction as the change it describes.** A
+    device that committed a version and then enqueued it separately loses the
+    enqueue to any crash in between — and loses it silently, because the deck
+    looks right locally and simply never reaches anyone. So `commit_transaction`
+    writes both inside its own savepoint, and there is no code path that can
+    produce a syncable change without producing its outbox row.
+
+    Only decks in a `cloud`-origin workspace get rows (D5.1). A local deck has
+    nowhere to go, and an outbox full of changes for decks that will never sync
+    is a queue nobody can read.
+
+    Two kinds, because a deck reaches a server in two different shapes:
+
+    * `create` — the deck itself, as the snapshot its first version holds. There
+      is no transaction to point at: `create_presentation` writes a version and
+      no change row.
+    * `change` — one applied transaction, by id.
+
+    Rows are kept after they are sent rather than deleted: "what did this device
+    send, and when" is the question asked when two sides disagree, which is the
+    whole of D5.3. Pruning them is not implemented.
+    """
+
+    __tablename__ = "sync_outbox"
+    __table_args__ = (
+        CheckConstraint("kind IN ('create', 'change')", name="ck_outbox_kind"),
+        # Two states, and neither is "gave up". A change that cannot upload is
+        # something a person has to see; an outbox that quietly abandoned work
+        # would lose exactly what it exists to protect.
+        CheckConstraint("status IN ('pending', 'sent')", name="ck_outbox_status"),
+        # The drain sends a deck's rows in the order they were written. `id` is
+        # the tie-break so two changes committed in the same instant keep one
+        # order — a log is a sequence, not a set (D5.0).
+        Index("ix_outbox_ready", "status", "next_attempt_at"),
+        Index("ix_outbox_presentation", "presentation_id", "id"),
+        # Per presentation, matching `transactions.change_key`. A key only has
+        # to be unique where it is applied, and that is what lets two devices
+        # mint keys with no coordinator between them — a global constraint would
+        # make an unlucky collision across two unrelated decks silently swallow
+        # someone's change.
+        UniqueConstraint("presentation_id", "change_key", name="uq_outbox_change_key"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)
+    #: The transaction to upload. Null for a `create`, which predates any.
+    transaction_id: Mapped[str | None] = mapped_column(
+        ForeignKey("transactions.id", ondelete="CASCADE")
+    )
+
+    #: The key this device will upload under, and the one the server dedupes on.
+    #:
+    #: Held here as well as on `transactions.change_key` because the two are
+    #: different roles that happen to share a value in transit: this is "what I
+    #: will send", that is "what I have applied". They are never read by the same
+    #: machine, so this is a wire value rather than a second source of truth — and
+    #: a `create` has no transaction to borrow one from.
+    change_key: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: What went wrong last time, kept in full. A queue that says only "failed"
+    #: sends someone to read logs that a desktop install does not keep.
+    last_error: Mapped[str | None] = mapped_column(Text)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Where it landed on the server. Not the local version id — those are two
+    #: chains (D5.0) — so recording it is how this device can later say "the
+    #: change I called X is version Y over there".
+    remote_version_id: Mapped[str | None] = mapped_column(String(64))

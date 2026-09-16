@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
+from . import sync
 from . import export_service, local_mode, motion, proposals, store, themes
 from .auth import (
     Principal,
@@ -72,6 +73,11 @@ class ApplyTransactionRequest(BaseModel):
     user_instruction: str | None = None
     reason: str | None = None
     confidence: float | None = Field(default=None, ge=0, le=1)
+    #: What this change is called on the wire (D5.2). Supplied by a device
+    #: replaying a change it authored offline; re-sending one already applied
+    #: here answers with what it did the first time rather than applying it
+    #: again. An ordinary editor save omits it.
+    change_key: str | None = Field(default=None, max_length=64)
 
 
 class TransactionSummary(BaseModel):
@@ -95,6 +101,10 @@ class ApplyTransactionResponse(BaseModel):
     document: dict[str, Any]
     risk_tier: str
     snapshotted: bool
+    #: True when this request was a retry of a change already applied here, and
+    #: nothing was written. Said out loud because "it worked" and "it had already
+    #: worked" are different facts to a device reconciling its outbox.
+    duplicate: bool = False
 
 
 def _summary(row) -> TransactionSummary:
@@ -724,6 +734,26 @@ def move_presentation(
             ),
         )
 
+    # D5.2. A deck that has lived its whole life in a local workspace has no
+    # change keys and no outbox rows — nothing was ever owed to anyone. Moving it
+    # into a workspace that syncs would therefore produce a deck that looks
+    # shared and silently never uploads, which is worse than refusing: the
+    # failure is invisible until someone else cannot find it.
+    #
+    # Seeding a moved deck is a real piece of work — it is an upload of the
+    # current state rather than a replay of a local history whose changes have no
+    # keys — and it belongs with the rest of sync. Until then this is closed
+    # rather than left open.
+    if sync.workspace_origin(session, destination.workspace_id) == sync.SYNCING_ORIGIN:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "That workspace syncs to a server, and moving a deck into one is not "
+                "supported yet — its history was authored offline and has nothing to "
+                "upload under. Create the deck in the shared workspace instead."
+            ),
+        )
+
     loaded = store.load_presentation(session, presentation_id)
     cited = asset_service.referenced_ids(loaded.document)
     if cited:
@@ -808,6 +838,26 @@ def apply_transaction(
         require=Role.EDITOR,
     )
 
+    # D5.2. Before anything else, including the concurrency check: a retry of a
+    # change that already landed necessarily carries a stale
+    # `expected_version_id`, because applying it the first time is what moved the
+    # head. Checking versions first would answer 409 to every retry and the
+    # device would never be able to clear its outbox.
+    if request.change_key is not None:
+        already = store.transaction_by_change_key(
+            session, presentation_id, request.change_key
+        )
+        if already is not None and already.result_version_id is not None:
+            head = store.load_presentation(session, presentation_id)
+            return ApplyTransactionResponse(
+                transaction_id=already.id,
+                version_id=already.result_version_id,
+                document=head.document,
+                risk_tier=already.risk_tier or "low",
+                snapshotted=False,
+                duplicate=True,
+            )
+
     loaded = store.load_presentation(session, presentation_id)
     operations = [operation.to_dict() for operation in request.operations]
 
@@ -855,6 +905,7 @@ def apply_transaction(
             reason=request.reason,
             confidence=request.confidence,
             risk_tier=risk.tier,
+            change_key=request.change_key,
         )
     except store.VersionConflict as conflict:
         raise HTTPException(
