@@ -1276,6 +1276,40 @@ partial offload rather than the model), and nothing has driven the *whole graph*
 locally — only the story stage, which is the largest contract but not the only
 one.
 
+### Sync would replay a log, and version ids would not survive it (D5.0)
+
+The spike the rest of D5 waits on (`apps/api/tests/test_sync_replay.py`): can a
+device's transaction log be replayed onto another store and produce the same
+document? If yes, syncing a deck is an outbox plus a divergence policy. If no, it
+has to be document-level — upload a snapshot and merge — which is a different
+product with a conflict surface an order of magnitude larger.
+
+**The content answer is yes.** A log authored on one store, replayed in order
+onto a second store seeded from the same starting document, produces an identical
+deck — including operations that address elements *earlier operations in the same
+log created*, an array `move`, a `remove` whose inverse is index-addressed, an
+animation track, and a morph pairing two slides. That works because there is one
+API and one applier: the desktop and the cloud run the same `apps/api`, and
+`test_patch_conformance.py` already holds the two languages' appliers to one
+answer.
+
+**Presentation identity travels for free.** `create_presentation` takes the id
+from `document["id"]`, so the same starting document seeds the same presentation
+id on both sides and every path in the log resolves.
+
+**Version identity does not, and that is the finding.** `commit_transaction`
+mints `new_id("ver")` itself and takes no id from the caller, so a replayed change
+is the same content under a different identity. An upload keyed on the version id
+would therefore re-apply the whole log on every retry. D5.2's idempotency needs
+either a client-supplied change key recorded with the transaction, or an optional
+`version_id` on the commit path so the two chains are literally one chain — and a
+test names that so the decision is made rather than discovered.
+
+**The log is a sequence, not a set.** Replaying it in another order either fails
+outright or produces a different deck, which is also what makes the equality
+check above mean something: if any order gave the same answer, it would be
+passing on a property nothing has.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.
