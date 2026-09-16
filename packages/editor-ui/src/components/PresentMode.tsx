@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DocumentScene } from "@deckastra/renderer";
-import { resolveTransition, transitionStylesheet } from "@deckastra/renderer";
-import { SlideView } from "@deckastra/renderer/react";
+import { compileTransition, transitionSlideFromScene } from "@deckastra/animation-engine";
 import type { OpenPresenterWindow, PresenterWindow } from "@deckastra/workspace-contracts";
 
 import { PresentChannel } from "../lib/presentSync";
 import { browserPresenterWindow } from "../lib/presenter-window";
 import { SlideMotion, type SlideMotionHandle } from "./SlideMotion";
+import { SlideTransition } from "./SlideTransition";
 import { PresenterView } from "./PresenterView";
 
 /**
@@ -80,13 +80,12 @@ export function PresentMode({
   const slides = scene.slides;
   const slide = slides[index];
 
-  // Resolved once per deck, not per render: the stylesheet is emitted from these
-  // and re-deriving it on every slide change would restart the animation.
-  const transitions = useMemo(
-    () => slides.map((s) => resolveTransition(s.transition, { reducedMotion })),
-    [slides, reducedMotion],
-  );
-  const stylesheet = useMemo(() => transitionStylesheet(transitions), [transitions]);
+  // The slide being left, kept only while its successor is arriving. A morph
+  // animates an element from where it was to where it now is, and where it was
+  // is on this slide — so it has to still be mounted, which the old CSS-keyframe
+  // arrangement never allowed for.
+  const [leaving, setLeaving] = useState<number | null>(null);
+  const previousIndex = useRef(initialSlide);
 
   indexRef.current = index;
   slideCountRef.current = scene.slides.length;
@@ -317,7 +316,6 @@ export function PresentMode({
           startedAt={startedAt.current}
           detached
         />
-        <style>{stylesheet}</style>
       </>
     );
   }
@@ -327,7 +325,29 @@ export function PresentMode({
       ? Math.min(size.width / scene.viewport.width, size.height / scene.viewport.height)
       : 0;
 
-  const transition = transitions[index]!;
+  // Track which slide we came from, so the arriving one can transition out of it.
+  // Recorded during render rather than in an effect: the effect would run after
+  // the first painted frame of the new slide, which is one frame of the
+  // transition already missed.
+  if (previousIndex.current !== index) {
+    setLeaving(previousIndex.current);
+    previousIndex.current = index;
+  }
+
+  // Compiled here rather than inside the stage: this component shows what was
+  // degraded, and two compiles of one transition is two answers that can
+  // disagree. Backwards is the slide's final state and no transition (§26.3).
+  const outgoing = leaving !== null && !enteredBackwards ? slides[leaving] : undefined;
+  const transition = useMemo(
+    () =>
+      compileTransition(
+        slide.transition,
+        outgoing ? transitionSlideFromScene(outgoing) : undefined,
+        transitionSlideFromScene(slide),
+        { motion: reducedMotion ? "reduced" : "full" },
+      ),
+    [slide, outgoing, reducedMotion],
+  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000" }}>
@@ -353,37 +373,18 @@ export function PresentMode({
         }}
       >
         {scale > 0 ? (
-          <div
+          <SlideTransition
+            // A slide's transition describes how the deck moves INTO it, so
+            // re-keying on slideId replays it on every arrival (doc 02 §26.1).
             key={slide.slideId}
-            style={{
-              width: scene.viewport.width * scale,
-              height: scene.viewport.height * scale,
-              position: "relative",
-              overflow: "hidden",
-              // A slide's transition describes how the deck moves INTO it, so
-              // re-keying on slideId replays it on every arrival (doc 02 §26.1).
-              animation: transition.keyframes
-                ? `${transition.name} ${transition.durationMs}ms ${transition.easing}`
-                : undefined,
-            }}
-          >
-            <div
-              // Scopes the motion adapter's element lookup to the audience
-              // stage, so the presenter view's copy of the same slide — with the
-              // same element ids — is not styled by it too.
-              data-present-stage=""
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                transform: `scale(${scale})`,
-                transformOrigin: "0 0",
-                willChange: "transform",
-              }}
-            >
-              <SlideView scene={slide} mode="present" />
-            </div>
-          </div>
+            compiled={transition}
+            to={slide}
+            from={outgoing}
+            width={scene.viewport.width * scale}
+            height={scene.viewport.height * scale}
+            scale={scale}
+            onDone={() => setLeaving(null)}
+          />
         ) : null}
 
         {/* Re-keyed on the slide so each arrival compiles and plays its own
@@ -405,8 +406,6 @@ export function PresentMode({
             style={{ position: "absolute", inset: 0, background: "#000", zIndex: 20 }}
           />
         ) : null}
-
-        <style>{stylesheet}</style>
 
         <div
           style={{

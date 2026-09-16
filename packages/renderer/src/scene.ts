@@ -198,7 +198,26 @@ export interface SlideScene {
   /** Node ids sorted by zPath ascending — the order to paint in. */
   paintOrder: string[];
   theme: ResolvedTheme;
-  transition?: { type: string; durationMs: number; easing?: string };
+  /**
+   * The slide's entrance transition, carried whole.
+   *
+   * It used to be narrowed to type, duration and easing — which silently dropped
+   * `direction` and `sharedElements`, the two fields a push and a morph are made
+   * of. The transition engine reads a scene, so a fact the scene does not carry
+   * is a fact it cannot act on, and a deck whose author had paired elements got
+   * a crossfade with nothing anywhere saying why.
+   */
+  transition?: {
+    type: string;
+    durationMs: number;
+    easing?: string;
+    direction?: "left" | "right" | "up" | "down";
+    sharedElements?: {
+      sourceElementId: string;
+      destinationElementId: string;
+      matchMode?: "position" | "positionAndScale" | "full";
+    }[];
+  };
   speakerNotes?: string;
   /**
    * The slide's animation tracks, passed through unresolved.
@@ -1045,6 +1064,12 @@ export function buildSlideScene(
           type: slide.transition.type,
           durationMs: slide.transition.durationMs,
           easing: slide.transition.easing,
+          direction: slide.transition.direction,
+          sharedElements: slide.transition.sharedElements?.map((mapping) => ({
+            sourceElementId: mapping.sourceElementId,
+            destinationElementId: mapping.destinationElementId,
+            matchMode: mapping.matchMode,
+          })),
         }
       : undefined,
     speakerNotes:

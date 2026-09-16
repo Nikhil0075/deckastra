@@ -24,7 +24,6 @@ export * from "./highlight";
 export * from "./charts";
 export * from "./diagram";
 export * from "./scene";
-export * from "./transitions";
 export * from "./perf";
 export * from "./semantic";
 export * from "./accessibility";

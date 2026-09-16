@@ -8,7 +8,6 @@ import { documentDigest, digestHash, slideDigest } from "../src/digest";
 import { describeFontUsage, fontMetrics, resolveFontStack } from "../src/fonts";
 import { findIcon, ICON_NAMES } from "../src/icons";
 import { highlight } from "../src/highlight";
-import { resolveTransition, transitionStylesheet } from "../src/transitions";
 import { resolveTheme } from "../src/theme";
 import { estimateLabelWidth } from "../src/scale";
 
@@ -336,38 +335,6 @@ describe("fonts", () => {
     expect(scene.fonts.length).toBeGreaterThan(0);
     expect(scene.fontDigest).toBeTruthy();
     expect(scene.slides[0]!.fonts.length).toBeGreaterThan(0);
-  });
-});
-
-// ----------------------------------------------------------------- transitions
-
-describe("transitions", () => {
-  it("emits keyframes for the types it can draw", () => {
-    const push = resolveTransition({ type: "push", direction: "up", durationMs: 400 });
-    expect(push.type).toBe("push");
-    expect(push.keyframes).toContain("translateY");
-    expect(push.degraded).toBeUndefined();
-  });
-
-  it("degrades a type it cannot draw to a fade and says so", () => {
-    const morph = resolveTransition({ type: "morph", durationMs: 400 });
-    expect(morph.type).toBe("fade");
-    expect(morph.requestedType).toBe("morph");
-    expect(morph.degraded).toContain("morph");
-  });
-
-  it("gives reduced motion a cut, not a shorter animation", () => {
-    // Halving the duration of something a viewer asked not to see is not an
-    // accommodation.
-    const reduced = resolveTransition({ type: "zoom", durationMs: 600 }, { reducedMotion: true });
-    expect(reduced.type).toBe("cut");
-    expect(reduced.durationMs).toBe(0);
-    expect(reduced.keyframes).toBeUndefined();
-  });
-
-  it("emits one rule per distinct transition, not one per slide", () => {
-    const many = Array.from({ length: 20 }, () => resolveTransition({ type: "fade" }));
-    expect(transitionStylesheet(many).split("@keyframes")).toHaveLength(2);
   });
 });
 

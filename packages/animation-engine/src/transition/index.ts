@@ -41,6 +41,8 @@ export { isTransitionComplete, sampleTransition, type TransitionStyles } from ".
 
 export { transitionCss, transitionEasingCss } from "./css";
 
+export { transitionSlideFromScene } from "./from-scene";
+
 export type {
   CompiledTransition,
   ElementPair,
