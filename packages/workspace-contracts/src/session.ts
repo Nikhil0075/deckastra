@@ -20,10 +20,24 @@ export interface AccountProject {
   description: string | null;
 }
 
+/**
+ * Where a workspace's authority lives (D5.1).
+ *
+ * `local` is a workspace this machine owns outright — the personal one a desktop
+ * install seeds, whose decks have never left the device. `cloud` is a mirror of a
+ * workspace the server owns, kept locally so the app works offline.
+ *
+ * It matters to a picker: "move this deck to the company workspace" is a
+ * decision about whether the deck leaves the machine, and a list that renders
+ * both kinds identically hides the only part that cannot be undone.
+ */
+export type WorkspaceOrigin = "local" | "cloud";
+
 export interface AccountWorkspace {
   id: string;
   name: string;
   role: Role;
+  origin: WorkspaceOrigin;
   projects: AccountProject[];
 }
 

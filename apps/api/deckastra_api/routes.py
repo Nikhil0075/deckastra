@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import assets as asset_service
 from . import export_service, local_mode, motion, proposals, store, themes
 from .auth import (
     Principal,
@@ -635,6 +636,120 @@ def list_presentations(
             }
             for row in rows
         ]
+    }
+
+
+class MovePresentationRequest(BaseModel):
+    """Where the deck should go. Nothing else about it changes."""
+
+    project_id: str
+
+
+@router.post("/presentations/{presentation_id}/move")
+def move_presentation(
+    presentation_id: str,
+    request: MovePresentationRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Move one deck to another project — the only way a deck changes workspace.
+
+    D5.1, and the reason it exists is what it makes *impossible*. A desktop
+    install has a local workspace full of decks that have never left the machine.
+    Signing in adds a workspace; the tempting next step is to upload what is
+    already there, and that would be a privacy decision taken on the user's
+    behalf in the one direction that cannot be taken back — the same argument D3
+    used to refuse a silent fall-back to a cloud model. So nothing moves by
+    itself, ever, and this route is the whole of the other path: one deck, named
+    by the person moving it, to a project they picked.
+
+    Three refusals, each because the alternative is a deck that looks moved and
+    is broken:
+
+    * **Editor on both sides.** On the destination because a move is a write
+      there; on the source because it is a removal from everyone else who could
+      see it. A viewer cannot launder a deck out of a workspace by moving it
+      somewhere they have rights.
+    * **No pending proposals.** A pending change is waiting for a human in the
+      *source* workspace to approve it. Moving the deck hands that decision to a
+      different set of people, none of whom saw the preview the request was
+      authored against — which is the one thing the proposal lifecycle exists to
+      prevent.
+    * **No assets.** `Asset.workspace_id` scopes an upload to the workspace that
+      holds it, so a deck citing images would arrive with every picture
+      unreadable by the people it arrived for. Carrying them is real work —
+      an asset can be cited by other decks in the source workspace, so it is a
+      copy-or-move decision per file — and it belongs to D5.5 with the rest of
+      assets. Refusing by name is honest; moving the rows and hoping is not.
+
+    What survives is everything that makes it the same deck: the presentation id,
+    the version chain, the transaction history and any share links, all of which
+    key on the presentation rather than on the project it sits in.
+    """
+    access = resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+    )
+    destination, _role = resolve_project_access(
+        session,
+        user_id=principal.user_id,
+        project_id=request.project_id,
+        require=Role.EDITOR,
+    )
+
+    if destination.id == access.project.id:
+        return {
+            "presentation_id": presentation_id,
+            "project_id": destination.id,
+            "workspace_id": destination.workspace_id,
+            "moved": False,
+            "refusal": "That deck is already in this project.",
+        }
+
+    pending = session.scalar(
+        select(TransactionRow).where(
+            TransactionRow.presentation_id == presentation_id,
+            TransactionRow.status == "pending",
+        )
+    )
+    if pending is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This deck has a change waiting for approval. Approve or reject it "
+                "before moving the deck, so the person who has to decide is still "
+                "someone who can see it."
+            ),
+        )
+
+    loaded = store.load_presentation(session, presentation_id)
+    cited = asset_service.referenced_ids(loaded.document)
+    if cited:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"This deck uses {len(cited)} uploaded file(s), and uploads belong to "
+                "the workspace that holds them. Moving the deck would leave those "
+                "unreadable where it arrives, so moving decks with assets is not "
+                "supported yet."
+            ),
+        )
+
+    presentation = access.presentation
+    presentation.project_id = destination.id
+    session.flush()
+
+    return {
+        "presentation_id": presentation_id,
+        "project_id": destination.id,
+        "workspace_id": destination.workspace_id,
+        "from_workspace_id": access.workspace_id,
+        "moved": True,
+        # Unchanged, and said out loud: a move must not look like a new deck to
+        # anything holding a reference to this one.
+        "version_id": presentation.current_version_id,
     }
 
 

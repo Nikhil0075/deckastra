@@ -6,6 +6,7 @@ import type {
   CreatePresentationResult,
   DocumentHead,
   DocumentRead,
+  MovePresentationResult,
   PreviewRequest,
   PreviewResult,
   PresentationSummary,
@@ -128,6 +129,18 @@ export interface WorkspaceClient {
       options?: RequestOptions,
     ): Promise<TransactionResult>;
     versions(presentationId: string, options?: RequestOptions): Promise<VersionSummary[]>;
+    /**
+     * Move one deck to another project — the only way a deck changes workspace.
+     *
+     * Here rather than on a "sync" surface because that is the whole design:
+     * signing in adds a workspace and conscripts nothing, so a deck reaches a
+     * shared workspace exactly when someone names it and names where it goes.
+     */
+    move(
+      presentationId: string,
+      projectId: string,
+      options?: RequestOptions,
+    ): Promise<MovePresentationResult>;
   };
 
   readonly generation: {

@@ -123,6 +123,17 @@ describe("the tool surface", () => {
     expect(names).toContain("proposal_list");
   });
 
+  it("gives an agent no way to move a deck out of the workspace it was authored in", async () => {
+    const names = (await (await connect()).listTools()).tools.map((tool) => tool.name);
+
+    // D5.1. Moving a deck to a shared workspace is the moment it stops being
+    // private to this machine, which is the same class of decision as minting a
+    // share link and gets the same answer. An agent can see which workspaces
+    // exist and what kind each is; choosing to send a deck to one is a person's
+    // call, made one deck at a time.
+    expect(names.filter((name) => name.includes("move"))).toEqual([]);
+  });
+
   it("names the deck the user has open, so an agent need not guess", async () => {
     const result = await (await connect()).callTool({ name: "workspace_list", arguments: {} });
     expect(JSON.parse(text(result)).openPresentationId).toBe("pres_open");

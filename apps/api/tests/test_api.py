@@ -196,6 +196,9 @@ def test_account_context_and_workspace_project_creation_are_explicit(
             "id": session_token["workspace_id"],
             "name": "dev's workspace",
             "role": "owner",
+            # D5.1: where this workspace's authority lives. A seeded one is this
+            # machine's own; a mirror of a cloud workspace is not.
+            "origin": "local",
             "projects": [
                 {
                     "id": session_token["project_id"],

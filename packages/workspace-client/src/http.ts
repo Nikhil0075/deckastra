@@ -10,6 +10,7 @@ import type {
   CreateShareRequest,
   DocumentHead,
   DocumentRead,
+  MovePresentationResult,
   EditScopePayload,
   ExportJob,
   ExportRequest,
@@ -233,6 +234,11 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
         }),
       versions: (presentationId, request) =>
         json<VersionSummary[]>(`/v1/presentations/${q(presentationId)}/versions`, { ...request }),
+      move: (presentationId, projectId, request) =>
+        json<MovePresentationResult>(`/v1/presentations/${q(presentationId)}/move`, {
+          body: { project_id: projectId },
+          ...request,
+        }),
     },
 
     motion: {

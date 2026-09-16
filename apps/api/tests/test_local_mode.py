@@ -317,3 +317,64 @@ class TestExportLocation:
         # than failing; only the desktop has a data directory to point at.
         monkeypatch.delenv("DECKASTRA_EXPORT_DIR", raising=False)
         assert export_service.export_root().parent == __import__("pathlib").Path(tempfile.gettempdir())
+
+
+# --------------------------------------------------------- D5.1: what is "mine"
+
+
+def test_the_local_account_owns_its_own_workspace_and_says_so(local):
+    """A desktop's workspace is this machine's own, and the row records it.
+
+    D5.1. The distinction only becomes load-bearing once a second workspace can
+    exist — a mirror of one the server owns — but it has to be true from the
+    first launch, because a workspace seeded without it would be indistinguishable
+    from a mirrored one afterwards.
+    """
+    account = local.get("/v1/account", headers=auth()).json()
+
+    assert [workspace["origin"] for workspace in account["workspaces"]] == ["local"]
+
+
+def test_local_mode_is_not_owner_of_a_workspace_it_never_joined(local):
+    """The posture is "one account", not "one account owns everything here".
+
+    This is the assumption D5.4 will need and the one most likely to be quietly
+    wrong: a desktop that has signed in holds mirrored workspaces whose roles are
+    a *cache*, and a cache is not authorization. Local mode resolves through the
+    same membership chain as everything else, so a workspace with no membership
+    row for the singleton account is refused — the same 404 a stranger gets.
+    """
+    from deckastra_api.db.models import Project, User, Workspace
+    from deckastra_api.ids import new_id
+
+    project_id = new_id("prj")
+    with session_scope() as session:
+        # A whole other person, because `workspaces.owner_id` is a real foreign
+        # key — and a mirrored workspace is exactly one someone else owns.
+        them = User(id=new_id("usr"), email="them@acme.example", name="Them")
+        session.add(them)
+        workspace = Workspace(
+            id=new_id("wsp"), name="Acme", owner_id=them.id, origin="cloud"
+        )
+        session.add(workspace)
+        session.add(
+            Project(
+                id=project_id,
+                workspace_id=workspace.id,
+                name="Their project",
+                created_by=them.id,
+            )
+        )
+
+    listed = local.get("/v1/account", headers=auth()).json()
+    assert [workspace["name"] for workspace in listed["workspaces"]] == ["You's workspace"]
+
+    assert local.get(f"/v1/projects/{project_id}/presentations", headers=auth()).status_code == 404
+    assert (
+        local.post(
+            "/v1/presentations",
+            headers=auth(),
+            json={"title": "Theirs now", "project_id": project_id},
+        ).status_code
+        == 404
+    )

@@ -123,3 +123,25 @@ export interface VersionSummary {
   intent: string | null;
   source: string;
 }
+
+/**
+ * Where one deck was moved to, and whether it moved (D5.1).
+ *
+ * The only path a deck takes between workspaces. `moved: false` with a `refusal`
+ * is the no-op case — it was already there — rather than an error, because
+ * asking for a move that has already happened is not a mistake.
+ *
+ * What is absent is the point: there is no bulk move, no "sync my decks" and no
+ * move an agent can perform. A deck leaving the machine it was authored on is a
+ * decision a person makes one deck at a time.
+ */
+export interface MovePresentationResult {
+  presentation_id: string;
+  project_id: string;
+  workspace_id: string;
+  from_workspace_id?: string;
+  moved: boolean;
+  refusal?: string;
+  /** Unchanged by a move. Said out loud, because a move must not look like a new deck. */
+  version_id?: string | null;
+}

@@ -1310,6 +1310,69 @@ outright or produces a different deck, which is also what makes the equality
 check above mean something: if any order gave the same answer, it would be
 passing on a property nothing has.
 
+### Signing in adds a workspace; it conscripts nothing (D5.1)
+
+A desktop install has a singleton account and a workspace full of decks that have
+never left the machine. The tempting next step, and the one most sync products
+take by default, is to upload what is already there the moment someone signs in.
+That is a privacy decision taken on the user's behalf in the one direction that
+cannot be taken back — the same shape as D3's refusal to fall back to a cloud
+model, and it gets the same answer. **Local decks stay local until someone
+explicitly moves one.**
+
+`workspaces.origin` (`local` | `cloud`) is the column the rest of D5 branches on.
+A `local` workspace is one this machine owns outright; a `cloud` one is a mirror
+of a workspace the server owns, kept here so the app works offline. They cannot
+be authorized the same way — **a mirrored workspace's roles are a cache, and a
+cache is not authorization** — and without a row saying which is which, a desktop
+that had signed in could not tell its own decks from someone else's, so local
+mode's posture would silently extend over both. It is reported by `/v1/account`,
+carried on `AccountWorkspace`, and surfaced through `workspace_list`, because a
+picker that renders both kinds identically hides the only part of the choice that
+is irreversible.
+
+Local mode is *not* "one account owns everything on this machine". It resolves
+through the same membership chain as every other caller, so a workspace with no
+membership row for the singleton account answers 404 — the same refusal a
+stranger gets. That is the assumption D5.4 needs and the one most likely to go
+quietly wrong, so `test_local_mode.py` names it.
+
+**`POST /v1/presentations/{id}/move` is the whole of the other path**: one deck,
+to a project the person picked. Three refusals, each because the alternative is a
+deck that looks moved and is broken:
+
+- **Editor on both sides.** On the destination because a move is a write there;
+  on the source because it is a removal from everyone else who could see it. Read
+  access to a deck is not permission to take it somewhere the people who shared
+  it with you cannot follow.
+- **No pending proposals.** A pending change is a question put to the people in
+  *this* workspace, about a preview they were shown. Moving the deck hands that
+  decision to a different set of people, which is precisely what the proposal
+  lifecycle exists to prevent.
+- **No assets.** `Asset.workspace_id` scopes an upload to the workspace holding
+  it, so a deck citing images would arrive with every picture unreadable by the
+  people it arrived for. Carrying them is a per-file copy-or-move decision —
+  an asset can be cited by other decks in the source workspace — and that belongs
+  to D5.5. Refusing by name is honest; moving the rows and hoping is not.
+
+What survives a move is everything that makes it the same deck: the presentation
+id, the version chain, the transaction history and any share links, all of which
+key on the presentation rather than on the project it sits in. A "move" that
+minted a new id would be a copy with the original deleted.
+
+**No agent can move a deck**, and a test asserts the absence. A deck reaching a
+shared workspace is the moment it stops being private to this machine — the same
+class of decision as minting a share link, and the same answer. There is also no
+bulk move and no "sync my decks": the negative control in
+`test_deck_location.py` drives an ordinary session — read the account, open the
+deck, poll its head — and asserts the second workspace is still empty, so every
+"nothing moved" assertion is not passing on a product that never moves anything.
+
+**Not done, and not claimed:** there is no sign-in surface on the desktop and no
+mirroring yet, so nothing writes `origin = "cloud"` outside a test. Building a
+move dialog now would be UI for a state no user can reach; it lands with D5.2,
+which is also where the version-id decision D5.0 wrote down has to be made.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.

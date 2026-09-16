@@ -97,6 +97,10 @@ def _account_context(session: Session, principal: Principal) -> dict[str, Any]:
                 "id": workspace.id,
                 "name": workspace.name,
                 "role": membership.role,
+                # D5.1. A picker that cannot tell this machine's own workspace
+                # from a mirrored one makes "move this deck to the company
+                # workspace" a choice nobody can see they are making.
+                "origin": workspace.origin,
                 "projects": [
                     {
                         "id": project.id,

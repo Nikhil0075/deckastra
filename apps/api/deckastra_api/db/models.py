@@ -106,9 +106,25 @@ class AuthIdentity(Base, TimestampMixin):
 
 class Workspace(Base, TimestampMixin):
     __tablename__ = "workspaces"
+    __table_args__ = (
+        CheckConstraint("origin IN ('local', 'cloud')", name="ck_workspace_origin"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    #: Where this workspace's authority lives (D5.1).
+    #:
+    #: `local` is a workspace this machine owns outright — the personal one a
+    #: desktop install seeds, whose decks have never left the device. `cloud` is a
+    #: mirror of a workspace the server owns, kept here so the app works offline.
+    #:
+    #: The distinction exists because the two cannot be authorized the same way.
+    #: A local workspace's owner is genuinely its owner; a mirrored one's roles
+    #: are a *cache*, and a cache is not authorization. Without a column saying
+    #: which is which, a desktop that signed in would have no way to tell its own
+    #: decks from someone else's, and local mode's "everyone is OWNER" posture
+    #: would silently extend over both.
+    origin: Mapped[str] = mapped_column(String(10), default="local", nullable=False)
     # Kept for convenience and for "who pays", but it is NOT the authorization
     # source — membership is. An owner_id-only model cannot answer "may this user
     # open this deck" for anyone else.
