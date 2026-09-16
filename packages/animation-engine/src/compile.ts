@@ -163,7 +163,14 @@ interface ResolvedMotionTheme {
   reducedMotionFallback?: string;
 }
 
-function motionThemeOf(scene: SlideScene): ResolvedMotionTheme {
+/**
+ * The motion theme, read the way the compiler reads it.
+ *
+ * Exported because the motion panel needs the same answer when it opens a preset
+ * into keyframes: expanding one with different defaults than the compiler used
+ * would produce keyframes that do not match what the author was just watching.
+ */
+export function motionThemeOf(scene: SlideScene): ResolvedMotionTheme {
   // Scenes carry resolved tokens, not a raw ThemeDefinition. Reading a raw
   // `motion` field silently discards document preferences and inherited values.
   const motion = Object.fromEntries(

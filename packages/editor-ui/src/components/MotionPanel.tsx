@@ -11,9 +11,17 @@ import {
   buildTimelineView,
   clipPatchOperations,
   compileTimeline,
+  motionThemeOf,
+  openPresetOperations,
+  removeKeyframeOperations,
+  rippleAfterTrim,
+  setKeyframeOperations,
+  splitClip,
   type CompiledTimeline,
 } from "@deckastra/animation-engine";
 import type { SlideScene } from "@deckastra/renderer";
+
+import { TimelineLanes, type TimelineGesture } from "./TimelineLanes";
 
 /**
  * The motion panel and timeline (doc 04 §25).
@@ -53,6 +61,10 @@ export function MotionPanel({
 }: MotionPanelProps) {
   const slide = doc.slides[slideIndex];
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
+  // What the last gesture could not do, shown once rather than thrown away. A
+  // split that was refused for being too close to an edge is the author's
+  // question to answer, not something to swallow.
+  const [notice, setNotice] = useState<string | null>(null);
 
   const timeline: CompiledTimeline | null = useMemo(() => {
     if (!slide) return null;
@@ -79,6 +91,125 @@ export function MotionPanel({
   const trackIndex = slide.animations?.findIndex(track => track.id === clip?.trackId) ?? -1;
   const sourceClip = slide.animations?.find(track => track.id === clip?.trackId)?.clips.find(item => item.id === clip?.id || clip?.id.startsWith(`${item.id}:`));
   const scale = view.durationMs > 0 ? 100 / view.durationMs : 0;
+
+  /**
+   * When this clip's trigger resolved, in absolute slide time.
+   *
+   * The document stores `startMs` as an offset from the trigger and the compiler
+   * reports it absolute (doc 02 §24.4), so the difference between them *is* the
+   * trigger. Deriving it beats threading it through: a drag produces an absolute
+   * drop position, and writing that straight into the document would move a clip
+   * on an `afterPrevious` track by however long everything before it runs.
+   */
+  const triggerStartMs =
+    clip && sourceClip ? clip.startMs - sourceClip.startMs - (sourceClip.delayMs ?? 0) : 0;
+
+  /**
+   * A settled drag, as operations.
+   *
+   * The gesture arrives once, already rounded, from `TimelineLanes` — this turns
+   * it into the same `clipPatchOperations` a number field produces, so a drag
+   * and a typed value are literally the same edit and undo cannot tell them
+   * apart. A rippling trim is two patches in one transaction: the clip's own
+   * duration, then everything after it, so undo takes both back together.
+   */
+  function commitGesture(gesture: TimelineGesture) {
+    if (!slide || !clip || !sourceClip) return;
+    const track = slide.animations?.find((one) => one.id === gesture.trackId);
+    if (!track) return;
+
+    if (gesture.kind === "move") {
+      apply(
+        clipPatchOperations(slide.id, clip, { kind: "move", startMs: gesture.startMs }, triggerStartMs),
+        "Move clip",
+      );
+      return;
+    }
+
+    const operations = clipPatchOperations(
+      slide.id,
+      clip,
+      { kind: "trim", durationMs: gesture.durationMs },
+      triggerStartMs,
+    );
+
+    if (gesture.ripple) {
+      const followers = rippleAfterTrim(
+        slide.id,
+        gesture.trackId,
+        track.clips.map((one) => ({ id: one.id, startMs: one.startMs, durationMs: one.durationMs })),
+        sourceClip.id,
+        gesture.durationMs,
+      );
+      operations.push(...followers.operations);
+    }
+
+    apply(operations, gesture.ripple ? "Trim clip and move later ones" : "Trim clip");
+  }
+
+  /**
+   * Cut the selected clip at the playhead.
+   *
+   * At the playhead rather than at the pointer because that is where the author
+   * has already decided the moment is — they scrubbed to it to see what happens
+   * there. A cut at a second, unrelated position would be a different question.
+   */
+  function splitAtPlayhead() {
+    if (!slide || !clip || !sourceClip) return;
+    const within = playheadMs - clip.startMs;
+    const result = splitClip(
+      slide.id,
+      { ...sourceClip, trackId: clip.trackId },
+      within,
+      newId("clp"),
+    );
+    if (result.operations.length === 0) {
+      setNotice(result.warning ?? "This clip cannot be split there.");
+      return;
+    }
+    setNotice(result.warning ?? null);
+    apply(result.operations, "Split clip");
+    setSelectedClip(result.newClipId);
+  }
+
+  /** Expand the preset into keyframes an author can move. An ordinary patch. */
+  function openKeyframes() {
+    if (!slide || !clip || !sourceClip) return;
+    const node = scene.nodes.find((one) => one.id === clip.targetId);
+    const result = openPresetOperations(
+      slide.id,
+      { ...sourceClip, trackId: clip.trackId },
+      // The compiler's own reading of the theme. Expanding a preset with
+      // different defaults than it used would produce keyframes that do not
+      // match what the author was just watching.
+      { bounds: node?.bounds ?? { x: 0, y: 0, width: 0, height: 0 }, motion: motionThemeOf(scene) },
+    );
+    setNotice(result.warning ?? null);
+    if (result.operations.length > 0) apply(result.operations, "Open preset into keyframes");
+  }
+
+  function keyframeEdit(property: string, action: "add" | "remove", offset?: number) {
+    if (!slide || !clip || !sourceClip) return;
+    const result =
+      action === "add"
+        ? setKeyframeOperations(
+            slide.id,
+            { ...sourceClip, trackId: clip.trackId },
+            property,
+            playheadMs - clip.startMs,
+            valueAtPlayhead(sourceClip, property, playheadMs - clip.startMs),
+          )
+        : removeKeyframeOperations(
+            slide.id,
+            { ...sourceClip, trackId: clip.trackId },
+            property,
+            offset ?? 0,
+          );
+    setNotice(result.warning ?? null);
+    if (result.operations.length > 0) {
+      apply(result.operations, action === "add" ? "Add keyframe" : "Remove keyframe");
+    }
+  }
 
   function reorderTrack(direction: -1 | 1) {
     if (!slide || !clip || trackIndex < 0) return;
@@ -160,11 +291,11 @@ export function MotionPanel({
             : kind === "trigger"
               ? { kind: "trigger", trigger: value as { type: string } }
               : { kind: "delete" },
-      // Only a `move` reads this — it turns an absolute drop position back into
-      // an offset from the trigger — and this panel has no drag yet. Passing the
-      // clip's own start would be wrong for a move and is ignored by every other
-      // edit, so zero is the honest value until dragging lands.
-      0,
+      // Only a `move` reads this, turning an absolute drop position back into an
+      // offset from the trigger. None of the edits below is a move, but passing
+      // the real value costs nothing and stops the next one added here from
+      // inheriting a zero that used to be honest and no longer is.
+      triggerStartMs,
     );
 
     if (kind === "delete") setSelectedClip(null);
@@ -216,53 +347,14 @@ export function MotionPanel({
         <div style={{ padding: "0 14px 12px" }}>
           <Ruler ticks={view.ticks} durationMs={view.durationMs} segments={view.segments} />
 
-          <div style={{ position: "relative" }}>
-            {view.lanes.map((lane) => (
-              <div key={lane.targetId} style={laneRow}>
-                <span style={laneLabel} title={lane.label}>
-                  {lane.label}
-                </span>
-                <div style={laneTrack}>
-                  {lane.bars.map((bar) => (
-                    <button
-                      key={bar.clipId}
-                      onClick={() => setSelectedClip(bar.clipId)}
-                      title={`${bar.label} · ${Math.round(bar.startMs)}–${Math.round(bar.endMs)}ms`}
-                      style={{
-                        ...clipBar,
-                        left: `${bar.startMs * scale}%`,
-                        width: `${Math.max(1.5, (bar.endMs - bar.startMs) * scale)}%`,
-                        background:
-                          bar.clipId === selectedClip ? "var(--accent)" : "var(--surface-alt)",
-                        color: bar.clipId === selectedClip ? "var(--accent-fg)" : "var(--fg-muted)",
-                        // Doc 04 §25.3: an overlap is striped, never blended.
-                        // Blending produces a result nobody predicted and no
-                        // exporter can reproduce.
-                        borderColor: bar.conflicted ? "var(--warning)" : "var(--border)",
-                        borderStyle: bar.conflicted ? "dashed" : "solid",
-                      }}
-                    >
-                      {bar.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* The playhead, drawn over the lanes rather than in them. */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: `calc(96px + ${playheadMs * scale}% * 0.01 * (100% - 96px))`,
-                width: 1,
-                background: "var(--accent)",
-                pointerEvents: "none",
-              }}
-            />
-          </div>
+          <TimelineLanes
+            view={view}
+            selectedClipId={selectedClip}
+            playheadMs={playheadMs}
+            onSelect={setSelectedClip}
+            onCommit={commitGesture}
+            onScrub={onScrub}
+          />
 
           <input
             type="range"
@@ -285,6 +377,37 @@ export function MotionPanel({
                   Move track later
                 </button>
               </div>
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+                <button style={smallButton} onClick={splitAtPlayhead}>
+                  Split at playhead
+                </button>
+                {sourceClip?.propertyTracks?.length ? (
+                  <span style={muted}>
+                    {sourceClip.propertyTracks.length} property track(s) open
+                    {sourceClip.preset ? ` · from ${sourceClip.preset}` : ""}
+                  </span>
+                ) : (
+                  <button style={smallButton} onClick={openKeyframes} disabled={!sourceClip?.preset}>
+                    Open keyframes
+                  </button>
+                )}
+              </div>
+
+              {sourceClip?.propertyTracks?.length ? (
+                <KeyframeList
+                  tracks={sourceClip.propertyTracks}
+                  durationMs={sourceClip.durationMs}
+                  onAdd={(property) => keyframeEdit(property, "add")}
+                  onRemove={(property, offset) => keyframeEdit(property, "remove", offset)}
+                />
+              ) : null}
+
+              {notice ? (
+                <p style={{ ...muted, color: "var(--warning)", marginTop: 8 }} role="status">
+                  {notice}
+                </p>
+              ) : null}
               <ClipInspector clip={clip} durationMs={sourceClip?.durationMs ?? 0} startMs={sourceClip?.startMs ?? 0} delayMs={sourceClip?.delayMs ?? 0} onEdit={edit} />
             </>
           ) : null}
@@ -503,6 +626,81 @@ function ClipInspector({
   );
 }
 
+/**
+ * The keyframes of an opened clip, as a list.
+ *
+ * A list rather than handles on the bar, for now, and the reason is honest
+ * rather than aspirational: dragging a keyframe wants the same rAF-coalesced,
+ * commit-on-pointer-up machinery the bars have, and bolting a second, simpler
+ * drag onto the same surface would be two behaviours an author has to tell
+ * apart by pixel. Times are shown in milliseconds because that is what an author
+ * thinks in; the document stores fractions of the clip, which is what lets
+ * trimming rescale them all at once.
+ */
+function KeyframeList({
+  tracks,
+  durationMs,
+  onAdd,
+  onRemove,
+}: {
+  tracks: { property: string; keyframes: { offset: number; value: unknown }[] }[];
+  durationMs: number;
+  onAdd: (property: string) => void;
+  onRemove: (property: string, offset: number) => void;
+}) {
+  return (
+    <div style={{ marginTop: 8 }}>
+      {tracks.map((track) => (
+        <div key={track.property} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "var(--fg-subtle)", width: 72 }}>{track.property}</span>
+          {[...track.keyframes]
+            .sort((a, b) => a.offset - b.offset)
+            .map((frame) => (
+              <button
+                key={frame.offset}
+                style={keyframeChip}
+                title={`${Math.round(frame.offset * durationMs)}ms · ${String(frame.value)} · click to remove`}
+                onClick={() => onRemove(track.property, frame.offset)}
+              >
+                {Math.round(frame.offset * durationMs)}ms
+              </button>
+            ))}
+          <button style={smallButton} onClick={() => onAdd(track.property)}>
+            + at playhead
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * What a property is worth at a moment, for a keyframe added there.
+ *
+ * Reading the track rather than defaulting to zero: an author clicking "add a
+ * keyframe" at 200ms means "pin what is happening here", and a keyframe that
+ * silently set the value to 0 would change the animation at the instant they
+ * were trying to preserve.
+ */
+function valueAtPlayhead(
+  sourceClip: { durationMs: number; propertyTracks?: { property: string; keyframes: { offset: number; value: unknown }[] }[] },
+  property: string,
+  withinMs: number,
+): unknown {
+  const track = sourceClip.propertyTracks?.find((one) => one.property === property);
+  if (!track || track.keyframes.length === 0) return 0;
+
+  const offset = sourceClip.durationMs > 0 ? Math.min(1, Math.max(0, withinMs / sourceClip.durationMs)) : 0;
+  const sorted = [...track.keyframes].sort((a, b) => a.offset - b.offset);
+  const before = [...sorted].reverse().find((frame) => frame.offset <= offset) ?? sorted[0]!;
+  const after = sorted.find((frame) => frame.offset >= offset) ?? sorted[sorted.length - 1]!;
+
+  if (typeof before.value !== "number" || typeof after.value !== "number") return before.value;
+  const span = after.offset - before.offset;
+  const progress = span <= 0 ? 0 : (offset - before.offset) / span;
+  return before.value + (after.value - before.value) * progress;
+}
+
 function labelFor(element: PresentationElement): string {
   if (element.name) return element.name;
   if (element.semanticRole) return element.semanticRole;
@@ -561,6 +759,17 @@ const inspector: CSSProperties = {
   background: "var(--surface-alt)",
   border: "1px solid var(--border)",
   borderRadius: 8,
+};
+
+const keyframeChip: CSSProperties = {
+  fontSize: 10,
+  padding: "1px 6px",
+  borderRadius: 999,
+  border: "1px solid var(--border)",
+  background: "var(--surface-alt)",
+  color: "var(--fg-muted)",
+  cursor: "pointer",
+  fontVariantNumeric: "tabular-nums",
 };
 
 const smallButton: CSSProperties = {

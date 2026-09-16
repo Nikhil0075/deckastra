@@ -86,6 +86,8 @@ export {
   type TimelineEvent,
 } from "./dom";
 
+export { motionThemeOf } from "./compile";
+
 export * from "./timeline";
 
 /**

@@ -31,7 +31,8 @@ export type SmokeStep =
   | "resilience"
   | "windows"
   | "consent"
-  | "morph";
+  | "morph"
+  | "timeline";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -172,6 +173,8 @@ export async function runSmoke(
       await runDigest(window, record);
     } else if (current === "resilience") {
       await runResilience(window, dir, record, controls);
+    } else if (current === "timeline") {
+      await runTimeline(window, record);
     } else if (current === "morph") {
       await runMorph(window, record);
     } else if (current === "consent") {
@@ -481,6 +484,75 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
   if (record.grantAfterStop !== 401) {
     throw new Error(`A grant issued before the user stopped access still works: ${record.grantAfterStop}`);
   }
+}
+
+/**
+ * Drag a clip on the timeline, in the app (D4.2).
+ *
+ * jsdom can say the handlers fire in the right order. It cannot say whether a
+ * real pointer, with real capture, over a lane whose width comes from real
+ * layout, moves a clip to where the author dropped it — and every number in that
+ * sentence comes from somewhere a test double replaced.
+ *
+ * It reads the result out of the document rather than the DOM: the bar moving is
+ * what the author sees, but the clip's stored startMs is what survives a reload,
+ * and those are different claims.
+ */
+async function runTimeline(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
+  await until(window, 'document.querySelector("[data-editor-canvas]")');
+
+  // Something to animate, then an animation on it.
+  await window.webContents.executeJavaScript(clickButton("Rect"));
+  await until(window, 'document.querySelectorAll("[data-element-id]").length > 0');
+
+  record.addedAnimation = await window.webContents.executeJavaScript(`(() => {
+    const select = [...document.querySelectorAll("select")].find((one) =>
+      [...one.options].some((option) => option.value === "fade"));
+    if (!select) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+    setter.call(select, "fade");
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`);
+
+  const BAR = "[role=\"button\"][title*=\"ms\"]";
+  if (!(await until(window, `document.querySelector('${BAR}') !== null`))) {
+    throw new Error("No clip bar appeared after adding an animation.");
+  }
+
+  record.dragged = await window.webContents.executeJavaScript(`(async () => {
+    const bar = document.querySelector('${BAR}');
+    const before = bar.title;
+    const box = bar.getBoundingClientRect();
+
+    const y = box.top + box.height / 2;
+    const from = box.left + Math.min(12, box.width / 2);
+    const send = (type, x, extra) => bar.dispatchEvent(new PointerEvent(type, Object.assign({
+      pointerId: 1, bubbles: true, cancelable: true, clientX: x, clientY: y,
+    }, extra || {})));
+
+    send("pointerdown", from);
+    // Two moves and a frame between them: the handler coalesces, so a single
+    // move would not prove the frame loop runs at all.
+    send("pointermove", from + 40);
+    await new Promise((r) => requestAnimationFrame(r));
+    send("pointermove", from + 80);
+    await new Promise((r) => requestAnimationFrame(r));
+    send("pointerup", from + 80);
+    await new Promise((r) => requestAnimationFrame(r));
+
+    const after = document.querySelector('${BAR}');
+    return { before, after: after ? after.title : null, laneWidth: Math.round(box.width) };
+  })()`);
+
+  const dragged = record.dragged as { before: string; after: string | null };
+  if (!dragged.after || dragged.after === dragged.before) {
+    throw new Error(
+      "Dragging the clip changed nothing. Before: " + dragged.before + " After: " + String(dragged.after),
+    );
+  }
+
+  await capture(window, join(smokeDir()!, "timeline.png"));
 }
 
 /**

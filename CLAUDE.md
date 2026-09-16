@@ -1362,6 +1362,70 @@ Six things that look like details and are load-bearing:
 → patch → transaction, in the same history as a text edit. There is no local
 timeline state and no way for the timeline and the document to disagree.
 
+### The timeline is authored by dragging, and every drag is a patch
+
+D4.2, `packages/animation-engine/src/timeline/` and
+`editor-ui/src/components/TimelineLanes.tsx`. The panel had buttons and number
+fields; it now has direct manipulation, and the split between the two halves is
+the same one the rest of this codebase keeps — **operations are a pure module,
+the surface only gestures.**
+
+Five modules, split by what each can be wrong about: `view` (what to draw),
+`edits` (what one gesture means), `split` (redistributing keyframes across a
+cut), `ripple` (which clips "after" includes), `keyframes` (normalised offsets).
+None mutates anything.
+
+**Splitting is the one with substance**, because of a decision in doc 02 §24.5: a
+keyframe's offset is 0–1 of its clip's duration, not a time. That normalisation
+is what makes trimming one property change instead of N — and it means a split
+cannot copy keyframes across. Each half re-expresses every offset against its own
+duration, and both get an explicit keyframe at the seam carrying the value the
+original had there. Without it the second half starts from its first surviving
+keyframe and the element jumps at the join, which is the one artefact a split must
+never introduce. A colour has no midpoint, so the nearer value is taken and the
+caller is told.
+
+**Ripple moves clips within one track, by start time rather than array
+position.** A track's clips share a trigger; other tracks have their own reasons
+for their timing, and rippling the slide would move things the author never
+touched. Document order is something an author rearranges for themselves; what a
+ripple is about is time.
+
+**Opening a preset is a patch, not a mode.** The schema already says a clip
+carrying both `preset` and `propertyTracks` uses the tracks and keeps the name as
+provenance, so the panel still says what a clip started as after it has been
+taken apart. Opening one that is already open returns nothing rather than
+replacing the author's edits with the preset they began from.
+
+The drag surface keeps the canvas's three rules for the canvas's reasons:
+pointermove coalesced into one rAF callback, rounding **once** on pointer-up
+(rounding each move walks the clip off the pointer and leaves a clip that will
+not sit on a round number), and a cancelled gesture committing nothing. The
+modifier lives in a ref rather than in the preview: the first pointermove happens
+before any preview exists, so a flag written into one lands on nothing — and a
+ref also respects Shift pressed or released partway through a drag.
+
+`triggerStartMs` is **derived**, not threaded: the document stores `startMs` as an
+offset from the trigger and the compiler reports it absolute, so the difference
+between them is the trigger. A drag produces an absolute drop position, and
+writing that straight into the document would move a clip on an `afterPrevious`
+track by however long everything before it runs.
+
+**Measured in the app** (`DECKASTRA_SMOKE_STEP=timeline`): adding a `fade` and
+dragging its bar 80px moved the clip from 0–240ms to 46–286ms, with the label
+re-derived from the document through the compiled view — the stored clip moving,
+not a bar sliding. Three test-environment facts cost time and are worth knowing:
+jsdom has no `PointerEvent` (Testing Library falls back to a plain `Event` that
+carries no `clientX`, which looks exactly like a component ignoring the pointer),
+`setPointerCapture` is not implemented there — so capture is now attempted *after*
+the gesture exists and guarded, which is better anyway — and `vi.unstubAllGlobals`
+inside one test removes a polyfill every later test needed.
+
+**Not done:** keyframes are a list, not handles on the bar. Dragging one wants the
+same coalesced, commit-on-pointer-up machinery the bars have, and a second
+simpler drag on the same surface would be two behaviours an author has to tell
+apart by pixel.
+
 ### A transition is between two slides, so it keeps its own clock
 
 D4.1, `packages/animation-engine/src/transition/`. The schema has carried slide
