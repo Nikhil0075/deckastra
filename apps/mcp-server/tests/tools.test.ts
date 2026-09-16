@@ -205,6 +205,57 @@ describe("the tool surface", () => {
     });
   });
 
+  it("plans a transition in roles, and carries objects only on a morph", async () => {
+    const client = await connect({
+      "/v1/presentations/pres_open/transition": {
+        outcome: "applied",
+        risk_tier: "low",
+        paired: 1,
+        warnings: [],
+        version_id: "ver_2",
+      },
+    });
+
+    const tools = (await client.listTools()).tools;
+    const propose = tools.find((tool) => tool.name === "transition_propose")!;
+    const fields = Object.keys(propose.inputSchema.properties ?? {});
+
+    // The same line the entrance surface holds, in the space between slides:
+    // roles and a pacing word in, milliseconds computed. And no element ids —
+    // an agent plans before a composer has minted any.
+    expect(fields).toContain("carry");
+    expect(fields).toContain("pacing");
+    expect(fields.filter((field) => /ms$|duration|delay|easing|element_id/i.test(field))).toEqual([]);
+
+    const result = JSON.parse(
+      text(
+        await client.callTool({
+          name: "transition_propose",
+          arguments: {
+            presentation_id: "pres_open",
+            slide_id: "sld_2",
+            expected_version_id: "ver_1",
+            kind: "morph",
+            pacing: "tight",
+            carry: ["headline"],
+          },
+        }),
+      ),
+    );
+
+    expect(result.outcome).toBe("applied");
+    expect(result.paired).toBe(1);
+
+    const sentTransition = sent.find((request) => request.url.endsWith("/transition"))!;
+    expect(sentTransition.body).toMatchObject({
+      slide_id: "sld_2",
+      expected_version_id: "ver_1",
+      kind: "morph",
+      carry: ["headline"],
+      client_label: "codex",
+    });
+  });
+
   it("answers with an outline, not the whole document", async () => {
     const result = await (await connect()).callTool({
       name: "document_read",

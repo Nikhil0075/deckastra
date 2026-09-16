@@ -14,7 +14,13 @@ import type {
   VersionSummary,
 } from "./documents";
 import type { ExportJob, ExportRequest } from "./exports";
-import type { MotionCapabilities, MotionRequest, MotionResult } from "./motion";
+import type {
+  MotionCapabilities,
+  MotionRequest,
+  MotionResult,
+  TransitionRequest,
+  TransitionResult,
+} from "./motion";
 import type { GenerateRequest, GenerateResult } from "./generation";
 import type { Repository, RepositoryList, SlideSources } from "./repositories";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
@@ -142,6 +148,12 @@ export interface WorkspaceClient {
       body: MotionRequest,
       options?: RequestOptions,
     ): Promise<MotionResult>;
+    /** Set how the deck moves into one slide, planned in roles. */
+    proposeTransition(
+      presentationId: string,
+      body: TransitionRequest,
+      request?: RequestOptions,
+    ): Promise<TransitionResult>;
   };
 
   readonly agent: {

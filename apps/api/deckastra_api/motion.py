@@ -167,6 +167,110 @@ def animate_slide(
     return warnings
 
 
+#: Transition types this planner will emit. Same rule as `KNOWN_PRESETS`: a plan
+#: naming anything else becomes a fade, because the renderer would degrade it
+#: anyway and degrading *here* means the stored document says what it will do.
+KNOWN_TRANSITIONS = {"cut", "fade", "slide", "push", "zoom", "morph"}
+
+
+def plan_transition(
+    previous_slide: dict[str, Any] | None,
+    slide: dict[str, Any],
+    kind: str,
+    pacing: str = "measured",
+    carry: Iterable[str] = (),
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Turn "morph, carrying the headline" into a transition the schema accepts.
+
+    The same split the entrance planner keeps, applied to the space *between*
+    slides: an agent names a **kind**, one word of **pacing** and the semantic
+    **roles** that carry across; this resolves those roles to element ids on both
+    slides and computes the duration. It has to work this way for the same reason
+    — the agent runs before a composer has minted any ids — and it pays for
+    itself the same way: a pairing written in roles survives a re-layout, and an
+    agent that cannot name milliseconds cannot over-run a budget.
+
+    Pairing is only ever *proposed* here. `sharedElements` is an explicit mapping
+    in the document, which is what doc 02 §26 requires before anything morphs —
+    "two unrelated objects are never silently morphed" is enforced by the engine
+    refusing to guess, and this is the one place allowed to write a guess down,
+    where a human can see it and an editor can break it.
+    """
+    warnings: list[str] = []
+
+    if kind not in KNOWN_TRANSITIONS:
+        warnings.append(
+            f'"{kind}" is not a transition this build draws, so it was written as a fade.'
+        )
+        kind = "fade"
+
+    if kind == "cut":
+        # A cut carries nothing and lasts no time. Writing a duration would put a
+        # number in the document that nothing reads.
+        return {"type": "cut", "durationMs": 0}, warnings
+
+    duration = PACING.get(pacing, PACING["measured"])["durationMs"]
+    transition: dict[str, Any] = {"type": kind, "durationMs": duration, "easing": "emphasized"}
+
+    roles = [str(role) for role in carry if str(role).strip()]
+    if not roles:
+        return transition, warnings
+
+    if kind != "morph":
+        # Carrying roles across a push is not a thing the engine does: only a
+        # morph consumes the deltas. Saying so beats writing mappings that
+        # nothing reads.
+        warnings.append(
+            f"Shared elements were named but this is a {kind}, which does not carry "
+            "objects across. They were left out; use a morph to carry them."
+        )
+        return transition, warnings
+
+    if previous_slide is None:
+        warnings.append(
+            "This is the first slide, so there is nothing to carry objects from. "
+            "Its transition was kept and the pairing left out."
+        )
+        return transition, warnings
+
+    before = _elements_by_role(previous_slide.get("elements") or [])
+    after = _elements_by_role(slide.get("elements") or [])
+
+    mappings: list[dict[str, Any]] = []
+    for role in roles:
+        source = before.get(role) or []
+        destination = after.get(role) or []
+        if not source or not destination:
+            missing = "the previous slide" if not source else "this slide"
+            warnings.append(f'No "{role}" on {missing}, so that pairing was left out.')
+            continue
+
+        # First of each, in document order. A role appearing twice on a slide is
+        # ambiguous and guessing further would be exactly the silent pairing the
+        # schema forbids; the author can add the rest by hand, where they can see
+        # what they are pairing.
+        if len(source) > 1 or len(destination) > 1:
+            warnings.append(
+                f'"{role}" appears more than once, so the first on each slide was paired.'
+            )
+
+        mappings.append(
+            {
+                "sourceElementId": source[0]["id"],
+                "destinationElementId": destination[0]["id"],
+                # Position and scale, never `full`: rotation and opacity change
+                # what an element *is*, and an agent naming a role has not asked
+                # for that.
+                "matchMode": "positionAndScale",
+            }
+        )
+
+    if mappings:
+        transition["sharedElements"] = mappings
+
+    return transition, warnings
+
+
 def _trigger(index: int, clicked: bool, entrance_steps: int) -> dict[str, Any]:
     if clicked:
         # A click opens a segment: playback runs to the boundary and waits, which

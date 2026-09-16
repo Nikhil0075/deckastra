@@ -1,4 +1,6 @@
 import type {
+  TransitionRequest,
+  TransitionResult,
   AccountContext,
   AccountProject,
   AgentEditResult,
@@ -237,6 +239,11 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
       capabilities: (request) => json<MotionCapabilities>("/v1/motion/capabilities", { ...request }),
       propose: (presentationId, body: MotionRequest, request) =>
         json<MotionResult>(`/v1/presentations/${q(presentationId)}/motion`, { body, ...request }),
+      proposeTransition: (presentationId, body: TransitionRequest, request) =>
+        json<TransitionResult>(`/v1/presentations/${q(presentationId)}/transition`, {
+          body,
+          ...request,
+        }),
     },
 
     generation: {

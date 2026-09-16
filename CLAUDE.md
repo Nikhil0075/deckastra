@@ -1014,6 +1014,10 @@ beside the exporter and run the same way — the app's own binary under
 refuses a bundle that statically imports an external package, for the exporter
 and the server alike, because that is what an installed process cannot resolve.
 
+**The acceptance journey is 16 steps now** (2026-09-16), the two new ones being
+an agent pairing elements across slides from roles alone, and being refused when
+it asked a push to carry them.
+
 **D2 measured, Windows 11 x64, development build (2026-09-10).** The claims are
 about software someone is using, so `scripts/acceptance.mjs` drives the real
 stdio transport against a running app rather than a mock — 13/13: attach, name
@@ -1052,6 +1056,24 @@ of it — on a deck it creates, so nobody's real work is touched — but the two
 it deliberately cannot take are the two that belong to the human: approving a
 pending change, and undoing an applied one. That is the remaining interoperability
 evidence, and only a person sitting in front of the app can produce it.
+
+**An agent plans the move *between* slides too** (`transition_propose`,
+`POST /presentations/{id}/transition`, `motion.plan_transition`). The same split
+as the entrance planner, applied to the boundary: a caller names a kind, one word
+of pacing and the semantic **roles** that carry across, and the app resolves
+those roles against both slides and computes the duration. No milliseconds, no
+element ids — an agent plans before a composer has minted any, and a pairing
+written in roles survives a re-layout. A test asserts the tool's schema carries
+neither.
+
+Shared elements are the one place a guess is written down. Doc 02 §26 says two
+unrelated objects are never silently morphed, which the transition engine
+enforces by refusing to pair on its own; a mapping proposed here lands in the
+document as an explicit mapping, visible in the editor and breakable by the
+author — which is the difference between a suggestion and a silent decision.
+Three refusals are stated rather than swallowed: only a morph carries objects (a
+push naming roles is told so), a role missing on either slide is named, and a
+role appearing twice pairs the first and says it guessed.
 
 **An agent plans motion in roles** (`motion_capabilities`, `motion_propose`,
 `GET /motion/capabilities`, `POST /presentations/{id}/motion`). The tool surface

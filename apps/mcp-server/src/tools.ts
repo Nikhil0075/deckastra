@@ -301,6 +301,51 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 
   server.registerTool(
+    "transition_propose",
+    {
+      title: "Set how the deck moves into a slide",
+      description:
+        "Describe the move between two slides: a kind, one word of pacing, and — for a " +
+        "morph — the semantic roles that travel across. carry: ['headline'] on a morph " +
+        "means the headline on the previous slide becomes the headline on this one, and " +
+        "the audience sees one object move rather than two slides swap. " +
+        "Roles, never element ids: the app resolves them against both slides, so a pairing " +
+        "survives the slide being re-laid out. " +
+        "There are no milliseconds here either — pacing decides the duration. " +
+        "Only a morph carries objects; naming roles on a push is refused and said. " +
+        "A pairing is written into the document where the user can see and break it, " +
+        "because two unrelated objects must never be silently morphed.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_id: z.string().min(1).describe("The slide being entered; its transition is the one set."),
+        expected_version_id: z.string().min(1),
+        kind: z.enum(["cut", "fade", "slide", "push", "zoom", "morph"]).optional(),
+        pacing: z.enum(["tight", "measured", "deliberate"]).optional(),
+        carry: z
+          .array(z.string().min(1))
+          .max(8)
+          .optional()
+          .describe("Semantic roles that travel across the boundary. Morph only."),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, slide_id, expected_version_id, kind, pacing, carry, intent }) =>
+      guard(async () =>
+        json(
+          await client.motion.proposeTransition(presentation_id, {
+            slide_id,
+            expected_version_id,
+            ...(kind ? { kind } : {}),
+            ...(pacing ? { pacing } : {}),
+            ...(carry ? { carry } : {}),
+            ...(intent ? { intent } : {}),
+            client_label: client.clientId.replace(/^mcp:/, ""),
+          }),
+        ),
+      ),
+  );
+
+  server.registerTool(
     "document_versions",
     {
       title: "A deck's history",

@@ -167,6 +167,85 @@ async function main() {
     `${animated.track_count} track(s), budget ${capabilities.entrance_budget_ms}ms`,
   );
 
+  // --- a transition, planned in roles across two slides
+  outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
+  const secondSlideId = newId("sld");
+  const secondHeadlineId = newId("el");
+  const added = payload(
+    await client.callTool({
+      name: "document_propose",
+      arguments: {
+        presentation_id: deck,
+        expected_version_id: outline.versionId,
+        intent: "Add a second slide to morph into",
+        operations: [
+          {
+            op: "add",
+            path: "/slides/-",
+            value: {
+              id: secondSlideId,
+              elements: [
+                {
+                  id: secondHeadlineId,
+                  type: "text",
+                  semanticRole: "headline",
+                  transform: { x: 200, y: 120, width: 1500, height: 300 },
+                  content: {
+                    version: 1,
+                    blocks: [{ id: newId("blk"), type: "paragraph", spans: [{ text: "Written by an agent" }] }],
+                  },
+                  typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 120 },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    }),
+  );
+  check("adds a second slide to move between", Boolean(added.outcome), added.outcome);
+
+  outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
+  const morphed = payload(
+    await client.callTool({
+      name: "transition_propose",
+      arguments: {
+        presentation_id: deck,
+        slide_id: secondSlideId,
+        expected_version_id: outline.versionId,
+        kind: "morph",
+        pacing: "measured",
+        carry: ["headline"],
+        intent: "Carry the headline across",
+      },
+    }),
+  );
+  check(
+    "pairs elements across slides from roles alone",
+    morphed.paired === 1,
+    `${morphed.paired} paired, ${morphed.warnings.length} warning(s)`,
+  );
+
+  const refusedCarry = payload(
+    await client.callTool({
+      name: "transition_propose",
+      arguments: {
+        presentation_id: deck,
+        slide_id: secondSlideId,
+        expected_version_id: payload(
+          await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }),
+        ).versionId,
+        kind: "push",
+        carry: ["headline"],
+      },
+    }),
+  );
+  check(
+    "refuses to carry objects across a transition that cannot",
+    (refusedCarry.warnings ?? []).some((warning) => warning.includes("does not carry")),
+    refusedCarry.warnings?.[0]?.slice(0, 60) ?? "no warning",
+  );
+
   // --- see it
   outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
   const preview = await client.callTool({

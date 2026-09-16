@@ -371,6 +371,128 @@ def propose_motion(
     }
 
 
+class TransitionRequest(BaseModel):
+    slide_id: str = Field(min_length=1, max_length=64)
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    #: What the deck does moving *into* this slide.
+    kind: Literal["cut", "fade", "slide", "push", "zoom", "morph"] = "fade"
+    pacing: Literal["tight", "measured", "deliberate"] = "measured"
+    #: Semantic roles to carry across, for a morph. Roles, never ids: the agent
+    #: plans before ids exist, and a pairing written in roles survives a layout.
+    carry: list[str] = Field(default_factory=list, max_length=8)
+    intent: str = Field(default="Set a slide transition", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+
+
+@router.post("/presentations/{presentation_id}/transition")
+def propose_transition(
+    presentation_id: str,
+    request: TransitionRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Set how the deck moves into one slide, from a plan in roles.
+
+    The entrance planner's split, applied to the space *between* slides: the
+    caller names a kind, one word of pacing, and the roles that carry across;
+    `motion.plan_transition` resolves those roles against both slides and
+    computes the duration. There is no field for milliseconds, and that absence
+    is the feature — the same one doc 04 §24.2 relies on for entrances.
+
+    Shared elements are the one place a *guess* is written down. Doc 02 §26 says
+    two unrelated objects are never silently morphed, which the engine enforces
+    by refusing to pair on its own; a mapping proposed here is explicit in the
+    document, visible in the editor, and breakable by the author — which is the
+    difference between a suggestion and a silent decision.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+    )
+
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "This deck has changed since you read it. Read it again and re-plan "
+                    "the transition against the current version."
+                ),
+                "code": "E310",
+                "current_version_id": head.version_id,
+            },
+        )
+
+    slides = head.document.get("slides", [])
+    index = next(
+        (at for at, one in enumerate(slides) if one.get("id") == request.slide_id), None
+    )
+    if index is None:
+        raise HTTPException(status_code=404, detail=f"No slide {request.slide_id} in this deck.")
+
+    slide = slides[index]
+    previous = slides[index - 1] if index > 0 else None
+
+    transition, warnings = motion.plan_transition(
+        previous,
+        slide,
+        kind=request.kind,
+        pacing=request.pacing,
+        carry=request.carry,
+    )
+
+    if transition == slide.get("transition"):
+        # Identical to what is already there. Committing would put a version in
+        # the history that changes nothing, which every later diff has to be read
+        # past.
+        return {
+            "outcome": "none",
+            "warnings": warnings,
+            "refusal": "That is already this slide's transition.",
+            "version_id": head.version_id,
+        }
+
+    operations = [
+        {
+            # `add` when the slide has no transition yet: `replace` refuses a
+            # property that does not exist (doc 02 §31.3).
+            "op": "replace" if slide.get("transition") is not None else "add",
+            "path": f"/slides/id:{request.slide_id}/transition",
+            "value": transition,
+        }
+    ]
+
+    try:
+        outcome = proposals.create_proposal(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            intent=request.intent,
+            created_by=principal.user_id,
+            agent_id=f"mcp:{request.client_label}"[:120],
+            reason="; ".join(warnings)[:1000] or None,
+            expected_version_id=request.expected_version_id,
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(
+            status_code=409, detail={"message": str(error), "code": error.code}
+        ) from error
+
+    return {
+        "outcome": outcome["status"],
+        "risk_tier": outcome["risk_tier"],
+        "reasons": outcome.get("reasons") or [],
+        "transaction_id": outcome["transaction_id"],
+        "version_id": outcome.get("version_id"),
+        "expires_at": outcome.get("expires_at"),
+        "paired": len(transition.get("sharedElements") or []),
+        "warnings": warnings,
+    }
+
+
 @router.post("/presentations/{presentation_id}/preview")
 def preview_slide(
     presentation_id: str,

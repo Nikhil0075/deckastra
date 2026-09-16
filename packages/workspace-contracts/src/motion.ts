@@ -47,3 +47,34 @@ export interface MotionResult {
   warnings: string[];
   refusal?: string;
 }
+
+/**
+ * How the deck moves *into* a slide (doc 02 §26).
+ *
+ * Roles rather than element ids, for the reason the entrance plan uses roles: a
+ * caller plans before a composer has minted ids, and a pairing written in roles
+ * survives the slide being re-laid out.
+ */
+export interface TransitionRequest {
+  slide_id: string;
+  expected_version_id: string;
+  kind?: "cut" | "fade" | "slide" | "push" | "zoom" | "morph";
+  pacing?: "tight" | "measured" | "deliberate";
+  /** Semantic roles that travel across the boundary. Only a morph carries them. */
+  carry?: string[];
+  intent?: string;
+  client_label?: string;
+}
+
+export interface TransitionResult {
+  outcome: string;
+  risk_tier?: string;
+  reasons?: string[];
+  transaction_id?: string | null;
+  version_id?: string | null;
+  expires_at?: string | null;
+  /** How many objects were paired across the boundary. */
+  paired?: number;
+  warnings: string[];
+  refusal?: string;
+}
