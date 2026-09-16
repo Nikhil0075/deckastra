@@ -77,11 +77,24 @@ def create_presentation(
     document: dict[str, Any],
     created_by: str,
     source: str = "user",
+    from_server: bool = False,
+    remote_version_id: str | None = None,
 ) -> LoadedPresentation:
     """Insert a presentation and its first version.
 
     The first version always carries a full snapshot — there is nothing to replay
     from otherwise.
+
+    `from_server` marks a deck that arrived **by being pulled down**, and it is
+    not a detail. A deck in a syncing workspace normally enqueues itself for
+    upload, which for a mirrored one would mean the device immediately offering
+    the server back the deck it just received — an echo, and one that would look
+    to the server like a brand-new deck carrying an id it already has. Nothing is
+    queued for a deck the server already holds.
+
+    A named argument rather than something inferred, because inferring it would
+    mean guessing and the failure is silent either way: guess wrong one way and a
+    real deck never syncs, guess wrong the other and every pull starts a push.
     """
     presentation_id = document["id"]
     version_id = new_id("ver")
@@ -93,6 +106,7 @@ def create_presentation(
             title=document["metadata"]["title"],
             current_version_id=version_id,
             schema_version=document["schemaVersion"],
+            remote_version_id=remote_version_id,
         )
     )
     session.add(
@@ -116,15 +130,19 @@ def create_presentation(
     # the deck silently never reaches anyone.
     # Files first (D5.5), then the deck. A snapshot that cites an image the
     # server has never received arrives broken for everyone but its author.
-    sync.enqueue_new_assets(
-        session, presentation_id=presentation_id, document=document
-    )
-    sync.enqueue(
-        session,
-        presentation_id=presentation_id,
-        kind="create",
-        change_key=sync.new_change_key(),
-    )
+    #
+    # Unless it came *from* the server (D5.6), in which case it owes nobody
+    # anything and queueing it would start an echo.
+    if not from_server:
+        sync.enqueue_new_assets(
+            session, presentation_id=presentation_id, document=document
+        )
+        sync.enqueue(
+            session,
+            presentation_id=presentation_id,
+            kind="create",
+            change_key=sync.new_change_key(),
+        )
 
     return LoadedPresentation(
         document=document,

@@ -1775,6 +1775,76 @@ into the shared page alone would fix the audience's view of something the author
 cannot do, which is backwards. It is a D6 gap, and it is named here rather than
 papered over.
 
+### Pulling a workspace down, and why push could not come first (D5.6)
+
+D5.2 built an outbox with no transport and D5.3 built divergence handling with
+nothing to diverge against. The obvious next step was to send, and it does not
+work: a `create` needs a **remote project id**, and a device that had only ever
+pushed has no mapping for one. So the first slice of a transport is the direction
+that establishes what the two sides call things.
+
+**It turns out there is nothing to establish. Ids travel; version ids do not.**
+That falls out of what already exists rather than being invented: a presentation
+takes its id from `document["id"]` (D5.0), and a workspace or project created on
+the server is created *by* the server, which mints the id. So a mirrored row holds
+the server's id, `origin = "cloud"` means "this row mirrors a server row with the
+same id", and there is no translation table anywhere to get wrong. The one
+exception is the version chain, because `commit_transaction` mints its own and
+takes none from a caller — which is what `Presentation.remote_version_id` is for,
+and it is the fact a later push needs in order to say what its change is based on.
+
+**There is no bootstrap endpoint, deliberately.** `bootstrap.adopt` reads
+`/v1/account`, `/v1/projects/{id}/presentations` and `/v1/presentations/{id}` —
+the routes a browser already reads, with the same bearer token through the same
+`resolve_*` chain. A server with no code path that exists only for syncing has
+none that can drift from the one people use. The remote is a **protocol** rather
+than a client, for the same reason `drain` takes its sender as a callable: the
+behaviour worth testing is what gets written locally, and it is tested against a
+real second store rather than against canned JSON.
+
+**The echo is the trap that would have made the first sync loop.** A deck in a
+syncing workspace enqueues itself for upload (D5.2), so a mirrored one doing that
+means the device immediately offering the server back the deck it just received —
+arriving there as a brand-new deck carrying an id the server already has.
+`create_presentation(from_server=True)` is the guard, and it is a named argument
+rather than something inferred: inferring it means guessing, and the failure is
+silent in both directions — guess wrong one way and a real deck never syncs, guess
+wrong the other and every pull starts a push.
+
+Four refusals, each a way a bootstrap could quietly take something:
+
+- **A local workspace is never converted into a mirror.** A server answering with
+  an id matching one of this machine's own workspaces would otherwise take it
+  over, decks and all, and the person would have handed it over by signing in.
+- **A project cannot change workspace by being mirrored.** Moving a deck between
+  workspaces is an explicit act with its own route and its own refusals (D5.1); a
+  pull is not one.
+- **A document whose `id` disagrees with the row it arrived under** would create
+  a deck under an id nothing else refers to, and one that does not validate
+  against this build is refused **by name** — storing it would not make it
+  openable, and a silent skip leaves someone hunting for a deck that is simply
+  missing from the list.
+- **A deck already held is left alone**, not refreshed. The local copy may carry
+  edits that have not been uploaded, and replacing it with the server's would
+  discard exactly what the outbox exists to protect. Catching a changed deck up
+  is a merge (D5.3), not a pull.
+
+**Losing access closes D5.4's loop.** A workspace the server stops listing has its
+membership revoked here and now, rather than running down the thirty-day window —
+that window is for a device that *cannot* ask, and this is a device that just did.
+The decks stay on disk: bytes already on a machine are already on it, and quietly
+destroying someone's local copy of work they may have authored is a bigger
+decision than a reconnect should make. A read that *fails* raises rather than
+returning nothing, because concluding "no workspaces" from a timeout would lock a
+person out of their own decks because their network was down.
+
+**Not done, and not claimed:** `HttpRemote` has never run against a live server,
+because there is no deployed Deckastra to point it at — what is tested is `adopt`,
+against a real second store, which is where the decisions are. Push is still
+unbuilt, so nothing this pulls can be sent back yet; assets are not pulled with
+their decks; and a deck that changed on both sides has no reconcile path from a
+bootstrap, only the local one D5.3 built.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.

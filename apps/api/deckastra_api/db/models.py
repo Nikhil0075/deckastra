@@ -235,6 +235,17 @@ class Presentation(Base, TimestampMixin):
         DateTime(timezone=True), default=_now, onupdate=_now, nullable=False
     )
 
+    #: The server version this device last mirrored, in the **server's** version
+    #: ids (D5.6). Null for a deck that has never been pulled.
+    #:
+    #: It has to be recorded separately because version ids are the one identity
+    #: that does *not* travel (D5.0): `commit_transaction` mints its own and takes
+    #: none from a caller, so the local chain and the remote chain share content
+    #: and nothing else. This column is the only thing that can answer "which
+    #: server version is this copy of", which is what a later push needs in order
+    #: to say what its change is based on, and what divergence detection compares.
+    remote_version_id: Mapped[str | None] = mapped_column(String(64))
+
     project: Mapped[Project] = relationship(back_populates="presentations")
     versions: Mapped[list[PresentationVersion]] = relationship(
         back_populates="presentation", cascade="all, delete-orphan"
