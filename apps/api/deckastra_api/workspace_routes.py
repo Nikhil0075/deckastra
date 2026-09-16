@@ -36,6 +36,7 @@ from .auth import (
     resolve_presentation_access,
     resolve_workspace_access,
     ensure_workspace_membership,
+    membership_status,
 )
 from .db.models import (
     Asset,
@@ -87,16 +88,35 @@ def _account_context(session: Session, principal: Principal) -> dict[str, Any]:
         workspace = session.get(Workspace, membership.workspace_id)
         if workspace is None:
             continue
-        projects = session.scalars(
-            select(Project)
-            .where(Project.workspace_id == workspace.id)
-            .order_by(Project.name, Project.id)
-        ).all()
+
+        # D5.4. What this membership actually grants right now, which for a
+        # mirrored workspace is not the same as what the row says. A picker that
+        # listed a lapsed workspace like any other would offer someone a door
+        # that opens onto a 404, with nothing anywhere saying why.
+        access = membership_status(session, user.id, workspace.id)
+
+        projects = (
+            session.scalars(
+                select(Project)
+                .where(Project.workspace_id == workspace.id)
+                .order_by(Project.name, Project.id)
+            ).all()
+            if access.authorizes
+            # Named but empty rather than hidden. The person knows this workspace
+            # exists — it is on their machine — so removing it from the list
+            # would look like data loss, and telling them nothing is worse than
+            # telling them their access could not be confirmed.
+            else []
+        )
         workspaces.append(
             {
                 "id": workspace.id,
                 "name": workspace.name,
                 "role": membership.role,
+                "access": access.state,
+                "confirmed_at": (
+                    access.confirmed_at.isoformat() if access.confirmed_at else None
+                ),
                 # D5.1. A picker that cannot tell this machine's own workspace
                 # from a mirrored one makes "move this deck to the company
                 # workspace" a choice nobody can see they are making.

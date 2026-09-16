@@ -24,6 +24,7 @@ import hashlib
 import hmac
 import os
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from enum import IntEnum
 from functools import lru_cache
 from typing import Any
@@ -358,14 +359,167 @@ class Forbidden(HTTPException):
         super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
-def role_in_workspace(session: Session, user_id: str, workspace_id: str) -> Role | None:
+#: How long a mirrored membership keeps working without hearing from the server
+#: (D5.4), and how long before it stops working at all.
+#:
+#: Two numbers rather than one, because the alternatives are both bad. Expiring
+#: at the first missed confirmation makes a local-first product useless on a
+#: plane; never expiring makes "a cache is not authorization" a sentence rather
+#: than a rule. So a stale cache keeps working and **says** it is stale, and a
+#: lapsed one stops — thirty days being long enough that nobody loses a holiday's
+#: work to it and short enough that a removed colleague does not keep a copy of
+#: the workspace alive indefinitely.
+MEMBERSHIP_STALE_DAYS = 7
+MEMBERSHIP_LAPSE_DAYS = 30
+
+
+@dataclass(frozen=True)
+class MembershipStatus:
+    """Whether this row may decide anything, and why (D5.4).
+
+    The reason travels with the answer because the two refusals are not the same
+    to the person on the other end: "we have not been able to confirm your access
+    for a month" is something they can act on by reconnecting, and "your access
+    was removed" is not.
+    """
+
+    #: `authoritative` — a `local` workspace: this row *is* the decision (D5.1).
+    #: `confirmed` — a mirror, vouched for recently.
+    #: `stale` — a mirror, not heard from lately. Still authorizes, and says so.
+    #: `lapsed` — a mirror, never confirmed or confirmed too long ago.
+    #: `revoked` — the authority said the membership is gone.
+    #: `none` — there is no membership.
+    state: str
+    #: What this membership grants, or None when it grants nothing. A caller that
+    #: only reads `role` therefore cannot accidentally honour a lapsed cache.
+    role: Role | None
+    confirmed_at: datetime | None = None
+
+    @property
+    def authorizes(self) -> bool:
+        return self.role is not None
+
+
+def membership_status(
+    session: Session, user_id: str, workspace_id: str, *, now: datetime | None = None
+) -> MembershipStatus:
+    """The one place a `workspace_members` row becomes an authorization decision.
+
+    Every `resolve_*` funnels here, and that is the whole design rather than an
+    implementation detail. Once a device mirrors a workspace, some rows in this
+    table are copies of decisions made somewhere else — and a copy of a decision
+    is not the decision. A route that read the table itself would authorize a
+    cached role as readily as a real one, which is exactly how a colleague removed
+    upstream keeps working locally for as long as the laptop stays shut.
+
+    The local singleton account needs no special case here, which is the part
+    worth noticing: nothing can confirm a membership for an identity this machine
+    invented, so a row someone inserted for it in a mirrored workspace carries no
+    confirmation and grants nothing.
+    """
     membership = session.scalar(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == workspace_id,
             WorkspaceMember.user_id == user_id,
         )
     )
-    return parse_role(membership.role) if membership else None
+    if membership is None:
+        return MembershipStatus(state="none", role=None)
+
+    role = parse_role(membership.role)
+    workspace = session.get(Workspace, workspace_id)
+    if workspace is None:
+        return MembershipStatus(state="none", role=None)
+
+    if workspace.origin != "cloud":
+        # This machine owns the workspace outright. The row is the authority, so
+        # there is nothing to confirm it against and nothing that could go stale.
+        return MembershipStatus(state="authoritative", role=role)
+
+    if membership.revoked_at is not None:
+        # Known and immediate. A revocation still honoured for a fortnight while
+        # a window runs down is not a revocation.
+        return MembershipStatus(state="revoked", role=None)
+
+    confirmed = membership.confirmed_at
+    if confirmed is None:
+        return MembershipStatus(state="lapsed", role=None)
+    if confirmed.tzinfo is None:
+        confirmed = confirmed.replace(tzinfo=timezone.utc)
+
+    age = (now or datetime.now(timezone.utc)) - confirmed
+    if age > timedelta(days=MEMBERSHIP_LAPSE_DAYS):
+        return MembershipStatus(state="lapsed", role=None, confirmed_at=confirmed)
+    if age > timedelta(days=MEMBERSHIP_STALE_DAYS):
+        return MembershipStatus(state="stale", role=role, confirmed_at=confirmed)
+    return MembershipStatus(state="confirmed", role=role, confirmed_at=confirmed)
+
+
+def role_in_workspace(session: Session, user_id: str, workspace_id: str) -> Role | None:
+    return membership_status(session, user_id, workspace_id).role
+
+
+def confirm_membership(
+    session: Session, *, user_id: str, workspace_id: str, role: str
+) -> WorkspaceMember:
+    """The authority vouched for this membership; record it (D5.4).
+
+    The **only** thing that sets `confirmed_at`, deliberately. A second writer
+    would be a second way for a cache to start authorizing, and the value of the
+    rule is that there is exactly one.
+
+    It also carries the role, because a mirror that refreshed freshness without
+    refreshing the role would keep honouring an editor who has since been demoted
+    to viewer — a subtler version of the same bug.
+    """
+    membership = session.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    if membership is None:
+        membership = WorkspaceMember(
+            id=new_id("mbr"), workspace_id=workspace_id, user_id=user_id, role=role
+        )
+        session.add(membership)
+
+    membership.role = role
+    membership.confirmed_at = datetime.now(timezone.utc)
+    # A membership that was revoked and has been granted again is an ordinary
+    # membership; leaving the mark would refuse it forever.
+    membership.revoked_at = None
+    session.flush()
+    return membership
+
+
+def revoke_cached_membership(
+    session: Session, *, user_id: str, workspace_id: str
+) -> bool:
+    """The authority says this membership is gone. Stop honouring it now.
+
+    The row is kept rather than deleted, for the reason a revoked share link is
+    kept: "who could see this, and when did that stop" is the question asked
+    afterwards.
+
+    What this does **not** do is delete the decks. Bytes already on a device are
+    already on the device, and quietly destroying a person's local copy of work
+    they may have authored is a bigger decision than this function should make on
+    its own.
+    """
+    membership = session.scalar(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    if membership is None:
+        return False
+
+    membership.revoked_at = datetime.now(timezone.utc)
+    membership.confirmed_at = None
+    session.flush()
+    return True
 
 
 @dataclass(frozen=True)
@@ -460,10 +614,17 @@ def resolve_workspace_access(
         raise Forbidden("You are not a member of any workspace.")
 
     membership = memberships[0]
-    role = parse_role(membership.role)
-    if role < require:
+    # Through `membership_status`, not `parse_role` on the row (D5.4). This
+    # function used to read the role straight off the row, which meant that the
+    # moment a device mirrors a workspace, every workspace-scoped route — themes,
+    # assets, the sweeper that deletes files, usage — would honour a cached role
+    # as readily as a real one. The check has one home for the same reason the
+    # `require` argument is mandatory: a rule that each route re-implements is a
+    # rule one route will re-implement wrongly.
+    status = membership_status(session, user_id, membership.workspace_id)
+    if status.role is None or status.role < require:
         raise Forbidden()
-    return WorkspaceAccess(workspace_id=membership.workspace_id, role=role)
+    return WorkspaceAccess(workspace_id=membership.workspace_id, role=status.role)
 
 
 

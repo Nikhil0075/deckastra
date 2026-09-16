@@ -1522,6 +1522,69 @@ somewhere nobody can stand — the same call as D5.1's move dialog. What exists 
 the authority: detection, classification, the record, and the three documents a
 review will need.
 
+### A local membership cache is not authorization (D5.4)
+
+`workspace_members` decides what every route in this product will do. Once a
+device mirrors a workspace, some of those rows are copies of decisions made
+somewhere else — and a copy of a decision is not the decision. Nothing in the
+schema could tell the two apart, so a mirrored row would have authorized exactly
+as a real one does, including long after the person it describes was removed
+upstream.
+
+`WorkspaceMember.confirmed_at` is what a role in a `cloud` workspace now rests
+on, and `auth.membership_status()` is the single place a row becomes a decision.
+Six states, and only three of them grant anything: `authoritative` (a `local`
+workspace — the row *is* the authority, so there is nothing to confirm it
+against), `confirmed`, `stale`, `lapsed`, `revoked`, `none`.
+
+**Two windows rather than one**, because the alternatives are both wrong.
+Expiring at the first missed confirmation makes a local-first product useless on
+a plane, which is the thing it exists to be good at; never expiring makes "a
+cache is not authorization" a sentence rather than a rule, and leaves a removed
+colleague holding a working copy of the workspace for as long as the laptop stays
+shut. So a **stale** cache (7 days) keeps working and says so, and a **lapsed**
+one (30 days) stops. A *known* revocation is immediate — one still honoured while
+a window runs down is not a revocation — and the row is kept rather than deleted,
+for the reason a revoked share link is kept.
+
+**`confirm_membership` is the only thing that sets `confirmed_at`**, and it
+carries the role as well as the freshness: a mirror that refreshed one without
+the other would keep honouring an editor since demoted to viewer — a cache that
+is provably current and still wrong. Nothing stamps a local membership, and the
+migration backfills nothing, because `confirmed_at` records that an authority
+vouched for the row and for those rows nothing ever did. A stamp there would be
+fail-open.
+
+**The local singleton needs no special case, which is the part worth noticing.**
+D5.1 promised that local mode's "owner of everything here" posture must not
+extend over decks the server owns. It cannot, and not because anything checks for
+local mode: nothing can confirm a membership for an identity this machine
+invented, so a row someone inserted for it in a mirrored workspace carries no
+confirmation and grants nothing. One rule, no exception to forget.
+
+**`resolve_workspace_access` was the bypass.** It read the role straight off the
+row with `parse_role`, and it is the entry point for themes, assets, usage and
+the sweeper that deletes files — so the moment a device mirrored a workspace, all
+of them would have honoured a cached role. It goes through `membership_status`
+now. The regression test was checked against the old code and fails there, which
+is the only way to know a regression test is one.
+
+A workspace whose access no longer authorizes is **listed with no projects**
+rather than hidden. The person knows it exists — it is on their machine — so
+dropping it from the list looks like data loss, where naming it with a reason is
+something they can act on. `access` and `confirmed_at` ride on `AccountWorkspace`
+for that. The resource-level refusals are unchanged: still 404, still identical
+to a stranger's, because that rule is about not confirming what exists to someone
+probing for it.
+
+**Not done, and not claimed:** revoking a membership does not delete the decks.
+Bytes already on a device are already on the device, and quietly destroying
+someone's local copy of work they may have authored is a bigger decision than
+this makes on its own. Nothing mirrors a workspace yet, so the enforcement is
+tested against rows written the way a mirror would write them — which is
+deliberate, because building the enforcement afterwards is how mirroring lands
+with nothing checking it.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.

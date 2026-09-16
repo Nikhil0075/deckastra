@@ -163,6 +163,30 @@ class WorkspaceMember(Base, TimestampMixin):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
 
+    #: When the authority that owns this workspace last vouched for this row
+    #: (D5.4), and the only thing that makes a role in a `cloud` workspace mean
+    #: anything.
+    #:
+    #: In a `local` workspace the row *is* the authority and this is never
+    #: consulted — which is why nothing sets it there, and why the migration that
+    #: added it backfilled nothing: a stamp would record a fact nobody
+    #: established. In a mirrored one the row is a **cache**, and a cache is not
+    #: authorization — so it authorizes only while it has been confirmed, and a
+    #: row that appeared any other way carries no confirmation and grants
+    #: nothing. That is what makes the rule hold without a special case for the
+    #: local singleton account: nothing can confirm a membership for an identity
+    #: this machine invented.
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    #: Set when the authority says the membership is gone. Immediate, rather than
+    #: waiting out the confirmation window — a revocation that is *known* and
+    #: still honoured for a fortnight is not a revocation.
+    #:
+    #: The row is kept rather than deleted: "who could see this, and when did that
+    #: stop" is the question asked afterwards, which is the same reason a revoked
+    #: share link is kept.
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     workspace: Mapped[Workspace] = relationship(back_populates="members")
     user: Mapped[User] = relationship(back_populates="memberships")
 

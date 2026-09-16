@@ -33,11 +33,36 @@ export interface AccountProject {
  */
 export type WorkspaceOrigin = "local" | "cloud";
 
+/**
+ * What a membership grants *right now* (D5.4), which for a mirrored workspace is
+ * not always what the stored role says.
+ *
+ * `authoritative` — a local workspace: the row is the decision, nothing to confirm.
+ * `confirmed` — a mirror, vouched for by the server recently.
+ * `stale` — a mirror, not heard from lately. Still works; worth saying.
+ * `lapsed` — a mirror nobody has confirmed for long enough. Grants nothing.
+ * `revoked` — the server said the membership is gone. Grants nothing.
+ *
+ * A workspace whose access does not authorize is still listed, with no projects.
+ * The person knows it exists — it is on their machine — so dropping it from the
+ * list looks like data loss, where naming it with a reason is something they can
+ * act on.
+ */
+export type WorkspaceAccess =
+  | "authoritative"
+  | "confirmed"
+  | "stale"
+  | "lapsed"
+  | "revoked";
+
 export interface AccountWorkspace {
   id: string;
   name: string;
   role: Role;
   origin: WorkspaceOrigin;
+  access: WorkspaceAccess;
+  /** When the server last vouched for the membership; null in a local workspace. */
+  confirmed_at: string | null;
   projects: AccountProject[];
 }
 

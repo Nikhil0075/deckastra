@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api import store, sync  # noqa: E402
+from deckastra_api import auth, store, sync  # noqa: E402
 from deckastra_api.db import session as db_session  # noqa: E402
 from deckastra_api.db.models import (  # noqa: E402
     Project,
@@ -74,6 +74,16 @@ def a_syncing_workspace(client: TestClient, who: dict[str, str]) -> str:
     created = client.post("/v1/workspaces", headers=headers(who), json={"name": "Acme"}).json()
     with db_session.session_scope() as session:
         session.get(Workspace, created["workspace_id"]).origin = "cloud"
+        # And the membership has to be confirmed (D5.4), because in a mirrored
+        # workspace the row is a cache and an unconfirmed cache authorizes
+        # nothing. A real mirror does this as part of syncing the workspace down;
+        # flipping `origin` without it leaves a state no device could be in.
+        auth.confirm_membership(
+            session,
+            user_id=who["user_id"],
+            workspace_id=created["workspace_id"],
+            role="owner",
+        )
     return created["project_id"]
 
 

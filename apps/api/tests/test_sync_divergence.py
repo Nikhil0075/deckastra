@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api import sync  # noqa: E402
+from deckastra_api import auth, sync  # noqa: E402
 from deckastra_api.db import session as db_session  # noqa: E402
 from deckastra_api.db.models import SyncOutboxRow, Workspace  # noqa: E402
 
@@ -60,6 +60,16 @@ def a_syncing_workspace(client: TestClient, who: dict[str, str]) -> str:
     created = client.post("/v1/workspaces", headers=headers(who), json={"name": "Acme"}).json()
     with db_session.session_scope() as session:
         session.get(Workspace, created["workspace_id"]).origin = "cloud"
+        # And the membership has to be confirmed (D5.4), because in a mirrored
+        # workspace the row is a cache and an unconfirmed cache authorizes
+        # nothing. A real mirror does this as part of syncing the workspace down;
+        # flipping `origin` without it leaves a state no device could be in.
+        auth.confirm_membership(
+            session,
+            user_id=who["user_id"],
+            workspace_id=created["workspace_id"],
+            role="owner",
+        )
     return created["project_id"]
 
 
@@ -374,9 +384,6 @@ def test_a_version_from_somewhere_else_cannot_retire_a_queue(client, diverged):
 
 def test_a_viewer_cannot_retire_someone_elses_queue(client, diverged):
     """Reading that a deck diverged is not deciding what happens to the work."""
-    from deckastra_api.db.models import WorkspaceMember
-    from deckastra_api.ids import new_id
-
     me, deck = diverged["who"], diverged["deck"]
     guest = sign_in(client, "guest@local")
 
@@ -384,13 +391,11 @@ def test_a_viewer_cannot_retire_someone_elses_queue(client, diverged):
         workspace_id = session.scalar(
             __import__("sqlalchemy").select(Workspace.id).where(Workspace.name == "Acme")
         )
-        session.add(
-            WorkspaceMember(
-                id=new_id("mbr"),
-                workspace_id=workspace_id,
-                user_id=guest["user_id"],
-                role="viewer",
-            )
+        # A genuine, confirmed viewer (D5.4) — not an unconfirmed cache, which
+        # would be refused for the wrong reason and make this test prove nothing
+        # about roles.
+        auth.confirm_membership(
+            session, user_id=guest["user_id"], workspace_id=workspace_id, role="viewer"
         )
 
     # They can see the state — that is a read.

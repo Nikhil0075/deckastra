@@ -199,6 +199,10 @@ def test_account_context_and_workspace_project_creation_are_explicit(
             # D5.1: where this workspace's authority lives. A seeded one is this
             # machine's own; a mirror of a cloud workspace is not.
             "origin": "local",
+            # D5.4: what the membership grants right now. In a local workspace the
+            # row is the authority, so there is nothing to confirm it against.
+            "access": "authoritative",
+            "confirmed_at": None,
             "projects": [
                 {
                     "id": session_token["project_id"],
