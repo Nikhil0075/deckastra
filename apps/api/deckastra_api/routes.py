@@ -32,7 +32,7 @@ from .auth import (
     resolve_project_access,
 )
 from .compose import blank_document
-from .db.models import Presentation, TransactionRow
+from .db.models import Presentation, PresentationVersion, TransactionRow
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -821,6 +821,126 @@ def get_presentation_head(
         "source": latest.source if latest else None,
         "intent": latest.intent if latest else None,
         "client_id": latest.client_id if latest else None,
+    }
+
+
+class ReconciledRequest(BaseModel):
+    """The version a person merged into, which retires what it replaced."""
+
+    resolving_version_id: str
+
+
+@router.get("/presentations/{presentation_id}/sync")
+def sync_status(
+    presentation_id: str,
+    documents: bool = False,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Where this deck stands with the server, and what a merge would need (D5.3).
+
+    Four states rather than a boolean, because "not in sync" covers two different
+    situations and only one of them needs a person: a queue that is merely
+    waiting clears itself, and a diverged one never will.
+
+    `documents` is off by default and that is not a micro-optimisation. An editor
+    polls this; a diverged deck would otherwise send three whole documents on
+    every poll, forever, to a client that already has them. It asks once, when it
+    decides to show the review.
+
+    The three it gets are the three a three-way merge takes — and all three are
+    read locally. The base is the version the refused change was authored
+    against, the local one is this device's head, and the remote one is what the
+    server had when it refused, kept since. Reconciling therefore needs no
+    network, which matters because the network is usually what was missing when
+    the divergence happened.
+    """
+    resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id
+    )
+
+    state = sync.status(session, presentation_id)
+    answer: dict[str, Any] = {
+        "presentation_id": state.presentation_id,
+        "state": state.state,
+        "pending": state.pending,
+    }
+    if state.diverged is not None:
+        answer["diverged"] = {
+            "change_key": state.diverged.change_key,
+            "reason": state.diverged.reason,
+            "remote_version_id": state.diverged.remote_version_id,
+            "base_version_id": state.diverged.base_version_id,
+            "intent": state.diverged.intent,
+        }
+
+    if documents and state.diverged is not None:
+        head = store.load_presentation(session, presentation_id)
+        base = (
+            store.load_presentation(
+                session, presentation_id, at_version=state.diverged.base_version_id
+            ).document
+            if state.diverged.base_version_id
+            else None
+        )
+        answer["merge"] = {
+            "base": base,
+            "local": head.document,
+            "local_version_id": head.version_id,
+            "remote": sync.remote_document(session, presentation_id),
+        }
+
+    return answer
+
+
+@router.post("/presentations/{presentation_id}/sync/reconciled")
+def mark_reconciled(
+    presentation_id: str,
+    request: ReconciledRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Record that a person resolved this deck's divergence.
+
+    Deliberately *not* a merge endpoint. The three-way merge lives in
+    `packages/editor-ui/src/lib/reconcile.ts` and is already the product's answer
+    for the autosave conflict; a Python one beside it would be a second
+    implementation of the hardest logic here, held together by nobody. So the
+    editor merges, commits the result through the ordinary transaction path — one
+    mutation path, ordinary undo, ordinary provenance — and then says which
+    version did it.
+
+    The caller must have already committed. A version that is not this deck's
+    history is refused rather than accepted on trust: retiring a queue on the
+    strength of an id nobody checked would discard work with no record of why.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+    )
+
+    state = sync.status(session, presentation_id)
+    if state.state != "diverged":
+        raise HTTPException(
+            status_code=409,
+            detail="That deck has not diverged, so there is nothing to reconcile.",
+        )
+
+    version = session.get(PresentationVersion, request.resolving_version_id)
+    if version is None or version.presentation_id != presentation_id:
+        raise HTTPException(
+            status_code=404, detail="That version is not part of this deck's history."
+        )
+
+    retired = sync.reconciled(
+        session, presentation_id, resolving_version_id=request.resolving_version_id
+    )
+    return {
+        "presentation_id": presentation_id,
+        "retired": retired,
+        "state": sync.status(session, presentation_id).state,
     }
 
 

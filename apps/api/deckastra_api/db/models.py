@@ -850,10 +850,21 @@ class SyncOutboxRow(Base, TimestampMixin):
     __tablename__ = "sync_outbox"
     __table_args__ = (
         CheckConstraint("kind IN ('create', 'change')", name="ck_outbox_kind"),
-        # Two states, and neither is "gave up". A change that cannot upload is
-        # something a person has to see; an outbox that quietly abandoned work
-        # would lose exactly what it exists to protect.
-        CheckConstraint("status IN ('pending', 'sent')", name="ck_outbox_status"),
+        # Four states, and none of them is the queue giving up on its own (D5.3):
+        #
+        # `pending`  — waiting its turn, or waiting out a transport backoff.
+        # `sent`     — the server took it.
+        # `blocked`  — the server *refused* it: the deck moved there and this
+        #              change no longer applies. Retrying that on a timer is a
+        #              loop with no exit, so it stops and becomes a question for
+        #              a person, which is what "a change that cannot upload is
+        #              something a person has to see" actually requires.
+        # `superseded` — a person reconciled, and a later change now carries this
+        #              one's intent. Terminal because someone decided it, never
+        #              because the queue tired of trying.
+        CheckConstraint(
+            "status IN ('pending', 'sent', 'blocked', 'superseded')", name="ck_outbox_status"
+        ),
         # The drain sends a deck's rows in the order they were written. `id` is
         # the tie-break so two changes committed in the same instant keep one
         # order — a log is a sequence, not a set (D5.0).
@@ -897,3 +908,21 @@ class SyncOutboxRow(Base, TimestampMixin):
     #: chains (D5.0) — so recording it is how this device can later say "the
     #: change I called X is version Y over there".
     remote_version_id: Mapped[str | None] = mapped_column(String(64))
+
+    #: Why the server refused this change, in its own words (D5.3). Separate from
+    #: `last_error`, which is the transport failing and will be retried: this one
+    #: will not be, and the distinction is the whole of divergence handling.
+    refused_reason: Mapped[str | None] = mapped_column(Text)
+
+    #: The deck as the **server** had it when it refused.
+    #:
+    #: Kept locally, and that is the point: a person who diverged on a plane can
+    #: reconcile on the plane. A design that fetched the other side at reconcile
+    #: time would make resolving a conflict require the network that was missing
+    #: when the conflict happened — which is backwards for a local-first product.
+    #:
+    #: Held on the row rather than in a table of its own because a deck has at
+    #: most one of these at a time: the queue stops at the refusal, so this row
+    #: *is* the point of divergence. It is a whole document, so it is written
+    #: only for a `blocked` row and cleared when the divergence is resolved.
+    remote_document_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)

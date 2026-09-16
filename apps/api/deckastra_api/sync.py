@@ -105,6 +105,35 @@ class Outgoing:
     local_parent_version_id: str | None = None
 
 
+class SyncRefused(Exception):
+    """The server will not take this change as it stands (D5.3).
+
+    Distinct from every other exception a transport can raise, and the
+    distinction is the whole of divergence handling: an unreachable server is a
+    retry, and a refusal is a question for a person. Retrying a refusal on a
+    backoff is a loop with no exit — it will fail identically forever — and worse,
+    it makes the deck look busy rather than stuck, so nobody is ever told that
+    their work is not going anywhere.
+
+    It carries what the server had, because reconciling needs three documents and
+    two of them are already here. Keeping the third means a person who diverged
+    with no network can still resolve it with no network, which is the behaviour a
+    local-first product owes them.
+    """
+
+    def __init__(
+        self,
+        reason: str,
+        *,
+        remote_version_id: str | None = None,
+        remote_document: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.remote_version_id = remote_version_id
+        self.remote_document = remote_document
+
+
 class Send(Protocol):
     """Hand one change to a server and answer where it landed.
 
@@ -178,6 +207,16 @@ def enqueue(
     return row
 
 
+def blocking_row(session: Session, presentation_id: str) -> SyncOutboxRow | None:
+    """The refused change this deck is stopped at, if it has one (D5.3)."""
+    return session.scalar(
+        select(SyncOutboxRow).where(
+            SyncOutboxRow.presentation_id == presentation_id,
+            SyncOutboxRow.status == "blocked",
+        )
+    )
+
+
 def pending_for(session: Session, presentation_id: str) -> list[SyncOutboxRow]:
     """This deck's unsent rows, oldest first."""
     return list(
@@ -244,6 +283,9 @@ def _outgoing(session: Session, row: SyncOutboxRow) -> Outgoing:
 class DrainReport:
     sent: int = 0
     failed: int = 0
+    #: Decks the server refused. Not a count, because the only useful thing to do
+    #: with one is show the person which deck has diverged.
+    blocked: list[str] = field(default_factory=list)
     #: Decks left with work, either because one failed or because it is waiting
     #: out a backoff. Named rather than counted: the UI that shows "3 changes
     #: waiting" has to be able to say which deck.
@@ -277,6 +319,14 @@ def drain(
     )
 
     for presentation_id in decks:
+        if blocking_row(session, presentation_id) is not None:
+            # Everything queued behind a refusal stays there. Sending the next
+            # change would ask the server to apply an operation against a
+            # document that never received its predecessor — and the person has
+            # not yet said what should happen to the predecessor.
+            report.blocked.append(presentation_id)
+            continue
+
         rows = pending_for(session, presentation_id)[:limit_per_deck]
         for row in rows:
             ready_at = _aware(row.next_attempt_at)
@@ -288,6 +338,16 @@ def drain(
 
             try:
                 remote_version_id = send(_outgoing(session, row))
+            except SyncRefused as refusal:
+                # No attempt count, no backoff, no next attempt. This will not
+                # succeed by being tried again, and a queue that keeps trying is
+                # a queue that never tells anyone.
+                row.status = "blocked"
+                row.refused_reason = refusal.reason
+                row.remote_version_id = refusal.remote_version_id
+                row.remote_document_json = refusal.remote_document
+                report.blocked.append(presentation_id)
+                break
             except Exception as error:  # noqa: BLE001 - any transport failure is a retry
                 row.attempts += 1
                 row.last_error = f"{type(error).__name__}: {error}"[:2000]
@@ -310,3 +370,142 @@ def drain(
 
     session.flush()
     return report
+
+
+# ------------------------------------------------------------------- divergence
+
+
+@dataclass(frozen=True)
+class Divergence:
+    """What a person needs in order to decide, assembled from local rows only."""
+
+    change_key: str
+    reason: str
+    remote_version_id: str | None
+    #: The local version the refused change was authored against — the **base**
+    #: of the three-way merge. It is a local id, and it resolves locally, which is
+    #: the only reason reconciling offline is possible at all.
+    base_version_id: str | None
+    intent: str
+
+
+@dataclass(frozen=True)
+class SyncState:
+    """Where this deck stands with the server.
+
+    Four states rather than a boolean, because "not in sync" covers two very
+    different situations and only one of them needs a person: a queue that is
+    merely waiting will clear itself, and a diverged one never will.
+    """
+
+    presentation_id: str
+    #: `local` — this deck syncs nowhere (D5.1) and none of the rest applies.
+    #: `in_sync` — nothing owed.
+    #: `waiting` — changes queued, and they will go when the server answers.
+    #: `diverged` — the server refused one, and it stays refused until someone
+    #: decides what should happen.
+    state: str
+    pending: int
+    diverged: Divergence | None = None
+
+
+def status(session: Session, presentation_id: str) -> SyncState:
+    if not syncs(session, presentation_id):
+        return SyncState(presentation_id=presentation_id, state="local", pending=0)
+
+    blocked = blocking_row(session, presentation_id)
+    waiting = len(pending_for(session, presentation_id))
+
+    if blocked is None:
+        return SyncState(
+            presentation_id=presentation_id,
+            state="waiting" if waiting else "in_sync",
+            pending=waiting,
+        )
+
+    transaction = (
+        session.get(TransactionRow, blocked.transaction_id)
+        if blocked.transaction_id
+        else None
+    )
+    return SyncState(
+        presentation_id=presentation_id,
+        state="diverged",
+        # The blocked change is owed too, and counting it with the rest is what
+        # makes "5 changes waiting" true rather than "4 waiting and one you have
+        # not been told about".
+        pending=waiting + 1,
+        diverged=Divergence(
+            change_key=blocked.change_key,
+            reason=blocked.refused_reason or "The server refused this change.",
+            remote_version_id=blocked.remote_version_id,
+            base_version_id=transaction.parent_version_id if transaction else None,
+            intent=transaction.intent if transaction else "Create this deck",
+        ),
+    )
+
+
+def remote_document(session: Session, presentation_id: str) -> dict[str, Any] | None:
+    """The deck as the server had it when it refused, or None if not diverged.
+
+    The third document of the merge. The other two — the base version and the
+    local head — are ordinary local reads, so a reconciliation needs nothing from
+    the network. That is deliberate: requiring the network to resolve a conflict
+    caused by not having the network is backwards.
+    """
+    blocked = blocking_row(session, presentation_id)
+    return blocked.remote_document_json if blocked is not None else None
+
+
+def reconciled(
+    session: Session, presentation_id: str, *, resolving_version_id: str
+) -> int:
+    """A person decided; let the queue move on (D5.3).
+
+    The merged document is committed first, through the ordinary transaction
+    path — there is no second write path, and a reconciliation undoes like any
+    other edit. That commit enqueues itself normally. This then retires what it
+    replaced.
+
+    Everything still queued for this deck is superseded, not only the refused
+    change: the merge was made from the local head, so it already contains the
+    effect of every change behind the block. Sending them afterwards would apply
+    each of them a second time — which for an array `add` is a duplicated element
+    nobody asked for.
+
+    The resolving change's own row is the one thing spared, and that is the whole
+    subtlety of this function: superseding it would leave the reconciliation
+    itself stranded on this device, which is the exact failure the person just
+    did the work to avoid.
+    """
+    resolving = session.scalar(
+        select(SyncOutboxRow)
+        .join(TransactionRow, TransactionRow.id == SyncOutboxRow.transaction_id)
+        .where(
+            SyncOutboxRow.presentation_id == presentation_id,
+            TransactionRow.result_version_id == resolving_version_id,
+        )
+    )
+
+    rows = list(
+        session.scalars(
+            select(SyncOutboxRow).where(
+                SyncOutboxRow.presentation_id == presentation_id,
+                SyncOutboxRow.status.in_(("pending", "blocked")),
+            )
+        )
+    )
+
+    retired = 0
+    for row in rows:
+        if resolving is not None and row.id == resolving.id:
+            continue
+        row.status = "superseded"
+        # The remote snapshot has done its job. It is a whole document, and
+        # keeping one per resolved conflict forever is a database that grows with
+        # every disagreement anyone ever had.
+        row.remote_document_json = None
+        retired += 1
+
+    session.flush()
+    return retired

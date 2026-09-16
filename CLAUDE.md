@@ -1444,6 +1444,84 @@ retry and idempotency then arrive tested rather than alongside a transport later
 Nothing schedules a drain, nothing writes `origin = "cloud"` outside a test, and
 the divergence a stuck queue eventually produces has no UI: that is D5.3.
 
+### A refused change is not a failed one (D5.3)
+
+D5.2's outbox could tell a working server from an unreachable one and nothing
+else, so a change the server *refused* — because the deck had moved there — was
+retried on the same backoff as a dropped connection. That is a loop with no exit,
+and worse than useless: it makes the deck look busy rather than stuck, so nobody
+is ever told their work is not going anywhere.
+
+`SyncRefused` is the distinction, raised by the transport instead of any other
+exception. A refusal sets the row `blocked` — no attempt count, no backoff, no
+next attempt — and everything queued behind it stays queued, because the change
+behind a refusal may address an element it created and because the person has not
+yet said what should happen to the one in front. A different deck is a different
+sequence and keeps going.
+
+The outbox has four states now, and none of them is the queue giving up on its
+own: `pending`, `sent`, `blocked` (refused, waiting for a person), and
+`superseded` (a person reconciled and a later change carries this one's intent —
+terminal because someone decided it, never because the queue tired of trying).
+
+**The remote document is kept at the moment of refusal**, and that is the design
+decision worth the storage. Reconciling takes three documents; two of them — the
+base the refused change was authored against, and this device's head — are
+ordinary local reads. Keeping the third means a person who diverged on a plane
+can resolve it on the plane. Fetching the other side at reconcile time would make
+resolving a conflict require the network whose absence caused it, which is
+backwards for a local-first product. It is held on the blocked row rather than in
+a table of its own because a deck has at most one at a time — the queue stops at
+the refusal, so that row *is* the point of divergence — and it is cleared when the
+divergence is resolved, because one whole document per disagreement forever is a
+database that grows with every argument anyone ever had.
+
+**There is no Python merge, deliberately.** A three-way merge over this schema is
+the hardest logic in the product and `packages/editor-ui/src/lib/reconcile.ts`
+already is it, for the autosave conflict. A second implementation beside it would
+be held together by nobody — the patch appliers are the one duplication this
+project tolerates, and only because a conformance test holds them to one answer.
+So `GET /presentations/{id}/sync` reports the state and, on request, the three
+documents; the editor merges, commits the result through the **ordinary
+transaction path** (one mutation path, ordinary undo, ordinary provenance); and
+`POST /presentations/{id}/sync/reconciled` says which version did it.
+
+That endpoint retires the refused change *and* everything queued behind it,
+because the merge was made from the local head and already contains their effect
+— sending them afterwards applies each a second time, which for an array `add` is
+a duplicated element nobody asked for. The resolving change's own row is the one
+thing spared, and that is the whole subtlety of the function: superseding it would
+strand the reconciliation on this device, which is the exact failure the person
+just did the work to avoid. A version that is not this deck's history is refused
+rather than accepted on trust, and retiring a queue needs editor rights — reading
+that a deck diverged is not deciding what happens to the work.
+
+Two smaller decisions that decide how it reads. `state` is four values rather than
+a boolean, because "not in sync" covers two situations and only one needs a
+person: a `waiting` queue clears itself, a `diverged` one never will, and
+conflating them either alarms people about nothing or hides a real conflict inside
+a spinner. A deck that syncs nowhere answers `local` rather than `in_sync` —
+"in sync with nothing" is a claim about a relationship that does not exist. And
+the documents are **off by default**: an editor polls this, and three whole
+documents per poll forever is a download loop, not a status endpoint.
+
+The claim that the existing merge suits this shape is checked in its own language
+(`editor-ui/tests/sync-reconcile.test.ts`) against a divergence rather than an
+autosave conflict — several offline changes met by several remote ones, not one
+against one. A merge that only coped with a single step would pass every test in
+`reconcile.test.ts` and fail the first real plane journey. The other half — that
+the API records *those* three documents and not the oldest version it can find —
+is asserted on the Python side, because that is where the choice is made. A merge
+run against the wrong base does not error; it asks a person to adjudicate their
+own uncontested work.
+
+**Not done, and not claimed:** there is still no transport and no panel. Nothing
+writes `origin = "cloud"` outside a test, so a diverged deck is a state no user
+can currently reach, and building a review screen for it would be UI for
+somewhere nobody can stand — the same call as D5.1's move dialog. What exists is
+the authority: detection, classification, the record, and the three documents a
+review will need.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.
