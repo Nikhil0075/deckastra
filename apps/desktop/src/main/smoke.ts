@@ -501,6 +501,28 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
 async function runTimeline(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
   await until(window, 'document.querySelector("[data-editor-canvas]")');
 
+  // A slide of its own to work on.
+  // --------------------------------
+  // This drives the editor against whatever deck the app has open — the user's.
+  // It used to add a shape, an animation, a duplicate and a fix to that deck and
+  // leave all four behind, so every run started from the last run's mess and the
+  // checks began finding each other's leftovers. It now works on a slide it adds
+  // and unwinds with the product's own undo, which also means every edit below
+  // is exercised through the history rather than only through the document.
+  const slidesBefore = (await window.webContents.executeJavaScript(
+    'document.querySelectorAll("nav button").length',
+  )) as number;
+
+  record.addedSlide = await window.webContents.executeJavaScript(clickButton("+ Slide"));
+  if (
+    !(await until(
+      window,
+      `document.querySelectorAll("nav button").length > ${slidesBefore}`,
+    ))
+  ) {
+    throw new Error("The editor did not add a slide to work on.");
+  }
+
   // Something to animate, then an animation on it.
   await window.webContents.executeJavaScript(clickButton("Rect"));
   await until(window, 'document.querySelectorAll("[data-element-id]").length > 0');
@@ -672,6 +694,107 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
   }
 
   await capture(window, join(smokeDir()!, "timeline.png"));
+
+  // --- put the deck back
+  // Undo until the slide it added is gone. A loop rather than a count: the
+  // number of edits above changes whenever this step grows, and a count that
+  // drifted would leave exactly the mess this is here to avoid.
+  record.unwound = await window.webContents.executeJavaScript(`(async () => {
+    const undo = () => [...document.querySelectorAll("button")]
+      .find((one) => one.textContent?.trim() === "Undo");
+    const slides = () => document.querySelectorAll("nav button").length;
+    const settled = () => {
+      const text = document.body.innerText;
+      return !text.includes("Saving") && !text.includes("Save changes");
+    };
+
+    // One undo at a time, each allowed to reach the store before the next.
+    //
+    // Clicking as fast as the loop can go is not a faster version of undoing —
+    // it is a different gesture. Each edit carries the version it was authored
+    // on, and a burst outruns the round trip until one carries a version the
+    // server has already moved past. The editor then does exactly what it is
+    // designed to do: keeps the work, refuses to re-send it against a refreshed
+    // version, and waits for a human. That is last-write-wins being refused, and
+    // it left this step reporting an undo the store never saw.
+    let presses = 0;
+    let refused = false;
+
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      for (let wait = 0; wait < 100 && !settled(); wait += 1) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      if (document.body.innerText.includes("Save changes")) {
+        refused = true;
+        break;
+      }
+      if (slides() <= ${slidesBefore}) break;
+
+      const button = undo();
+      if (!button || button.disabled) break;
+      button.click();
+      presses += 1;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+
+    return { presses, refused, slides: slides(), target: ${slidesBefore} };
+  })()`);
+
+  // Undone in the window is not undone in the store. The edits go through the
+  // autosave queue, and `app.exit()` a moment later takes whatever has not
+  // drained with it — which is why the deck kept growing by a slide a run even
+  // though every run reported it had put things back. "Saved" is the editor's
+  // own acknowledgement, and an acknowledgement is the only thing that means a
+  // change is durable.
+  record.unwindSaved = await window.webContents.executeJavaScript(`(async () => {
+    // Not "does the page say Saved": it says that most of the time, including
+    // before this run's undos were queued, so waiting for the word matches text
+    // that was already there. What means the queue drained is *leaving* the
+    // saving state and staying out of it — the acknowledgement, not the attempt.
+    const status = () => document.body.innerText;
+    let quiet = 0;
+
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 100));
+      const text = status();
+      if (text.includes("Saving")) {
+        quiet = 0;
+        continue;
+      }
+      // A refused save is the one state that means the work is still in the
+      // window and not in the store.
+      if (text.includes("Save changes")) {
+        return { drained: false, reason: "a save is waiting to be retried" };
+      }
+      quiet += 1;
+      // A second with nothing in flight. Not "did a save happen" — the undo loop
+      // above already waits for each one, so by here there is usually nothing
+      // left to watch, and requiring a sighting fails on a step that did
+      // everything right.
+      if (quiet >= 10) return { drained: true };
+    }
+    return { drained: false, reason: "still saving after 30s" };
+  })()`);
+
+  const saved = record.unwindSaved as { drained: boolean; reason?: string };
+  if (!saved.drained) {
+    throw new Error(
+      "The undo never reached the store (" + (saved.reason ?? "unknown") + "), so the deck keeps the changes.",
+    );
+  }
+
+  const unwound = record.unwound as { slides: number; target: number; presses: number };
+  if (unwound.slides !== unwound.target) {
+    throw new Error(
+      "The deck was left with " +
+        unwound.slides +
+        " slides instead of " +
+        unwound.target +
+        " after " +
+        unwound.presses +
+        " undos.",
+    );
+  }
 }
 
 /**
