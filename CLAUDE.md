@@ -1524,6 +1524,15 @@ Findings are per property, because a pair colliding on two is two true findings 
 but the panel **groups them by pair**, because it is one decision, and offering
 the same two buttons twice makes an author read four things to learn one.
 
+**Going back is not arriving** (doc 04 §26.3). A transition and an entrance both
+describe *arriving*, so stepping back plays neither: the slide is simply there,
+in its final state. A presenter stepping back is checking something they already
+showed, and replaying the build makes them wait through a reveal the room has
+seen. Both rules were implemented from D0 and neither was covered until D4;
+`present-navigation.test.tsx` checks them by standing in for `SlideView` and
+`SlideMotion` rather than adding attributes to production components for a test's
+benefit, and each rule was verified by breaking it and watching its own case fail.
+
 **`fitToDisplay`** (`editor-ui/src/lib/display-fit.ts`) names the letterbox rule
 doc 04 §4.2 states: one factor for both axes, always. The deck is projected at
 whatever aspect ratio the room has, and scaling each axis separately stretches
