@@ -86,12 +86,7 @@ export {
   type TimelineEvent,
 } from "./dom";
 
-export {
-  buildTimelineView,
-  clipPatchOperations,
-  type TimelineLane,
-  type TimelineView,
-} from "./timeline";
+export * from "./timeline";
 
 /**
  * Slide transitions (D4.1). Between two slides rather than within one, so it
