@@ -211,10 +211,18 @@ function effect(
 /**
  * Whether a slide's transition can become PowerPoint's Morph (doc 04 §33.3).
  *
- * Morph pairs objects by name and z-order, and the exporter writes names derived
- * from element ids — so it *can* work. Whether it does depends on the two slides
- * genuinely sharing elements, which this cannot know from one slide, so the
- * answer is honest rather than confident.
+ * Morph pairs objects by **name**, and this exporter derives names from element
+ * ids — which is stable across edits but not, on its own, enough: two paired
+ * elements are two different elements with two different ids, so their names
+ * differ and Morph pairs nothing. `shapesFor` closes that by naming a paired
+ * shape after its partner on the previous slide.
+ *
+ * What is still written here is a **fade**. Emitting PowerPoint's own Morph
+ * means `mc:AlternateContent` around a vendor-namespaced element, and nothing in
+ * this repository can check that PowerPoint accepts it — only that a reader
+ * parses it. So the file does the thing that certainly works, the names make the
+ * manual Morph work, and the report says exactly that rather than implying the
+ * transition will morph by itself.
  */
 export function transitionFor(
   type: string | undefined,
@@ -249,8 +257,9 @@ export function transitionFor(
         feature: "transition:morph",
         action: "approximated",
         message:
-          "Morph is exported with matching shape names so PowerPoint can pair " +
-          "objects, but pairing depends on the two slides sharing elements.",
+          "PowerPoint shows a fade here: this build does not emit its Morph " +
+          "transition. Paired objects are given the same shape name on both " +
+          "slides, so applying Morph in PowerPoint pairs them correctly.",
       });
       return `<p:transition spd="med" advTm="${duration}"><p:fade/></p:transition>`;
     default:

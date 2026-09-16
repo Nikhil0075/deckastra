@@ -1440,6 +1440,42 @@ before being trusted.
 That bug is the argument for the acceptance step: nine tests over the drag
 surface did not find it, and one drag in the app did.
 
+### D4's gates run against the deck the product ships
+
+D4.4, `animation-engine/tests/deck-acceptance.test.ts`. Every other test in that
+package builds its input; these run the conformance fixture through the real
+scene build, because a property that holds for a literal and fails for the deck
+in the repository is a coincidence rather than a property. Three gates: seeking
+equals playing across clips *and* transitions now that the two keep separate
+clocks, reduced motion honoured all the way down, and the entrance budget
+computed rather than requested.
+
+**PowerPoint's Morph pairs by name, and until D4.4 the names could never pair.**
+Shape names derive from element ids — stable across edits, which is why doc 04
+§33.3 wanted them — but two paired elements are two *different* elements with two
+different ids, so their names differed and Morph would have paired nothing. A
+slide entered by a morph now names its paired shapes after their partners on the
+previous slide (`nameOverrides`), which is the only thing that makes the pairing
+real. The report used to say the names let PowerPoint "pair objects", which reads
+as though the transition morphs; the file carries a **fade**, and it says so now.
+
+Emitting PowerPoint's own Morph means `mc:AlternateContent` around a
+vendor-namespaced element, and nothing here can check that PowerPoint accepts it
+— only that a reader parses it. So the file does what certainly works, the names
+make a manually applied Morph work, and the gap is written down rather than
+guessed at. That is the same rule as macOS in D1.
+
+**Four tests in this milestone asserted nothing, and each was caught by a
+different thing.** `expect(applied.errors ?? []).toEqual([])` compared `[]` to
+`[]` because `ApplyResult` has no `errors` — the typechecker. A parity loop
+`for (t = 0; t <= at; t += 16)` never lands on `at` unless it divides by 16, so
+it compared two different instants — the assertion failed. A reduced-motion check
+read a `Map` with `Object.entries` and inspected zero elements — a counter added
+at the end. And `compileTimeline(..., { motionLevel })` is not a `CompileOptions`
+field, so every "reduced motion" assertion ran at **full** motion and passed —
+the typechecker again, because vitest strips types and never saw it. The habit
+worth keeping from this: a test that loops should prove it looped.
+
 ### An overlap is named, and has something to press
 
 D4.3, `timeline/conflicts.ts`. The compiler already noticed two clips animating

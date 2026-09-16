@@ -36,6 +36,18 @@ export interface ShapeContext {
   scene: SlideScene;
   units: Units;
   ledger: DegradationLedger;
+  /**
+   * What to call a shape, when it is half of a shared-element pair.
+   *
+   * PowerPoint's Morph pairs objects **by name** (doc 04 §33.3), and this
+   * exporter derives names from element ids — which is what gives Morph
+   * something stable to pair on across an edit. It is not enough on its own: two
+   * paired elements are two *different* elements with two different ids, so
+   * their names differ and Morph pairs nothing. A slide entered by a morph
+   * therefore names its paired shapes after their partners on the previous
+   * slide, which is the only thing that makes the pairing real.
+   */
+  nameOverrides?: ReadonlyMap<string, string>;
   /** Assigned in paint order, because PowerPoint needs unique non-zero ids. */
   nextId(): number;
   /**
@@ -149,13 +161,14 @@ function strokeFor(node: SceneNode, units: Units): string {
   return `<a:ln w="${width}"><a:solidFill><a:srgbClr val="${hex(stroke.color)}"/></a:solidFill></a:ln>`;
 }
 
-function nonVisual(node: SceneNode, id: number): string {
+function nonVisual(node: SceneNode, id: number, names?: ReadonlyMap<string, string>): string {
   // The name is derived from the element id, not from a counter: PowerPoint's
   // Morph pairs by name, and a counter re-numbers whenever a slide gains an
-  // element (doc 04 §33.3).
+  // element (doc 04 §33.3). `names` is how a paired element borrows its
+  // partner's id, which is what makes that pairing possible at all.
   return (
     `<p:nvSpPr>` +
-    `<p:cNvPr id="${id}" name="${xml(shapeName(node.id))}"${describe(node)}/>` +
+    `<p:cNvPr id="${id}" name="${xml(shapeName(names?.get(node.id) ?? node.id))}"${describe(node)}/>` +
     `<p:cNvSpPr${node.renderPayload.kind === "text" ? ' txBox="1"' : ""}/>` +
     `<p:nvPr/>` +
     `</p:nvSpPr>`
@@ -180,7 +193,7 @@ function textShape(node: SceneNode, context: ShapeContext): string {
     .join("");
 
   return (
-    `<p:sp>${nonVisual(node, context.nextId())}` +
+    `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>` +
     `${node.resolvedStyle.fill ? fillFor(node) : "<a:noFill/>"}${strokeFor(node, units)}</p:spPr>` +
     `<p:txBody>` +
@@ -308,7 +321,7 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
       : `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>`;
 
   return (
-    `<p:sp>${nonVisual(node, context.nextId())}` +
+    `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}` +
     `<a:prstGeom prst="${geometry}">${radius}</a:prstGeom>` +
     `${fillFor(node)}${strokeFor(node, units)}</p:spPr>${label}</p:sp>`
@@ -340,7 +353,7 @@ function lineShape(node: SceneNode, context: ShapeContext): string {
 
   return (
     `<p:cxnSp><p:nvCxnSpPr>` +
-    `<p:cNvPr id="${context.nextId()}" name="${xml(shapeName(node.id))}"${describe(node)}/>` +
+    `<p:cNvPr id="${context.nextId()}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
     `<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>` +
     `<p:spPr><a:xfrm${flipH}${flipV}>` +
     `<a:off x="${units.px(node.bounds.x + x)}" y="${units.px(node.bounds.y + y)}"/>` +
@@ -389,7 +402,7 @@ function codeShape(node: SceneNode, context: ShapeContext): string {
     .join("");
 
   return (
-    `<p:sp>${nonVisual(node, context.nextId())}` +
+    `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>` +
     `${fillFor(node)}${strokeFor(node, units)}</p:spPr>` +
     `<p:txBody><a:bodyPr wrap="square"><a:noAutofit/></a:bodyPr><a:lstStyle/>${paragraphs || "<a:p/>"}</p:txBody>` +
@@ -427,7 +440,7 @@ function unsupported(node: SceneNode, context: ShapeContext): string {
 
   const { units } = context;
   return (
-    `<p:sp>${nonVisual(node, context.nextId())}` +
+    `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>` +
     `<a:noFill/><a:ln w="${units.px(1)}"><a:solidFill><a:srgbClr val="808080"/></a:solidFill>` +
     `<a:prstDash val="dash"/></a:ln></p:spPr>` +

@@ -254,6 +254,15 @@ function shapesFor(
     ledger,
     elementsById,
     nextId: () => counter++,
+    // A slide entered by a morph names its paired shapes after their partners on
+    // the previous slide. Without this the two names differ — they are different
+    // elements with different ids — and PowerPoint's Morph pairs nothing, which
+    // made "exported with matching shape names" a claim the file did not keep.
+    nameOverrides: new Map(
+      (scene.transition?.type === "morph" ? (scene.transition.sharedElements ?? []) : []).map(
+        (mapping) => [mapping.destinationElementId, mapping.sourceElementId],
+      ),
+    ),
   };
 
   const byId = new Map(flatten(scene.nodes).map((node) => [node.id, node]));

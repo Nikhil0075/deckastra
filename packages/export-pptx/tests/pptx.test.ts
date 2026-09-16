@@ -327,6 +327,46 @@ describe("animation mapping", () => {
     expect(clickSlide).toContain('<p:cond delay="indefinite"/>');
   });
 
+  it("gives a morph's paired objects one name across both slides", () => {
+    // Morph pairs by name (doc 04 §33.3). Names derive from element ids, which
+    // is stable across edits and — on its own — useless here: two paired
+    // elements are two different elements, so their names differ and PowerPoint
+    // pairs nothing. The destination borrows the source's name.
+    const morphIndex = ANIMATION.slides.findIndex(
+      (slide) => slide.transition?.type === "morph",
+    );
+    expect(morphIndex).toBeGreaterThan(0);
+
+    const mappings = ANIMATION.slides[morphIndex]!.transition!.sharedElements!;
+    expect(mappings.length).toBeGreaterThan(0);
+
+    const from = files.get(`ppt/slides/slide${morphIndex}.xml`)!;
+    const to = files.get(`ppt/slides/slide${morphIndex + 1}.xml`)!;
+
+    for (const mapping of mappings) {
+      const shared = `name="deckastra-${mapping.sourceElementId}"`;
+      expect(from).toContain(shared);
+      // The same name on the next slide, even though the element there has a
+      // different id. That is the whole mechanism.
+      expect(to).toContain(shared);
+      expect(to).not.toContain(`name="deckastra-${mapping.destinationElementId}"`);
+    }
+  });
+
+  it("says a morph exports as a fade rather than implying it will morph", () => {
+    // The previous message said the names let PowerPoint "pair objects", which
+    // reads as though the transition morphs. It does not: the file carries a
+    // fade, and a report that implies otherwise is the kind of claim this
+    // ledger exists to prevent.
+    const morph = result.report.warnings.find(
+      (warning) => warning.feature === "transition:morph",
+    );
+
+    expect(morph).toBeDefined();
+    expect(morph!.message).toContain("fade");
+    expect(morph!.action).toBe("approximated");
+  });
+
   it("reports the presets it could only approximate", () => {
     const approximated = result.report.warnings.filter(
       (warning) => warning.feature.startsWith("animation:") || warning.feature.startsWith("transition:"),
