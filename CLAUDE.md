@@ -1440,6 +1440,53 @@ before being trusted.
 That bug is the argument for the acceptance step: nine tests over the drag
 surface did not find it, and one drag in the app did.
 
+### An overlap is named, and has something to press
+
+D4.3, `timeline/conflicts.ts`. The compiler already noticed two clips animating
+one property at once — `W136`, "the later one wins for the overlap" — which is
+true and not actionable: it does not say which other clip, by how much, or what
+to do. Each one is now a finding with the shape the validator's catalog uses for
+a `MECHANICALLY_FIXABLE` rule: the pair, the property, the overlap in
+milliseconds, and two operations that resolve it.
+
+**Not an error, deliberately.** Fading one property while another moves is
+ordinary, and two clips overlapping the same property for a beat is something
+authors do on purpose. A striped bar says *look*; a named fix says *or do this
+instead*; neither takes the choice away. Both fixes are one patch each and undo
+like any other edit — there is no conflict-resolution mode.
+
+Two details that are easy to get wrong. A fix writes the later clip's start as an
+**offset from its trigger**, because that is what the document stores — an
+absolute time would move a clip on an `afterPrevious` track by however long
+everything before it runs. And a shortening that would leave a clip under
+`MIN_CLIP_MS` is not offered at all: a sliver beside a clip is a second thing to
+find and delete, not a fix.
+
+Findings are per property, because a pair colliding on two is two true findings —
+but the panel **groups them by pair**, because it is one decision, and offering
+the same two buttons twice makes an author read four things to learn one.
+
+**`fitToDisplay`** (`editor-ui/src/lib/display-fit.ts`) names the letterbox rule
+doc 04 §4.2 states: one factor for both axes, always. The deck is projected at
+whatever aspect ratio the room has, and scaling each axis separately stretches
+every glyph in a way nobody notices until it is six feet wide. Extracted because
+it is a rule rather than an expression — present mode, the presenter's next-slide
+preview and any future second-display path have to agree, and three `Math.min`
+calls in three files are three places for one to become a `Math.max`.
+
+**Measured in the app** (`DECKASTRA_SMOKE_STEP=timeline`): a clip dragged
+0–252ms to 175–427ms, a keyframe handle dragged 0ms to 263ms with its sibling
+untouched, and a deliberate overlap offering 8 fixes falling to 6 after one
+click.
+
+Two things that step taught, both about the harness rather than the product. It
+edits the deck the app has open and **that deck keeps its changes between runs**,
+so it targets the animation it just added rather than "the first bar", and it
+asserts a fix leaves *fewer* conflicts rather than none — the absolute version
+only held the first time. And a frame double whose `cancelAnimationFrame` did
+nothing reported a late callback the browser would never have delivered; making
+the double faithful was the fix, not a guard in the component.
+
 ### A transition is between two slides, so it keeps its own clock
 
 D4.1, `packages/animation-engine/src/transition/`. The schema has carried slide

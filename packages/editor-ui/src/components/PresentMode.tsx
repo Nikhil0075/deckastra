@@ -5,6 +5,7 @@ import type { DocumentScene } from "@deckastra/renderer";
 import { compileTransition, transitionSlideFromScene } from "@deckastra/animation-engine";
 import type { OpenPresenterWindow, PresenterWindow } from "@deckastra/workspace-contracts";
 
+import { fitToDisplay } from "../lib/display-fit";
 import { PresentChannel } from "../lib/presentSync";
 import { browserPresenterWindow } from "../lib/presenter-window";
 import { SlideMotion, type SlideMotionHandle } from "./SlideMotion";
@@ -320,10 +321,9 @@ export function PresentMode({
     );
   }
 
-  const scale =
-    size.width > 0
-      ? Math.min(size.width / scene.viewport.width, size.height / scene.viewport.height)
-      : 0;
+  // One factor for both axes: the deck is letterboxed into whatever the room's
+  // hardware is, never stretched to fill it.
+  const { scale } = fitToDisplay(scene.viewport, size);
 
   // Track which slide we came from, so the arriving one can transition out of it.
   // Recorded during render rather than in an effect: the effect would run after

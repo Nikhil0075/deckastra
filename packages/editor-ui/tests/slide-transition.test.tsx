@@ -30,19 +30,28 @@ afterEach(cleanup);
  * waiting 200ms — the same property that makes seeking and playing agree.
  */
 function frameDriver() {
-  const pending: FrameRequestCallback[] = [];
+  const pending = new Map<number, FrameRequestCallback>();
+  let next = 1;
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
-    pending.push(callback);
-    return pending.length;
+    const handle = next++;
+    pending.set(handle, callback);
+    return handle;
   });
-  vi.stubGlobal("cancelAnimationFrame", () => {});
+  // Actually cancels. A stub that ignores this is lying about the platform, and
+  // a test written against it reports a late callback the browser would never
+  // have delivered.
+  vi.stubGlobal("cancelAnimationFrame", (handle: number) => {
+    pending.delete(handle);
+  });
   return {
     advance(to: number) {
-      const next = pending.shift();
-      if (next) act(() => next(to));
+      const [handle, callback] = [...pending][0] ?? [];
+      if (handle === undefined || !callback) return;
+      pending.delete(handle);
+      act(() => callback(to));
     },
     get queued() {
-      return pending.length;
+      return pending.size;
     },
   };
 }
@@ -139,6 +148,34 @@ describe("mounting both slides", () => {
     expect(screen.queryByTestId("s1")).toBeNull();
     await waitFor(() => expect(onDone).toHaveBeenCalled());
     expect(frames.queued).toBe(0);
+    vi.unstubAllGlobals();
+  });
+
+  it("stops cleanly when a presenter advances mid-transition", () => {
+    // Two presses of the right arrow in quick succession. The first transition
+    // is torn down partway through, and its callback must not fire afterwards:
+    // `onDone` is what tells the caller to drop the outgoing slide, and a late
+    // one would drop the slide the *new* transition is animating out of.
+    const frames = frameDriver();
+    const onDone = vi.fn();
+    const { unmount } = render(
+      <SlideTransition
+        compiled={compiled({ type: "morph", durationMs: 600 })}
+        to={scene("s2")}
+        from={scene("s1")}
+        width={960}
+        height={540}
+        scale={0.5}
+        onDone={onDone}
+      />,
+    );
+
+    frames.advance(performance.now() + 100);
+    unmount();
+    // Whatever frames were in flight when the presenter pressed again.
+    frames.advance(performance.now() + 5_000);
+
+    expect(onDone).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 

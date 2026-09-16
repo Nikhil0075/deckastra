@@ -515,13 +515,18 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
     return true;
   })()`);
 
+  // The *last* bar, not the first. This step edits the deck the app has open and
+  // that deck keeps its clips between runs, so "the first bar" is whatever an
+  // earlier run left behind — and a check that operates on someone else's
+  // leftovers is a check that fails for the wrong reason.
   const BAR = "[role=\"button\"][title*=\"ms\"]";
+  const NEWEST = `[...document.querySelectorAll('${BAR}')].at(-1)`;
   if (!(await until(window, `document.querySelector('${BAR}') !== null`))) {
     throw new Error("No clip bar appeared after adding an animation.");
   }
 
   record.dragged = await window.webContents.executeJavaScript(`(async () => {
-    const bar = document.querySelector('${BAR}');
+    const bar = ${NEWEST};
     const before = bar.title;
     const box = bar.getBoundingClientRect();
 
@@ -541,7 +546,7 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
     send("pointerup", from + 80);
     await new Promise((r) => requestAnimationFrame(r));
 
-    const after = document.querySelector('${BAR}');
+    const after = ${NEWEST};
     return { before, after: after ? after.title : null, laneWidth: Math.round(box.width) };
   })()`);
 
@@ -569,7 +574,7 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
       pointerId: 2, bubbles: true, cancelable: true, clientX: x, clientY: y,
     }));
 
-    const barBefore = document.querySelector('${BAR}').title;
+    const barBefore = ${NEWEST}.title;
     send("pointerdown", box.left + box.width / 2);
     send("pointermove", box.left + box.width / 2 + 120);
     await new Promise((r) => requestAnimationFrame(r));
@@ -599,7 +604,7 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
       before,
       after: settled,
       barBefore,
-      barAfter: document.querySelector('${BAR}').title,
+      barAfter: ${NEWEST}.title,
     };
   })()`);
 
@@ -616,6 +621,54 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
   // would take the clip out from under the handle being aimed at.
   if (keyframes.barBefore !== keyframes.barAfter) {
     throw new Error("Dragging a keyframe moved the clip too: " + keyframes.barAfter);
+  }
+
+  // --- a conflict, and the fix it offers
+  // Duplicating the selected clip puts a second one on the same property at the
+  // same time, which is exactly the overlap D4.3 is about.
+  record.duplicated = await window.webContents.executeJavaScript(clickButton("Duplicate clip"));
+
+  record.conflict = await window.webContents.executeJavaScript(`(async () => {
+    const find = () => [...document.querySelectorAll("button")]
+      .filter((one) => /^(Start the later clip|Shorten the earlier clip)/.test(one.textContent || ""));
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 50));
+      if (find().length > 0) break;
+    }
+
+    const offered = find().map((one) => one.textContent);
+    if (offered.length === 0) return { offered, applied: false };
+    const before = offered.length;
+
+    const barsBefore = [...document.querySelectorAll('${BAR}')].map((one) => one.title);
+    find()[0].click();
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 50));
+      const now = [...document.querySelectorAll('${BAR}')].map((one) => one.title);
+      if (JSON.stringify(now) !== JSON.stringify(barsBefore)) {
+        return { offered, applied: true, barsBefore, barsAfter: now, before, remaining: find().length };
+      }
+    }
+    return { offered, applied: false, barsBefore };
+  })()`);
+
+  const conflict = record.conflict as { offered: string[]; applied: boolean };
+  if (conflict.offered.length === 0) {
+    throw new Error("Two clips overlap and the panel offered no fix.");
+  }
+  if (!conflict.applied) {
+    throw new Error("The offered fix changed nothing: " + JSON.stringify(record.conflict));
+  }
+  // Relative, not absolute. This step edits the deck the app has open and that
+  // deck keeps its changes between runs, so "no conflicts left" only holds the
+  // first time. What a fix must always do is leave fewer than it found.
+  const counted = record.conflict as { before: number; remaining: number };
+  if (!(counted.remaining < counted.before)) {
+    throw new Error(
+      "Applying a fix left as many conflicts as before: " + JSON.stringify(record.conflict),
+    );
   }
 
   await capture(window, join(smokeDir()!, "timeline.png"));

@@ -22,6 +22,13 @@ export { MIN_CLIP_MS, clipPatchOperations, type ClipEdit } from "./edits";
 export { splitClip, type SplitResult, type SplitTarget } from "./split";
 
 export {
+  findConflicts,
+  type ConflictFix,
+  type SourceClip,
+  type TimelineConflict,
+} from "./conflicts";
+
+export {
   rippleAfterTrim,
   rippleOperations,
   type RippleClip,

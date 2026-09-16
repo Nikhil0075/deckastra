@@ -11,6 +11,7 @@ import {
   buildTimelineView,
   clipPatchOperations,
   compileTimeline,
+  findConflicts,
   moveKeyframeOperations,
   motionThemeOf,
   openPresetOperations,
@@ -85,6 +86,39 @@ export function MotionPanel({
     () => (timeline ? buildTimelineView(timeline, labels) : null),
     [timeline, labels],
   );
+
+  /**
+   * Overlaps, with something to press.
+   *
+   * The compiled warnings already say an overlap exists. These say which pair,
+   * which property, by how much, and offer the two edits that resolve it — the
+   * `MECHANICALLY_FIXABLE` shape the validator's catalog uses, applied to motion.
+   */
+  const conflicts = useMemo(() => {
+    if (!timeline || !slide) return [];
+    const sources = (slide.animations ?? []).flatMap((track) =>
+      track.clips.map((one) => ({
+        id: one.id,
+        trackId: track.id,
+        startMs: one.startMs,
+        durationMs: one.durationMs,
+        delayMs: one.delayMs,
+      })),
+    );
+    const found = findConflicts(slide.id, timeline, sources);
+
+    // Grouped by the pair, not by the property. One pair colliding on two
+    // properties is two true findings and one decision, and offering the same
+    // two buttons twice makes an author read four things to learn one.
+    const byPair = new Map<string, { properties: string[]; conflict: (typeof found)[number] }>();
+    for (const conflict of found) {
+      const key = `${conflict.earlierClipId}:${conflict.laterClipId}`;
+      const existing = byPair.get(key);
+      if (existing) existing.properties.push(conflict.property);
+      else byPair.set(key, { properties: [conflict.property], conflict });
+    }
+    return [...byPair.values()];
+  }, [timeline, slide]);
 
   if (!slide || !timeline || !view) return null;
 
@@ -435,9 +469,49 @@ export function MotionPanel({
             </>
           ) : null}
 
+          {conflicts.length > 0 ? (
+            <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none" }}>
+              {conflicts.map(({ conflict, properties }) => (
+                <li
+                  key={`${conflict.earlierClipId}:${conflict.laterClipId}`}
+                  style={{
+                    border: "1px solid var(--warning)",
+                    borderRadius: 4,
+                    padding: "6px 8px",
+                    marginBottom: 6,
+                  }}
+                >
+                  <span style={{ ...muted, color: "var(--warning)" }}>
+                    {properties.length > 1
+                      ? `Two clips animate ${properties.join(" and ")} on this object for ` +
+                        `${Math.round(conflict.overlapMs)}ms together. The later one wins where they overlap.`
+                      : conflict.message}
+                  </span>
+                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                    {conflict.fixes.map((fix) => (
+                      <button
+                        key={fix.label}
+                        style={smallButton}
+                        title={fix.caveat}
+                        onClick={() => apply(fix.operations, fix.label)}
+                      >
+                        {fix.label}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {view.warnings.length > 0 ? (
             <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none" }}>
-              {view.warnings.map((warning) => (
+              {view.warnings
+                // W136 is the overlap, and the block above says the same thing
+                // with the pair named and a fix attached. Two copies of one
+                // finding teaches an author to skim both.
+                .filter((warning) => warning.code !== "W136")
+                .map((warning) => (
                 <li key={warning.code + warning.message} style={{ ...muted, color: "var(--warning)" }}>
                   {warning.message}
                 </li>
