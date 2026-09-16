@@ -30,7 +30,8 @@ export type SmokeStep =
   | "export"
   | "resilience"
   | "windows"
-  | "consent";
+  | "consent"
+  | "morph";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -171,6 +172,8 @@ export async function runSmoke(
       await runDigest(window, record);
     } else if (current === "resilience") {
       await runResilience(window, dir, record, controls);
+    } else if (current === "morph") {
+      await runMorph(window, record);
     } else if (current === "consent") {
       await runConsent(window, record);
     } else if (current === "windows") {
@@ -477,6 +480,99 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
   if (record.approvalRefused !== 403) throw new Error(`Approval was not refused: ${record.approvalRefused}`);
   if (record.grantAfterStop !== 401) {
     throw new Error(`A grant issued before the user stopped access still works: ${record.grantAfterStop}`);
+  }
+}
+
+/**
+ * Watch a shared-element morph actually move something (D4.1).
+ *
+ * Every other check of this is a compiled object or a mounted component. What
+ * none of them can answer is whether the element *on screen* travels, because
+ * that needs two slides mounted at once, a real frame loop and a real style
+ * being written — and the bug it guards against is the whole reason the previous
+ * implementation could not draw a morph at all.
+ *
+ * It samples during the transition rather than after it. A morph that ended in
+ * the right place having never moved would pass any check made at the end, and
+ * that is exactly what a broken delta looks like.
+ */
+async function runMorph(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
+  await until(window, `document.querySelector("[data-editor-canvas]")`);
+
+  // `clickButton` matches the button's exact text, which is what the present
+  // control carries.
+  record.enteredPresent = await window.webContents.executeJavaScript(clickButton("Present"));
+  if (!(await until(window, `document.querySelector("[data-present-stage]") !== null`))) {
+    throw new Error("Present mode did not open.");
+  }
+
+  // Forward to the morph, which the harness put last.
+  const press = `(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    return true;
+  })()`;
+  await window.webContents.executeJavaScript(press);
+  await new Promise((done) => setTimeout(done, 900));
+
+  // Sampling starts in the same tick as the keypress: the transition is 600ms,
+  // and a first look taken after it has finished proves nothing.
+  const samples = await window.webContents.executeJavaScript(`(async () => {
+    const stage = () => document.querySelector("[data-present-stage]");
+    const slides = () => document.querySelectorAll("[data-present-stage], [data-present-stage] ~ *").length;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+
+    const started = performance.now();
+    // A settled element does not necessarily read "0px 0px": the browser
+    // serialises the translate longhand with equal components as a single
+    // value, so a finished morph reports "0px". Comparing against the
+    // two-component string reports a bug that is not there. It did, once.
+    const atRest = (value) =>
+      !value || value.split(/\s+/).every((part) => parseFloat(part) === 0);
+    const seen = [];
+    for (let i = 0; i < 90; i += 1) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const moving = [...document.querySelectorAll("[data-element-id]")]
+        .filter((el) => !atRest(el.style.translate))
+        .map((el) => ({ id: el.getAttribute("data-element-id"), translate: el.style.translate, scale: el.style.scale }));
+      seen.push({
+        at: i,
+        t: Math.round(performance.now() - started),
+        stages: document.querySelectorAll("[data-present-stage]").length,
+        moving,
+      });
+    }
+    return seen;
+  })()`);
+
+  const frames = samples as { at: number; t: number; moving: unknown[] }[];
+  const movedAt = frames.filter((s) => s.moving.length > 0);
+  record.framesWithMovement = movedAt.length;
+  record.firstMovement = movedAt[0] ?? null;
+  record.lastMovement = movedAt[movedAt.length - 1] ?? null;
+  record.sampledForMs = frames[frames.length - 1]?.t ?? 0;
+  // Whether the loop ever wrote a settled frame at all, which is the difference
+  // between "it stopped early" and "it finished and something re-displaced it".
+  record.settledDuringSampling = frames.some((frame, index) => index > 2 && frame.moving.length === 0);
+
+  await new Promise((done) => setTimeout(done, 1200));
+  record.afterwards = await window.webContents.executeJavaScript(`(() => {
+    const atRest = (value) => !value || value.split(/\s+/).every((part) => parseFloat(part) === 0);
+    const displaced = [...document.querySelectorAll("[data-element-id]")]
+      .filter((el) => !atRest(el.style.translate))
+      .map((el) => ({ id: el.getAttribute("data-element-id"), translate: el.style.translate }));
+    return { stillMoving: displaced.length, displaced, stages: document.querySelectorAll("[data-present-stage]").length };
+  })()`);
+
+  await capture(window, join(smokeDir()!, "morph.png"));
+
+  if (movedAt.length === 0) {
+    throw new Error(
+      "No element was translated during the morph. The pair was compiled but nothing moved on screen.",
+    );
+  }
+  const afterwards = record.afterwards as { stillMoving: number };
+  if (afterwards.stillMoving !== 0) {
+    throw new Error("An element was left displaced after the morph finished.");
   }
 }
 
