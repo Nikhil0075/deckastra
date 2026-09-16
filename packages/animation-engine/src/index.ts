@@ -92,3 +92,9 @@ export {
   type TimelineLane,
   type TimelineView,
 } from "./timeline";
+
+/**
+ * Slide transitions (D4.1). Between two slides rather than within one, so it
+ * keeps its own clock — see `transition/types.ts`.
+ */
+export * from "./transition";
