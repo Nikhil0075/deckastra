@@ -886,6 +886,12 @@ function animationDeck(): PresentationDocument {
     transition: { type: "slide", durationMs: 400, direction: "left" },
   };
 
+  // Captured rather than inlined: the morph slide below pairs against it, and a
+  // shared-element mapping names ids. Declared at the same call position so
+  // every id after it keeps the value it already had.
+  const zoomHeadlineId = id("el");
+  const zoomBadgeId = id("el");
+
   const transitionTarget: Slide = {
     id: id("sld"),
     name: "Transition target",
@@ -893,12 +899,20 @@ function animationDeck(): PresentationDocument {
     keyMessage: "Transitions belong to the slide being entered",
     elements: [
       {
-        id: id("el"),
+        id: zoomHeadlineId,
         type: "text",
         semanticRole: "headline",
         transform: { x: 120, y: 440, width: 1400, height: 200 },
         content: plainText("Entered with a zoom", id("blk")),
         typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 88, fontWeight: 700, color: "token:colors.foreground" },
+      },
+      {
+        id: zoomBadgeId,
+        type: "shape",
+        shape: "pill",
+        semanticRole: "decoration",
+        transform: { x: 1500, y: 180, width: 220, height: 120 },
+        style: { fill: { type: "solid", color: "token:colors.accent" } },
       },
     ],
     // A slide's transition describes how the deck moves INTO it, so reordering
@@ -906,11 +920,66 @@ function animationDeck(): PresentationDocument {
     transition: { type: "zoom", durationMs: 500, easing: "emphasized" },
   };
 
+  /**
+   * The shared-element morph (doc 02 §26, doc 04 §33.3).
+   *
+   * Here because the conformance deck is where a transition the product can
+   * draw has to be exercised, and until this existed no fixture carried a morph
+   * or a single `sharedElements` mapping — so nothing in the repository touched
+   * the pairing, the deltas or the two-stage present path that draws them.
+   *
+   * Both mappings are deliberate. The headline moves *and* resizes, which is the
+   * case centre-to-centre deltas exist for: corner-to-corner would drift
+   * sideways as the box grows. The badge is paired `position` only, so an author
+   * deciding that two sizes differ for a reason is a permission the engine has
+   * to honour rather than a hint it may override.
+   */
+  const morphHeadlineId = id("el");
+  const morphBadgeId = id("el");
+
+  const morphTarget: Slide = {
+    id: id("sld"),
+    name: "Morph target",
+    semanticIntent: "Receiving slide for a shared-element morph",
+    keyMessage: "Paired elements travel; everything else crossfades",
+    elements: [
+      {
+        id: morphHeadlineId,
+        type: "text",
+        semanticRole: "headline",
+        // Moved and much larger than its partner, so the delta is unmistakable
+        // in a rendered frame rather than a rounding difference. The box is
+        // sized for two lines at this face: the first attempt overflowed, which
+        // the scene digest caught and a conformance deck must never ship.
+        transform: { x: 200, y: 120, width: 1520, height: 420 },
+        content: plainText("The same headline, moved", id("blk")),
+        typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 132, fontWeight: 700, color: "token:colors.foreground" },
+      },
+      {
+        id: morphBadgeId,
+        type: "shape",
+        shape: "pill",
+        semanticRole: "decoration",
+        transform: { x: 200, y: 760, width: 220, height: 120 },
+        style: { fill: { type: "solid", color: "token:colors.accent" } },
+      },
+    ],
+    transition: {
+      type: "morph",
+      durationMs: 600,
+      easing: "emphasized",
+      sharedElements: [
+        { sourceElementId: zoomHeadlineId, destinationElementId: morphHeadlineId, matchMode: "positionAndScale" },
+        { sourceElementId: zoomBadgeId, destinationElementId: morphBadgeId, matchMode: "position" },
+      ],
+    },
+  };
+
   return buildDocument({
     id: id("doc"),
     title: "Animation Conformance Deck",
     theme,
-    slides: [sequenced, clickReveal, transitionTarget],
+    slides: [sequenced, clickReveal, transitionTarget, morphTarget],
     metadata: {
       presentationType: "technical",
       audience: "The animation engine test suite",

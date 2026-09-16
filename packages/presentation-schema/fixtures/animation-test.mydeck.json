@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.1.0",
-  "id": "doc_01JB8Z9K2QW4RN7F3X03003600",
+  "id": "doc_01JB8Z9K2QW4RN7F3X03004100",
   "metadata": {
     "title": "Animation Conformance Deck",
     "language": "en",
@@ -866,13 +866,13 @@
       }
     },
     {
-      "id": "sld_01JB8Z9K2QW4RN7F3X03003300",
+      "id": "sld_01JB8Z9K2QW4RN7F3X03003500",
       "name": "Transition target",
       "semanticIntent": "Receiving slide for transition tests",
       "keyMessage": "Transitions belong to the slide being entered",
       "elements": [
         {
-          "id": "el_01JB8Z9K2QW4RN7F3X03003400",
+          "id": "el_01JB8Z9K2QW4RN7F3X03003300",
           "type": "text",
           "semanticRole": "headline",
           "transform": {
@@ -885,7 +885,7 @@
             "version": 1,
             "blocks": [
               {
-                "id": "blk_01JB8Z9K2QW4RN7F3X03003500",
+                "id": "blk_01JB8Z9K2QW4RN7F3X03003600",
                 "type": "paragraph",
                 "spans": [
                   {
@@ -901,12 +901,104 @@
             "fontWeight": 700,
             "color": "token:colors.foreground"
           }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03003400",
+          "type": "shape",
+          "shape": "pill",
+          "semanticRole": "decoration",
+          "transform": {
+            "x": 1500,
+            "y": 180,
+            "width": 220,
+            "height": 120
+          },
+          "style": {
+            "fill": {
+              "type": "solid",
+              "color": "token:colors.accent"
+            }
+          }
         }
       ],
       "transition": {
         "type": "zoom",
         "durationMs": 500,
         "easing": "emphasized"
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X03003900",
+      "name": "Morph target",
+      "semanticIntent": "Receiving slide for a shared-element morph",
+      "keyMessage": "Paired elements travel; everything else crossfades",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03003700",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 200,
+            "y": 120,
+            "width": 1520,
+            "height": 420
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X03004000",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "The same headline, moved"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 132,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X03003800",
+          "type": "shape",
+          "shape": "pill",
+          "semanticRole": "decoration",
+          "transform": {
+            "x": 200,
+            "y": 760,
+            "width": 220,
+            "height": 120
+          },
+          "style": {
+            "fill": {
+              "type": "solid",
+              "color": "token:colors.accent"
+            }
+          }
+        }
+      ],
+      "transition": {
+        "type": "morph",
+        "durationMs": 600,
+        "easing": "emphasized",
+        "sharedElements": [
+          {
+            "sourceElementId": "el_01JB8Z9K2QW4RN7F3X03003300",
+            "destinationElementId": "el_01JB8Z9K2QW4RN7F3X03003700",
+            "matchMode": "positionAndScale"
+          },
+          {
+            "sourceElementId": "el_01JB8Z9K2QW4RN7F3X03003400",
+            "destinationElementId": "el_01JB8Z9K2QW4RN7F3X03003800",
+            "matchMode": "position"
+          }
+        ]
       }
     }
   ],
