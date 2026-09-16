@@ -18,12 +18,17 @@ Four things it reports that the single-node harness cannot:
 * **Whether the result is usable**, not merely valid. The composed document goes
   through the product's own validator, so "it returned a plan" and "it produced a
   deck" are distinguished.
-* **Source support, not only source ids.** The single-node harness checks that a
-  cited id was one we supplied, which proves the model did not invent a
-  reference; it does not prove the cited text supports the claim. Every claim
-  with a citation is written out beside the block it cites, for a person to mark.
-  A harness cannot judge that, and pretending otherwise is how a quality number
-  gets published that nobody checked.
+**Grounding is not measured here, and the flag that pretended to has been
+removed** (2026-09-17). Injecting context blocks into `state["research"]` does
+nothing: the research node *replaces* that key wholesale, and it is
+repository-specific — it profiles connected repositories and writes questions a
+code search can answer. These briefs are about warehouses and hospitals, so there
+is no repository to ground them in and the injected blocks were silently
+discarded. The first run of this harness reported `cited: []` and read like the
+model ignoring its sources; it had none. Citation behaviour is measured by
+`benchmark-model-pack.py`, which calls `story()` directly and so keeps the blocks
+it injects. Measuring it through the whole graph needs a repository-grounded brief
+against a real index, which is its own piece of work.
 
 Briefs are held out: none of them appears in a prompt, a fixture or a test.
 
@@ -47,7 +52,6 @@ sys.path.insert(0, str(ROOT / "agents"))
 sys.path.insert(0, str(ROOT / "apps" / "api"))
 
 from deckastra_agents.budgets import RunBudget  # noqa: E402
-from deckastra_agents.envelope import Source, envelope  # noqa: E402
 from deckastra_agents.runner import AgentRun, run_generation  # noqa: E402
 from deckastra_agents.tools import ToolRegistry  # noqa: E402
 
@@ -85,24 +89,6 @@ BRIEFS = [
         "tone": "direct and reassuring",
     },
 ]
-
-#: Retrieved material for the briefs that use it, so citation behaviour is
-#: measured against text that is actually on the page rather than against the
-#: model's memory.
-SOURCES = [
-    (
-        "src_scan_times",
-        "Median pick-to-scan time on the handheld fleet was 9.4 seconds in August, "
-        "measured across 412,000 scans in the Leeds and Bristol sites. The wrist "
-        "units measured 6.1 seconds in the Bristol pilot over 28,000 scans.",
-    ),
-    (
-        "src_scan_battery",
-        "Wrist units lasted a full ten-hour shift in 91% of pilot days. The handheld "
-        "fleet requires a mid-shift battery swap on every shift.",
-    ),
-]
-
 
 def peak_rss_watcher(pid: int, stop: threading.Event) -> dict[str, int]:
     """Peak resident memory of the runtime, sampled while it works.
@@ -178,15 +164,15 @@ def stage_timer(record: dict) -> callable:
     return emit
 
 
-def one_run(brief: dict, *, with_sources: bool) -> dict:
+def one_run(brief: dict) -> dict:
     from deckastra_api import model_server
-    from deckastra_api.compose import compose_document
+    from deckastra_api.agent_service import _composer
+    from deckastra_api.models import GenerateRequest
     from deckastra_api.schema import validate_document
 
     record: dict = {
         "brief": brief["instruction"][:70],
         "asked_for": brief["slide_count"],
-        "with_sources": with_sources,
     }
 
     client = model_server.build_client()
@@ -194,21 +180,29 @@ def one_run(brief: dict, *, with_sources: bool) -> dict:
     stop = threading.Event()
     peak = peak_rss_watcher(runtime.pid, stop) if runtime is not None else {"peak_rss_mb": 0}
 
-    context_blocks = (
-        [envelope(text, Source(id=source_id, kind="repository")) for source_id, text in SOURCES]
-        if with_sources
-        else []
-    )
-
     # Generous, because the point is to find out how long it takes rather than to
     # enforce a ceiling. A run that hits this is reported as exhausted, which is
     # itself a result worth having.
     budget = RunBudget(max_wall_clock_seconds=5400.0, max_total_tokens=4_000_000)
 
+    # The product's own composer, not a second one written here. `propose` hands
+    # it the story plan, the creative direction and the motion plan and gets patch
+    # operations back; `compose_document` is the layer *underneath* that and takes
+    # something else entirely. Building a stand-in would measure a pipeline this
+    # product does not have.
+    produced: dict = {}
+    request = GenerateRequest(
+        instruction=brief["instruction"],
+        audience=brief.get("audience", ""),
+        objective=brief.get("objective", ""),
+        slide_count=brief["slide_count"],
+        tone=brief.get("tone", ""),
+    )
+
     run = AgentRun(
         client=client,
         registry=ToolRegistry(),
-        compose=compose_document,
+        compose=_composer(request, produced),
         budget=budget,
         # Nobody is here to approve a story mid-benchmark, and the API's own
         # synchronous path turns it off for the same reason.
@@ -219,7 +213,6 @@ def one_run(brief: dict, *, with_sources: bool) -> dict:
     state = {
         "run_id": f"bench-{int(time.time())}",
         "request": brief,
-        "research": {"context_blocks": context_blocks},
     }
 
     started = time.monotonic()
@@ -243,10 +236,11 @@ def one_run(brief: dict, *, with_sources: bool) -> dict:
             for e in (result.errors or [])
         ][:6]
 
-        document = (result.state or {}).get("document") or getattr(result, "document", None)
+        # `_composer` stashes the composed document here on its way past, which
+        # is how the API gets hold of it too.
+        document = produced.get("document")
         if document is None:
-            proposal = (result.state or {}).get("proposal") or {}
-            document = proposal.get("document")
+            document = (result.state or {}).get("document")
 
         if document is not None:
             record["slides"] = len(document.get("slides") or [])
@@ -259,29 +253,6 @@ def one_run(brief: dict, *, with_sources: bool) -> dict:
             record["slides"] = 0
             record["document_valid"] = False
 
-        plan = (result.state or {}).get("story_plan") or {}
-        if with_sources:
-            supplied = {source_id for source_id, _ in SOURCES}
-            cited = {
-                str(one)
-                for slide in (plan.get("slides") or [])
-                for one in (slide.get("source_ids") or [])
-            }
-            record["cited"] = sorted(cited)
-            record["invented_citations"] = sorted(cited - supplied)
-            # For a person to mark. A harness can check that an id was supplied;
-            # only a reader can say whether the text supports the claim, and
-            # publishing a quality number nobody checked is how a benchmark comes
-            # to mean nothing.
-            record["claims_for_review"] = [
-                {
-                    "slide": slide.get("headline") or slide.get("title"),
-                    "body": (slide.get("body") or slide.get("key_message") or "")[:300],
-                    "cites": slide.get("source_ids") or [],
-                }
-                for slide in (plan.get("slides") or [])
-                if slide.get("source_ids")
-            ]
         record["ok"] = record.get("document_valid", False)
         record.setdefault(
             "outcome_class", "produced_a_deck" if record["ok"] else "finished_without_a_deck"
@@ -322,14 +293,29 @@ def main() -> int:
     os.environ["DECKASTRA_MODEL_PACK"] = args.pack
     os.environ.setdefault("DECKASTRA_INTELLIGENCE", "local")
 
+    from deckastra_api import model_server
+
     records: list[dict] = []
-    for index, brief in enumerate(BRIEFS[: args.briefs]):
+    try:
+        records = _run_all(args)
+    finally:
+        # Stop the runtime this harness started. The supervisor's reaper is a
+        # daemon thread, so when a *script* exits the child llama-server simply
+        # survives it — and a second run then cannot load, because the first
+        # run's weights are still holding the GPU. That is not hypothetical: it
+        # is how the 2026-09-17 rerun failed, with three orphaned servers from
+        # two earlier attempts still resident. The desktop app has `sidecar.ts`
+        # to tear down; a script has this.
+        model_server.stop("benchmark finished")
+
+    return _report(args, records)
+
+
+def _run_all(args) -> list[dict]:
+    records: list[dict] = []
+    for brief in BRIEFS[: args.briefs]:
         for attempt in range(args.runs):
-            # Sources on the first brief only: it is the one they were written
-            # for, and citing material that has nothing to do with the deck would
-            # measure the model's willingness to ignore us rather than its
-            # grounding.
-            record = one_run(brief, with_sources=index == 0)
+            record = one_run(brief)
             record["run"] = attempt + 1
             records.append(record)
             print(
@@ -352,6 +338,10 @@ def main() -> int:
                 flush=True,
             )
 
+    return records
+
+
+def _report(args, records: list[dict]) -> int:
     completed = [one for one in records if one.get("ok")]
     times = sorted(one["seconds"] for one in completed)
     summary = {
@@ -362,9 +352,6 @@ def main() -> int:
         "fastest_seconds": times[0] if times else None,
         "slowest_seconds": times[-1] if times else None,
         "peak_rss_mb": max((one.get("peak_rss_mb") or 0) for one in records) if records else 0,
-        "invented_citations": sorted(
-            {c for one in records for c in (one.get("invented_citations") or [])}
-        ),
         "outcomes": {
             name: sum(1 for one in records if one.get("outcome_class") == name)
             for name in sorted({str(one.get("outcome_class")) for one in records})

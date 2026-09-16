@@ -1261,9 +1261,10 @@ RAM, `Qwen3-4B-Q4_K_M` (Apache-2.0) on llama.cpp b10927 Vulkan, served
 **The contract question is answered, and that was the risky one.** A `StoryPlan`
 is nested, has a closed layout enum and carries citation ids, and a 4B holds it —
 never once fabricating a source id, which matters because the product renders
-those as provenance. What it costs is minutes: ~4 for a story plan here, so a
-full multi-stage deck is 15–20. That is the honest shape of local intelligence on
-entry-level hardware, and it is why local is **chosen, never defaulted to**.
+those as provenance. What it costs is minutes: ~4 for a story plan here. The
+full-graph measurement below replaces the extrapolation that used to sit in this
+sentence. That is the honest shape of local intelligence on entry-level hardware,
+and it is why local is **chosen, never defaulted to**.
 
 One number bounds the configuration: the six-slide brief produced **4,687 output
 tokens against a 4,096-token context**. It still came back valid, but that is
@@ -1310,6 +1311,50 @@ user to answer and nothing for the run to resume on, so that case proceeds and
 warns instead. This is the same shape as the `iat` defaulting to `0`: a sentinel
 that a reasonable answer collides with, failing silently and looking like
 nothing.
+
+**The whole graph measured, 2026-09-17**, same machine, `Qwen3-4B-Q4_K_M` on
+llama.cpp Vulkan, served `-c 8192 --parallel 1 -ngl 99` — all layers offloaded,
+which the 2026-09-12 run did not do. Three held-out briefs (warehouse operations,
+a hospital funding case, a support-team policy), one run each, through
+`scripts/benchmark-full-generation.py`:
+
+| | |
+| --- | --- |
+| Produced a valid deck | 3 of 3 |
+| Slide count honoured | 3 of 3 — 6/6, 7/7, 5/5 |
+| Structured requests valid first time | 27 of 28 (one repair, at two attempts) |
+| End to end | 122s, 123s, **1,136s** |
+| Throughput | 25–33 tok/s |
+| Peak RSS | 5,814MB |
+| Output tokens | 3,541 / 3,690 / 32,073 |
+
+**The spread is the finding, and it is not the model being erratic.** It is which
+stages the orchestrator routed. Two briefs went orchestrate → story → layout →
+propose and finished in **two minutes**; the third ran creative, motion and the
+critic as well and took **nineteen**. Of that run's 1,136 seconds, roughly **946
+were the critic and the revisions it sent back** — 83% of the run, and 21
+structured requests against 3 and 4 for the short route.
+
+That reverses the assumption the single-node measurement encouraged. The story
+contract is the largest and it is *not* where local generation spends its time;
+the critic is, because it scores eight dimensions and can send the graph round
+again. The "15–20 minutes for a full deck" figure extrapolated from one node was
+about right for the long route and wrong by a factor of ten for the short one.
+
+Peak RSS of 5,814MB is worth stating beside the pack manifest's `min_ram_mb:
+6000`: on a 4GB card the run is well into system memory, and the earlier
+4,432MB figure was a story-only run that never reached the critic.
+
+**Grounding is not measured by that harness**, and the flag that appeared to has
+been removed rather than left to mislead. Injecting context blocks into
+`state["research"]` does nothing — the research node replaces that key wholesale,
+and it is repository-specific, profiling connected repositories and writing
+questions a code search can answer. These briefs are about warehouses and
+hospitals, so the blocks were silently discarded and the first run reported
+`cited: []`, which read like a model ignoring its sources when it had none.
+Citation behaviour is `benchmark-model-pack.py`'s measurement, because that one
+calls `story()` directly and keeps what it injects. Measuring it through the whole
+graph needs a repository-grounded brief against a real index.
 
 **Not done, and not claimed:** there is no download or settings surface, the
 runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, the

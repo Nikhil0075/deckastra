@@ -1,0 +1,139 @@
+{
+  "summary": {
+    "pack": "qwen3-4b-q4",
+    "runs": 3,
+    "produced_a_valid_deck": 3,
+    "median_seconds": 123.4,
+    "fastest_seconds": 121.9,
+    "slowest_seconds": 1135.8,
+    "peak_rss_mb": 5814,
+    "invented_citations": [],
+    "outcomes": {
+      "produced_a_deck": 3
+    },
+    "stages_that_failed": []
+  },
+  "runs": [
+    {
+      "brief": "Explain to a warehouse operations team why we are replacing handheld b",
+      "asked_for": 6,
+      "with_sources": true,
+      "stage_starts": {
+        "orchestrate": 1.9,
+        "research": 26.7,
+        "story": 26.7,
+        "creative": 83.0,
+        "layout": 99.9,
+        "propose": 121.8
+      },
+      "status": "completed",
+      "warnings": [],
+      "errors": [],
+      "slides": 6,
+      "document_valid": true,
+      "document_errors": [],
+      "cited": [],
+      "invented_citations": [],
+      "claims_for_review": [],
+      "ok": true,
+      "outcome_class": "produced_a_deck",
+      "seconds": 121.9,
+      "peak_rss_mb": 3521,
+      "structured_requests": 4,
+      "stages_requested": [
+        "creative",
+        "layout",
+        "orchestrate",
+        "story"
+      ],
+      "max_attempts": 1,
+      "first_attempt_valid": 4,
+      "repaired": 0,
+      "input_tokens": 2412,
+      "output_tokens": 3541,
+      "run": 1
+    },
+    {
+      "brief": "Make the case to a hospital finance committee for funding a second MRI",
+      "asked_for": 7,
+      "with_sources": false,
+      "stage_starts": {
+        "orchestrate": 0.0,
+        "research": 23.3,
+        "story": 23.3,
+        "creative": 98.5,
+        "layout": 114.2,
+        "motion": 145.4,
+        "critic": 190.0,
+        "propose": 1135.7
+      },
+      "status": "completed",
+      "warnings": [
+        "Slides 3 and 4 use 'split' when 'statement' is more appropriate",
+        "Multiple consecutive 'split' uses in slides 3-4 indicate a layout inconsistency",
+        "Slide 5's metrics are revealed in sequence to avoid overwhelming the audience with data at once.",
+        "Every slide in this deck is animated. Motion reads as emphasis, and a deck that emphasises everything emphasises nothing.",
+        "Slides 3 and 4 use split layout for content that fits only statement.",
+        "Seven consecutive slides use statement layout; this is a failure even if each fits."
+      ],
+      "errors": [],
+      "slides": 7,
+      "document_valid": true,
+      "document_errors": [],
+      "ok": true,
+      "outcome_class": "produced_a_deck",
+      "seconds": 1135.8,
+      "peak_rss_mb": 5814,
+      "structured_requests": 21,
+      "stages_requested": [
+        "creative",
+        "critic",
+        "layout",
+        "motion",
+        "orchestrate",
+        "story"
+      ],
+      "max_attempts": 2,
+      "first_attempt_valid": 20,
+      "repaired": 1,
+      "input_tokens": 18294,
+      "output_tokens": 32073,
+      "run": 1
+    },
+    {
+      "brief": "Introduce a new returns policy to a customer support team: what change",
+      "asked_for": 5,
+      "with_sources": false,
+      "stage_starts": {
+        "orchestrate": 0.0,
+        "story": 19.3,
+        "layout": 70.5,
+        "propose": 123.4
+      },
+      "status": "completed",
+      "warnings": [
+        "Slide 3 uses 'split' instead of 'bullets' for a bullet list with four points."
+      ],
+      "errors": [],
+      "slides": 5,
+      "document_valid": true,
+      "document_errors": [],
+      "ok": true,
+      "outcome_class": "produced_a_deck",
+      "seconds": 123.4,
+      "peak_rss_mb": 5814,
+      "structured_requests": 3,
+      "stages_requested": [
+        "layout",
+        "orchestrate",
+        "story"
+      ],
+      "max_attempts": 1,
+      "first_attempt_valid": 3,
+      "repaired": 0,
+      "input_tokens": 1869,
+      "output_tokens": 3690,
+      "run": 1
+    }
+  ]
+}
