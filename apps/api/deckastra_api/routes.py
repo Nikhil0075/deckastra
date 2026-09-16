@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import sync
+from . import quotas, sync
 from . import export_service, local_mode, motion, proposals, store, themes
 from .auth import (
     Principal,
@@ -32,7 +32,7 @@ from .auth import (
     resolve_project_access,
 )
 from .compose import blank_document
-from .db.models import Presentation, PresentationVersion, TransactionRow
+from .db.models import Asset, Presentation, PresentationVersion, TransactionRow
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -754,22 +754,45 @@ def move_presentation(
             ),
         )
 
-    loaded = store.load_presentation(session, presentation_id)
-    cited = asset_service.referenced_ids(loaded.document)
-    if cited:
+    # The deck's pictures go with it (D5.5). `Asset.workspace_id` scopes an
+    # upload to the workspace holding it, so a deck that moved without its files
+    # would arrive with every image unreadable by the people it arrived for — and
+    # its own history pointing at bytes it can no longer see.
+    #
+    # Across the whole of its history, not just the current slides: a third
+    # version citing an image the fifth deleted is a reference that still has to
+    # resolve, and version history is what this product promises hardest.
+    mine = asset_service.cited_by_history(session, presentation_id)
+    shared = mine & asset_service.cited_elsewhere(
+        session,
+        workspace_id=access.workspace_id,
+        except_presentation_id=presentation_id,
+    )
+    if shared:
+        # A file two decks use cannot move with one of them, and copying it would
+        # mean minting a second asset id and rewriting the document to point at
+        # it — which makes a move an edit, and a move must not change the deck.
         raise HTTPException(
             status_code=409,
             detail=(
-                f"This deck uses {len(cited)} uploaded file(s), and uploads belong to "
-                "the workspace that holds them. Moving the deck would leave those "
-                "unreadable where it arrives, so moving decks with assets is not "
-                "supported yet."
+                f"{len(shared)} of this deck's uploaded file(s) are also used by other "
+                "decks in this workspace, so they cannot move with it. Replace them "
+                "with copies of their own, or move those decks too."
             ),
         )
 
     presentation = access.presentation
     presentation.project_id = destination.id
+    for asset_id in sorted(mine):
+        asset = session.get(Asset, asset_id)
+        if asset is not None and asset.workspace_id == access.workspace_id:
+            asset.workspace_id = destination.workspace_id
     session.flush()
+
+    # Storage is a level rather than a flow (`quotas.py`), so both sides are
+    # recounted rather than adjusted: an increment missed once is wrong forever.
+    quotas.recount_storage(session, access.workspace_id)
+    quotas.recount_storage(session, destination.workspace_id)
 
     return {
         "presentation_id": presentation_id,
@@ -777,6 +800,8 @@ def move_presentation(
         "workspace_id": destination.workspace_id,
         "from_workspace_id": access.workspace_id,
         "moved": True,
+        #: How many uploaded files travelled with it.
+        "assets_moved": len(mine),
         # Unchanged, and said out loud: a move must not look like a new deck to
         # anything holding a reference to this one.
         "version_id": presentation.current_version_id,

@@ -192,6 +192,68 @@ def recount_references(session: Session, workspace_id: str) -> int:
     return changed
 
 
+def cited_elsewhere(
+    session: Session, *, workspace_id: str, except_presentation_id: str
+) -> set[str]:
+    """Assets some *other* deck in this workspace still needs (D5.5).
+
+    Used when a deck leaves a workspace and wants to take its pictures with it.
+    The question is not "what does the deck cite now" but "what would break if
+    these files went with it" — so it walks every retained version of every other
+    deck, the same way the recount does and for the same reason: history is the
+    product's promise, and a third version citing an image its fifth deleted is a
+    reference that still has to resolve.
+
+    An asset in the answer cannot travel. An asset absent from it is used by this
+    deck alone and can.
+    """
+    needed: set[str] = set()
+    versions = session.execute(
+        select(PresentationVersion)
+        .join(Presentation, Presentation.id == PresentationVersion.presentation_id)
+        .join(Project, Project.id == Presentation.project_id)
+        .where(
+            Project.workspace_id == workspace_id,
+            PresentationVersion.presentation_id != except_presentation_id,
+        )
+    ).scalars()
+
+    for version in versions:
+        document = version.snapshot_json
+        if document is None:
+            document = store.load_presentation(
+                session, version.presentation_id, at_version=version.id
+            ).document
+        needed |= referenced_ids(document)
+
+    return needed
+
+
+def cited_by_history(session: Session, presentation_id: str) -> set[str]:
+    """Everything this deck has ever cited, across every retained version.
+
+    The head alone is not enough: moving only the pictures on the current slides
+    would leave the deck's own history pointing at files left behind, and version
+    history is the thing this product promises hardest.
+    """
+    cited: set[str] = set()
+    versions = session.execute(
+        select(PresentationVersion).where(
+            PresentationVersion.presentation_id == presentation_id
+        )
+    ).scalars()
+
+    for version in versions:
+        document = version.snapshot_json
+        if document is None:
+            document = store.load_presentation(
+                session, presentation_id, at_version=version.id
+            ).document
+        cited |= referenced_ids(document)
+
+    return cited
+
+
 def soft_delete(session: Session, asset: Asset) -> Asset:
     """Mark an asset for removal without removing it.
 

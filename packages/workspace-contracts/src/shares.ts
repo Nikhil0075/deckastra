@@ -17,6 +17,13 @@ export interface Share {
    */
   role: Role;
   label: string | null;
+  /**
+   * The version this link shows, or null for "whatever the deck is now" (D5.5).
+   *
+   * In a list of links it is the difference between one that is safe to leave
+   * with an audience and one that keeps changing under them.
+   */
+  version_id: string | null;
   created_at: string | null;
   expires_at: string | null;
   /** Revoked, not deleted — "who could see this, and when did that stop". */
@@ -30,6 +37,15 @@ export interface Share {
 export interface CreateShareRequest {
   role: "viewer";
   expires_in_days: number | null;
+  /**
+   * Pin the link to one version. Omit to follow the deck.
+   *
+   * Presenting is what needs it: a link handed to a room must keep showing what
+   * the presenter rehearsed, whoever edits the deck in the meantime. Following
+   * stays the default, because "send this to a client while I fix the typos" is
+   * the other real use and pinning would freeze the typos in.
+   */
+  version_id?: string | null;
 }
 
 /**
@@ -41,6 +57,8 @@ export interface SharedDocument {
   title: string;
   document: PresentationDocument;
   version_id: string;
+  /** Whether this link is a photograph of the deck or a window onto it. */
+  pinned: boolean;
   /**
    * What the holder may do. Only "viewer" is honoured today: `/v1/shared/{token}`
    * returns a document and the shared page only presents it. The field stays so

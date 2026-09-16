@@ -387,41 +387,29 @@ def test_a_deck_with_a_change_awaiting_approval_does_not_move(client):
     assert decks_in(client, me, deck["project_id"]) == [deck["presentation_id"]]
 
 
-def test_a_deck_that_uses_an_upload_is_refused_by_name(client):
-    """An upload belongs to the workspace that holds it (`Asset.workspace_id`).
-
-    So a deck citing images would arrive with every picture unreadable by the
-    people it arrived for — a move that looks like it worked and produces a
-    broken deck. Carrying the files is a per-file copy-or-move decision, because
-    an asset can be cited by other decks in the source workspace, and that is
-    D5.5's work. Until then this refuses and says how many.
-    """
-    me = sign_in(client, "pictures@local")
-    deck = a_deck(client, me)
-    company = a_second_workspace(client, me)
-
-    asset_id = new_id("ast")
+def an_upload(client, who, deck_id: str, *, asset_id: str | None = None) -> str:
+    """An image row plus a slide element citing it."""
+    asset_id = asset_id or new_id("ast")
     with db_session.session_scope() as session:
-        session.add(
-            Asset(
-                id=asset_id,
-                workspace_id=me["workspace_id"],
-                created_by=me["user_id"],
-                kind="image",
-                storage_key=f"{me['workspace_id']}/{asset_id}",
-                filename="logo.png",
-                content_type="image/png",
-                bytes=12,
+        if session.get(Asset, asset_id) is None:
+            session.add(
+                Asset(
+                    id=asset_id,
+                    workspace_id=who["workspace_id"],
+                    created_by=who["user_id"],
+                    kind="image",
+                    storage_key=f"{who['workspace_id']}/{asset_id}",
+                    filename="logo.png",
+                    content_type="image/png",
+                    bytes=12,
+                )
             )
-        )
 
-    opened = client.get(
-        f"/v1/presentations/{deck['presentation_id']}", headers=headers(me)
-    ).json()
+    opened = client.get(f"/v1/presentations/{deck_id}", headers=headers(who)).json()
     slide_id = opened["document"]["slides"][0]["id"]
     applied = client.post(
-        f"/v1/presentations/{deck['presentation_id']}/transactions",
-        headers=headers(me),
+        f"/v1/presentations/{deck_id}/transactions",
+        headers=headers(who),
         json={
             "expected_version_id": opened["version_id"],
             "intent": "Place the logo",
@@ -440,6 +428,45 @@ def test_a_deck_that_uses_an_upload_is_refused_by_name(client):
         },
     )
     assert applied.status_code == 200, applied.text
+    return asset_id
+
+
+def test_a_decks_own_pictures_move_with_it(client):
+    """D5.5. `Asset.workspace_id` scopes an upload to the workspace holding it,
+    so a deck that moved without its files would arrive with every image
+    unreadable by the people it arrived for."""
+    me = sign_in(client, "pictures@local")
+    deck = a_deck(client, me)
+    company = a_second_workspace(client, me)
+    asset_id = an_upload(client, me, deck["presentation_id"])
+
+    moved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/move",
+        headers=headers(me),
+        json={"project_id": company["project_id"]},
+    )
+
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["assets_moved"] == 1
+
+    with db_session.session_scope() as session:
+        assert session.get(Asset, asset_id).workspace_id == company["workspace_id"]
+
+
+def test_a_picture_two_decks_use_cannot_travel_with_one_of_them(client):
+    """The case that made this a per-file decision rather than a blanket move.
+
+    Copying it would mean minting a second asset id and rewriting the document to
+    point at it — which turns a move into an edit, and a move must not change the
+    deck.
+    """
+    me = sign_in(client, "shared-pictures@local")
+    deck = a_deck(client, me, "Moving")
+    other = a_deck(client, me, "Staying")
+    company = a_second_workspace(client, me)
+
+    asset_id = an_upload(client, me, deck["presentation_id"])
+    an_upload(client, me, other["presentation_id"], asset_id=asset_id)
 
     refused = client.post(
         f"/v1/presentations/{deck['presentation_id']}/move",
@@ -448,5 +475,60 @@ def test_a_deck_that_uses_an_upload_is_refused_by_name(client):
     )
 
     assert refused.status_code == 409
-    assert "uploaded file" in refused.json()["detail"]
-    assert decks_in(client, me, deck["project_id"]) == [deck["presentation_id"]]
+    assert "also used by other decks" in refused.json()["detail"]
+    assert decks_in(client, me, deck["project_id"]) == [
+        deck["presentation_id"],
+        other["presentation_id"],
+    ] or decks_in(client, me, deck["project_id"]) == [
+        other["presentation_id"],
+        deck["presentation_id"],
+    ]
+    with db_session.session_scope() as session:
+        assert session.get(Asset, asset_id).workspace_id == me["workspace_id"]
+
+
+def test_a_picture_only_this_decks_history_still_uses_moves_too(client):
+    """The head is not the deck.
+
+    Moving only the pictures on the current slides would leave the deck's own
+    history pointing at files left behind — and version history is what this
+    product promises hardest.
+    """
+    me = sign_in(client, "history@local")
+    deck = a_deck(client, me)
+    company = a_second_workspace(client, me)
+    asset_id = an_upload(client, me, deck["presentation_id"])
+
+    # Take it back off the slide. The image is now cited by an older version and
+    # by nothing on the current one.
+    opened = client.get(
+        f"/v1/presentations/{deck['presentation_id']}", headers=headers(me)
+    ).json()
+    slide = opened["document"]["slides"][0]
+    element = next(one for one in slide["elements"] if one.get("assetId") == asset_id)
+    removed = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/transactions",
+        headers=headers(me),
+        json={
+            "expected_version_id": opened["version_id"],
+            "intent": "Take the logo back off",
+            "operations": [
+                {
+                    "op": "remove",
+                    "path": f"/slides/id:{slide['id']}/elements/id:{element['id']}",
+                }
+            ],
+        },
+    )
+    assert removed.status_code == 200, removed.text
+
+    moved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/move",
+        headers=headers(me),
+        json={"project_id": company["project_id"]},
+    )
+
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["assets_moved"] == 1
+    with db_session.session_scope() as session:
+        assert session.get(Asset, asset_id).workspace_id == company["workspace_id"]

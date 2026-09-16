@@ -114,6 +114,11 @@ def create_presentation(
     # transaction as the rows it describes, for the reason the whole outbox is a
     # table: a device that enqueued afterwards loses the enqueue to a crash and
     # the deck silently never reaches anyone.
+    # Files first (D5.5), then the deck. A snapshot that cites an image the
+    # server has never received arrives broken for everyone but its author.
+    sync.enqueue_new_assets(
+        session, presentation_id=presentation_id, document=document
+    )
     sync.enqueue(
         session,
         presentation_id=presentation_id,
@@ -335,6 +340,12 @@ def commit_transaction(
             # version, the change and the record that it is owed to a server
             # either all exist or none do.
             session.flush()
+            # Anything this change made the deck cite, ahead of the change
+            # itself (D5.5). Ordering is the whole of it: the operation naming a
+            # file must not reach the server before the file.
+            sync.enqueue_new_assets(
+                session, presentation_id=presentation_id, document=document
+            )
             sync.enqueue(
                 session,
                 presentation_id=presentation_id,

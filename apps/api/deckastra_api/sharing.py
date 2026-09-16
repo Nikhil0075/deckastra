@@ -37,7 +37,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import Role, parse_role
-from .db.models import Presentation, PresentationShare
+from .db.models import Presentation, PresentationShare, PresentationVersion
 from .ids import new_id
 
 #: Long enough that guessing is not a strategy. 32 bytes of `token_urlsafe` is
@@ -96,8 +96,18 @@ def create_share(
     role: str = "viewer",
     label: str | None = None,
     expires_in_days: int | None = None,
+    version_id: str | None = None,
 ) -> tuple[PresentationShare, str]:
-    """Mint a link. Returns the row and the plaintext token, once."""
+    """Mint a link. Returns the row and the plaintext token, once.
+
+    `version_id` pins the link to one version (D5.5). Presenting is what needs
+    it: an audience must not have a slide change under them because a colleague
+    edited the deck or an agent's proposal applied, and on a projector that is
+    not an annoyance but the talk going wrong in front of a room. A pinned link
+    is a photograph of the deck; an unpinned one is a window onto it, which is
+    still the default because "send this to a client while I fix the typos" is
+    the other real use.
+    """
     try:
         parsed = parse_role(role)
     except ValueError as error:
@@ -120,9 +130,18 @@ def create_share(
     if expires_in_days is not None and not (1 <= expires_in_days <= MAX_EXPIRY_DAYS):
         raise ShareError(f"An expiry must be between 1 and {MAX_EXPIRY_DAYS} days.")
 
+    if version_id is not None:
+        # Checked here rather than trusted, because a link naming a version from
+        # another deck would be a link to that deck — the token is the only
+        # credential, so whatever it resolves to is what the holder gets.
+        version = session.get(PresentationVersion, version_id)
+        if version is None or version.presentation_id != presentation_id:
+            raise ShareError("That version is not part of this deck's history.")
+
     token = secrets.token_urlsafe(TOKEN_BYTES)
 
     share = PresentationShare(
+        version_id=version_id,
         id=new_id("shr"),
         presentation_id=presentation_id,
         created_by=created_by,
@@ -215,6 +234,10 @@ def describe(share: PresentationShare, *, token: str | None = None) -> dict[str,
         "id": share.id,
         "role": share.role,
         "label": share.label,
+        # Which version this link shows, or null for "whatever the deck is now"
+        # (D5.5). In a list of links it is the difference between one that is
+        # safe to leave with an audience and one that keeps changing.
+        "version_id": share.version_id,
         "created_at": share.created_at.isoformat() if share.created_at else None,
         "expires_at": share.expires_at.isoformat() if share.expires_at else None,
         "revoked_at": share.revoked_at.isoformat() if share.revoked_at else None,

@@ -1585,6 +1585,83 @@ tested against rows written the way a mirror would write them — which is
 deliberate, because building the enforcement afterwards is how mirroring lands
 with nothing checking it.
 
+### A deck reaches other people whole (D5.5)
+
+Two halves of one idea, and both were holes the earlier slices named and
+deferred.
+
+**Pictures travel with a deck that syncs.** A third outbox `kind`, queued
+**ahead** of the change that names the file — that ordering is the entire point,
+because a document arriving with an `assetId` the server never received is a deck
+that is broken for everyone except the person who uploaded it, and broken in the
+way that looks like the product losing their picture. The queue is diffed against
+what the *document* cites (`referenced_ids`) rather than derived from the patch:
+an operation can introduce a reference indirectly — a slide pasted whole, a group
+moved in, an undo restoring a removed image — and a differ reading only operations
+would miss every one. The file travels **by reference**: a transport handed a
+20MB image inline would hold every queued picture in memory to send one, so
+`Outgoing` carries the storage key and the transport reads the bytes, as the
+exporter and the blob route already do. A reference to a file the workspace does
+not hold is skipped rather than raised — the renderer already draws a labelled
+gap for one, and refusing would let a single bad reference block every later edit
+to the deck.
+
+Rows are queued against the **deck**, which is not where an asset lives but is
+where the ordering constraint lives: "before" only means anything inside one
+deck's sequence. It also keeps the queue honest — an image uploaded and never used
+in a deck that syncs is bandwidth nobody asked for.
+
+**A deck takes its pictures when it moves** (`presentation_shares` aside, this
+closes the refusal D5.1 wrote). `Asset.workspace_id` scopes an upload to the
+workspace holding it, so a deck that moved without its files would arrive with
+every image unreadable *and* its own history pointing at bytes it can no longer
+see. The check is across the whole retained history on both sides, the same walk
+the asset recount does and for the same reason: a third version citing an image
+the fifth deleted is a reference that still has to resolve. A file two decks use
+cannot travel with one of them and is refused by count — copying it would mean
+minting a second asset id and rewriting the document to point at it, which turns
+a move into an edit, and a move must not change the deck. Storage is recounted on
+both sides afterwards rather than adjusted, because it is a level and not a flow.
+
+**A share link can pin a version.** `presentation_shares.version_id`: the shared
+read loads that version and keeps loading it. Presenting is the case — an
+audience must not have a slide change under them because a colleague edited the
+deck or an agent's proposal applied, and on a projector that is not an annoyance,
+it is the talk going wrong in front of a room. A pinned link is a photograph of
+the deck; an unpinned one is a window onto it, and **unpinned stays the default**
+because "send this to a client while I fix the typos" is the other real use.
+The version is checked against the deck at creation rather than trusted: the
+token is the only credential, so whatever it resolves to is what the holder gets,
+and a link naming another deck's version would be a link to that deck. The
+response says `pinned`, because a presenter handing the link round needs to know
+which kind they sent.
+
+**And a shared deck can load its pictures** (`GET /v1/shared/{token}/assets/{id}`).
+Without it a share link was half a link: the blob route needs a session and a
+membership, so on any install storing files locally — every desktop one — an
+audience opening a shared deck would get the text and a row of broken images.
+Sharing exists to show a deck to people, and a deck with no pictures is not the
+deck. The rule that keeps it from being a foothold is **only what this document
+cites**, checked against the document the link actually serves — so a pinned link
+reaches the pictures of the version it pinned and not whatever the deck cites now,
+and a picture removed after pinning still loads while one added afterwards does
+not. An unknown asset and one belonging to a different deck get the identical 404,
+because "that file exists but is not in this deck" tells a probing holder what the
+workspace contains. No signed URL: there is nothing to sign that the token does
+not already say, and a second credential for the same access is a second thing to
+get wrong. With a real object store it redirects to a presigned GET instead of
+putting every shared deck's images through the application.
+
+**Found while building this, and bigger than this slice:** nothing in the product
+resolves an image. `resolveAssetUrl` is a prop on `SlideView` that **no caller
+anywhere passes**, there is no upload surface in the editor, and no fixture uses
+an image element — so the whole asset subsystem (upload, storage, quota,
+reference counting, orphan sweeping, and now syncing and sharing) is built
+server-side with no way for a user to put a picture in a deck. Wiring a resolver
+into the shared page alone would fix the audience's view of something the author
+cannot do, which is backwards. It is a D6 gap, and it is named here rather than
+papered over.
+
 ### The editor is a package; the shell decides where it runs
 
 `packages/editor-ui` is the canvas, present mode, the panels and `useEditor`.

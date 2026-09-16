@@ -45,6 +45,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db.models import (
+    Asset,
     Presentation,
     PresentationVersion,
     Project,
@@ -81,6 +82,20 @@ def _aware(moment: datetime | None) -> datetime | None:
 
 
 @dataclass(frozen=True)
+class OutgoingAsset:
+    """One uploaded file, described well enough to be re-registered elsewhere."""
+
+    asset_id: str
+    storage_key: str
+    kind: str
+    bytes: int
+    filename: str | None = None
+    content_type: str | None = None
+    width: int | None = None
+    height: int | None = None
+
+
+@dataclass(frozen=True)
 class Outgoing:
     """One thing to upload, assembled from local rows.
 
@@ -103,6 +118,13 @@ class Outgoing:
     #: cannot resolve it — the two chains share no version identity — so it
     #: travels as evidence for divergence review rather than as an address.
     local_parent_version_id: str | None = None
+    #: `asset` only — the file to upload, by reference rather than by value.
+    #:
+    #: The bytes are not in here on purpose: a transport that was handed a 20MB
+    #: image inline would hold every queued picture in memory to send one. It gets
+    #: the storage key and reads the bytes itself, the same way the exporter and
+    #: the blob route do.
+    asset: OutgoingAsset | None = None
 
 
 class SyncRefused(Exception):
@@ -184,6 +206,7 @@ def enqueue(
     kind: str,
     change_key: str,
     transaction_id: str | None = None,
+    asset_id: str | None = None,
 ) -> SyncOutboxRow | None:
     """Add one row, or nothing if this deck has nowhere to send it.
 
@@ -199,6 +222,7 @@ def enqueue(
         presentation_id=presentation_id,
         kind=kind,
         transaction_id=transaction_id,
+        asset_id=asset_id,
         change_key=change_key,
         status="pending",
         attempts=0,
@@ -215,6 +239,60 @@ def blocking_row(session: Session, presentation_id: str) -> SyncOutboxRow | None
             SyncOutboxRow.status == "blocked",
         )
     )
+
+
+def enqueue_new_assets(session: Session, *, presentation_id: str, document: dict[str, Any]) -> int:
+    """Queue the bytes of anything this deck cites that has not been queued yet.
+
+    Called just **before** the change that made the document look like this, so
+    the file is ahead of the operation naming it. That ordering is the whole
+    point: a document arriving with an `assetId` the server has never received is
+    a deck that is broken for everyone except the person who uploaded it, and it
+    is broken in the way that looks like the product losing their picture.
+
+    Diffed against what is already queued rather than derived from the patch.
+    An operation can introduce a reference indirectly — a slide pasted whole, a
+    group moved in, an undo restoring a removed image — and a differ that read
+    only the operations would miss every one of those. `referenced_ids` walks the
+    document, which is the same reason the asset recount does.
+    """
+    if not syncs(session, presentation_id):
+        return 0
+
+    from . import assets as asset_service
+
+    cited = asset_service.referenced_ids(document)
+    if not cited:
+        return 0
+
+    already = set(
+        session.scalars(
+            select(SyncOutboxRow.asset_id).where(
+                SyncOutboxRow.presentation_id == presentation_id,
+                SyncOutboxRow.kind == "asset",
+            )
+        )
+    )
+
+    queued = 0
+    # Sorted, so two decks citing the same set queue them in one order and a
+    # replayed log is reproducible.
+    for asset_id in sorted(cited - already):
+        if session.get(Asset, asset_id) is None:
+            # A document can name an asset this workspace does not hold — an
+            # imported deck, a stale manifest entry. Not an error: the renderer
+            # already draws a placeholder for it, and refusing the whole change
+            # would make one bad reference block every later edit to the deck.
+            continue
+        enqueue(
+            session,
+            presentation_id=presentation_id,
+            kind="asset",
+            change_key=new_change_key(),
+            asset_id=asset_id,
+        )
+        queued += 1
+    return queued
 
 
 def pending_for(session: Session, presentation_id: str) -> list[SyncOutboxRow]:
@@ -258,6 +336,26 @@ def _outgoing(session: Session, row: SyncOutboxRow) -> Outgoing:
             kind="create",
             presentation_id=row.presentation_id,
             document=document,
+        )
+
+    if row.kind == "asset":
+        asset = session.get(Asset, row.asset_id)
+        if asset is None:
+            raise LookupError(f"Outbox row {row.id} names a file that is gone.")
+        return Outgoing(
+            change_key=row.change_key,
+            kind="asset",
+            presentation_id=row.presentation_id,
+            asset=OutgoingAsset(
+                asset_id=asset.id,
+                storage_key=asset.storage_key,
+                kind=asset.kind,
+                bytes=asset.bytes,
+                filename=asset.filename,
+                content_type=asset.content_type,
+                width=asset.width,
+                height=asset.height,
+            ),
         )
 
     transaction = session.get(TransactionRow, row.transaction_id)

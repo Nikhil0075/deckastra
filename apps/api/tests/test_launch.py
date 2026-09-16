@@ -164,7 +164,17 @@ def test_a_link_grants_nothing_beyond_the_one_deck(client, auth, deck):
     body = client.get(f"/v1/shared/{token}").json()
 
     # No project, no workspace, no siblings, no members, no repositories.
-    assert set(body) == {"presentation_id", "title", "document", "version_id", "role"}
+    # `pinned` (D5.5) is a fact about the link the holder already has, not about
+    # the workspace around the deck, so it does not widen the foothold this test
+    # exists to keep narrow.
+    assert set(body) == {
+        "presentation_id",
+        "title",
+        "document",
+        "version_id",
+        "pinned",
+        "role",
+    }
 
 
 def test_a_link_cannot_be_made_more_powerful_than_an_editor(client, auth, deck):

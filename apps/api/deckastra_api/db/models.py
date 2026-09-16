@@ -693,6 +693,18 @@ class PresentationShare(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="viewer")
     label: Mapped[str | None] = mapped_column(String(255))
 
+    #: The exact version this link shows, or null to follow the deck (D5.5).
+    #:
+    #: Presenting is the case that needs it. An audience watching a link must not
+    #: have the slide change under them because a colleague edited it or an agent
+    #: proposal applied — and on a projector that is not a small annoyance, it is
+    #: the talk going wrong in front of a room. Pinning makes the link a
+    #: *photograph* of the deck rather than a window onto it.
+    #:
+    #: Null stays the default, because "send this to a client and keep fixing
+    #: typos" is the other real use and pinning would freeze the typos in.
+    version_id: Mapped[str | None] = mapped_column(String(64))
+
     #: Null means it does not expire. Never expiring is the right default for
     #: "send this to a client today"; an expiry is what makes a link safe to send
     #: to a room you do not control.
@@ -865,6 +877,9 @@ class SyncOutboxRow(Base, TimestampMixin):
       is no transaction to point at: `create_presentation` writes a version and
       no change row.
     * `change` — one applied transaction, by id.
+    * `asset` — the bytes of one uploaded file (D5.5), queued **before** the
+      change that first cites it. A document referencing an image the server has
+      never received is a deck that arrives broken for everyone else.
 
     Rows are kept after they are sent rather than deleted: "what did this device
     send, and when" is the question asked when two sides disagree, which is the
@@ -873,7 +888,7 @@ class SyncOutboxRow(Base, TimestampMixin):
 
     __tablename__ = "sync_outbox"
     __table_args__ = (
-        CheckConstraint("kind IN ('create', 'change')", name="ck_outbox_kind"),
+        CheckConstraint("kind IN ('create', 'change', 'asset')", name="ck_outbox_kind"),
         # Four states, and none of them is the queue giving up on its own (D5.3):
         #
         # `pending`  — waiting its turn, or waiting out a transport backoff.
@@ -907,9 +922,22 @@ class SyncOutboxRow(Base, TimestampMixin):
         ForeignKey("presentations.id", ondelete="CASCADE"), nullable=False
     )
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
-    #: The transaction to upload. Null for a `create`, which predates any.
+    #: The transaction to upload. Null for a `create`, which predates any, and
+    #: for an `asset`, which is not a change to the document at all.
     transaction_id: Mapped[str | None] = mapped_column(
         ForeignKey("transactions.id", ondelete="CASCADE")
+    )
+
+    #: The file to upload (D5.5). Set only on an `asset` row.
+    #:
+    #: Queued against the *deck* rather than its workspace, which is not where an
+    #: asset lives but is where the ordering constraint lives: the bytes must
+    #: arrive before the change that cites them, and "before" only means anything
+    #: inside one deck's sequence. It also keeps the queue honest about what it is
+    #: for — an image uploaded and never used in a deck that syncs is bandwidth
+    #: nobody asked for.
+    asset_id: Mapped[str | None] = mapped_column(
+        ForeignKey("assets.id", ondelete="CASCADE")
     )
 
     #: The key this device will upload under, and the one the server dedupes on.

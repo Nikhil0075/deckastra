@@ -22,6 +22,7 @@ from typing import Any, Literal
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -255,6 +256,11 @@ class CreateShareRequest(BaseModel):
     role: Literal["viewer"] = "viewer"
     label: str | None = Field(default=None, max_length=255)
     expires_in_days: int | None = Field(default=None, ge=1, le=sharing.MAX_EXPIRY_DAYS)
+    #: Pin the link to one version (D5.5). Omit it to follow the deck.
+    #:
+    #: The presenting case: a link handed to a room must keep showing what the
+    #: presenter rehearsed, whoever edits the deck in the meantime.
+    version_id: str | None = Field(default=None, max_length=64)
 
 
 def _refuse_sharing_when_local() -> None:
@@ -299,6 +305,7 @@ def create_share(
             role=request.role,
             label=request.label,
             expires_in_days=request.expires_in_days,
+            version_id=request.version_id,
         )
     except sharing.ShareError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -367,7 +374,12 @@ def open_shared(token: str, session: Session = Depends(get_session)) -> dict[str
         # which is information a holder of a guessed token should not get.
         raise HTTPException(status_code=404, detail=str(error)) from error
 
-    loaded = store.load_presentation(session, resolved.presentation.id)
+    # A pinned link shows one version and keeps showing it (D5.5). The audience
+    # of a talk must not have a slide change under them because someone edited
+    # the deck while it was on screen.
+    loaded = store.load_presentation(
+        session, resolved.presentation.id, at_version=resolved.share.version_id
+    )
     telemetry.SHARE_VIEWS.add(1, {"role": resolved.share.role})
 
     return {
@@ -375,9 +387,68 @@ def open_shared(token: str, session: Session = Depends(get_session)) -> dict[str
         "title": resolved.presentation.title,
         "document": loaded.document,
         "version_id": loaded.version_id,
+        # So a viewer can tell a photograph from a window. A presenter handing
+        # this link round needs to know which one they sent.
+        "pinned": resolved.share.version_id is not None,
         # So the client knows whether to offer an editor or only present mode.
         "role": resolved.share.role,
     }
+
+
+@router.get("/shared/{token}/assets/{asset_id}")
+def open_shared_asset(
+    token: str, asset_id: str, session: Session = Depends(get_session)
+) -> Response:
+    """The pictures in a shared deck (D5.5).
+
+    Without this a share link was only half a link. The blob route requires a
+    session and a membership, so on any install storing files locally — every
+    desktop one — an audience opening a shared deck got the text and a row of
+    broken images. Sharing exists to show a deck to people, and a deck with no
+    pictures is not the deck.
+
+    The rule that keeps it from being a foothold: **only what this document
+    cites.** The token authorises one deck, so it reaches the files in that deck
+    and nothing else in the workspace — not the other decks' images, not an
+    orphan somebody deleted from a slide last week. The check is against the
+    document the link actually serves, so a *pinned* link reaches the pictures of
+    the version it is pinned to and not whatever the deck cites now.
+
+    Deliberately no signed URL. There is nothing to sign that the token does not
+    already say, and a second credential for the same access is a second thing to
+    get wrong.
+    """
+    _refuse_sharing_when_local()
+    try:
+        resolved = sharing.resolve_share(session, token)
+    except sharing.ShareError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    loaded = store.load_presentation(
+        session, resolved.presentation.id, at_version=resolved.share.version_id
+    )
+    if asset_id not in asset_service.referenced_ids(loaded.document):
+        # The same 404 an unknown asset gets. "That file exists but is not in
+        # this deck" tells a probing holder what the workspace contains.
+        raise HTTPException(status_code=404, detail="No such object.")
+
+    asset = session.get(Asset, asset_id)
+    if asset is None or asset.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="No such object.")
+
+    if object_storage.local_root() is None:
+        # With a real object store there is already a way to hand out one file
+        # for a short time, and re-serving the bytes through the API would put
+        # every shared deck's images through the application.
+        return RedirectResponse(
+            object_storage.presigned_get(asset.storage_key), status_code=307
+        )
+
+    try:
+        data, content_type = object_storage.read_local(asset.storage_key)
+    except object_storage.ObjectStorageError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return Response(content=data, media_type=content_type or asset.content_type)
 
 
 # ------------------------------------------------------------------- quotas
