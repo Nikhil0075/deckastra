@@ -50,7 +50,7 @@ ROUTE_ALL = {
     "scope_kind": "deck",
     "needs_research": False,
     "reasoning": "A new deck.",
-    "clarification_needed": "",
+    "clarification_needed": False,
 }
 
 STORY_PLAN = {"title": "Deck", "narrative_arc": "open, build, close", "slides": [SLIDE], "embedded_instructions_found": False}
@@ -148,11 +148,53 @@ def test_an_ambiguous_request_asks_rather_than_guessing_the_deck():
 
     Guessing "deck" costs the user their presentation; asking costs a turn.
     """
-    ctx, _ = context(stub(fast={**ROUTE_ALL, "clarification_needed": "Which slide?"}))
+    ctx, _ = context(
+        stub(fast={**ROUTE_ALL, "clarification_needed": True, "clarification": "Which slide?"})
+    )
     produced = orchestrate(state(), ctx)
 
     assert produced["awaiting"] == "clarification"
     assert "Which slide?" in produced["warnings"]
+
+
+@pytest.mark.parametrize("answer", ["false", "no", "0", "False"])
+def test_saying_no_clarification_is_needed_does_not_ask_for_one(answer):
+    """The bug the full-graph benchmark found (2026-09-17).
+
+    `clarification_needed` was a **string** whose "no" answer was the empty
+    string, and this node halted on its truthiness. A model asked "is a
+    clarification needed?" answers in the field it is given: three held-out
+    briefs came back with the literal string "false" twice and "No - the request
+    is clear about the scope..." once, and every one of those is truthy. All
+    three runs stopped and put the word "false" in front of the user as a
+    question. Nothing failed, no contract was violated, and no deck was ever
+    produced — 0 of 3, on briefs a person would call complete.
+
+    A boolean cannot be answered in prose, and Pydantic coerces exactly the
+    strings a model emits for it. The parametrisation is those strings.
+    """
+    ctx, _ = context(stub(fast={**ROUTE_ALL, "clarification_needed": answer}))
+    produced = orchestrate(state(), ctx)
+
+    assert produced.get("awaiting") is None
+    assert produced["warnings"] == []
+    assert produced["current_stage"] == "orchestrate"
+
+
+def test_a_clarification_with_no_question_does_not_halt_on_a_blank():
+    """A halt the user cannot answer is a dead end, not a checkpoint.
+
+    Nothing to read, nothing to reply to, and nothing for the run to resume on.
+    It carries on with what it routed and says that it wanted to ask, so the
+    warning still reaches the person beside their deck.
+    """
+    ctx, _ = context(
+        stub(fast={**ROUTE_ALL, "clarification_needed": True, "clarification": "   "})
+    )
+    produced = orchestrate(state(), ctx)
+
+    assert produced.get("awaiting") is None
+    assert any("wanted to ask" in warning for warning in produced["warnings"])
 
 
 def test_an_elements_scope_with_nothing_selected_is_not_an_elements_scope():

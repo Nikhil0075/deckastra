@@ -78,8 +78,34 @@ class OrchestratorPlan(BaseModel):
     reasoning: str = Field(description="One sentence, user-facing, explaining the route.")
     #: Set when the request cannot be routed — the run stops and asks rather than
     #: guessing (doc 03 §21: never silently ignore).
-    clarification_needed: str = Field(
-        default="", description="A question for the user. Empty when the request is clear."
+    #:
+    #: **Two fields, because one was a trap.** This used to be a single string
+    #: whose "no" answer was the empty string, and `orchestrate` halted on its
+    #: truthiness. A model asked "is a clarification needed?" answers in the
+    #: field it is given: the full-graph benchmark (2026-09-17) got back the
+    #: literal string `"false"` on two briefs and `"No - the request is clear
+    #: about the scope..."` on a third, and every one of those is truthy. All
+    #: three runs stopped and asked the user a question that was the word
+    #: "false". Nothing failed, no contract was violated, and no deck was ever
+    #: produced.
+    #:
+    #: A boolean cannot be answered in prose, and Pydantic coerces the strings a
+    #: model actually emits — "false", "no", "0" — to `False` rather than to a
+    #: truthy value. The question moves to its own field, so "needs one" and
+    #: "here it is" are separately checkable.
+    clarification_needed: bool = Field(
+        default=False,
+        description=(
+            "True only when the request genuinely cannot be routed without asking. "
+            "False when the request is clear."
+        ),
+    )
+    clarification: str = Field(
+        default="",
+        description=(
+            "The question to put to the user, when clarification_needed is true. "
+            "Empty otherwise."
+        ),
     )
 
 

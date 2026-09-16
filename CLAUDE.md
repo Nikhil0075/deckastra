@@ -1284,6 +1284,33 @@ benchmark now goes through `build_client()` like every other caller — reaching
 past the product's own entry point is how a harness comes to measure a path
 nobody takes.
 
+**The full-graph benchmark found a bug in our own contract, not in the model**
+(`scripts/benchmark-full-generation.py`, 2026-09-17). `benchmark-model-pack.py`
+calls `story()` directly, so it never runs the **orchestrator** — the first
+decision the model is actually asked to make. Running the whole graph on three
+held-out briefs produced **no deck at all**: every run stopped at orchestrate,
+asking the user a question.
+
+The question was the word "false".
+
+`OrchestratorPlan.clarification_needed` was a *string* whose "no" answer was the
+empty string, and the node halted on its truthiness. A model asked "is a
+clarification needed?" answers in the field it is given: two briefs came back
+with the literal string `"false"` and one with `"No - the request is clear about
+the scope..."`, and every one of those is truthy. Nothing failed, no contract was
+violated, the structured output was valid on the first attempt every time — and
+the product asked three nonsense questions and generated nothing. A cloud model
+that ever answered "none" would have done the same.
+
+It is now a `bool` plus a separate `clarification` string: a boolean cannot be
+answered in prose, and Pydantic coerces exactly the strings a model emits for one
+("false", "no", "0") to `False`. A halt needs **both** the flag and a non-empty
+question — a checkpoint with a blank question is a dead end, with nothing for the
+user to answer and nothing for the run to resume on, so that case proceeds and
+warns instead. This is the same shape as the `iat` defaulting to `0`: a sentinel
+that a reasonable answer collides with, failing silently and looking like
+nothing.
+
 **Not done, and not claimed:** there is no download or settings surface, the
 runtime is configured (`DECKASTRA_MODEL_SERVER_CMD`) rather than shipped, the
 **8B is unmeasured** (it cannot fit a 4GB card, so the number would describe

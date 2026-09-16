@@ -85,7 +85,7 @@ def _stub_answers(
             "scope_kind": "deck",
             "needs_research": bool(repositories),
             "reasoning": "A new deck, composed by the deterministic planner.",
-            "clarification_needed": "",
+            "clarification_needed": False,
             # The brief first. A lexical index answers the user's own words far
             # better than three generic questions, and a stub that ignores what
             # was asked produces a deck about the wrong part of the repository.
