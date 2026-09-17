@@ -1,4 +1,39 @@
-# Full-slide pixel baseline review — 2026-09-06
+# Full-slide pixel baseline review
+
+## Linux, re-recorded — 2026-09-17
+
+Three slides changed since the 2026-09-06 review and the Linux baseline had not
+caught up, so CI's pixel job was red: `technical/2` (the fixture gained an image
+element), `animation/2` (it gained the morph's source object) and `animation/3`
+(the morph destination, new in D4.1).
+
+**The other eight hashes reproduced byte for byte** against the 2026-09-06
+recording, which is what makes this run trustworthy rather than merely local. It
+was taken in the same image CI pins —
+`mcr.microsoft.com/playwright:v1.63.0-noble` at digest
+`sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27`,
+verified by digest before running — reporting the same Chromium `153.0.8010.12`
+as the original review. Eight identical hashes across eleven days and two
+machines is the evidence that the environment is the same one; without it, three
+new numbers from a laptop would be a guess.
+
+Run on a Windows host through Docker, because Linux rasterisation cannot be
+recorded on Windows and the numbers must not be derived from the Windows
+baseline. The repository was copied into the container and its dependencies
+installed for `linux-x64` beforehand; nothing was cross-compiled and no hash was
+computed anywhere but inside that image.
+
+| Slide | Image review |
+| --- | --- |
+| technical/2 | Diagram unchanged — all five nodes, both reciprocal edge labels, the group heading and the dashed boundary are where they were. The new image element draws the renderer's labelled placeholder with its alt text, in the clear band below the diagram on the headline's 120px margin; it overlaps nothing. A headless render is handed no bytes, so the placeholder is what this gate should pin. |
+| animation/2 | "Entered with a zoom" visible at its final frame, now with the morph's source object (the blue pill) at the top right. That object is why the hash moved. |
+| animation/3 | New. The morph destination: the same headline re-positioned and the paired pill at the lower left, both at their final frame. |
+
+Re-run afterwards with `REQUIRE_PIXEL_BASELINE=1` and no update mode, in the same
+image: four of four green, including both determinism properties and the
+negative control.
+
+## Original review — 2026-09-06
 
 Reviewed against HEAD `6f06c46250879b287f9ba73bc41e15a2f7d7cf75`
 plus the Phase 0–9 remediation working tree. The supplied fixture documents were

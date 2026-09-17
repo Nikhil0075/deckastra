@@ -1,10 +1,19 @@
-# Packaging for the D0 spike.
+# Packaging.
 #
-# Unsigned on purpose: signing and notarization are D6, they need real
-# credentials and a real Mac, and pretending to have done them is worse than
-# saying they are outstanding. What this file has to get right now is the
-# *shape* — that `dist/` alone is enough to run, so the exit gate "no dev
-# server" is something the installer proves rather than something we assert.
+# **Signing is configured and conditional, never assumed.** electron-builder
+# signs when it finds credentials and quietly produces an unsigned artifact when
+# it does not — which is the whole danger: an unsigned build looks exactly like a
+# signed one until a user's machine refuses it. Nothing here can create a
+# certificate, so the arrangement is that credentials come from the environment
+# (`CSC_LINK` / `CSC_KEY_PASSWORD` on both platforms, `APPLE_ID` /
+# `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` for notarization) and
+# `scripts/check-signing.mjs` inspects the artifact afterwards rather than
+# trusting the build. `DECKASTRA_RELEASE=1` turns "unsigned" from a report into
+# a failure.
+#
+# What is **not** done and cannot be from here: no certificate exists, so no
+# signed artifact has ever been produced or verified, and notarization has never
+# been run. The configuration below is reviewed, not exercised.
 appId: com.deckastra.desktop
 # Pinned because npm workspaces hoist `electron` to the repo root, where
 # electron-builder does not look — it probes `apps/desktop/node_modules` and
@@ -40,6 +49,10 @@ win:
   target:
     - nsis
   artifactName: ${productName}-${version}-win-${arch}.${ext}
+  # Absent `CSC_LINK`, electron-builder skips signing and says so in its log.
+  # `signAndEditExecutable` stays true so a configured certificate reaches the
+  # nested executables too, not only the installer.
+  signAndEditExecutable: true
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
@@ -50,3 +63,28 @@ mac:
         - arm64
   category: public.app-category.productivity
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  # Notarization requires the hardened runtime, and the hardened runtime breaks
+  # Electron and the PyInstaller sidecar without the entitlements beside this
+  # file. See `build/entitlements.mac.plist` for why each one is there.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # **Every nested executable has to be signed, or notarization rejects the
+  # whole bundle.** This app ships three that are not Electron's: the workspace
+  # service, the exporter and the MCP server, all in `Contents/Resources` as
+  # `extraResources`. They are named here so they are signed deliberately rather
+  # than depending on electron-builder's guess about what is a binary — the
+  # failure it produces otherwise is a notarization rejection days later, naming
+  # a path rather than a cause.
+  binaries:
+    - Contents/Resources/sidecar/deckastra-service
+  # Off in the file, deliberately. A config that says it notarizes on a machine
+  # with no Apple credentials produces an unnotarized build and a green log, and
+  # the first person to find out is a user whose Mac refuses to open it. A
+  # release turns it on explicitly, once the credentials are actually present:
+  #
+  #   APPLE_ID=... APPLE_APP_SPECIFIC_PASSWORD=... APPLE_TEAM_ID=...   #     npx electron-builder --mac --config.mac.notarize=true --publish never
+  #
+  # then `npm run verify:signing`, which reads the artifact rather than the log.
+  notarize: false

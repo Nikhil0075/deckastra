@@ -13,7 +13,8 @@
     "package": "npm run build && npm run build:sidecar && electron-builder --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build:sidecar": "node scripts/build-sidecar.mjs"
+    "build:sidecar": "node scripts/build-sidecar.mjs",
+    "verify:signing": "node scripts/check-signing.mjs"
   },
   "dependencies": {
     "@deckastra/animation-engine": "*",

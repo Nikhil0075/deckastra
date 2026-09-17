@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Entitlements for the hardened runtime (D6).
+
+  Notarization requires the hardened runtime, and the hardened runtime refuses by
+  default exactly the things this app is built out of. Each entry below is here
+  because something specific stops working without it, and none of them is a
+  blanket loosening:
+
+  - JIT and unsigned executable memory: V8. Every Electron app needs both, and
+    the failure without them is the renderer dying on launch with no message.
+
+  - Library validation disabled: the app runs a *separately built* executable —
+    the PyInstaller workspace service in `Contents/Resources/sidecar`, which
+    carries its own Python runtime and loads its own dylibs. Library validation
+    refuses to load code signed by a different team identifier into a hardened
+    process, which is what that sidecar is.
+
+  - `allow-dyld-environment-variables` and `inherit`: the exporter starts the
+    app's own binary with `ELECTRON_RUN_AS_NODE=1` and the render host as a
+    child, and a hardened parent sanitises the environment of its children
+    unless it is allowed not to.
+
+  Nothing here grants network server, camera, microphone or address-book access.
+  The app asks for none of those and an entitlement it does not use is an
+  entitlement someone has to justify at review.
+-->
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    <key>com.apple.security.inherit</key>
+    <true/>
+  </dict>
+</plist>

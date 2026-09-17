@@ -1929,12 +1929,11 @@ that is deliberate rather than a gap: a baseline render supplies no bytes, so th
 placeholder is exactly what that render produces, and pinning a picture there
 would pin something the gate never draws.
 
-`win32-x64.json` is re-recorded. **`linux-x64.json` is still unrecorded** and now
-two slides behind — `animation/3` from D4.1 and this one — so CI's pixel job stays
-red until someone commits `linux-x64.json.computed` from a failing run's
-artifacts. It has to come from a reviewed Linux run: Linux rasterisation cannot be
-recorded on a Windows machine, and deriving it from the Windows hashes would be a
-gate comparing against a number nobody has looked at.
+Both baselines are re-recorded. `linux-x64.json` had been **behind, not absent** — this
+file previously said unrecorded, and that was wrong. The original was taken on
+2026-09-06 and never caught up with D4.1 or this change, so CI's pixel job was
+red. See "Recording a Linux pixel baseline on a Windows machine" below for
+how it was brought current without deriving anything from the Windows hashes.
 
 ### An export gets the bytes, because it cannot go and get them (D5.7)
 
@@ -2287,6 +2286,89 @@ directory was ever tested — on a deployed install every export would have reac
 for a function nobody had run. `test_object_storage.py` covers it, along with the
 deployed shape of the whole picture path: asset rows in the database, bytes in the
 bucket, `inline_for_render` returning base64 that matches what was uploaded.
+
+### Recording a Linux pixel baseline on a Windows machine
+
+CI's pixel job had been red because `linux-x64.json` was three slides out of step
+— two changed and one new — and the standing advice was to commit
+`linux-x64.json.computed` from a failing CI run. That is one way. The other is to run the gate **in the image CI pins**, which
+is what happened on 2026-09-17:
+
+```bash
+docker pull mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30…
+# the repository copied in, dependencies installed for linux-x64 beforehand,
+# then PIXELS=1 npm run test:pixels inside the container
+```
+
+**Eight of the ten existing hashes reproduced byte for byte** against a baseline
+recorded eleven days earlier on a different machine, and the container reported
+the same Chromium `153.0.8010.12` the original review did. That is the part worth
+keeping: three new numbers from a laptop are a guess, and three new numbers beside
+eight that match are a measurement. Without that agreement the right answer would
+still have been to wait for CI.
+
+Two practical notes, because both cost time. `npm ci` inside the container could
+not reach the registry from this host — Docker's DNS returned only an AAAA record
+and there was no IPv6 route — so the dependencies were installed on the host with
+`npm ci --os=linux --cpu=x64 --ignore-scripts` into a scratch copy and mounted in.
+Nothing is cross-compiled by that; it fetches the Linux artefacts of packages that
+ship per-platform binaries (`@esbuild/linux-x64`, `@rollup/rollup-linux-x64-gnu`).
+And npm on Windows writes workspace links as junctions pointing at host paths, so
+`node_modules/@deckastra/*` has to be relinked inside the container or every
+workspace import fails to resolve.
+
+All three changed slides were looked at before recording, and the review is in
+`baselines/pixels/REVIEW.md` beside the older one. The re-run afterwards used
+`REQUIRE_PIXEL_BASELINE=1` with no update mode — the exact command CI runs — and
+was green, determinism properties and negative control included.
+
+### Signing is configured, conditional, and checked against the artifact
+
+Not done, and the distinction matters: **the configuration is reviewed, not
+exercised.** No certificate exists here, so no signed artifact has ever been
+produced and notarization has never run. What was closable without one is the
+part that would otherwise fail silently later.
+
+**electron-builder produces an unsigned artifact with a green log.** The build run
+while writing this said it plainly — `no signing info identified, signing is
+skipped` — and exited 0 with a working installer. An unsigned build is
+byte-for-byte an ordinary build until a user's machine refuses it, and the line
+that would have told you scrolled past among a thousand others. So
+`scripts/check-signing.mjs` asks the **operating system about the file** rather
+than believing the builder: `Get-AuthenticodeSignature` on Windows, `codesign
+--verify` *and* `spctl --assess` on macOS. Two questions there rather than one,
+because a bundle can be validly signed and still refused by Gatekeeper for not
+being notarized, and only `spctl` tells those apart.
+
+It reports by default and fails on demand: a developer with no certificate should
+not be blocked, while an unsigned artifact in a release is the bug.
+`DECKASTRA_RELEASE=1` is that line. Both refusals were checked — unsigned under
+release mode exits 1, and so does finding no artifact at all, because a check that
+looked at nothing and passed is how a gate comes to be believed about something it
+never inspected.
+
+macOS notarization needs the **hardened runtime**, and the hardened runtime
+refuses precisely what this app is built out of, so `build/entitlements.mac.plist`
+names each exception with the thing that breaks without it: JIT and unsigned
+executable memory for V8, library validation disabled because the app runs a
+separately built PyInstaller service carrying its own Python and dylibs, and dyld
+environment variables plus `inherit` because the exporter starts the app's own
+binary as a child with `ELECTRON_RUN_AS_NODE=1`. Nothing asks for network server,
+camera or microphone: an entitlement the app does not use is one somebody has to
+justify at review.
+
+The trap written down rather than discovered: **every nested executable inside the
+bundle has to be signed or notarization rejects the whole thing**, and this app
+ships three that are not Electron's — the workspace service, the exporter and the
+MCP server, all in `Contents/Resources` because `ELECTRON_RUN_AS_NODE` cannot read
+an asar. The service is named in `mac.binaries` so it is signed deliberately
+rather than by electron-builder's guess; the failure otherwise is a rejection days
+later naming a path rather than a cause.
+
+`mac.notarize` stays `false` in the file on purpose. A config that claims to
+notarize on a machine with no Apple credentials produces an unnotarized build and
+a green log, and the first person to learn otherwise is a user. A release turns it
+on explicitly, with the credentials present, and then runs `verify:signing`.
 
 ### A missing capability is absent, not broken
 
@@ -2654,8 +2736,9 @@ Three bugs came out of building it, each the kind that fails silently:
 The fixture earns its place the same way: adding the morph to `animation-test`
 found a shape kind that does not exist, a headline that overflowed, and a
 `style.radius` the round-trip silently dropped. Pixel baselines move with it —
-`animation/2` rehashes and `animation/3` is new — and **`linux-x64.json` must be
-re-recorded from a CI artifact**, which is what `<platform>.json.computed` is for.
+`animation/2` rehashes and `animation/3` is new — and `linux-x64.json` needed
+re-recording, which happened on 2026-09-17 (see "Recording a Linux pixel baseline
+on a Windows machine").
 
 ### The Motion Agent names roles; code computes milliseconds
 

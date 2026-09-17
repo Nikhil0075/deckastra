@@ -1,6 +1,13 @@
 node_modules/
 dist/
 build/
+# electron-builder's `buildResources` directory, which is source rather than
+# output: the macOS entitlements the hardened runtime needs live there, and the
+# blanket `build/` rule above had them ignored — so the packaging config would
+# have pointed at a file a clean checkout does not contain, and the first sign
+# of it would have been a release build failing on someone else's machine.
+!apps/desktop/build/
+!apps/desktop/build/**
 .next/
 out/
 coverage/
