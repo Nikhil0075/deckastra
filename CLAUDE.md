@@ -790,6 +790,41 @@ render profile left behind. The stored artifact itself, read back through the
 export row's `artifact_path` by `pypdf`: 3 pages at 1440×810pt, 31,797 bytes,
 with its text. **D1's last gate is met.**
 
+**Packaged export verified against current source, with no Playwright anywhere
+the app can reach** (2026-09-17). The earlier runtime check found a packaged
+export failing once the browser lookup path was emptied, and was right to add
+that its binary predated the source — that package was built before D4, and the
+*sidecar* is the process that runs export jobs.
+
+Rebuilt from current source (261MB installer, 105MB sidecar), installed silently,
+and run from the installed location with an empty `PLAYWRIGHT_BROWSERS_PATH` and a
+working directory outside the checkout. The packaged sidecar migrated through
+every revision to `d94c1ba7f082`, which is itself the evidence that the binary is
+current. Result: **`exportFinished`, no console errors, no CSP violations**, and
+the artifact read back through the export row's `artifact_path` by `pypdf` — 4
+pages at 1440×810pt with extractable text, 34,365 bytes matching the row's
+`bytes`, stored inside the data directory rather than `%TEMP%`.
+
+**The control matters more than the run**, because this machine *does* have a
+Playwright cache at the default location, so an empty lookup path only proves
+something if Playwright could otherwise have been used. It could not: the
+installed app answers `ERR_MODULE_NOT_FOUND` for `import("playwright")` from its
+own directory, because an install has no `node_modules` and the build refuses a
+bundle that statically imports an external package. A packaged export therefore
+cannot render through Playwright at all — the app's own Chromium via the render
+host is the only path there is, which is what makes the empty-cache result
+decisive rather than circumstantial.
+
+Two things that run turned up. `msToWindow` was **30,174ms** — a first launch on a
+fresh profile that runs fourteen migrations against a cold file cache, so it is
+not comparable to D1's 3,802ms and is one observation rather than a regression.
+And the harness's `exportSurface` diagnostic captured the **Share** panel, because
+its new copy says "You can export a copy to share" and the capture matched a loose
+`/EXPORT/i` over `textContent`. The assertion beside it was correctly scoped and
+unaffected; the diagnostic is now scoped the same way, because a record that shows
+the wrong panel is how a passing run comes to be believed about something it never
+looked at.
+
 **Exports live in the data directory** (2026-09-12). That run showed them going to
 `%TEMP%\deckastra-exports`: outside the one directory D1 promised a backup could
 copy, on the system drive, and in a folder Windows' own cleanup may empty — so a

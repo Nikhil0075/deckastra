@@ -1,0 +1,28 @@
+{
+  "step": "export",
+  "startedAt": "2026-09-17T06:18:33.405Z",
+  "packaged": true,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 30174,
+  "console": [],
+  "cspViolations": [],
+  "startedExport": true,
+  "exportFinished": true,
+  "exportSurface": "SHARE\n\nThis workspace is local. Online sharing isn’t available here. You can export a copy to share.",
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 382.7,
+    "byTypeMb": {
+      "Browser": 105.3,
+      "GPU": 139.4,
+      "Utility": 49.6,
+      "Tab": 88.4
+    }
+  },
+  "finishedAt": "2026-09-17T06:18:45.174Z"
+}

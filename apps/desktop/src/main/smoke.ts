@@ -398,9 +398,16 @@ async function runExport(
     180_000,
   );
   record.exportFinished = finished;
+  // Scoped the same way the assertion above is, and for a reason that only
+  // showed up once the Share panel started saying "You can export a copy to
+  // share" (2026-09-17): a loose `/EXPORT/i` over `textContent` matched *that*
+  // section, so the record's evidence of an export was a screenshot of the share
+  // panel. The check itself was never wrong — this is the diagnostic beside it,
+  // and a diagnostic that reports the wrong panel is how a passing run comes to
+  // be believed about something it never looked at.
   record.exportSurface = await window.webContents.executeJavaScript(`(() => {
-    const panel = [...document.querySelectorAll("section")].find(s => /EXPORT/i.test(s.textContent || ""));
-    return (panel?.innerText || document.body.innerText).slice(0, 600);
+    const panel = [...document.querySelectorAll("section")].find(s => /^\s*EXPORT/.test(s.innerText || ""));
+    return (panel?.innerText || "(no export panel found)").slice(0, 600);
   })()`);
 
   await capture(window, join(dir, "export.png"));
