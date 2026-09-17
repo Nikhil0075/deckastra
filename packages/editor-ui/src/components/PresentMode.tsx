@@ -32,6 +32,15 @@ export interface PresentModeProps {
   initialSlide?: number;
   /** Renders only the presenter half, for the popped-out window. */
   presenterOnly?: boolean;
+  /**
+   * How an image becomes something `<img>` can load (`useAssetUrls`).
+   *
+   * Threaded rather than resolved here, because present mode has a scene and not
+   * a document — and the deck it is presenting is the shell's to know about. A
+   * deck whose pictures appear while editing and vanish on the projector would be
+   * worse than one that never showed them.
+   */
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
   /** Shared channel name so the two windows find each other. */
   channelName?: string;
   /**
@@ -50,6 +59,7 @@ const IDLE_MS = 2500;
 export function PresentMode({
   scene,
   onExit,
+  resolveAssetUrl,
   initialSlide = 0,
   presenterOnly = false,
   channelName,
@@ -312,6 +322,7 @@ export function PresentMode({
         <PresenterView
           scene={scene}
           index={index}
+          resolveAssetUrl={resolveAssetUrl}
           onGo={go}
           onJump={setIndexSynced}
           startedAt={startedAt.current}
@@ -384,6 +395,7 @@ export function PresentMode({
             height={scene.viewport.height * scale}
             scale={scale}
             onDone={() => setLeaving(null)}
+            resolveAssetUrl={resolveAssetUrl}
           />
         ) : null}
 
@@ -503,6 +515,7 @@ export function PresentMode({
           <PresenterView
             scene={scene}
             index={index}
+            resolveAssetUrl={resolveAssetUrl}
             onGo={go}
             onJump={setIndexSynced}
             startedAt={startedAt.current}

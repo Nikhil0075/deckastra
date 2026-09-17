@@ -1827,15 +1827,49 @@ not already say, and a second credential for the same access is a second thing t
 get wrong. With a real object store it redirects to a presigned GET instead of
 putting every shared deck's images through the application.
 
-**Found while building this, and bigger than this slice:** nothing in the product
-resolves an image. `resolveAssetUrl` is a prop on `SlideView` that **no caller
-anywhere passes**, there is no upload surface in the editor, and no fixture uses
-an image element — so the whole asset subsystem (upload, storage, quota,
-reference counting, orphan sweeping, and now syncing and sharing) is built
-server-side with no way for a user to put a picture in a deck. Wiring a resolver
-into the shared page alone would fix the audience's view of something the author
-cannot do, which is backwards. It is a D6 gap, and it is named here rather than
-papered over.
+**Nothing in the product resolved an image, and the reason was not an oversight**
+(found here, fixed 2026-09-17). `resolveAssetUrl` is a prop `SlideView` has taken
+since the renderer was written and **no caller anywhere passed one**, so every
+image drew the renderer's labelled gap. It stayed unwired because **the two
+shells cannot authenticate an image the same way**, and there is no single URL
+that works for both.
+
+The desktop's base URL is a path on the renderer's own origin, and the main
+process injects the bearer as the request passes through the proxy — so an
+`<img src>` at the blob route works, and the page still never learns the token or
+the loopback port. The web app's base URL is another origin and its credential is
+an `Authorization` header, which an `<img>` cannot send: there the bytes have to
+be fetched with the credential and handed over as an object URL.
+
+So the split is `client.assets.directUrl()` — synchronous, answering only where
+the browser can authenticate by itself — and `fetchBlob()` for the rest, with
+`useAssetUrls` (`editor-ui/src/lib/asset-urls.ts`) turning the pair into the one
+synchronous resolver the renderer's prop requires. A key that has not arrived yet
+resolves to `undefined`, which is what the labelled gap already covers; the
+re-render replaces it. It is threaded through the canvas, present mode, the
+transition stages and both presenter previews, because a deck whose pictures
+appear while editing and vanish on the projector is worse than one that never
+showed them.
+
+Three things there are load-bearing. **The effect depends on a string, not the
+Map**: `document.assets` is a fresh array on every render for any caller that
+replaces the document, so depending on its identity re-ran the effect, fetched,
+set state and fetched again — an infinite loop, which a test caught by counting
+1,109 object URLs created for one image. **Object URLs are revoked** on unmount,
+or a deck of photographs opened all day pins every blob it ever loaded. And **a
+failed fetch is remembered**, so one broken reference is one request rather than
+one per render.
+
+`blobPath` in the client mirrors `object_storage.blob_url` in Python, which is a
+second description of one path — written wrongly the first time, with
+`encodeURIComponent` over the whole key turning every `/` into `%2F` where
+Python's `quote()` leaves them alone. It encodes segment by segment now.
+
+**Still missing: an upload surface.** The bytes can be rendered; a person still
+cannot put a picture into a deck from the editor, and no fixture uses an image
+element (adding one would move both the scene digests and the pixel baselines,
+and the Linux baseline is already unrecorded). That is the next slice, not a
+closed one.
 
 ### Pulling a workspace down, and why push could not come first (D5.6)
 

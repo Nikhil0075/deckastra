@@ -9,6 +9,7 @@ import type {
   Transform,
 } from "@deckastra/presentation-schema";
 import { FrameSampler, buildDocumentScene, flattenScene } from "@deckastra/renderer";
+import { useAssetUrls } from "../lib/asset-urls";
 import type { FrameStats } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { setProperty, resolveElementById } from "@deckastra/presentation-core";
@@ -127,6 +128,10 @@ export function EditorCanvas({
   // overflows onto whatever is beneath it (doc 04 §6.4).
   const measurer = useBrowserMeasurer();
   const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
+  // Until this was passed, every image in the product drew the renderer's
+  // labelled gap: `resolveAssetUrl` is a prop `SlideView` has always taken and
+  // nothing anywhere supplied.
+  const resolveAssetUrl = useAssetUrls(doc);
   const slideScene = scene.slides[slideIndex];
   // Resizing changes text layout and descendant geometry. A scene-only box
   // override cannot preview that. Rebuild from the exact eventual resize patch.
@@ -642,6 +647,7 @@ export function EditorCanvas({
           scene={resizePreview ?? applyDraft(slideScene, draft, editing?.id)}
           mode="editor"
           showGuides={showGuides}
+          resolveAssetUrl={resolveAssetUrl}
         />
       </div>
 

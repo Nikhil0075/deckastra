@@ -11,6 +11,7 @@ import {
   type PresentationElement,
 } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
+import { useAssetUrls } from "../lib/asset-urls";
 import { ScaledSlide } from "@deckastra/renderer/react";
 import {
   addElement,
@@ -107,6 +108,7 @@ export function EditorShell(props: EditorShellProps) {
   const index = useMemo(() => buildIndex(nodes), [nodes]);
   const measurer = useBrowserMeasurer();
   const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
+  const resolveAssetUrl = useAssetUrls(doc);
 
   const order = useMemo(() => nodes.map((node) => node.id), [nodes]);
   const slideScene = scene.slides[slideIndex];
@@ -360,6 +362,10 @@ export function EditorShell(props: EditorShellProps) {
         scene={scene}
         onExit={() => setPresenting(false)}
         initialSlide={slideIndex}
+        // The shell has the document, which is where storage keys live; present
+        // mode has only a scene. A deck whose pictures appear while editing and
+        // vanish on the projector would be worse than one that never showed them.
+        resolveAssetUrl={resolveAssetUrl}
         // Scoped to the deck, so two decks presented at once do not drive each
         // other's second screen.
         channelName={`deckastra-present-${props.presentationId}`}

@@ -36,6 +36,7 @@ export type { ApplyOptions, EditorApi, SaveState, UseEditorInput } from "./lib/u
 // A route builds scenes for its own previews, and a scene built with a different
 // measurer than the editor's is a scene that disagrees with what the user sees.
 export { useBrowserMeasurer } from "./lib/measurer";
+export { useAssetUrls, assetKeysOf } from "./lib/asset-urls";
 
 // --- Host seams --------------------------------------------------------------
 // The two browser assumptions the desktop replaces. Both default to the browser

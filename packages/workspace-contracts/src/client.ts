@@ -243,6 +243,38 @@ export interface WorkspaceClient {
     redeem(token: string, options?: RequestOptions): Promise<SharedDocument>;
   };
 
+  /**
+   * Turning an asset into something an `<img>` can load.
+   *
+   * This is on the client and not in the renderer because **the two shells
+   * cannot authenticate an image the same way**, which is the reason nothing in
+   * the product resolved one until now.
+   *
+   * The desktop's base URL is a path on the renderer's own origin
+   * (`/__api`), and the main process injects the bearer as the request passes
+   * through — so an `<img src>` pointing at the blob route simply works, and the
+   * page still never learns the token or the port. The web app's base URL is
+   * another origin and its credential is an `Authorization` header, which an
+   * `<img>` cannot send: there the bytes have to be fetched and handed over as an
+   * object URL.
+   *
+   * `directUrl` answers only for the first case, synchronously, because the
+   * renderer's `resolveAssetUrl` is synchronous. `fetchBlob` is the other half,
+   * and `useAssetUrls` in `editor-ui` is what turns the pair into one resolver a
+   * component can call.
+   */
+  readonly assets: {
+    /**
+     * A URL the browser can load on its own, or `undefined` when it cannot.
+     *
+     * Undefined is not a failure — it means "this deployment needs the bytes
+     * fetched with a credential", which is the web app's ordinary case.
+     */
+    directUrl(storageKey: string): string | undefined;
+    /** The bytes, with whatever credential this client holds. */
+    fetchBlob(storageKey: string, options?: RequestOptions): Promise<Blob>;
+  };
+
   readonly themes: {
     /** Presentation-scoped, so a deck in a second workspace sees that workspace's themes. */
     list(presentationId: string, options?: RequestOptions): Promise<ThemeList>;

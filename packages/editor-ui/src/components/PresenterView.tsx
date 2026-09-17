@@ -26,6 +26,8 @@ export interface PresenterViewProps {
   onExit?: () => void;
   /** Rendered as the audience window's controls when this is the second window. */
   detached?: boolean;
+  /** The current and next previews are slides too, and they have pictures. */
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
 }
 
 function useTick(intervalMs: number): number {
@@ -61,6 +63,7 @@ export function PresenterView({
   startedAt,
   onExit,
   detached,
+  resolveAssetUrl,
 }: PresenterViewProps) {
   const now = useTick(1000);
   const slide = scene.slides[index];
@@ -106,7 +109,7 @@ export function PresenterView({
         <div style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
           <Label>Now</Label>
           <div style={{ border: "1px solid #23262e", borderRadius: 10, overflow: "hidden" }}>
-            <ScaledSlide scene={slide} width={760} mode="present" />
+            <ScaledSlide scene={slide} width={760} mode="present" resolveAssetUrl={resolveAssetUrl} />
           </div>
           {slide.keyMessage ? (
             <div style={{ fontSize: 15, opacity: 0.75, lineHeight: 1.45 }}>{slide.keyMessage}</div>
@@ -130,7 +133,7 @@ export function PresenterView({
                 cursor: "pointer",
               }}
             >
-              <ScaledSlide scene={next} width={330} mode="present" />
+              <ScaledSlide scene={next} width={330} mode="present" resolveAssetUrl={resolveAssetUrl} />
             </button>
           ) : (
             <div style={{ fontSize: 14, opacity: 0.5, padding: "12px 0" }}>End of deck</div>

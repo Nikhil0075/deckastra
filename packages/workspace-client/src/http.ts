@@ -171,7 +171,24 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
     return (await send(path, init)).json() as Promise<T>;
   }
 
-  const q = encodeURIComponent;
+  /**
+ * Where the API serves one stored object.
+ *
+ * Mirrors `object_storage.blob_url` on the Python side, which is a second
+ * description of one path and therefore something that can drift. It is small
+ * and it is covered by a test that drives the real route, which is the same
+ * bargain the two patch appliers make.
+ */
+function blobPath(storageKey: string): string {
+  // Segment by segment, keeping the separators. The route is `{key:path}` and a
+  // storage key is `workspaces/<id>/assets/<id>` — `encodeURIComponent` on the
+  // whole thing turns every slash into `%2F`, which is a different URL from the
+  // one Python's `quote(key)` builds (it leaves `/` alone by default). Written
+  // the wrong way here first, which is exactly the drift this pair invites.
+  return `/v1/workspace/assets/blob/${storageKey.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+const q = encodeURIComponent;
   const workspaceQuery = (workspaceId?: string): string =>
     workspaceId ? `?workspace_id=${q(workspaceId)}` : "";
 
@@ -312,6 +329,48 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
             ...request,
           })
         ).blob(),
+    },
+
+    assets: {
+      directUrl: (storageKey) => {
+        // Only where the browser can authenticate the request by itself, which
+        // means same-origin: the desktop's base URL is a path on the renderer's
+        // own origin and the main process injects the bearer as the request goes
+        // through. A cross-origin base — the web app's — carries its credential
+        // in a header, and an `<img>` sends none, so answering with a URL there
+        // would produce a broken image rather than a picture.
+        //
+        // A relative base is same-origin by definition; an absolute one is only
+        // same-origin if it matches where the page is running, which is worth
+        // allowing because a deployment can serve both from one host.
+        if (!baseUrl || baseUrl.startsWith("/")) {
+          return `${baseUrl}${blobPath(storageKey)}`;
+        }
+        if (typeof window !== "undefined" && baseUrl.startsWith(window.location.origin)) {
+          return `${baseUrl}${blobPath(storageKey)}`;
+        }
+        return undefined;
+      },
+      fetchBlob: async (storageKey, request) => {
+        // Deliberately not through `json()`: these are bytes, and a few megabytes
+        // of PNG put through a JSON parser is a wasted copy and a thrown error.
+        const headers: Record<string, string> = {};
+        const cached = store.read();
+        headers.Authorization = `Bearer ${(cached ?? (await ensureSession(request ?? {}))).token}`;
+
+        const init: RequestInit = { method: "GET", headers };
+        if (request?.signal) init.signal = request.signal;
+
+        const response = await doFetch(`${baseUrl}${blobPath(storageKey)}`, init);
+        if (!response.ok) {
+          throw new WorkspaceRequestError(
+            response.status,
+            undefined,
+            "That image could not be loaded.",
+          );
+        }
+        return response.blob();
+      },
     },
 
     shares: {

@@ -52,6 +52,8 @@ export interface SlideTransitionProps {
   stageAttribute?: string;
   /** Told when the transition finishes, so the caller can drop the outgoing slide. */
   onDone?: () => void;
+  /** Both stages need it: a morph shows the outgoing slide's pictures too. */
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
 }
 
 export function SlideTransition({
@@ -63,6 +65,7 @@ export function SlideTransition({
   scale,
   stageAttribute = "data-present-stage",
   onDone,
+  resolveAssetUrl,
 }: SlideTransitionProps) {
   const [running, setRunning] = useState(compiled.durationMs > 0);
   const outgoingRef = useRef<HTMLDivElement>(null);
@@ -153,8 +156,18 @@ export function SlideTransition({
 
   return (
     <div style={{ width, height, position: "relative", overflow: "hidden" }}>
-      {running && from ? stage(<SlideView scene={from} mode="present" />, outgoingRef, false) : null}
-      {stage(<SlideView scene={to} mode="present" />, incomingRef, true)}
+      {running && from
+        ? stage(
+            <SlideView scene={from} mode="present" resolveAssetUrl={resolveAssetUrl} />,
+            outgoingRef,
+            false,
+          )
+        : null}
+      {stage(
+        <SlideView scene={to} mode="present" resolveAssetUrl={resolveAssetUrl} />,
+        incomingRef,
+        true,
+      )}
     </div>
   );
 }
