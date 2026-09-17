@@ -497,10 +497,62 @@ function technicalDeck(): PresentationDocument {
     transition: { type: "fade", durationMs: 300 },
   };
 
+  // The document's own id, taken *before* the image below so it keeps the value
+  // it has always had. The counter is shared across prefixes, so minting the
+  // image first would have shifted this one — which it did, on the first attempt.
+  const documentId = id("doc");
+
+  // An image, minted **after** every other id in this deck.
+  //
+  // The counter is shared across prefixes, so a new `id()` call anywhere earlier
+  // renumbers everything after it — and a fixture whose ids churn makes every
+  // visual-regression snapshot fail for no reason. Appended here and pushed onto
+  // a slide, rather than written where it reads most naturally.
+  //
+  // It earns its place the way the rest of this deck does: `technical-deck` is
+  // "every MVP element type" and had no image at all, so the scene build's image
+  // payload, PPTX's degradation for one, the accessibility alt-text rule and the
+  // renderer's unresolved-asset placeholder were between them exercised by
+  // nothing. There is no resolver in a headless render, so what the baselines
+  // record is that placeholder — which is exactly what an export produces today,
+  // and is therefore the honest thing to pin.
+  const diagramImage = {
+    id: id("ast"),
+    type: "image" as const,
+    storageKey: "fixtures/architecture-overview.png",
+    fileName: "architecture-overview.png",
+    mimeType: "image/png",
+    byteSize: 148_204,
+    width: 1600,
+    height: 900,
+    // On the manifest entry as well as the element: `W220` asks for it here,
+    // because an asset can be cited from more than one slide and the description
+    // of what the picture *is* belongs with the picture.
+    altText: "The composer pipeline, drawn on a whiteboard",
+  };
+  architectureSlide.elements.push({
+    id: id("el"),
+    type: "image",
+    name: "Pipeline photograph",
+    // The clear band below the diagram, on the same 120px left margin the
+    // headline and the diagram use. Placed at 1180,620 first, where it clipped
+    // under the "Transaction service" node — the diagram's element box is
+    // 1680x620 while its painted content sits in the upper half, so "inside the
+    // diagram's bounds" and "over the diagram" are not the same thing and only
+    // looking at the render tells you which.
+    transform: { x: 120, y: 900, width: 280, height: 158 },
+    assetId: diagramImage.id,
+    fit: "contain",
+    // WCAG 1.1.1, which `accessibility.ts` checks and the three seed decks are
+    // required to pass.
+    altText: "The composer pipeline, drawn on a whiteboard",
+  });
+
   return buildDocument({
-    id: id("doc"),
+    id: documentId,
     title: "Deckastra Architecture Review",
     theme,
+    assets: [diagramImage],
     slides: [titleSlide, kpiSlide, architectureSlide, tableSlide, codeSlide],
     metadata: {
       presentationType: "technical",

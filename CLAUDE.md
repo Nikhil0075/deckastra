@@ -1897,10 +1897,46 @@ measures text and jsdom has no layout. A failure path left inside the component
 is one nothing can check, and the likeliest failure is the storage quota, charged
 when the upload is registered.
 
-**Still missing: no fixture uses an image element.** Adding one would move both
-the scene digests and the pixel baselines, and the Linux baseline is already
-unrecorded — so the renderer's own gates still never see an image, and that is
-worth closing once a Linux baseline exists to record against.
+**`technical-deck` has an image now**, which it should have had all along: it is
+the fixture for "every MVP element type" and had no picture in it, so the scene
+build's image payload, PPTX's degradation for one, the accessibility alt-text
+rule and the renderer's unresolved-asset placeholder were between them exercised
+by nothing. `shapes.ts` has routed `image` to `unsupported` since it was written
+and no test ever reached that line; one asserts it now.
+
+Two things about adding an element to a fixture are worth writing down, because
+both were got wrong first.
+
+**The id counter is shared across prefixes**, so a new `id()` call anywhere
+renumbers everything after it — and a fixture whose ids churn makes every
+visual-regression snapshot fail for no reason. The image is minted last, and the
+document's own id is hoisted above it so it keeps the value it has always had.
+The first attempt shifted `doc_…`; the diff is now a pure addition, 71 ids in and
+73 out with none removed.
+
+**"Inside the diagram's bounds" and "over the diagram" are not the same thing.**
+Placed at `1180,620` the picture sat inside the diagram element's 1680×620 box
+but clipped visually under the "Transaction service" node — and neither
+`validateScene` nor the accessibility pass objected, because neither is looking
+at that. Only the rendered PNG showed it. It sits in the clear band below the
+diagram now, on the same 120px left margin the headline uses. That is what
+"read the diff before regenerating" means for pixels: the digest said one line was
+added and was right, and the line said nothing about the picture landing on top of
+a box.
+
+There is no resolver in a headless render, so what the baselines record is the
+labelled placeholder with its alt text — which is exactly what an export produces
+today, and therefore the honest thing to pin. **Exports still draw that
+placeholder rather than the picture**: `apps/worker` passes no `resolveAssetUrl`
+either, so a PDF of a deck with photographs has dashed boxes where they should be.
+That is the next piece of this, and it is a different problem from the editor's —
+the worker has no session and no browser origin to authenticate against, so it
+needs the bytes handed to it rather than a URL.
+
+`win32-x64.json` is re-recorded. **`linux-x64.json` is still unrecorded** and now
+two slides behind — `animation/3` from D4.1 and this one — so CI's pixel job stays
+red until someone commits `linux-x64.json.computed` from a failing run's
+artifacts.
 
 ### Pulling a workspace down, and why push could not come first (D5.6)
 

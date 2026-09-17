@@ -1072,6 +1072,20 @@
               ]
             }
           ]
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X01006900",
+          "type": "image",
+          "name": "Pipeline photograph",
+          "transform": {
+            "x": 120,
+            "y": 900,
+            "width": 280,
+            "height": 158
+          },
+          "assetId": "ast_01JB8Z9K2QW4RN7F3X01006800",
+          "fit": "contain",
+          "altText": "The composer pipeline, drawn on a whiteboard"
         }
       ],
       "transition": {
@@ -1303,7 +1317,19 @@
       }
     }
   ],
-  "assets": [],
+  "assets": [
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X01006800",
+      "type": "image",
+      "storageKey": "fixtures/architecture-overview.png",
+      "fileName": "architecture-overview.png",
+      "mimeType": "image/png",
+      "byteSize": 148204,
+      "width": 1600,
+      "height": 900,
+      "altText": "The composer pipeline, drawn on a whiteboard"
+    }
+  ],
   "components": [],
   "dataSources": [],
   "variables": {},

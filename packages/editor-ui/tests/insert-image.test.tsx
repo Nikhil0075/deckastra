@@ -184,6 +184,9 @@ it("throws what the caller must show when an upload is refused", async () => {
     }),
   ).rejects.toThrow(/storage/i);
 
-  // And nothing was written: the caller never got operations to apply.
-  expect(document.assets).toEqual([]);
+  // And nothing was written: the caller never got operations to apply. Compared
+  // against what the fixture came with rather than against `[]` — the technical
+  // deck now carries an image of its own, and an assertion that it is empty was
+  // testing the fixture rather than the code.
+  expect(document.assets).toEqual(structuredClone(loadFixture("technical")).assets);
 });

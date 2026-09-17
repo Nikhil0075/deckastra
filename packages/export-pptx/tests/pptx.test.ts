@@ -230,6 +230,15 @@ describe("degradation is reported, never silent", () => {
     expect(result.report.warnings.length).toBeGreaterThan(0);
   });
 
+  it("reports the image it cannot embed", () => {
+    // `shapes.ts` routes `image` to `unsupported`, and until the fixture gained
+    // one (2026-09-17) nothing exercised that branch — the adapter's handling of
+    // the most ordinary element on a slide was covered by no test at all,
+    // because "every MVP element type" had no picture in it.
+    const listed = JSON.stringify(result.report.unsupportedFeatures).toLowerCase();
+    expect(listed).toContain("image");
+  });
+
   it("says what happened, not just that something did", () => {
     // "Unsupported" tells a reader nothing. "Rasterized" tells them the text is
     // no longer selectable; "dropped" tells them to look for what is missing.
