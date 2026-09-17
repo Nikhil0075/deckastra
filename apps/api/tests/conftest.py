@@ -22,6 +22,8 @@ exercises both. Locally:
 from __future__ import annotations
 
 import os
+import socket
+import urllib.parse
 import uuid
 
 import pytest
@@ -91,3 +93,36 @@ def postgres_url() -> str:
         )
         connection.execute(text(f'DROP DATABASE IF EXISTS "{name}"'))
     admin.dispose()
+
+
+# ------------------------------------------------------------- object storage
+
+
+def object_store_available() -> bool:
+    """True when something is listening on the configured S3 endpoint.
+
+    A socket, not a call through `object_storage`. Every failure that module can
+    have comes back as one `ObjectStorageError` — "no such object" and "nothing is
+    listening" are the same exception — so a probe that went through it reads an
+    unreachable endpoint as a working one and runs the whole suite against
+    nothing. The first version of this guard did exactly that: with MinIO stopped
+    it reported available and the tests spent 75 seconds in boto3's retries before
+    failing.
+    """
+    endpoint = os.environ.get("S3_ENDPOINT_URL", "http://localhost:9000")
+    parsed = urllib.parse.urlparse(endpoint)
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        with socket.create_connection((parsed.hostname or "localhost", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+requires_object_store = pytest.mark.skipif(
+    not object_store_available(),
+    reason=(
+        "Start the object store to run this: "
+        "docker compose -f infrastructure/docker/docker-compose.yml up -d minio"
+    ),
+)

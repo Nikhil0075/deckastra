@@ -58,7 +58,11 @@ ANSWERS = {
         "scope_kind": "deck",
         "needs_research": False,
         "reasoning": "New deck.",
-        "clarification_needed": "",
+        # A bool since 2026-09-17. It was a string whose "no" answer was `""`,
+        # which is the trap the full-graph benchmark walked into; `""` does not
+        # coerce to a bool at all, so leaving it here made every run below fail
+        # to validate its first contract.
+        "clarification_needed": False,
     },
     "planning": {
         "title": "Deck",
@@ -117,6 +121,32 @@ def make_run(checkpointer):
         checkpointer=checkpointer,
         human_checkpoint=True,
     )
+
+
+def test_the_stub_answers_still_match_the_contracts():
+    """The one check in this file that does **not** need PostgreSQL.
+
+    Everything else here skips without `POSTGRES_TEST_URL`, and that is how the
+    answers below drifted: `clarification_needed` became a `bool` (2026-09-17)
+    and this fixture went on supplying the old `""`, which does not coerce to one
+    — so every run in this file failed at its first contract and nothing went red
+    on any machine that was not running a database.
+
+    Validating the stub answers against the real contracts costs nothing and runs
+    everywhere, so the next change to a contract breaks here rather than in
+    whichever CI job happens to have a service container.
+    """
+    from deckastra_agents.contracts import (
+        CreativeDirection,
+        CriticResult,
+        OrchestratorPlan,
+        StoryPlan,
+    )
+
+    OrchestratorPlan(**ANSWERS["fast"])
+    StoryPlan(**ANSWERS["planning"])
+    CreativeDirection(**ANSWERS["structured"])
+    CriticResult(**ANSWERS["critique"])
 
 
 @pytest.fixture()

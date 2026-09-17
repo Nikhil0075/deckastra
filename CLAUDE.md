@@ -2239,6 +2239,55 @@ endpoint with nothing listening it could never have checked they were gone. It
 writes a real file now and asserts the file is missing afterwards. The S3 delete
 path stays untested, as it always was.
 
+### Running the gates that needed a service (2026-09-17)
+
+`POSTGRES_TEST_URL` and MinIO had been "unavailable" for long enough that three
+things had gone wrong behind them. The suite is **654 passed, 0 skipped** with
+both services up, and 632 passed / 22 skipped without — the second number is the
+honest one for a laptop, and the first is what CI has to be.
+
+**The story checkpoint had been failing since D3's contract fix.**
+`test_checkpoint.py` stubs an orchestrator answer, and that stub still said
+`"clarification_needed": ""` — the string whose emptiness *was* the old "no".
+Changing the field to a `bool` made `""` un-coercible, so the run failed at its
+first contract and both pause/resume tests went red. Nobody saw it, because those
+tests skip without PostgreSQL. The file's own docstring had predicted this
+exactly: *"These tests only run with POSTGRES_TEST_URL set, which is how the
+signature drifted without anything going red locally."*
+
+The stub is corrected, and there is now a test in that file which **needs no
+database**: it validates all four stub answers against the real contracts.
+Checking a fixture against the thing it is pretending to be costs nothing and
+runs everywhere, so the next contract change breaks on every push rather than in
+whichever job happens to have a service container. Verified by putting `""` back
+and watching it fail.
+
+**A reachability guard that went through `object_storage` was not a guard.**
+Every failure that module can have is one `ObjectStorageError` — "no such object"
+and "nothing is listening" are indistinguishable — so the first version of the
+skip reported an unreachable endpoint as available and spent 75 seconds in
+boto3's retries before failing. It is a one-second socket probe now
+(`conftest.object_store_available`), shared by both files that need it.
+
+**The S3 lifecycle test had never run, and my own change had quietly disarmed
+it.** `test_real_object_upload_delete_restore_and_eventual_cleanup` was gated
+behind `RUN_OBJECT_STORAGE_TESTS=1`, which is an opt-in nobody sets — and when
+the sweep fix gave the shared `client` fixture a `DECKASTRA_ASSET_DIR`, it
+silently redirected this test to the *local* backend. It would have exercised a
+directory while claiming to cover S3. It clears that variable itself now and
+asserts `local_root() is None` before starting, so a future fixture cannot take
+the backend away from it again; the gate is reachability rather than an opt-in.
+Running it for the first time: upload intent, presigned PUT to MinIO, completion
+verified against the object, presigned GET, delete, restore, sweep, and the bytes
+gone from the bucket.
+
+**`object_storage.read()`'s S3 half had never been executed at all.** It was added
+so a headless render could be handed a deck's pictures (D5.7) and only the local
+directory was ever tested — on a deployed install every export would have reached
+for a function nobody had run. `test_object_storage.py` covers it, along with the
+deployed shape of the whole picture path: asset rows in the database, bytes in the
+bucket, `inline_for_render` returning base64 that matches what was uploaded.
+
 ### A missing capability is absent, not broken
 
 A packaged-runtime check (2026-09-10) caught the editor showing a Share heading,

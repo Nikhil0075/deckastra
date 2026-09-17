@@ -24,6 +24,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from deckastra_api.db import session as db_session  # noqa: E402
+from tests.conftest import requires_object_store  # noqa: E402
 
 
 @pytest.fixture()
@@ -628,13 +629,28 @@ def test_an_upload_over_the_storage_allowance_is_refused(client, auth):
             )
 
 
-def test_real_object_upload_delete_restore_and_eventual_cleanup(client, auth):
-    """Exercise the same presigned S3 lifecycle the browser uses against MinIO."""
-    if os.environ.get("RUN_OBJECT_STORAGE_TESTS") != "1":
-        pytest.skip("Set RUN_OBJECT_STORAGE_TESTS=1 with MinIO/S3 available.")
+@requires_object_store
+def test_real_object_upload_delete_restore_and_eventual_cleanup(client, auth, monkeypatch):
+    """Exercise the same presigned S3 lifecycle the browser uses against MinIO.
+
+    Gated on the endpoint being reachable rather than on `RUN_OBJECT_STORAGE_TESTS`:
+    an opt-in nobody sets is a test nobody runs, and this is the whole upload
+    journey a deployment takes.
+
+    **It has to clear `DECKASTRA_ASSET_DIR` itself.** The `client` fixture sets it
+    so the sweeper has somewhere to delete from, and `local_root()` is what picks
+    the backend — so without this the test would quietly run against a directory
+    and report the S3 lifecycle as covered. It did: the relative blob URL reached
+    `httpx.put` as "Request URL is missing an 'http://' or 'https://' protocol",
+    which is the good failure. A test that had merely passed there would have been
+    the bad one.
+    """
+    monkeypatch.delenv("DECKASTRA_ASSET_DIR", raising=False)
 
     from deckastra_api import object_storage
     from deckastra_api.db.models import Asset
+
+    assert object_storage.local_root() is None, "this test must exercise the S3 backend"
 
     workspace_id = client.get("/v1/account", headers=auth).json()["workspaces"][0]["id"]
     payload = b"not-a-real-png-but-valid-storage-bytes"
