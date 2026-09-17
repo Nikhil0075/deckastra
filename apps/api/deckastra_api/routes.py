@@ -61,6 +61,21 @@ class PatchOperationModel(BaseModel):
         return out
 
 
+class ResolvesConflict(BaseModel):
+    """What was merged, so a resolution is more than a change made afterwards.
+
+    Time alone proves nothing — an ordinary edit written a minute after the
+    refusal satisfies "later than the refusal", and so does an MCP client's
+    low-risk change, neither of which looked at the other side. Naming the
+    conflict and the remote version the merge incorporated is what a client can
+    only supply by having fetched the divergence.
+    """
+
+    change_key: str = Field(max_length=64)
+    remote_version_id: str = Field(max_length=64)
+    local_version_id: str = Field(max_length=64)
+
+
 class ApplyTransactionRequest(BaseModel):
     operations: list[PatchOperationModel] = Field(min_length=1, max_length=500)
     intent: str = Field(min_length=1, max_length=500)
@@ -78,6 +93,13 @@ class ApplyTransactionRequest(BaseModel):
     #: here answers with what it did the first time rather than applying it
     #: again. An ordinary editor save omits it.
     change_key: str | None = Field(default=None, max_length=64)
+    #: Declare that this change resolves the deck's divergence (D5.3).
+    #:
+    #: Here rather than on a route of its own, and that is the whole correction:
+    #: an acknowledgement that arrives *after* the merge is a second operation,
+    #: and anything committed in the gap between them was retired by mistake. As
+    #: one request the gap does not exist.
+    resolves: ResolvesConflict | None = None
 
 
 class TransactionSummary(BaseModel):
@@ -105,6 +127,8 @@ class ApplyTransactionResponse(BaseModel):
     #: nothing was written. Said out loud because "it worked" and "it had already
     #: worked" are different facts to a device reconciling its outbox.
     duplicate: bool = False
+    #: How many queued changes this resolution retired, when it was one.
+    retired: int | None = None
 
 
 def _summary(row) -> TransactionSummary:
@@ -869,12 +893,6 @@ def get_presentation_head(
     }
 
 
-class ReconciledRequest(BaseModel):
-    """The version a person merged into, which retires what it replaced."""
-
-    resolving_version_id: str
-
-
 @router.get("/presentations/{presentation_id}/sync")
 def sync_status(
     presentation_id: str,
@@ -938,58 +956,6 @@ def sync_status(
     return answer
 
 
-@router.post("/presentations/{presentation_id}/sync/reconciled")
-def mark_reconciled(
-    presentation_id: str,
-    request: ReconciledRequest,
-    principal: Principal = Depends(current_principal),
-    session: Session = Depends(get_session),
-) -> dict[str, Any]:
-    """Record that a person resolved this deck's divergence.
-
-    Deliberately *not* a merge endpoint. The three-way merge lives in
-    `packages/editor-ui/src/lib/reconcile.ts` and is already the product's answer
-    for the autosave conflict; a Python one beside it would be a second
-    implementation of the hardest logic here, held together by nobody. So the
-    editor merges, commits the result through the ordinary transaction path — one
-    mutation path, ordinary undo, ordinary provenance — and then says which
-    version did it.
-
-    The caller must have already committed. A version that is not this deck's
-    history is refused rather than accepted on trust: retiring a queue on the
-    strength of an id nobody checked would discard work with no record of why.
-    """
-    resolve_presentation_access(
-        session,
-        user_id=principal.user_id,
-        presentation_id=presentation_id,
-        require=Role.EDITOR,
-    )
-
-    version = session.get(PresentationVersion, request.resolving_version_id)
-    if version is None or version.presentation_id != presentation_id:
-        raise HTTPException(
-            status_code=404, detail="That version is not part of this deck's history."
-        )
-
-    # Belonging to the deck is necessary and nowhere near sufficient — the
-    # pre-divergence version belongs to the deck too, and accepting it retired
-    # the whole queue while answering "in sync" (found by review, 2026-09-16).
-    # `sync.reconciled` holds the real rule, because the rule is about the
-    # outbox rather than about the version table.
-    try:
-        retired = sync.reconciled(
-            session, presentation_id, resolving_version_id=request.resolving_version_id
-        )
-    except sync.NotAResolution as refusal:
-        raise HTTPException(status_code=409, detail=str(refusal)) from refusal
-    return {
-        "presentation_id": presentation_id,
-        "retired": retired,
-        "state": sync.status(session, presentation_id).state,
-    }
-
-
 @router.post("/presentations/{presentation_id}/transactions", response_model=ApplyTransactionResponse)
 def apply_transaction(
     presentation_id: str,
@@ -1025,6 +991,25 @@ def apply_transaction(
             )
 
     loaded = store.load_presentation(session, presentation_id)
+
+    # Checked before anything is written: a resolution claim that does not hold
+    # must not leave a version row behind. The retirement happens after the
+    # commit, in this same database transaction, so the merge and the
+    # acknowledgement are one operation and nothing can arrive between them.
+    if request.resolves is not None:
+        problem = sync.resolution_problem(
+            session,
+            presentation_id,
+            sync.Resolution(
+                change_key=request.resolves.change_key,
+                remote_version_id=request.resolves.remote_version_id,
+                local_version_id=request.resolves.local_version_id,
+            ),
+            head_version_id=loaded.version_id,
+        )
+        if problem:
+            raise HTTPException(status_code=409, detail=problem)
+
     operations = [operation.to_dict() for operation in request.operations]
 
     # Risk is computed here, from the operations, never taken from the caller — a
@@ -1084,12 +1069,19 @@ def apply_transaction(
             },
         ) from conflict
 
+    retired = None
+    if request.resolves is not None:
+        retired = sync.retire_for_resolution(
+            session, presentation_id, resolving_transaction_id=result.transaction_id
+        )
+
     return ApplyTransactionResponse(
         transaction_id=result.transaction_id,
         version_id=result.version_id,
         document=result.document,
         risk_tier=risk.tier,
         snapshotted=result.snapshotted,
+        retired=retired,
     )
 
 

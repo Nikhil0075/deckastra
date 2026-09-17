@@ -1576,41 +1576,57 @@ documents; the editor merges, commits the result through the **ordinary
 transaction path** (one mutation path, ordinary undo, ordinary provenance); and
 `POST /presentations/{id}/sync/reconciled` says which version did it.
 
-That endpoint retires the refused change and what the merge incorporated, and
-**what it may retire is bounded by the resolving change itself**. A review found
-three ways the first version got that wrong (2026-09-16), each of them silent
-loss:
+**A resolution is a change that names what it merged, committed in the same
+request that acknowledges it.** That contract took four corrections, each from a
+review, and each because an earlier version answered a weaker question:
 
-- **It accepted any version belonging to the deck.** The deck's own
-  *pre-divergence* version belongs to the deck, so handing that back — no merge
-  made, nothing resolved — retired the whole queue and answered "in sync". The
-  work stayed in the local document, which is what made it so bad: nothing looked
-  wrong, and the changes were simply no longer owed to anyone. A resolution must
-  now be a change that is still owed *and* sits after the refusal.
-- **It retired everything queued at the moment of acknowledgement.** The merge
-  happened earlier, and between the two a person can type, another window can
-  save, an MCP client can apply a low-risk change. A merge cannot incorporate
-  work that did not exist when it was made, so the boundary is the resolving
-  change and not the wall clock.
-- **It retired queued assets.** Bytes the server has never received are not a
-  change a merge could have incorporated, so retiring one leaves the reconciled
-  deck citing a picture that will never be uploaded — whole for its author and
-  broken for everyone else. They are never retired. An upload for a picture the
-  merge removed is then sent needlessly, which costs bytes once; the other way
-  costs someone their image.
+- **"Does this version belong to the deck?"** The pre-divergence version does, so
+  handing it back retired the whole queue and answered "in sync" while the work
+  sat in the local document, unowed to anyone.
+- **"Is it queued after the refused change?"** Everything behind a refusal is. So
+  is every change that was already waiting when the server said no, and those
+  were authored before anyone knew there was a conflict.
+- **"Was it written after the refusal?"** Necessary, and nowhere near sufficient:
+  an ordinary edit a minute later satisfies it, and so does an agent's low-risk
+  change. **Time says when; it cannot say what was merged.**
+- **"Did it arrive before anything else?"** It could not, because the
+  acknowledgement was a second request and everything committed in the gap was
+  retired with the rest.
 
-A second review (2026-09-17) found the boundary still wrong in a fourth way, and
-it is the subtlest: **queue order is necessary and not sufficient.** Every change
-already waiting behind a refusal sits after it in the queue — and those were
-authored before anybody knew there was a conflict, so one of them cannot have
-incorporated a merge. Accepting it retired every change between it and the
-refusal. The real test is *time*, so `sync_outbox.refused_at` records when the
-server said no and a resolution must have been written after that.
+So the claim is three facts (`ResolvesConflict`), and each closes one of those.
+`change_key` says *which* conflict, so a client resolving a stale one it read
+about earlier cannot retire whatever is blocked now. `remote_version_id` says
+which version of the **other side** the merge incorporated — the part a client can
+only supply by having fetched the divergence, and therefore the part that
+distinguishes a merge from an edit. `local_version_id` says which version of
+*this* side was reviewed, and it must be the version being committed against: if
+somebody typed between the review and the commit, the merge did not see it and the
+ordinary concurrency refusal is the right answer.
 
-The resolving change's own row is spared, which is the older subtlety: superseding
-it would strand the reconciliation on this device, the exact failure the person
-just did the work to avoid. Retiring a queue needs editor rights — reading that a
-deck diverged is not deciding what happens to the work.
+**And it rides on the transaction, not on a route of its own**, which is what
+makes the boundary provable instead of arithmetic. Because the merge commits and
+acknowledges as one operation, and because it committed against the head it was
+reviewed against, nothing queued at that instant can postdate it — an edit made
+after the review would have moved the head and the commit would have been refused
+before reaching the retirement. "Everything pending except me" is then exactly
+"everything the merge incorporated". `POST /sync/reconciled` is **deleted** rather
+than deprecated: a separate acknowledgement cannot be atomic with the commit it
+acknowledges, and leaving it beside the safe path would be leaving the bug behind
+a second door.
+
+What none of this proves is that the merged *content* is right. Nothing
+server-side can — a merge is a human judgement over two documents. It proves the
+author saw the conflict and merged against the versions they said they did, and
+claiming more would be exactly the overclaim this codebase exists to avoid.
+
+Assets are still never retired: bytes the server has never received are not a
+change a merge could have incorporated, and retiring one leaves the reconciled
+deck citing a picture that will never be uploaded. An upload for a picture the
+merge removed is then sent needlessly, which costs bytes once; the other way costs
+someone their image. The merge's own row is spared, which is the oldest subtlety:
+retiring it would strand the reconciliation on this device, the exact failure the
+person just did the work to avoid. Retiring a queue needs editor rights — reading
+that a deck diverged is not deciding what happens to the work.
 
 Two smaller decisions that decide how it reads. `state` is four values rather than
 a boolean, because "not in sync" covers two situations and only one needs a

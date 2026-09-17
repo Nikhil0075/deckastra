@@ -560,91 +560,103 @@ class NotAResolution(Exception):
     """The version offered does not resolve this deck's divergence (D5.3)."""
 
 
-def reconciled(
-    session: Session, presentation_id: str, *, resolving_version_id: str
-) -> int:
-    """A person decided; let the queue move on (D5.3).
+@dataclass(frozen=True)
+class Resolution:
+    """What a client must say to claim a change resolves a divergence (D5.3).
 
-    The merged document is committed first, through the ordinary transaction
-    path — there is no second write path, and a reconciliation undoes like any
-    other edit. That commit enqueues itself normally. This then retires what it
-    replaced.
+    Three facts, and each closes a way the previous versions of this were wrong.
 
-    **What it may retire is bounded by the resolving change**, and the first
-    version of this function got that wrong in three ways that a review found
-    (2026-09-16), each of them silent loss:
+    A review (2026-09-17) made the decisive point: **time alone proves nothing.**
+    Requiring the resolving change to be written after the refusal is a necessary
+    guard and not a sufficient one — an ordinary edit made a minute later
+    satisfies it, and so does an MCP client's low-risk change, neither of which
+    has looked at the remote side at all.
 
-    * It accepted any version belonging to the deck. The deck's own *pre-*
-      divergence version belongs to the deck, so handing that back — with no
-      merge made and nothing resolved — retired the whole queue and answered
-      "in sync". The work stayed in the local document, which is what made it so
-      bad: nothing looked wrong, and the changes were simply no longer owed to
-      anyone. A resolution must be a change that sits **after** the refusal.
-    * It retired everything queued at the moment of acknowledgement. But the
-      merge happened earlier, and between the two a person can type, another
-      window can save, an MCP client can apply a low-risk change. A merge cannot
-      incorporate work that did not exist when it was made, so the boundary is
-      the resolving change and not the wall clock.
-    * It retired queued **assets**. Bytes the server has never received are not a
-      change a merge could have incorporated, so retiring one leaves the
-      reconciled deck citing a picture that will never be uploaded — whole for
-      its author and broken for everyone else. They are never retired here. An
-      upload for a picture the merge removed is then sent needlessly, which costs
-      bytes once; the other way costs someone their image.
+    So the claim has to name what was merged:
 
-    The resolving change's own row is spared, which is the older subtlety:
-    superseding it would strand the reconciliation on this device, the exact
-    failure the person just did the work to avoid.
+    * `change_key` — *which* conflict. A deck has one at a time today, but naming
+      it means a client resolving a stale conflict it read about earlier is
+      refused rather than retiring whatever is blocked now.
+    * `remote_version_id` — the version of the *other* side that the merge
+      incorporated. Getting this right requires having fetched the divergence, so
+      it is the part that distinguishes a merge from an edit.
+    * `local_version_id` — the version of *this* side that was reviewed, which
+      must be the version being committed against. If someone typed between the
+      review and the commit, the merge did not see it, and the ordinary
+      optimistic-concurrency refusal is the right answer.
+
+    What this does **not** prove is that the merged content is correct. Nothing
+    server-side can: a merge is a human judgement over two documents. It proves
+    the author saw the conflict and merged against the version they said they
+    did, and claiming more would be the kind of overclaim this codebase exists to
+    avoid.
+    """
+
+    change_key: str
+    remote_version_id: str
+    local_version_id: str
+
+
+def resolution_problem(
+    session: Session,
+    presentation_id: str,
+    claim: Resolution,
+    *,
+    head_version_id: str | None,
+) -> str | None:
+    """Check a resolution claim **before** anything is written.
+
+    Before, deliberately: a bad claim must not leave a version row behind. The
+    retirement happens after the commit, in the same database transaction, so the
+    merge and the acknowledgement are one operation — which is what makes it
+    impossible for an edit to arrive between them and be retired by mistake.
     """
     blocked = blocking_row(session, presentation_id)
     if blocked is None:
-        raise NotAResolution("That deck has not diverged, so there is nothing to resolve.")
+        return "That deck has not diverged, so there is nothing to resolve."
 
-    resolving = session.scalar(
-        select(SyncOutboxRow)
-        .join(TransactionRow, TransactionRow.id == SyncOutboxRow.transaction_id)
-        .where(
-            SyncOutboxRow.presentation_id == presentation_id,
-            TransactionRow.result_version_id == resolving_version_id,
-        )
-    )
-    if resolving is None:
-        raise NotAResolution(
-            "That version is not a change this device still owes the server, so it "
-            "cannot be the one that resolved the conflict. Commit the merged deck "
-            "first, then say which version it produced."
+    if claim.change_key != blocked.change_key:
+        return (
+            "That resolution names a different conflict from the one this deck is "
+            "stopped at. Read the current divergence and merge against that."
         )
 
-    def position(row: SyncOutboxRow) -> tuple:
-        return (row.created_at, row.id)
-
-    if position(resolving) <= position(blocked):
-        # A change made before the refusal cannot have resolved it — it is one of
-        # the things that needs resolving.
-        raise NotAResolution(
-            "That version predates the change the server refused, so it cannot be "
-            "the resolution. Merge the two versions, commit the result, and name "
-            "that version instead."
+    if (blocked.remote_version_id or "") != claim.remote_version_id:
+        # The part that separates a merge from an edit: only something that
+        # fetched the divergence knows what the other side had.
+        return (
+            "That resolution was merged against a different version of the server's "
+            "copy than the one this deck is stopped at."
         )
 
-    # Queue order is necessary and not sufficient, which a review found the hard
-    # way (2026-09-17). *Every* change already waiting behind a refusal sits after
-    # it in the queue, and those were authored before anybody knew there was a
-    # conflict — so one of them cannot have incorporated a merge, and accepting it
-    # retires every change between it and the refusal. The real test is time.
-    refused_at = _aware(blocked.refused_at)
-    resolving_transaction = session.get(TransactionRow, resolving.transaction_id)
-    authored_at = _aware(
-        resolving_transaction.created_at if resolving_transaction else resolving.created_at
-    )
-    if refused_at is not None and authored_at is not None and authored_at <= refused_at:
-        raise NotAResolution(
-            "That change was written before the server refused anything, so it "
-            "cannot be the merge that resolves the conflict. Reconcile the two "
-            "versions, commit the result, and name the version that produced."
+    if head_version_id is not None and claim.local_version_id != head_version_id:
+        return (
+            "The deck changed on this device after the version the merge was "
+            "reviewed against, so the merge did not see that change. Review the "
+            "divergence again against the current version."
         )
 
-    boundary = position(resolving)
+    return None
+
+
+def retire_for_resolution(
+    session: Session, presentation_id: str, *, resolving_transaction_id: str
+) -> int:
+    """Retire what the merge replaced, in the same transaction that made it.
+
+    **Atomicity is what bounds this**, and it replaces the arithmetic the earlier
+    versions got wrong three times. Because the merge commits and acknowledges as
+    one operation, and because it committed against the head it was reviewed
+    against, nothing queued at this instant can postdate it: an edit made after
+    the review would have moved the head and the commit would have been refused
+    for staleness before reaching here. So "everything pending except me" is
+    exactly "everything the merge incorporated" — provably, rather than by
+    comparing timestamps and hoping.
+
+    Assets are never retired. Bytes the server has not received are not a change
+    a merge could have incorporated, and retiring one leaves the reconciled deck
+    citing a picture that will never be uploaded.
+    """
     rows = session.scalars(
         select(SyncOutboxRow).where(
             SyncOutboxRow.presentation_id == presentation_id,
@@ -654,17 +666,17 @@ def reconciled(
 
     retired = 0
     for row in rows:
-        if row.id == resolving.id:
+        if row.transaction_id == resolving_transaction_id:
+            # Sparing the merge's own row is the older subtlety: retiring it
+            # would strand the reconciliation on this device, the exact failure
+            # the person just did the work to avoid.
             continue
         if row.kind == "asset":
-            continue
-        if position(row) > boundary:
-            # Later than the merge, so the merge did not contain it. Still owed.
             continue
         row.status = "superseded"
         # The remote snapshot has done its job. It is a whole document, and
         # keeping one per resolved conflict forever is a database that grows with
-        # every disagreement anyone ever had.
+        # every argument anyone ever had.
         row.remote_document_json = None
         retired += 1
 

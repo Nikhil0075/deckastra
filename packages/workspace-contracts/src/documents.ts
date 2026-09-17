@@ -110,11 +110,41 @@ export interface TransactionRequest {
    * and provenance that says it is, lies.
    */
   client_id: string;
+  /**
+   * Declare that this change resolves the deck's sync divergence (D5.3).
+   *
+   * On the transaction rather than a route of its own, and that is the point: an
+   * acknowledgement arriving *after* the merge is a second operation, and
+   * anything committed in the gap between them was retired by mistake. As one
+   * request the gap does not exist — and because the commit is refused when the
+   * head has moved, nothing queued at the moment of retirement can postdate the
+   * merge.
+   */
+  resolves?: ResolvesConflict;
+}
+
+/**
+ * What was merged, so a resolution is more than a change made afterwards.
+ *
+ * Time alone proves nothing: an ordinary edit written a minute after the server
+ * refused something satisfies "later than the refusal", and so does an agent's
+ * low-risk change, neither of which has looked at the other side. These three
+ * are what a client can only supply by having fetched the divergence.
+ */
+export interface ResolvesConflict {
+  /** Which conflict — so resolving a stale one cannot retire whatever is blocked now. */
+  change_key: string;
+  /** The server's version the merge incorporated. Only a merge knows this. */
+  remote_version_id: string;
+  /** The local version that was reviewed, which must be the one committed against. */
+  local_version_id: string;
 }
 
 export interface TransactionResult {
   transaction_id: string;
   version_id: string;
+  /** How many queued changes a resolution retired, when this was one. */
+  retired?: number | null;
 }
 
 export interface VersionSummary {

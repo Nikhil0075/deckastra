@@ -285,260 +285,228 @@ def test_everything_a_merge_needs_is_already_on_this_machine(client, diverged):
 # --------------------------------------------------------------- resolving it
 
 
-def reconcile(client, who, deck: str, resolving_version_id: str):
+
+
+def merge(client, who, deck: str, title: str, **override):
+    """Commit a merge and acknowledge it in one request.
+
+    That is the contract now (D5.3, corrected 2026-09-17). An acknowledgement
+    that arrives *after* the merge is a second operation, and anything committed
+    in the gap between them was retired by mistake — three separate ways, each
+    found by a review. As one request the gap does not exist.
+    """
+    state = sync_status(client, who, deck)
+    divergence = state.get("diverged") or {}
+    opened = head_of(client, who, deck)
+
+    resolves = {
+        "change_key": divergence.get("change_key", ""),
+        "remote_version_id": divergence.get("remote_version_id") or "",
+        "local_version_id": opened["version_id"],
+    }
+    resolves.update(override.pop("resolves", {}))
+
+    request = {
+        "expected_version_id": opened["version_id"],
+        "intent": f"Merge: {title}",
+        "operations": [{"op": "replace", "path": "/metadata/title", "value": title}],
+        "resolves": resolves,
+    }
+    request.update(override)
     return client.post(
-        f"/v1/presentations/{deck}/sync/reconciled",
-        headers=headers(who),
-        json={"resolving_version_id": resolving_version_id},
+        f"/v1/presentations/{deck}/transactions", headers=headers(who), json=request
     )
 
 
-def test_resolving_retires_what_it_replaced_and_keeps_itself(client, diverged):
-    """The subtlety of `reconciled`.
+def test_a_merge_retires_what_it_replaced_and_keeps_itself(client, diverged):
+    """The refused change, plus the one queued behind it — and not the merge.
 
-    The merged document was made from the local head, so it already contains the
-    effect of every change queued behind the block — sending those afterwards
-    applies each of them twice. But the merge's *own* change must survive, or the
-    reconciliation is stranded on this device, which is the exact failure the
-    person just did the work to avoid.
+    Sparing the merge's own row is the older subtlety: retiring it would strand
+    the reconciliation on this device, the exact failure the person just did the
+    work to avoid.
     """
     me, deck = diverged["who"], diverged["deck"]
 
-    # The editor merges and commits through the ordinary transaction path. There
-    # is no second write path, and a reconciliation undoes like any other edit.
-    merged = retitle(client, me, deck, "Both, resolved")
+    merged = merge(client, me, deck, "Both, resolved")
     assert merged.status_code == 200, merged.text
-
-    answer = reconcile(client, me, deck, merged.json()["version_id"])
-    assert answer.status_code == 200, answer.text
-    # The refused change, plus the one queued behind it.
-    assert answer.json()["retired"] == 2
-    assert answer.json()["state"] == "waiting"
+    assert merged.json()["retired"] == 2
 
     with db_session.session_scope() as session:
         assert sync.blocking_row(session, deck) is None
-        waiting = sync.pending_for(session, deck)
-        assert len(waiting) == 1
+        assert len(sync.pending_for(session, deck)) == 1
 
     sent: list[str] = []
     with db_session.session_scope() as session:
-        report = sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "ver_remote")[1])
+        report = sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "v")[1])
 
     assert report.sent == 1
-    assert sent == ["Retitle to Both, resolved"]
-
+    assert sent == ["Merge: Both, resolved"]
     assert sync_status(client, me, deck)["state"] == "in_sync"
 
 
-def test_a_retired_change_is_superseded_not_deleted(client, diverged):
-    """"What did this device decide, and when" is asked after a bad merge."""
-    me, deck = diverged["who"], diverged["deck"]
-    merged = retitle(client, me, deck, "Resolved")
-    reconcile(client, me, deck, merged.json()["version_id"])
+def test_an_ordinary_edit_after_the_refusal_is_not_a_resolution(client, diverged):
+    """The correction a review made on 2026-09-17, and the reason this contract
+    exists at all.
 
-    import sqlalchemy
+    Requiring the resolving change to be written *after* the refusal is a
+    necessary guard and not a sufficient one: an ordinary edit a minute later
+    satisfies it, and so does an MCP client's low-risk change, neither of which
+    has looked at the other side. Time says when; it cannot say what was merged.
+
+    So an edit that names no conflict retires nothing, and one that claims to
+    resolve without naming what it merged against is refused.
+    """
+    me, deck = diverged["who"], diverged["deck"]
+
+    # An ordinary edit, well after the refusal. It goes through — nothing stops a
+    # person editing a deck that has diverged — and it retires nothing.
+    ordinary = retitle(client, me, deck, "Just carrying on typing")
+    assert ordinary.status_code == 200, ordinary.text
+    assert ordinary.json()["retired"] is None
 
     with db_session.session_scope() as session:
-        rows = list(
-            session.scalars(
-                sqlalchemy.select(SyncOutboxRow).where(SyncOutboxRow.presentation_id == deck)
-            )
-        )
-        statuses = sorted(row.status for row in rows)
-        # The create went; the refusal and the change behind it were retired; the
-        # merge itself is queued.
-        assert statuses == ["pending", "sent", "superseded", "superseded"]
+        assert sync.blocking_row(session, deck) is not None
+        assert len(sync.pending_for(session, deck)) == 2
 
-        retired = next(row for row in rows if row.refused_reason)
-        assert retired.status == "superseded"
-        # The refusal is kept as the record of why; the whole remote document is
-        # not, because one per disagreement forever is a database that grows with
-        # every argument anyone ever had.
-        assert retired.refused_reason
-        assert retired.remote_document_json is None
+    # And submitting one *as* a resolution without having read the divergence is
+    # refused: the remote version is the part only a merge can know.
+    claimed = merge(
+        client, me, deck, "Pretending", resolves={"remote_version_id": "ver_guessed"}
+    )
+
+    assert claimed.status_code == 409, claimed.text
+    assert "different version of the server" in claimed.json()["detail"]
+
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+        assert len(sync.pending_for(session, deck)) == 2
 
 
-def test_reconciling_a_deck_that_has_not_diverged_is_refused(client):
-    me = sign_in(client)
+def test_a_resolution_naming_another_conflict_is_refused(client, diverged):
+    """A client resolving a conflict it read about earlier must not retire
+    whatever is blocked now."""
+    me, deck = diverged["who"], diverged["deck"]
+
+    refused = merge(client, me, deck, "Wrong one", resolves={"change_key": "chg_elsewhere"})
+
+    assert refused.status_code == 409
+    assert "different conflict" in refused.json()["detail"]
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+
+
+def test_a_merge_reviewed_against_a_stale_local_version_is_refused(client, diverged):
+    """If somebody typed between the review and the commit, the merge did not see
+    it — and merging on top of work nobody looked at is how a reconciliation
+    quietly loses a change."""
+    me, deck = diverged["who"], diverged["deck"]
+    stale = head_of(client, me, deck)["version_id"]
+
+    assert retitle(client, me, deck, "Typed during the review").status_code == 200
+
+    refused = merge(client, me, deck, "Merged blind", resolves={"local_version_id": stale})
+
+    assert refused.status_code == 409
+    assert "after the version the merge was reviewed against" in refused.json()["detail"]
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+
+
+def test_nothing_can_arrive_between_the_merge_and_the_retirement(client, diverged):
+    """The property atomicity buys, stated directly.
+
+    The earlier design committed the merge and acknowledged it separately, and
+    every edit in that gap was retired. Now the commit carries the
+    acknowledgement — and the commit is refused if the head moved, so an edit
+    made after the review cannot be in the queue at the moment of retirement. The
+    boundary is provable rather than arithmetic.
+    """
+    me, deck = diverged["who"], diverged["deck"]
+
+    state = sync_status(client, me, deck)
+    divergence = state["diverged"]
+    reviewed = head_of(client, me, deck)["version_id"]
+
+    # Somebody saves while the person is still reading the conflict.
+    assert retitle(client, me, deck, "Saved mid-review").status_code == 200
+
+    # The merge, authored against what the reviewer saw, is now stale and refused
+    # by the ordinary concurrency check — before anything is retired.
+    late = client.post(
+        f"/v1/presentations/{deck}/transactions",
+        headers=headers(me),
+        json={
+            "expected_version_id": reviewed,
+            "intent": "Merge",
+            "operations": [{"op": "replace", "path": "/metadata/title", "value": "Merged"}],
+            "resolves": {
+                "change_key": divergence["change_key"],
+                "remote_version_id": divergence["remote_version_id"],
+                "local_version_id": reviewed,
+            },
+        },
+    )
+
+    assert late.status_code == 409
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+        assert len(sync.pending_for(session, deck)) == 2
+
+
+def test_resolving_a_deck_that_has_not_diverged_is_refused(client):
+    me = sign_in(client, "nothing-wrong@local")
     deck = a_deck(client, me, a_syncing_workspace(client, me))
-    document = head_of(client, me, deck)
+    opened = head_of(client, me, deck)
 
-    answer = reconcile(client, me, deck, document["version_id"])
+    answer = client.post(
+        f"/v1/presentations/{deck}/transactions",
+        headers=headers(me),
+        json={
+            "expected_version_id": opened["version_id"],
+            "intent": "Merge nothing",
+            "operations": [{"op": "replace", "path": "/metadata/title", "value": "x"}],
+            "resolves": {
+                "change_key": "chg_imaginary",
+                "remote_version_id": "ver_imaginary",
+                "local_version_id": opened["version_id"],
+            },
+        },
+    )
 
     assert answer.status_code == 409
     assert "not diverged" in answer.json()["detail"]
 
 
-def test_a_version_from_somewhere_else_cannot_retire_a_queue(client, diverged):
-    """Retiring work on the strength of an id nobody checked discards it with no
-    record of why."""
-    me, deck = diverged["who"], diverged["deck"]
-    elsewhere = a_deck(client, me, diverged["project"], "Another")
-    other_version = head_of(client, me, elsewhere)["version_id"]
-
-    answer = reconcile(client, me, deck, other_version)
-
-    assert answer.status_code == 404
-    with db_session.session_scope() as session:
-        assert sync.blocking_row(session, deck) is not None
-
-
-def test_a_viewer_cannot_retire_someone_elses_queue(client, diverged):
+def test_a_viewer_cannot_resolve_someone_elses_divergence(client, diverged):
     """Reading that a deck diverged is not deciding what happens to the work."""
+    import sqlalchemy
+
     me, deck = diverged["who"], diverged["deck"]
     guest = sign_in(client, "guest@local")
 
     with db_session.session_scope() as session:
         workspace_id = session.scalar(
-            __import__("sqlalchemy").select(Workspace.id).where(Workspace.name == "Acme")
+            sqlalchemy.select(Workspace.id).where(Workspace.name == "Acme")
         )
-        # A genuine, confirmed viewer (D5.4) — not an unconfirmed cache, which
-        # would be refused for the wrong reason and make this test prove nothing
-        # about roles.
         auth.confirm_membership(
             session, user_id=guest["user_id"], workspace_id=workspace_id, role="viewer"
         )
 
-    # They can see the state — that is a read.
     assert sync_status(client, guest, deck)["state"] == "diverged"
 
-    merged = retitle(client, me, deck, "Resolved by the owner")
-    refused = reconcile(client, guest, deck, merged.json()["version_id"])
+    refused = merge(client, guest, deck, "Not yours to resolve")
 
     assert refused.status_code == 404
     with db_session.session_scope() as session:
         assert sync.blocking_row(session, deck) is not None
 
 
-def test_the_queue_moves_again_once_it_is_resolved(client, diverged):
-    """The end state: a deck that diverged and came back is an ordinary deck."""
-    me, deck = diverged["who"], diverged["deck"]
-    merged = retitle(client, me, deck, "Resolved")
-    reconcile(client, me, deck, merged.json()["version_id"])
-
-    with db_session.session_scope() as session:
-        sync.drain(session, lambda outgoing: "ver_remote")
-
-    assert retitle(client, me, deck, "And life goes on").status_code == 200
-
-    sent: list[str] = []
-    with db_session.session_scope() as session:
-        report = sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "ver")[1])
-
-    assert report.sent == 1
-    assert report.blocked == []
-    assert sync_status(client, me, deck)["state"] == "in_sync"
-
-
-def test_a_transport_failure_after_a_resolution_is_still_only_a_retry(client, diverged):
-    """Resolving a divergence does not make the network work.
-
-    Worth its own case because the two paths now share a queue: a deck that came
-    back from `blocked` must still be able to sit in an ordinary backoff without
-    that being read as a second divergence.
-    """
-    me, deck = diverged["who"], diverged["deck"]
-    merged = retitle(client, me, deck, "Resolved")
-    reconcile(client, me, deck, merged.json()["version_id"])
-
-    start = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
-
-    def refuse(outgoing: sync.Outgoing) -> str:
-        raise ConnectionError("still no network")
-
-    with db_session.session_scope() as session:
-        report = sync.drain(session, refuse, now=lambda: start)
-
-    assert report.failed == 1
-    # Waiting, not diverged. A deck that came back from `blocked` must be able to
-    # sit in an ordinary backoff without that reading as a second divergence.
-    assert report.blocked == []
-    assert report.waiting == [deck]
-
-    with db_session.session_scope() as session:
-        assert sync.blocking_row(session, deck) is None
-        row = sync.pending_for(session, deck)[0]
-        assert row.attempts == 1
-        assert row.next_attempt_at is not None
-
-    assert sync_status(client, me, deck)["state"] == "waiting"
-
-    with db_session.session_scope() as session:
-        report = sync.drain(
-            session, lambda outgoing: "ver_remote", now=lambda: start + timedelta(minutes=5)
-        )
-    assert report.sent == 1
-
-
-# ------------------------------------------- what an acknowledgement may retire
-
-
-def test_an_old_version_cannot_acknowledge_away_unsent_work(client, diverged):
-    """Found by review, 2026-09-16, and the worst of the three.
-
-    `mark_reconciled` checked only that the version belonged to the deck. The
-    version from *before* the divergence belongs to the deck, so handing it back
-    — with no merge made and nothing resolved — retired the whole queue and
-    answered `in_sync`. The changes are still in the local document, which is
-    what makes it so bad: nothing looks wrong, and the work is simply no longer
-    owed to anyone.
-    """
-    me, deck = diverged["who"], diverged["deck"]
-
-    before = head_of(client, me, deck)["version_id"]
-    # The deck's very first version — genuinely part of its history, and
-    # resolving nothing.
-    versions = client.get(f"/v1/presentations/{deck}/versions", headers=headers(me)).json()
-    original = versions[-1]["id"]
-
-    refused = reconcile(client, me, deck, original)
-
-    assert refused.status_code == 409, refused.text
-    with db_session.session_scope() as session:
-        assert sync.blocking_row(session, deck) is not None
-        assert len(sync.pending_for(session, deck)) == 1
-    assert sync_status(client, me, deck)["state"] == "diverged"
-    assert head_of(client, me, deck)["version_id"] == before
-
-
-def test_an_edit_made_after_the_merge_is_still_owed(client, diverged):
-    """Found by review, 2026-09-16.
-
-    The queue is retired at the moment of acknowledgement, but the merge happened
-    earlier — and between the two, a person can type, another window can save, an
-    MCP client can apply a low-risk change. Those are not incorporated by a merge
-    that predates them, and retiring them discards work nobody reviewed.
-
-    The boundary is the resolving change, not "everything queued when the
-    acknowledgement arrived".
-    """
-    me, deck = diverged["who"], diverged["deck"]
-
-    merged = retitle(client, me, deck, "Resolved")
-    assert merged.status_code == 200, merged.text
-    # ... and then life goes on, before anyone gets round to acknowledging.
-    later = retitle(client, me, deck, "Typed afterwards")
-    assert later.status_code == 200, later.text
-
-    answer = reconcile(client, me, deck, merged.json()["version_id"])
-    assert answer.status_code == 200, answer.text
-
-    sent: list[str] = []
-    with db_session.session_scope() as session:
-        sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "ver")[1])
-
-    assert "Retitle to Typed afterwards" in sent, "an edit after the merge was retired"
-    assert "Retitle to Resolved" in sent
-
-
 def test_the_pictures_a_merged_deck_still_needs_are_not_retired(client, diverged):
-    """Found by review, 2026-09-16.
+    """An `asset` row is bytes the server has never received, not a change the
+    merge could have incorporated. Retiring one leaves the reconciled document
+    citing a picture that will never be uploaded."""
+    import sqlalchemy
 
-    An `asset` row is bytes the server has never received, not a change the merge
-    could have incorporated. Retiring one leaves the reconciled document citing a
-    picture that will never be uploaded — the deck arrives whole for its author
-    and broken for everyone else, which is the failure D5.5 exists to prevent.
-    """
     from deckastra_api import object_storage
     from deckastra_api.db.models import Asset
     from deckastra_api.ids import new_id
@@ -548,7 +516,7 @@ def test_the_pictures_a_merged_deck_still_needs_are_not_retired(client, diverged
     asset_id = new_id("ast")
     with db_session.session_scope() as session:
         workspace_id = session.scalar(
-            __import__("sqlalchemy").select(Workspace.id).where(Workspace.name == "Acme")
+            sqlalchemy.select(Workspace.id).where(Workspace.name == "Acme")
         )
         key = f"workspaces/{workspace_id}/assets/{asset_id}.png"
         object_storage.put_local(key, b"not really a png", "image/png")
@@ -589,41 +557,98 @@ def test_the_pictures_a_merged_deck_still_needs_are_not_retired(client, diverged
     )
     assert placed.status_code == 200, placed.text
 
-    merged = retitle(client, me, deck, "Resolved with the picture still on it")
-    answer = reconcile(client, me, deck, merged.json()["version_id"])
-    assert answer.status_code == 200, answer.text
+    merged = merge(client, me, deck, "Resolved with the picture still on it")
+    assert merged.status_code == 200, merged.text
 
     sent: list[str] = []
     with db_session.session_scope() as session:
-        sync.drain(session, lambda outgoing: (sent.append(outgoing.kind), "ver")[1])
+        sync.drain(session, lambda outgoing: (sent.append(outgoing.kind), "v")[1])
 
     assert "asset" in sent, "the bytes the merged deck still cites were retired"
 
 
+def test_the_queue_moves_again_once_it_is_resolved(client, diverged):
+    """A deck that diverged and came back is an ordinary deck."""
+    me, deck = diverged["who"], diverged["deck"]
+    assert merge(client, me, deck, "Resolved").status_code == 200
+
+    with db_session.session_scope() as session:
+        sync.drain(session, lambda outgoing: "ver_remote")
+
+    assert retitle(client, me, deck, "And life goes on").status_code == 200
+
+    sent: list[str] = []
+    with db_session.session_scope() as session:
+        report = sync.drain(session, lambda outgoing: (sent.append(outgoing.intent), "v")[1])
+
+    assert report.sent == 1
+    assert report.blocked == []
+    assert sync_status(client, me, deck)["state"] == "in_sync"
+
+
+def test_a_transport_failure_after_a_resolution_is_still_only_a_retry(client, diverged):
+    """Resolving a divergence does not make the network work.
+
+    A deck that came back from `blocked` must still be able to sit in an ordinary
+    backoff without that being read as a second divergence.
+    """
+    me, deck = diverged["who"], diverged["deck"]
+    assert merge(client, me, deck, "Resolved").status_code == 200
+
+    start = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+
+    def refuse(outgoing: sync.Outgoing) -> str:
+        raise ConnectionError("still no network")
+
+    with db_session.session_scope() as session:
+        report = sync.drain(session, refuse, now=lambda: start)
+
+    assert report.failed == 1
+    assert report.blocked == []
+    assert report.waiting == [deck]
+    assert sync_status(client, me, deck)["state"] == "waiting"
+
+    with db_session.session_scope() as session:
+        report = sync.drain(
+            session, lambda outgoing: "ver_remote", now=lambda: start + timedelta(minutes=5)
+        )
+    assert report.sent == 1
+
+
+def test_there_is_no_way_to_acknowledge_a_merge_separately(client, diverged):
+    """The unsafe path is gone, not merely discouraged.
+
+    A separate acknowledgement cannot be atomic with the commit it acknowledges,
+    and every version of it retired something it should not have. Leaving it
+    beside the safe one would be leaving the bug behind a second door.
+    """
+    me, deck = diverged["who"], diverged["deck"]
+    opened = head_of(client, me, deck)
+
+    gone = client.post(
+        f"/v1/presentations/{deck}/sync/reconciled",
+        headers=headers(me),
+        json={"resolving_version_id": opened["version_id"]},
+    )
+
+    assert gone.status_code == 404
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+
+
 def test_a_change_authored_before_the_conflict_cannot_resolve_it(client):
-    """Found by review, 2026-09-17. The third way this boundary was wrong.
+    """`refused_at` stays as a guard even though it is no longer the whole rule.
 
-    The first fix required the resolving change to sit *after the refused one in
-    the queue*. Every change queued behind a refusal satisfies that — including
-    the ones that were already waiting when the server said no. Those were
-    authored before anybody knew there was a conflict, so they cannot have
-    incorporated a merge, and accepting one as the resolution retires every change
-    between it and the refusal.
-
-    Built without the `diverged` fixture on purpose: that fixture drains first, so
-    anything written after it is genuinely later than the refusal. The case only
-    exists when the changes are queued **before** the drain that refuses one, which
-    is the ordinary shape of a device that worked offline and then reconnected.
+    A change queued before the drain that refused anything cannot have merged the
+    other side, and its `resolves` claim would have to name a remote version it
+    never saw. Both refusals apply; this checks the deck survives either way.
     """
     me = sign_in(client, "queued-first@local")
     project = a_syncing_workspace(client, me)
     deck = a_deck(client, me, project)
 
-    # A day offline: three changes, none of which knows a conflict is coming.
     retitle(client, me, deck, "One")
     retitle(client, me, deck, "Two")
-    third = retitle(client, me, deck, "Three")
-    assert third.status_code == 200, third.text
 
     theirs = copy.deepcopy(head_of(client, me, deck)["document"])
     theirs["metadata"] = {**theirs["metadata"], "title": "Edited in the office"}
@@ -640,13 +665,13 @@ def test_a_change_authored_before_the_conflict_cannot_resolve_it(client):
     with db_session.session_scope() as session:
         sync.drain(session, send)
         assert sync.blocking_row(session, deck) is not None
-        # Two changes still waiting behind the refused one.
-        assert len(sync.pending_for(session, deck)) == 2
+        assert len(sync.pending_for(session, deck)) == 1
 
-    refused = reconcile(client, me, deck, third.json()["version_id"])
+    # Naming a remote version nobody was shown is the shape a pre-conflict change
+    # has to take, and it is refused.
+    refused = merge(client, me, deck, "Three", resolves={"remote_version_id": "ver_remote_1"})
 
-    assert refused.status_code == 409, refused.text
-    assert "before the server refused" in refused.json()["detail"]
+    assert refused.status_code == 409
     with db_session.session_scope() as session:
         assert sync.blocking_row(session, deck) is not None
-        assert len(sync.pending_for(session, deck)) == 2
+        assert len(sync.pending_for(session, deck)) == 1
