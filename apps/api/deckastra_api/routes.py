@@ -66,9 +66,10 @@ class ResolvesConflict(BaseModel):
 
     Time alone proves nothing — an ordinary edit written a minute after the
     refusal satisfies "later than the refusal", and so does an MCP client's
-    low-risk change, neither of which looked at the other side. Naming the
-    conflict and the remote version the merge incorporated is what a client can
-    only supply by having fetched the divergence.
+    low-risk change. These three make the change an **explicit declaration
+    against validated versions**: the conflict it resolves, the remote version it
+    is declared against, and the local version it was reviewed against. That a
+    client supplied them is not evidence anyone read the divergence.
     """
 
     change_key: str = Field(max_length=64)

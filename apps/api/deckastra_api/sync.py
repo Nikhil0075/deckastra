@@ -577,19 +577,22 @@ class Resolution:
     * `change_key` — *which* conflict. A deck has one at a time today, but naming
       it means a client resolving a stale conflict it read about earlier is
       refused rather than retiring whatever is blocked now.
-    * `remote_version_id` — the version of the *other* side that the merge
-      incorporated. Getting this right requires having fetched the divergence, so
-      it is the part that distinguishes a merge from an edit.
+    * `remote_version_id` — the version of the *other* side the change is
+      declared against, validated against the one this deck is stopped at. Note
+      what that does and does not establish: it proves the **client named the
+      matching version**, not that a person fetched it, looked at it or
+      understood it. A client that had the id by any means can supply it.
     * `local_version_id` — the version of *this* side that was reviewed, which
       must be the version being committed against. If someone typed between the
       review and the commit, the merge did not see it, and the ordinary
       optimistic-concurrency refusal is the right answer.
 
-    What this does **not** prove is that the merged content is correct. Nothing
-    server-side can: a merge is a human judgement over two documents. It proves
-    the author saw the conflict and merged against the version they said they
-    did, and claiming more would be the kind of overclaim this codebase exists to
-    avoid.
+    The guarantee is therefore narrow and worth stating exactly: **a resolution
+    is explicitly declared against validated versions.** It is not evidence that
+    anyone read the divergence, and it is certainly not evidence that the merged
+    content is right — nothing server-side can establish that, because a merge is
+    a human judgement over two documents. Content quality is a separate question
+    and this contract does not touch it.
     """
 
     change_key: str
@@ -622,8 +625,9 @@ def resolution_problem(
         )
 
     if (blocked.remote_version_id or "") != claim.remote_version_id:
-        # The part that separates a merge from an edit: only something that
-        # fetched the divergence knows what the other side had.
+        # Validates that the declaration matches the conflict this deck is
+        # stopped at. It does not establish that anyone looked at that version —
+        # only that the claim names it.
         return (
             "That resolution was merged against a different version of the server's "
             "copy than the one this deck is stopped at."

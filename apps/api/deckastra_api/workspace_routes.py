@@ -135,6 +135,18 @@ def _account_context(session: Session, principal: Principal) -> dict[str, Any]:
     return {
         "user": {"id": user.id, "email": user.email, "name": user.name},
         "workspaces": workspaces,
+        # What this *deployment* can do, so a surface can be absent rather than
+        # broken. Sharing is refused wholesale in local mode — a link this machine
+        # mints leads nowhere — and the editor used to discover that by calling
+        # the route and rendering the 404 as "Not found.", which reads as a bug in
+        # a feature that was never available.
+        #
+        # Deployment-wide rather than per workspace, because that is what the
+        # refusal keys on. A cloud server's own workspaces are `local` in the
+        # D5.1 sense and share perfectly well, so deriving this from
+        # `workspace.origin` would switch sharing off for every deck in the
+        # product.
+        "capabilities": {"sharing": not local_mode.enabled()},
     }
 
 

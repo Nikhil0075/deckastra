@@ -1596,12 +1596,11 @@ review, and each because an earlier version answered a weaker question:
 So the claim is three facts (`ResolvesConflict`), and each closes one of those.
 `change_key` says *which* conflict, so a client resolving a stale one it read
 about earlier cannot retire whatever is blocked now. `remote_version_id` says
-which version of the **other side** the merge incorporated — the part a client can
-only supply by having fetched the divergence, and therefore the part that
-distinguishes a merge from an edit. `local_version_id` says which version of
-*this* side was reviewed, and it must be the version being committed against: if
-somebody typed between the review and the commit, the merge did not see it and the
-ordinary concurrency refusal is the right answer.
+which version of the **other side** the change is declared against, validated
+against the one this deck is stopped at. `local_version_id` says which version of
+*this* side it was reviewed against, and it must be the version being committed
+against: if somebody typed between the review and the commit, the merge did not
+see it and the ordinary concurrency refusal is the right answer.
 
 **And it rides on the transaction, not on a route of its own**, which is what
 makes the boundary provable instead of arithmetic. Because the merge commits and
@@ -1614,10 +1613,14 @@ than deprecated: a separate acknowledgement cannot be atomic with the commit it
 acknowledges, and leaving it beside the safe path would be leaving the bug behind
 a second door.
 
-What none of this proves is that the merged *content* is right. Nothing
-server-side can — a merge is a human judgement over two documents. It proves the
-author saw the conflict and merged against the versions they said they did, and
-claiming more would be exactly the overclaim this codebase exists to avoid.
+**State the guarantee exactly: a resolution is explicitly declared against
+validated versions.** It is tempting to describe supplying `remote_version_id` as
+proving the author fetched and read the divergence — it does not. It proves the
+client named the matching version, which it could have by any means. And it is
+certainly not evidence the merged *content* is right: nothing server-side can
+establish that, because a merge is a human judgement over two documents. Content
+quality is a separate question this contract does not touch, and claiming
+otherwise would be exactly the overclaim this codebase exists to avoid.
 
 Assets are still never retired: bytes the server has never received are not a
 change a merge could have incorporated, and retiring one leaves the reconciled
@@ -1893,6 +1896,40 @@ against a real second store, which is where the decisions are. Push is still
 unbuilt, so nothing this pulls can be sent back yet; assets are not pulled with
 their decks; and a deck that changed on both sides has no reconcile path from a
 bootstrap, only the local one D5.3 built.
+
+### A missing capability is absent, not broken
+
+A packaged-runtime check (2026-09-10) caught the editor showing a Share heading,
+a live "Create view link" button and a red `Not found.` underneath. Nothing was
+wrong: local mode refuses sharing wholesale, because a link that machine mints
+leads nowhere. The panel listed links on mount, got the 404 that refusal gives,
+and rendered it as an error — a feature that was never available presented as one
+that had just failed.
+
+`/v1/account` now reports `capabilities`, and `SharePanel` asks before it offers.
+Two decisions in that:
+
+**Deployment-wide, not per workspace.** The refusal keys on `local_mode.enabled()`,
+and a cloud server's own workspaces are `local` in the D5.1 sense and share
+perfectly well — so deriving the capability from `workspace.origin` would switch
+sharing off for every deck in the product.
+
+**Asked for explicitly, never inferred from a 404.** That is the whole fix rather
+than a detail of it: a missing deck and a deck you may not see both answer 404
+*by design*, because a 403 on something you cannot see confirms it exists. Reading
+any of those as "sharing is unavailable here" would tell someone whose access was
+just revoked that their workspace cannot share.
+
+So the panel has four states, not two — and the third is the one my first attempt
+got wrong by collapsing a failed read into "not supported". `asking` offers
+nothing yet; `yes` behaves as before; `no` says *"This workspace is local. Online
+sharing isn't available here. You can export a copy to share."*; and `unknown`
+says only that it could not check, claiming nothing about the workspace. The test
+that names this asserts the local-install explanation is **absent** when the
+account read fails, which is the assertion my first version had backwards.
+
+It also stops asking for links where links cannot exist — the request whose only
+possible answer was the 404 people were being shown.
 
 ### The editor is a package; the shell decides where it runs
 

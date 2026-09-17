@@ -17,6 +17,19 @@ import type { Share } from "@deckastra/workspace-contracts";
  * The rest is a list of who can get in and a way to close each door. Revoked
  * links stay on the list rather than disappearing, because "who could see this,
  * and when did that stop" is the question asked after something leaks.
+ *
+ * **Sharing can be absent, and absent is not broken.** A local install refuses it
+ * wholesale — a link that machine mints leads nowhere — and this panel used to
+ * discover that by calling the route and rendering its 404 as "Not found.", which
+ * reads as a failure in a feature that was never there. It now asks the
+ * deployment what it supports and says so plainly.
+ *
+ * The capability is asked for explicitly rather than inferred from a 404, and
+ * that distinction is the whole fix: a missing deck and a deck you may not see
+ * answer 404 too, *by design* (a 403 on something you cannot see confirms it
+ * exists). Reading any of those as "sharing is unavailable here" would tell
+ * someone their workspace cannot share when what actually happened is that their
+ * access was revoked.
  */
 
 export function SharePanel({ presentationId }: { presentationId: string }) {
@@ -26,6 +39,11 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [expires, setExpires] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Four states, not two. "Supported", "not supported" and "could not tell" are
+  // different facts and only one of them is about this workspace — saying "this
+  // workspace is local" because the account read failed would tell someone whose
+  // access was just revoked that their workspace cannot share.
+  const [sharing, setSharing] = useState<"asking" | "yes" | "no" | "unknown">("asking");
 
   const refresh = useCallback(async () => {
     try {
@@ -37,8 +55,32 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
   }, [client, presentationId]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let live = true;
+
+    void (async () => {
+      let answer: "yes" | "no" | "unknown";
+      try {
+        answer = (await client.session.account()).capabilities.sharing ? "yes" : "no";
+      } catch {
+        // An account that could not be read says nothing about sharing. The
+        // controls stay off — offering a button against a server nobody could
+        // reach is worse than not offering one — but nothing is claimed about
+        // this workspace, because a 404 here is just as likely to mean the deck
+        // is gone or the access was revoked.
+        answer = "unknown";
+      }
+      if (!live) return;
+      setSharing(answer);
+      // Only ask for links where links exist. On an install that refuses
+      // sharing, listing them is a request whose only possible answer is the
+      // 404 this panel used to show people.
+      if (answer === "yes") await refresh();
+    })();
+
+    return () => {
+      live = false;
+    };
+  }, [client, refresh]);
 
   async function create() {
     setError(null);
@@ -72,12 +114,43 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
   const linkFor = (share: Share): string =>
     `${window.location.origin}/shared/${share.token ?? ""}`;
 
+  if (sharing === "no") {
+    return (
+      <section style={{ padding: "0 16px 16px" }}>
+        <h3 style={heading}>Share</h3>
+        <p style={muted}>
+          This workspace is local. Online sharing isn&rsquo;t available here. You can
+          export a copy to share.
+        </p>
+      </section>
+    );
+  }
+
+  if (sharing === "unknown") {
+    // Deliberately says nothing about what this workspace supports. It could not
+    // be asked, which is a different fact from the answer being no.
+    return (
+      <section style={{ padding: "0 16px 16px" }}>
+        <h3 style={heading}>Share</h3>
+        <p role="alert" style={{ ...muted, color: "var(--danger)" }}>
+          Sharing could not be checked just now. Try again when you are connected.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section style={{ padding: "0 16px 16px" }}>
       <h3 style={heading}>Share</h3>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-        <button style={control} onClick={() => void create()}>
+        <button
+          style={control}
+          // Off until the deployment has said it supports this, so the button is
+          // never live against a server that will refuse it.
+          disabled={sharing !== "yes"}
+          onClick={() => void create()}
+        >
           Create view link
         </button>
       </div>

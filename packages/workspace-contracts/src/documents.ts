@@ -128,13 +128,15 @@ export interface TransactionRequest {
  *
  * Time alone proves nothing: an ordinary edit written a minute after the server
  * refused something satisfies "later than the refusal", and so does an agent's
- * low-risk change, neither of which has looked at the other side. These three
- * are what a client can only supply by having fetched the divergence.
+ * low-risk change. These three make the change an **explicit declaration against
+ * validated versions** — the conflict, the remote version it is declared against,
+ * and the local version it was reviewed against. Supplying them is not evidence
+ * that a person fetched, viewed or understood the divergence.
  */
 export interface ResolvesConflict {
   /** Which conflict — so resolving a stale one cannot retire whatever is blocked now. */
   change_key: string;
-  /** The server's version the merge incorporated. Only a merge knows this. */
+  /** The server's version this change is declared against; validated, not proof of review. */
   remote_version_id: string;
   /** The local version that was reviewed, which must be the one committed against. */
   local_version_id: string;

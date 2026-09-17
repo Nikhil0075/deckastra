@@ -350,11 +350,13 @@ def test_an_ordinary_edit_after_the_refusal_is_not_a_resolution(client, diverged
 
     Requiring the resolving change to be written *after* the refusal is a
     necessary guard and not a sufficient one: an ordinary edit a minute later
-    satisfies it, and so does an MCP client's low-risk change, neither of which
-    has looked at the other side. Time says when; it cannot say what was merged.
+    satisfies it, and so does an MCP client's low-risk change. Time says when; it
+    cannot say what the change was declared against.
 
-    So an edit that names no conflict retires nothing, and one that claims to
-    resolve without naming what it merged against is refused.
+    So an edit that declares nothing retires nothing, and one that declares a
+    remote version that does not match the conflict is refused. What that
+    establishes is narrow and worth naming: the change was **explicitly declared
+    against validated versions**, not that anyone read the divergence.
     """
     me, deck = diverged["who"], diverged["deck"]
 
@@ -368,8 +370,8 @@ def test_an_ordinary_edit_after_the_refusal_is_not_a_resolution(client, diverged
         assert sync.blocking_row(session, deck) is not None
         assert len(sync.pending_for(session, deck)) == 2
 
-    # And submitting one *as* a resolution without having read the divergence is
-    # refused: the remote version is the part only a merge can know.
+    # And one that declares a remote version which does not match the conflict
+    # this deck is stopped at is refused.
     claimed = merge(
         client, me, deck, "Pretending", resolves={"remote_version_id": "ver_guessed"}
     )
@@ -667,8 +669,8 @@ def test_a_change_authored_before_the_conflict_cannot_resolve_it(client):
         assert sync.blocking_row(session, deck) is not None
         assert len(sync.pending_for(session, deck)) == 1
 
-    # Naming a remote version nobody was shown is the shape a pre-conflict change
-    # has to take, and it is refused.
+    # A change authored before the refusal can only declare a remote version that
+    # is not the one this deck is stopped at, and that is refused.
     refused = merge(client, me, deck, "Three", resolves={"remote_version_id": "ver_remote_1"})
 
     assert refused.status_code == 409

@@ -66,9 +66,27 @@ export interface AccountWorkspace {
   projects: AccountProject[];
 }
 
+/**
+ * What this deployment can do, so a surface can be **absent rather than broken**.
+ *
+ * Sharing is refused wholesale on a local install — a link that machine mints
+ * leads nowhere — and the panel used to find that out by calling the route and
+ * rendering its 404 as "Not found.", which reads as a bug in a feature that was
+ * never available. A 404 is not a capability signal either way: a missing deck
+ * and a denied one answer the same, by design.
+ *
+ * Deployment-wide rather than per workspace, because that is what the refusal
+ * keys on. A cloud server's own workspaces are `local` in the D5.1 sense and
+ * share perfectly well.
+ */
+export interface Capabilities {
+  sharing: boolean;
+}
+
 export interface AccountContext {
   user: { id: string; email: string; name: string | null };
   workspaces: AccountWorkspace[];
+  capabilities: Capabilities;
 }
 
 /** What `/health` answers. `generation` says whether a real key is configured. */
