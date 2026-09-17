@@ -706,7 +706,13 @@ def complete_asset_upload(
         except object_storage.ObjectStorageError:
             logger.exception("Could not clean quota-rejected upload %s", key)
         raise HTTPException(status_code=429, detail=error.as_detail()) from error
-    return asset_service.describe(asset)
+
+    # The storage key, which `describe` deliberately withholds — a *list* has no
+    # reason to hand out paths into a bucket. Completing your own upload does:
+    # the caller is about to reference it from a document, and doc 02 stores the
+    # opaque `storageKey` there by design. Narrow enough to stay consistent with
+    # that refusal rather than relax it.
+    return {**asset_service.describe(asset), "storage_key": asset.storage_key}
 
 
 @router.get("/workspace/assets")

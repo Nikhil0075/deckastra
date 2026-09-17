@@ -11,7 +11,9 @@ import {
   type PresentationElement,
 } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
+import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { useAssetUrls } from "../lib/asset-urls";
+import { uploadAndInsertImage } from "../lib/insert-image";
 import { ScaledSlide } from "@deckastra/renderer/react";
 import {
   addElement,
@@ -88,6 +90,7 @@ export function EditorShell(props: EditorShellProps) {
   const editor = useEditor(props);
   const { document: doc, slideIndex, selection, setSelection, apply, nodes } = editor;
 
+  const client = useWorkspaceClient();
   const [presenting, setPresenting] = useState(false);
   const [clipboard, setClipboard] = useState<ClipboardPayload | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
@@ -153,6 +156,36 @@ export function EditorShell(props: EditorShellProps) {
       });
     },
     [apply, doc, slide],
+  );
+
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const addImage = useCallback(
+    async (file: File) => {
+      if (!slide) return;
+      setUploadError(null);
+      try {
+        const { operations, elementId } = await uploadAndInsertImage(client, {
+          document: doc,
+          slideId: slide.id,
+          file,
+        });
+        // One patch, through the same path a rectangle takes: the manifest entry
+        // and the element arrive together and undo together. Separately, an
+        // element would cite an asset the document cannot resolve, or a manifest
+        // entry would name an asset nothing references and the sweeper would
+        // eventually take the bytes.
+        apply(operations, { label: "Add image", selectionAfter: [elementId] });
+      } catch (caught) {
+        // Said rather than swallowed. The most likely refusal is the storage
+        // quota, which is charged when the upload is registered — and a picture
+        // that silently does not appear reads as the editor being broken.
+        setUploadError(
+          caught instanceof Error ? caught.message : "That image could not be added.",
+        );
+      }
+    },
+    [apply, client, doc, slide],
   );
 
   const group = useCallback(() => {
@@ -388,6 +421,8 @@ export function EditorShell(props: EditorShellProps) {
         onGroup={group}
         onPresent={() => setPresenting(true)}
         onExit={props.onExit}
+        onAddImage={addImage}
+        uploadError={uploadError}
       />
 
       <ConflictRecovery editor={editor} />
@@ -510,9 +545,13 @@ function Toolbar({
   onGroup,
   onPresent,
   onExit,
+  onAddImage,
+  uploadError,
 }: {
   editor: ReturnType<typeof useEditor>;
   onAdd: (kind: StarterElementKind, shape?: "rectangle" | "ellipse") => void;
+  onAddImage: (file: File) => void | Promise<void>;
+  uploadError?: string | null;
   onDelete: () => void;
   onGroup: () => void;
   onPresent: () => void;
@@ -537,6 +576,29 @@ function Toolbar({
       <button style={toolButton} onClick={() => onAdd("text")}>Text</button>
       <button style={toolButton} onClick={() => onAdd("shape", "rectangle")}>Rect</button>
       <button style={toolButton} onClick={() => onAdd("shape", "ellipse")}>Ellipse</button>
+      {uploadError ? (
+        <span role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>
+          {uploadError}
+        </span>
+      ) : null}
+      <label style={toolButton}>
+        Image
+        <input
+          type="file"
+          // The kinds the renderer can draw. A wider filter would let someone
+          // pick a PDF and meet a refusal after the upload rather than before it.
+          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+          aria-label="Add image"
+          style={{ display: "none" }}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            // Reset first: picking the same file twice in a row fires no change
+            // event otherwise, which reads as the button having stopped working.
+            event.target.value = "";
+            if (file) void onAddImage(file);
+          }}
+        />
+      </label>
       <select
         aria-label="Insert object"
         defaultValue=""

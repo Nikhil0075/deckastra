@@ -177,3 +177,22 @@ export interface MovePresentationResult {
   /** Unchanged by a move. Said out loud, because a move must not look like a new deck. */
   version_id?: string | null;
 }
+
+/**
+ * A file the workspace now holds, as its uploader needs it.
+ *
+ * `storage_key` is here and deliberately **not** on the asset *list*: a list has
+ * no reason to hand out paths into a bucket, while the person who just uploaded
+ * one is about to cite it from a document, where doc 02 stores the opaque key by
+ * design.
+ */
+export interface UploadedAsset {
+  id: string;
+  kind: string;
+  filename: string | null;
+  content_type: string | null;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  storage_key: string;
+}

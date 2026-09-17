@@ -1865,11 +1865,42 @@ second description of one path — written wrongly the first time, with
 `encodeURIComponent` over the whole key turning every `/` into `%2F` where
 Python's `quote()` leaves them alone. It encodes segment by segment now.
 
-**Still missing: an upload surface.** The bytes can be rendered; a person still
-cannot put a picture into a deck from the editor, and no fixture uses an image
-element (adding one would move both the scene digests and the pixel baselines,
-and the Linux baseline is already unrecorded). That is the next slice, not a
-closed one.
+**And a person can now put one there.** `client.assets.upload()` is the three
+requests the API already had — ask where to put it, PUT the bytes, register the
+row — behind one call, because the middle one carries a subtlety a caller should
+not have to know: a **relative** upload URL is this API's own blob route and needs
+our bearer, while an **absolute** one is a presigned object-store URL whose
+signature *is* the credential, and attaching a second one is how a presigned PUT
+gets rejected.
+
+`insertImageOperations` emits **two writes in one patch**, and that is the point.
+An image element cites an `assetId` while the storage key behind it lives only in
+the document's asset manifest, so an element added without its manifest entry is
+one nothing can resolve, and a manifest entry without its element is an asset the
+reference counter will sweep. One patch means they arrive together, undo
+together, and can never half-exist. The picture is fitted to half the viewport at
+its own aspect ratio rather than dropped at native size — a 4000px photograph
+placed at its own dimensions lands mostly off-canvas — and it carries the
+filename as `altText`, because WCAG 1.1.1 is a gate this product checks and an
+image without one fails it.
+
+`complete_asset_upload` now returns the storage key, which `assets.describe`
+deliberately withholds: a *list* has no reason to hand out paths into a bucket,
+while the person who just uploaded one is about to cite it from a document, where
+doc 02 stores the opaque key by design.
+
+**The upload and insert live outside the component** (`lib/insert-image.ts`),
+which is the same rule as the timeline's — operations are a pure module, the
+surface only gestures — and here it is also what makes the refusal testable:
+**nothing in this repository renders `EditorShell` in jsdom**, because the editor
+measures text and jsdom has no layout. A failure path left inside the component
+is one nothing can check, and the likeliest failure is the storage quota, charged
+when the upload is registered.
+
+**Still missing: no fixture uses an image element.** Adding one would move both
+the scene digests and the pixel baselines, and the Linux baseline is already
+unrecorded — so the renderer's own gates still never see an image, and that is
+worth closing once a Linux baseline exists to record against.
 
 ### Pulling a workspace down, and why push could not come first (D5.6)
 

@@ -25,6 +25,7 @@ import type {
 import type { GenerateRequest, GenerateResult } from "./generation";
 import type { Repository, RepositoryList, SlideSources } from "./repositories";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
+import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
 import type { SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
 
@@ -273,6 +274,24 @@ export interface WorkspaceClient {
     directUrl(storageKey: string): string | undefined;
     /** The bytes, with whatever credential this client holds. */
     fetchBlob(storageKey: string, options?: RequestOptions): Promise<Blob>;
+    /**
+     * Put a file in the workspace and answer what a document needs to cite it.
+     *
+     * Three requests behind one call — ask where to put it, PUT the bytes,
+     * register the row — because the middle one carries a subtlety a caller
+     * should not have to know: a **relative** upload URL is this API's own blob
+     * route and needs our bearer, while an **absolute** one is a presigned
+     * object-store URL whose signature *is* the credential, and attaching a
+     * second one to it is how a presigned PUT gets rejected.
+     *
+     * Registering is what charges the quota, so a workspace at its limit is
+     * refused here rather than after the bytes are already stored.
+     */
+    upload(
+      file: File,
+      body: { workspaceId: string; width?: number; height?: number },
+      options?: RequestOptions,
+    ): Promise<UploadedAsset>;
   };
 
   readonly themes: {

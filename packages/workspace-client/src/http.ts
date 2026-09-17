@@ -39,6 +39,7 @@ import type {
   TransactionResult,
   VersionSummary,
   WorkspaceClient,
+  UploadedAsset,
 } from "@deckastra/workspace-contracts";
 
 import { WorkspaceRequestError, messageFromDetail } from "./errors";
@@ -350,6 +351,61 @@ const q = encodeURIComponent;
           return `${baseUrl}${blobPath(storageKey)}`;
         }
         return undefined;
+      },
+      upload: async (file, body, request) => {
+        const begin = await json<{
+          method: string;
+          upload_url: string;
+          headers: Record<string, string>;
+          upload_token: string;
+        }>("/v1/workspace/assets/uploads", {
+          body: {
+            workspace_id: body.workspaceId,
+            filename: file.name,
+            content_type: file.type || "application/octet-stream",
+            size_bytes: file.size,
+            kind: "image",
+            ...(body.width ? { width: body.width } : {}),
+            ...(body.height ? { height: body.height } : {}),
+          },
+          fallback: "That file could not be uploaded.",
+          ...request,
+        });
+
+        // The subtlety worth stating: a **relative** URL is this API's own blob
+        // route and needs our bearer; an **absolute** one is a presigned
+        // object-store URL whose signature *is* the credential, and attaching a
+        // second one is how a presigned PUT gets rejected.
+        const absolute = /^https?:\/\//i.test(begin.upload_url);
+        const headers: Record<string, string> = { ...begin.headers };
+        if (!absolute) {
+          const cached = store.read();
+          headers.Authorization = `Bearer ${(cached ?? (await ensureSession(request ?? {}))).token}`;
+        }
+
+        const put: RequestInit = { method: begin.method || "PUT", headers, body: file };
+        if (request?.signal) put.signal = request.signal;
+
+        const stored = await doFetch(
+          absolute ? begin.upload_url : `${baseUrl}${begin.upload_url}`,
+          put,
+        );
+        if (!stored.ok) {
+          throw new WorkspaceRequestError(
+            stored.status,
+            undefined,
+            "The file could not be stored.",
+          );
+        }
+
+        // Registering is what charges the quota, so a workspace at its limit is
+        // refused here — after the bytes are written and before anything cites
+        // them, which is why the route deletes the object on that refusal.
+        return json<UploadedAsset>("/v1/workspace/assets/uploads/complete", {
+          body: { upload_token: begin.upload_token },
+          fallback: "That upload could not be completed.",
+          ...request,
+        });
       },
       fetchBlob: async (storageKey, request) => {
         // Deliberately not through `json()`: these are bytes, and a few megabytes
