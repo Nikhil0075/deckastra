@@ -212,7 +212,52 @@ describe.skipIf(!ENABLED)("pixel regression", () => {
     }
 
     const expected = JSON.parse(readFileSync(path, "utf8")) as Record<string, string>;
-    expect(current).toEqual(expected);
+
+    // Three findings, not one. `toEqual` over a dozen sha256 strings prints an
+    // unreadable blob and collapses cases that need different actions — which is
+    // the same argument the scene digest is readable for ("a hash says something
+    // changed, these lines say which node moved and how"), never applied here.
+    //
+    // It matters right now: `animation/3` was added to the fixture by D4.1 and
+    // the Linux baseline has never been re-recorded, so CI's pixel job fails with
+    // a diff that does not say "this slide is new, take its hash from the
+    // artifact" — it just says two objects differ.
+    const unrecorded = Object.keys(current).filter((key) => !(key in expected));
+    const vanished = Object.keys(expected).filter((key) => !(key in current));
+    const changed = Object.keys(current).filter(
+      (key) => key in expected && current[key] !== expected[key],
+    );
+
+    const findings: string[] = [];
+    if (unrecorded.length) {
+      // New slides. Not a visual regression — nothing to compare against — and
+      // the fix is to commit the hashes this run just wrote.
+      findings.push(
+        `No baseline on ${platformKey} for: ${unrecorded.join(", ")}. ` +
+          `Their hashes are in ${platformKey}.json.computed; review and commit them.`,
+      );
+    }
+    if (vanished.length) {
+      // The fixture stopped producing a slide the baseline still names, which is
+      // a fixture change rather than a rendering one.
+      findings.push(
+        `The baseline names slides this run did not produce: ${vanished.join(", ")}. ` +
+          `If the fixture lost them deliberately, drop them from ${platformKey}.json.`,
+      );
+    }
+    if (changed.length) {
+      // The only one of the three that is a visual regression, and the only one
+      // where regenerating the baseline is the wrong first move.
+      findings.push(
+        `Pixels changed on ${platformKey} for: ${changed.join(", ")}. ` +
+          `Read the PNGs in baselines/pixels/artifacts before regenerating anything — ` +
+          `a baseline updated reflexively is a gate that has been switched off while ` +
+          `still looking on.`,
+      );
+    }
+
+    const report = findings.join(" | ");
+    expect(report, report).toBe("");
   }, 300_000);
 
   it("sees a change the scene digest cannot", async () => {
