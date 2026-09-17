@@ -24,6 +24,7 @@ So:
 
 from __future__ import annotations
 
+import base64
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -32,7 +33,7 @@ from typing import Any, Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import quotas, store
+from . import object_storage, quotas, store
 from .db.models import Asset, Presentation, PresentationVersion, Project, Workspace
 from .ids import new_id
 from .db.session import supports_row_locks
@@ -155,6 +156,119 @@ def referenced_ids(document: dict[str, Any]) -> set[str]:
 
     walk(document)
     return found
+
+
+#: What a single render may be handed, per file and in total.
+#:
+#: These mirror `apps/worker/src/assets.ts`, and the duplication is deliberate
+#: rather than shared: the worker must refuse an oversized payload whoever sent
+#: it, and this side must refuse to *read* one at all — loading a 400MB row into
+#: memory to be told no by the process downstream is the cost the check exists to
+#: avoid. The API's limits are the tighter pair, so the worker's are a backstop.
+MAX_RENDER_ASSET_BYTES = 8 * 1024 * 1024
+MAX_RENDER_TOTAL_BYTES = 32 * 1024 * 1024
+
+
+def inline_for_render(
+    session: Session, *, presentation_id: str, document: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The pictures a headless render needs, as bytes it can embed.
+
+    The render host has no session, no cookie and no network — `render-page.ts`
+    aborts every request that is not a `data:` URL, because a document that could
+    make the render server fetch a URL is an SSRF primitive as well as a source of
+    nondeterminism. So a URL is no use to it and the bytes are handed over
+    directly, which makes *this* the place authorization happens.
+
+    The scope is the presentation's own workspace. An asset row is workspace-
+    scoped by design (`Asset.workspace_id`), so a document citing an id from
+    somewhere else resolves to nothing here and the renderer draws its labelled
+    placeholder — the same answer a stranger's read gets, and the reason a deck
+    that was moved without its files (D5.5) cannot quietly keep reading them.
+
+    An entry is returned for every cited asset, including the ones that cannot be
+    supplied: the reason travels as `problem` rather than as an omission, because
+    "this file is too large to embed" and "this deck cites an asset that does not
+    exist" are different things to tell a person and a missing entry cannot tell
+    them apart.
+    """
+    cited = referenced_ids(document)
+    if not cited:
+        return []
+
+    workspace_id = session.scalar(
+        select(Project.workspace_id)
+        .join(Presentation, Presentation.project_id == Project.id)
+        .where(Presentation.id == presentation_id)
+    )
+    if workspace_id is None:
+        return []
+
+    rows = session.scalars(
+        select(Asset).where(Asset.workspace_id == workspace_id, Asset.id.in_(cited))
+    ).all()
+    by_id = {row.id: row for row in rows}
+
+    supplied: list[dict[str, Any]] = []
+    total = 0
+    # Sorted so two exports of one deck hand the renderer the same payload in the
+    # same order: doc 04 §32.3 wants a byte-stable artifact, and "which image was
+    # dropped once the budget ran out" must not depend on row order.
+    for asset_id in sorted(cited):
+        row = by_id.get(asset_id)
+        if row is None:
+            # Not named as a problem: the renderer says "not available to the
+            # renderer" for an entry it never saw, which is exactly true, and
+            # listing every id a document mentions would turn a chart's data
+            # reference into a missing picture.
+            continue
+
+        entry: dict[str, Any] = {"assetId": row.id, "storageKey": row.storage_key}
+        kind = (row.content_type or "").split(";", 1)[0].strip().lower()
+        if not kind.startswith("image/"):
+            entry["problem"] = f"it is stored as {kind or 'an unknown type'}, which this renderer cannot embed"
+        elif row.bytes > MAX_RENDER_ASSET_BYTES:
+            entry["problem"] = (
+                f"it is {row.bytes // (1024 * 1024)}MB, over the "
+                f"{MAX_RENDER_ASSET_BYTES // (1024 * 1024)}MB limit for an embedded image"
+            )
+        elif total + row.bytes > MAX_RENDER_TOTAL_BYTES:
+            entry["problem"] = (
+                f"this deck's images exceed the {MAX_RENDER_TOTAL_BYTES // (1024 * 1024)}MB "
+                "a single render can embed"
+            )
+        else:
+            try:
+                data, stored_type = object_storage.read(row.storage_key)
+            except object_storage.ObjectStorageError:
+                # Named, not raised. One unreadable file must not fail an export
+                # of a forty-slide deck; the report says which picture is missing
+                # and the rest of the deck is still worth having.
+                logger.warning("Could not read asset %s for a render", row.id)
+                entry["problem"] = "its stored bytes could not be read"
+            else:
+                # The row's size is what the quota and the upload check agree on,
+                # but the bytes are what the renderer holds — so the budget counts
+                # what was actually read.
+                # Charged at the larger of the two. The row's size is verified
+                # against the object at upload completion, so the two normally
+                # agree — but a budget spent on whichever number happens to be
+                # smaller is a budget that does not bound anything, and it is the
+                # *disagreement* that would let a deck through.
+                charge = max(len(data), row.bytes)
+                if len(data) > MAX_RENDER_ASSET_BYTES or total + charge > MAX_RENDER_TOTAL_BYTES:
+                    entry["problem"] = (
+                        f"this deck's images exceed the {MAX_RENDER_TOTAL_BYTES // (1024 * 1024)}MB "
+                        "a single render can embed"
+                    )
+                else:
+                    total += charge
+                    entry["mimeType"] = (stored_type or kind).split(";", 1)[0].strip().lower()
+                    entry["data"] = base64.b64encode(data).decode("ascii")
+
+        supplied.append(entry)
+
+    return supplied
 
 
 def recount_references(session: Session, workspace_id: str) -> int:

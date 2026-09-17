@@ -618,7 +618,16 @@ def preview_slide(
         )
 
     try:
-        rendered = export_service.render_slide_png(document, request.slide_id)
+        rendered = export_service.render_slide_png(
+            document,
+            request.slide_id,
+            # The same authorized load an export does. A preview that drew
+            # placeholders where the export draws pictures would be a picture of a
+            # deck this product does not produce.
+            assets=asset_service.inline_for_render(
+                session, presentation_id=presentation_id, document=document
+            ),
+        )
     except export_service.ExportError as error:
         # 502: the renderer is a subprocess, and its failure is not the caller's
         # request being wrong.

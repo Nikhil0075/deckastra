@@ -26,6 +26,7 @@ import { buildPptx } from "@deckastra/export-pptx";
 
 import { RenderPool, renderPdfScene } from "./render";
 import { buildBrowserScene } from "./text-measurement";
+import { AssetLibrary, type InlineAsset } from "./assets";
 
 export type ExportKind = "pdf" | "pptx";
 
@@ -33,6 +34,14 @@ export interface ExportJob {
   kind: ExportKind;
   document: PresentationDocument;
   options: ExportOptions;
+  /**
+   * The deck's pictures, as bytes.
+   *
+   * Handed in rather than fetched: the render host has no session and no network
+   * (see `assets.ts`). Absent, every image in the deck exports as the renderer's
+   * labelled placeholder — which is what every export did before this existed.
+   */
+  assets?: InlineAsset[];
 }
 
 export interface ExportProgress {
@@ -63,6 +72,7 @@ export async function runExport(
   onProgress({ progress: 0, stage: "resolving", message: "Resolving slides" });
 
   const owned = pool ?? new RenderPool();
+  const library = new AssetLibrary(job.assets);
   try {
     return await owned.withPage(1, async (page) => {
     // Final measured scenes are shared with the adapter (doc 04 §32.1). An adapter
@@ -103,8 +113,10 @@ export async function runExport(
     });
 
     const artifact = await buildPdf(input, async ({ slideIds, atTime }) => {
-      const rendered = await renderPdfScene(scene, slideIds, atTime, page);
-      return rendered.bytes;
+      const rendered = await renderPdfScene(scene, slideIds, atTime, page, library);
+      // The warnings come back now, because whether a picture decoded is only
+      // known once the browser has tried — see `DocumentRenderResult`.
+      return { bytes: rendered.bytes, warnings: rendered.warnings };
     });
 
     onProgress({ progress: 1, stage: "done", message: "Done" });
@@ -158,5 +170,7 @@ export type {
   RenderResponse,
   RenderArtifact,
 } from "./render";
+export { AssetLibrary, MAX_INLINE_ASSET_BYTES, MAX_INLINE_TOTAL_BYTES, neededAssets } from "./assets";
+export type { InlineAsset } from "./assets";
 export { buildCriticReport } from "./critic-report";
 export type { CriticRenderReport, CriticSlideSignals } from "./critic-report";

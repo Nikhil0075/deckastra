@@ -219,6 +219,28 @@ def put_local(key: str, data: bytes, content_type: str) -> ObjectMetadata:
     return ObjectMetadata(bytes=len(data), content_type=meta["content_type"], etag=meta["etag"])
 
 
+def read(key: str) -> tuple[bytes, str]:
+    """The bytes and content type of a stored object, whichever backend holds it.
+
+    `read_local` answers only for an install with no object store, which was
+    enough while the only reader was the local blob route. A headless render
+    needs the bytes on **every** deployment — it has no session and no network,
+    so a picture it is not handed is a placeholder in the customer's PDF — and a
+    function that works on the desktop and silently does not in the cloud is the
+    worst shape that could take.
+    """
+    if local_root() is not None:
+        return read_local(key)
+
+    try:
+        result = _client().get_object(Bucket=bucket(), Key=key)
+        data = result["Body"].read()
+    except Exception as error:
+        raise ObjectStorageError("That object could not be read.") from error
+    content_type = str(result.get("ContentType") or "application/octet-stream")
+    return data, content_type
+
+
 def read_local(key: str) -> tuple[bytes, str]:
     """The bytes and content type of a locally stored object."""
     path = _local_path(key)

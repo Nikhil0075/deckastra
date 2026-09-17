@@ -35,6 +35,7 @@ import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine"
 import type { ExportWarning, FontSpec } from "@deckastra/export-core";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
 import { buildBrowserScene } from "./text-measurement";
+import { AssetLibrary, type InlineAsset } from "./assets";
 
 export type RenderFormat = "png" | "jpeg";
 
@@ -46,6 +47,14 @@ export interface RenderRequest {
   scale?: number;
   atTimeMs?: number | "final" | "initial";
   includeNotes?: boolean;
+  /**
+   * The pictures this deck cites, as bytes.
+   *
+   * The render host has no session and no network (`render-page.ts` aborts
+   * everything but `data:`), so an image it is not handed is an image it draws a
+   * placeholder for. See `assets.ts`.
+   */
+  assets?: InlineAsset[];
 }
 
 export interface RenderArtifact {
@@ -276,14 +285,27 @@ function beforeDeadline<T>(
  * decode. Neither throws, neither is visible in a log, and both are fixed by
  * waiting for the two things the browser can tell us about.
  */
-async function settle(page: RenderPage): Promise<void> {
-  await page.evaluate(async () => {
+async function settle(page: RenderPage): Promise<string[]> {
+  return page.evaluate(async () => {
     await globalThis.document.fonts.ready;
+
+    const failed: string[] = [];
     await Promise.all(
-      [...globalThis.document.images].map((image) =>
-        image.complete ? undefined : image.decode().catch(() => undefined),
-      ),
+      [...globalThis.document.images].map(async (image) => {
+        // Every image, not only the incomplete ones. A broken `src` — an asset
+        // the renderer was never handed, or bytes that are not a picture —
+        // reports `complete: true` with a zero natural width, so the old
+        // shortcut skipped precisely the images worth waiting on and captured
+        // the page with a blank box in it.
+        try {
+          await image.decode();
+        } catch {
+          failed.push(image.getAttribute("data-asset-id") ?? "");
+        }
+        if (image.naturalWidth === 0) failed.push(image.getAttribute("data-asset-id") ?? "");
+      }),
     );
+    return [...new Set(failed)].filter(Boolean);
   });
 }
 
@@ -295,6 +317,7 @@ export async function render(
 ): Promise<RenderResponse> {
   const startedAt = Date.now();
   const scale = request.scale ?? 1;
+  const library = new AssetLibrary(request.assets);
   return pool.withPage(scale, async (page) => {
     const scene = await buildBrowserScene(request.document, page);
     const wanted = request.slideIds ? new Set(request.slideIds) : undefined;
@@ -302,13 +325,14 @@ export async function render(
 
     const artifacts: RenderArtifact[] = [];
     const warnings: ExportWarning[] = [];
+    const undecodable: string[] = [];
     let metricsEstimated = false;
 
     for (const slide of slides) {
       if (sceneUsedEstimatedMetrics(slide)) metricsEstimated = true;
-      const html = slideHtml(slide, request.atTimeMs ?? "final", warnings);
+      const html = slideHtml(slide, request.atTimeMs ?? "final", warnings, library.resolve);
       await page.setContent(html, { waitUntil: "load" });
-      await settle(page);
+      undecodable.push(...(await settle(page)));
       const bytes = await page.screenshot({
         type: request.format === "jpeg" ? "jpeg" : "png",
         clip: { x: 0, y: 0, width: slide.width, height: slide.height },
@@ -319,6 +343,8 @@ export async function render(
         width: slide.width, height: slide.height,
       });
     }
+
+    warnings.push(...library.problems(slides, undecodable));
 
     return {
       artifacts, warnings, renderMs: Date.now() - startedAt,
@@ -340,11 +366,12 @@ export function slideHtml(
   slide: SlideScene,
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
 ): string {
   const markup = renderToStaticMarkup(
     // `mode="export"` excludes editor chrome structurally — the subtree is never
     // mounted, so no CSS override can put a selection handle in a customer's PDF.
-    createElement(SlideView, { scene: slide, mode: "export" as const }),
+    createElement(SlideView, { scene: slide, mode: "export" as const, resolveAssetUrl }),
   );
 
   return (
@@ -445,10 +472,12 @@ export async function renderPdf(
   slideIds: string[],
   atTime: number | "final" | "initial",
   pool: RenderPool,
+  assets?: InlineAsset[],
 ): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
+  const library = new AssetLibrary(assets);
   return pool.withPage(1, async (page) => {
     const scene = await buildBrowserScene(deck, page);
-    return renderPdfScene(scene, slideIds, atTime, page);
+    return renderPdfScene(scene, slideIds, atTime, page, library);
   });
 }
 
@@ -458,16 +487,17 @@ export async function renderPdfScene(
   slideIds: string[],
   atTime: number | "final" | "initial",
   page: RenderPage,
+  library: AssetLibrary = new AssetLibrary(),
 ): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
   const wanted = new Set(slideIds);
   const slides = scene.slides.filter((slide) => wanted.has(slide.slideId));
   const warnings: ExportWarning[] = [];
 
-  await page.setContent(deckHtml(slides, atTime, warnings), {
+  await page.setContent(deckHtml(slides, atTime, warnings, library.resolve), {
     waitUntil: "load",
   });
 
-  await settle(page);
+  warnings.push(...library.problems(slides, await settle(page)));
 
   const first = slides[0];
   const bytes = await page.pdf({
@@ -491,11 +521,12 @@ export function deckHtml(
   slides: SlideScene[],
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
 ): string {
   const pages = slides
     .map((slide) => {
       const markup = renderToStaticMarkup(
-        createElement(SlideView, { scene: slide, mode: "export" as const }),
+        createElement(SlideView, { scene: slide, mode: "export" as const, resolveAssetUrl }),
       );
       return (
         `<section class="deckastra-page" style="width:${slide.width}px;height:${slide.height}px">` +

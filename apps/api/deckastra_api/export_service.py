@@ -36,6 +36,7 @@ from typing import Any, Callable
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from . import assets as asset_service
 from . import processes
 from .db.models import ExportJob
 from .ids import new_id
@@ -160,9 +161,22 @@ def run_job(
     root.mkdir(parents=True, exist_ok=True)
     output = root / f"{job.id}.{job.kind}"
 
+    # The deck's pictures, loaded and authorized here rather than fetched by the
+    # renderer, which has no session and no network (see `assets.inline_for_render`).
+    # Without this an export of a deck with photographs arrives with a dashed
+    # placeholder wherever one should be — the failure that looks like success.
+    assets = asset_service.inline_for_render(
+        session, presentation_id=job.presentation_id, document=document
+    )
+
     try:
         outcome = _invoke_worker(
-            job.kind, document, output, job.options_json or {}, should_cancel=should_cancel
+            job.kind,
+            document,
+            output,
+            job.options_json or {},
+            should_cancel=should_cancel,
+            assets=assets,
         )
     except ExportCancelled:
         # Nothing to publish: a file from a render the user stopped is a file they
@@ -470,6 +484,7 @@ def _invoke_worker(
     options: dict[str, Any],
     timeout: int | None = None,
     should_cancel: "Callable[[], bool] | None" = None,
+    assets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run the TypeScript exporter and read its answer."""
 
@@ -482,11 +497,23 @@ def _invoke_worker(
         json.dump(document, handle)
         document_path = handle.name
 
+    # Base64 images, by the same argument and more so — a deck of photographs is
+    # tens of megabytes, and that is exactly the pipe write a child reading its
+    # invocation cannot drain.
+    assets_path: str | None = None
+    if assets:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".assets.json", delete=False, encoding="utf-8"
+        ) as handle:
+            json.dump(assets, handle)
+            assets_path = handle.name
+
     invocation = json.dumps(
         {
             "kind": kind,
             "output": str(output),
             "documentPath": document_path,
+            **({"assetsPath": assets_path} if assets_path else {}),
             "options": options,
         }
     )
@@ -534,6 +561,11 @@ def _invoke_worker(
                     raise ExportError(f"The export did not finish within {limit}s.")
     finally:
         Path(document_path).unlink(missing_ok=True)
+        # The asset payload is the larger of the two and holds real image bytes;
+        # leaving it behind would put a copy of every exported picture in the
+        # temp directory.
+        if assets_path:
+            Path(assets_path).unlink(missing_ok=True)
 
     class _Finished:
         pass
@@ -600,7 +632,11 @@ def _png_size(image: bytes) -> tuple[int, int]:
 
 
 def render_slide_png(
-    document: dict[str, Any], slide_id: str, *, at_time: str = "final"
+    document: dict[str, Any],
+    slide_id: str,
+    *,
+    at_time: str = "final",
+    assets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """One slide as a PNG, through the same worker an export uses.
 
@@ -628,6 +664,7 @@ def render_slide_png(
             output,
             {"slideIds": [slide_id], "scale": scale, "atTime": at_time},
             timeout=PREVIEW_TIMEOUT_SECONDS,
+            assets=assets,
         )
         image = output.read_bytes()
         pixels = _png_size(image)
@@ -641,6 +678,9 @@ def render_slide_png(
             "slide_width": int(answer.get("width") or 0),
             "slide_height": int(answer.get("height") or 0),
             "metrics_estimated": bool(answer.get("metricsEstimated")),
+            # An agent looking at its own change has to be able to tell a picture
+            # it could not load from a picture that is not there.
+            "warnings": answer.get("warnings") or [],
         }
     finally:
         # A preview is not an artifact anyone downloads later; the bytes go back

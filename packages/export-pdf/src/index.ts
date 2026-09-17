@@ -28,6 +28,7 @@ import {
   type ExportCapability,
   type ExportInput,
   type ExportResult,
+  type ExportWarning,
 } from "@deckastra/export-core";
 
 /**
@@ -63,7 +64,21 @@ export const PDF_CAPABILITIES: ExportCapability = {
 export type DocumentRenderer = (input: {
   slideIds: string[];
   atTime: "final" | "initial" | number;
-}) => Promise<Uint8Array>;
+}) => Promise<Uint8Array | DocumentRenderResult>;
+
+/**
+ * What a renderer found while drawing, beside the bytes.
+ *
+ * The bytes alone were enough while everything a PDF degraded was decided
+ * *before* the render — a dropped slide, a frozen animation, a substituted font.
+ * Embedded images are not: whether a picture actually decoded is known only once
+ * the browser has tried, and a report that cannot carry that finding is a report
+ * that says an export succeeded while the file has a dashed placeholder in it.
+ */
+export interface DocumentRenderResult {
+  bytes: Uint8Array;
+  warnings?: ExportWarning[];
+}
 
 export interface PdfArtifact {
   bytes: Uint8Array;
@@ -131,10 +146,14 @@ export async function buildPdf(
     renderable.push(slideId);
   }
 
-  const bytes =
+  const rendered =
     renderable.length > 0
       ? await renderDocument({ slideIds: renderable, atTime })
       : new Uint8Array();
+  const bytes = rendered instanceof Uint8Array ? rendered : rendered.bytes;
+  if (!(rendered instanceof Uint8Array)) {
+    for (const warning of rendered.warnings ?? []) ledger.record(warning);
+  }
 
   for (const font of input.fontManifest) {
     if (font.available) continue;

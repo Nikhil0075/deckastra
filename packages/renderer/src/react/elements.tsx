@@ -281,6 +281,11 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
         <img
           src={src}
           alt={payload.altText ?? ""}
+          // Which asset this is, readable from the page. A headless render waits
+          // for every image to decode before it captures, and a decode that fails
+          // has to be reported as *this picture* rather than as a data URL nobody
+          // can read back to an id.
+          data-asset-id={payload.assetId}
           style={{
             width: "100%",
             height: "100%",

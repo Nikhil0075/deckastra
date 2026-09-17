@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/*.browser.test.ts\"",
     "test:watch": "vitest",
-    "test:browser": "vitest run tests/browser-measurement.browser.test.ts"
+    "test:browser": "vitest run .browser.test.ts"
   },
   "dependencies": {
     "@deckastra/animation-engine": "*",

@@ -1924,19 +1924,96 @@ diagram now, on the same 120px left margin the headline uses. That is what
 added and was right, and the line said nothing about the picture landing on top of
 a box.
 
-There is no resolver in a headless render, so what the baselines record is the
-labelled placeholder with its alt text — which is exactly what an export produces
-today, and therefore the honest thing to pin. **Exports still draw that
-placeholder rather than the picture**: `apps/worker` passes no `resolveAssetUrl`
-either, so a PDF of a deck with photographs has dashed boxes where they should be.
-That is the next piece of this, and it is a different problem from the editor's —
-the worker has no session and no browser origin to authenticate against, so it
-needs the bytes handed to it rather than a URL.
+The pixel baselines record the **labelled placeholder** with its alt text, and
+that is deliberate rather than a gap: a baseline render supplies no bytes, so the
+placeholder is exactly what that render produces, and pinning a picture there
+would pin something the gate never draws.
 
 `win32-x64.json` is re-recorded. **`linux-x64.json` is still unrecorded** and now
 two slides behind — `animation/3` from D4.1 and this one — so CI's pixel job stays
 red until someone commits `linux-x64.json.computed` from a failing run's
-artifacts.
+artifacts. It has to come from a reviewed Linux run: Linux rasterisation cannot be
+recorded on a Windows machine, and deriving it from the Windows hashes would be a
+gate comparing against a number nobody has looked at.
+
+### An export gets the bytes, because it cannot go and get them (D5.7)
+
+The editor drew pictures and **every export still drew the placeholder**: a PDF of
+a deck of photographs arrived with dashed boxes in it, and nothing said so. The
+job reported success, because from the job's point of view nothing failed.
+
+The editor's fix does not carry over, and the reason is the whole design here.
+`useAssetUrls` answers either a same-origin path the desktop proxy authenticates,
+or an object URL fetched with a bearer. **The render host has neither, and cannot
+be given either**: it has no session, no browser origin, and no network at all —
+`render-page.ts` aborts every request that is not a `data:` URL, because a
+document that could make the render host fetch a URL is an SSRF primitive as well
+as a source of nondeterminism. That rule is not relaxed for images; the bytes are
+handed *in*, as `data:` URLs, which is the one scheme already allowed.
+
+**Authorization therefore happens on the API side, not the renderer's**
+(`assets.inline_for_render`). It reads the deck's cited assets scoped to the
+**presentation's own workspace**, so a document naming an id from somewhere else
+resolves to nothing — the same answer a stranger's read gets, and the reason a
+deck moved without its files (D5.5) cannot quietly keep reading them. Both callers
+go through it: `run_job` for exports and the preview route for `slide_preview`,
+because a preview that drew placeholders where the export draws pictures would be
+a picture of a deck this product does not produce.
+
+Four things there are load-bearing:
+
+- **A reason travels instead of an omission.** An asset that is too large, stored
+  as something other than an image, or whose bytes could not be read comes back as
+  an entry carrying `problem` rather than being left out. "This file is too big to
+  embed" and "this deck cites an asset that does not exist" are different things
+  to tell a person and a missing entry cannot tell them apart. One unreadable file
+  degrades one picture; it does not fail the export of the other thirty-nine
+  slides.
+- **The payload is bounded twice, and checked again downstream.** A data URL is
+  base64 in an HTML string Chromium parses in one go, so it is memory in three
+  places at once. The API refuses to *read* an oversized file at all, and
+  `AssetLibrary` (`apps/worker/src/assets.ts`) re-checks type, encoding and size
+  on arrival — the caller today is our own API, and a resolver that will build a
+  `data:` URL out of whatever it is handed is one malformed row away from putting
+  arbitrary content into a customer's PDF. The budget is charged at the larger of
+  the row's recorded size and the bytes actually read, because a budget spent on
+  whichever number happens to be smaller does not bound anything.
+- **Decoding is awaited, and a failure is attributed.** `settle()` used to skip
+  any image reporting `complete`, which is precisely what a broken `src` reports —
+  so it waited on exactly the images that did not need waiting on. It now decodes
+  every one and reads `data-asset-id` back off the element, so "this picture did
+  not draw" names the picture. Supplied and accepted is not the same as drawn: a
+  truncated upload passes every check on our side and produces a blank box.
+- **Whatever is not drawn reaches the report.** Doc 04 §32.2 requires the user to
+  see what was degraded before they download, so each undrawable asset is one
+  warning under `asset:<id>` — per asset, because `DegradationLedger` deduplicates
+  on feature and action and a single `image` feature would collapse four missing
+  pictures into one line naming one of them. The PDF renderer hands warnings back
+  with its bytes (`DocumentRenderResult`) for the same reason: whether a picture
+  decoded is known only *after* the browser has tried, and a report that could not
+  carry that finding would say an export succeeded while the file has a dashed box
+  in it.
+
+**The gate is pixels, not the absence of errors** — the one assertion that could
+not be satisfied by a resolver returning `undefined` and a report staying quiet.
+`apps/worker/tests/assets.browser.test.ts` renders the `technical` fixture's image
+slide in real Chromium with a generated solid-colour PNG supplied, reads the
+colour back out of the artifact through a canvas, and then renders the same slide
+**without** the bytes as the control: the placeholder must not be that colour, and
+the report must name the asset. Verified by breaking it — with the payload removed
+the point reads 30, not 255.
+
+Fixing this also turned up four browser tests that had not run since the editor
+was extracted: `apps/worker/tests/editor-browser.js` still imported
+`../../web/lib/measurer`, which moved to `packages/editor-ui` in D0.2, so every
+digest-parity case in that suite was failing to *build* rather than to compare.
+`test:browser` now runs every `*.browser.test.ts` rather than naming one file.
+
+**Not done, and not claimed:** PPTX still drops images — `shapes.ts` routes them
+to `unsupported` and says so in its report, which is the adapter's limitation
+rather than the renderer's, and unchanged by this. Nothing streams: a deck whose
+images exceed the per-render total gets the pictures that fit and a named warning
+for the rest.
 
 ### Pulling a workspace down, and why push could not come first (D5.6)
 

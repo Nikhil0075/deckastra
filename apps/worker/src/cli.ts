@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { runExport, type ExportKind } from "./index";
+import type { InlineAsset } from "./assets";
 import { RenderPool, render } from "./render";
 
 interface Invocation {
@@ -36,6 +37,13 @@ interface Invocation {
   /** The document, inline or as a path — a 60-slide deck is large for an argv. */
   document?: unknown;
   documentPath?: string;
+  /**
+   * The deck's pictures, as base64 bytes — via a file for the same reason the
+   * document is. A render host has no session and no network, so an image it is
+   * not handed is an image it draws a placeholder for (`assets.ts`).
+   */
+  assets?: InlineAsset[];
+  assetsPath?: string;
   options?: Record<string, unknown>;
 }
 
@@ -48,6 +56,10 @@ async function main(): Promise<void> {
     : invocation.document;
 
   if (!document) throw new Error("no document was supplied");
+
+  const assets: InlineAsset[] = invocation.assetsPath
+    ? (JSON.parse(readFileSync(invocation.assetsPath, "utf8")) as InlineAsset[])
+    : (invocation.assets ?? []);
 
   if (invocation.kind === "png") {
     const options = (invocation.options ?? {}) as {
@@ -64,6 +76,7 @@ async function main(): Promise<void> {
           ...(options.slideIds ? { slideIds: options.slideIds } : {}),
           ...(options.scale ? { scale: options.scale } : {}),
           atTimeMs: options.atTime ?? "final",
+          assets,
         },
         pool,
       );
@@ -80,6 +93,9 @@ async function main(): Promise<void> {
           width: artifact.width,
           height: artifact.height,
           metricsEstimated: rendered.metricsEstimated,
+          // Surfaced rather than swallowed: a preview with a dashed box where a
+          // photograph should be is the failure that looks like success.
+          warnings: rendered.warnings,
         }),
       );
       return;
@@ -93,6 +109,7 @@ async function main(): Promise<void> {
       kind: invocation.kind,
       document: document as never,
       options: (invocation.options ?? {}) as never,
+      assets,
     },
     (progress) => {
       // stderr, one object per line. stdout stays a single JSON value so the

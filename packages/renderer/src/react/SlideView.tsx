@@ -75,6 +75,9 @@ export function SlideView({
           <img
             src={resolveAssetUrl?.(background.assetId)}
             alt=""
+            // See `elements.tsx`: a headless render attributes a failed decode
+            // to an asset by reading this back off the page.
+            data-asset-id={background.assetId}
             style={{
               width: "100%",
               height: "100%",
