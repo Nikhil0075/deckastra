@@ -156,3 +156,22 @@ def supports_row_locks(session: Session) -> bool:
     on it, instead of being a clause that reads as protection and is not.
     """
     return session.get_bind().dialect.name == "postgresql"
+
+
+def ensure_physical_transaction(session: Session) -> None:
+    """Make sure a real transaction is open before a savepoint is taken.
+
+    sqlite3's legacy transaction mode does not issue a `BEGIN` for a SELECT or a
+    SAVEPOINT, so a savepoint taken outside one is released straight to disk —
+    the write survives even if the request afterwards rolls back, which is the
+    opposite of what a savepoint is for. PostgreSQL is already in a transaction
+    by the time any of this runs and this is a no-op there.
+
+    Call it before every `session.begin_nested()` that must be undoable.
+    """
+    connection = session.connection()
+    if (
+        connection.dialect.name == "sqlite"
+        and not connection.connection.driver_connection.in_transaction
+    ):
+        connection.exec_driver_sql("BEGIN")

@@ -201,6 +201,25 @@ export async function runSmoke(
   }
 
   record.memory = memoryReport();
+
+  // **Stop the service before exiting, because `app.exit()` will not.** Electron
+  // skips `before-quit` and `will-quit` entirely on `exit()`, and those are where
+  // the sidecar is shut down — so every smoke step orphaned its Python child,
+  // which then held the database file, the port and the single-instance lock. An
+  // independent run (2026-09-17) hit exactly that: the verify step wrote its
+  // record and closed its window, and the next step could not start because the
+  // previous one's processes were still there.
+  //
+  // The window is written down rather than swallowed: a step that could not
+  // release its service is a step whose result the next one should not trust.
+  try {
+    await controls.stopService();
+    record.serviceStopped = true;
+  } catch (error) {
+    record.serviceStopped = false;
+    record.serviceStopError = error instanceof Error ? error.message : String(error);
+  }
+
   record.finishedAt = new Date().toISOString();
   await writeFile(join(dir, `${current}.json`), JSON.stringify(record, null, 2), "utf8");
   app.exit(record.ok ? 0 : 1);
@@ -827,19 +846,65 @@ async function runMorph(window: BrowserWindow, record: Record<string, unknown>):
     throw new Error("Present mode did not open.");
   }
 
-  // Forward to the morph, which the harness put last.
+  // **Walk to the boundary rather than assuming two presses reach it.** This
+  // used to fire ArrowRight twice and start sampling, on the reasoning that the
+  // morph is the last slide of the fixture. An independent run (2026-09-17)
+  // found it standing on slide 2 — "Revealed on click" — because in present mode
+  // ArrowRight advances a *click segment* first, so both presses were spent on
+  // that slide's reveals and the morph gate then ran against a slide with no
+  // morph on it. It failed rather than passing falsely, which is the one good
+  // thing about it, and it still verified nothing.
+  //
+  // So: press until the index actually moves to the slide before the last one,
+  // and read where we are from the DOM instead of counting keystrokes.
+  const here = `(() => {
+    const root = document.querySelector("[data-present-slide-id]");
+    if (!root) return null;
+    return {
+      id: root.getAttribute("data-present-slide-id"),
+      index: Number(root.getAttribute("data-present-slide-index")),
+      count: Number(root.getAttribute("data-present-slide-count")),
+      transition: root.getAttribute("data-present-slide-transition"),
+    };
+  })()`;
+
+  type Where = { id: string; index: number; count: number; transition: string };
+  const at = async (): Promise<Where> => {
+    const where = (await window.webContents.executeJavaScript(here)) as Where | null;
+    if (!where) throw new Error("Present mode exposes no slide id; the harness cannot say where it is.");
+    return where;
+  };
+
   const press = `(() => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
     return true;
   })()`;
-  await window.webContents.executeJavaScript(press);
+
+  let where = await at();
+  const source = where.count - 2;
+  if (source < 0) throw new Error("This deck has too few slides to have a transition to watch.");
+
+  // Bounded: a deck whose reveals never run out would otherwise loop forever,
+  // and "we pressed forty times and went nowhere" is a better report than a
+  // hung harness.
+  for (let press_ = 0; press_ < 60 && where.index < source; press_ += 1) {
+    await window.webContents.executeJavaScript(press);
+    await new Promise((done) => setTimeout(done, 250));
+    where = await at();
+  }
+  record.walkedToSlide = where;
+  if (where.index !== source) {
+    throw new Error(
+      `Could not reach slide ${source + 1}: still on ${where.index + 1} of ${where.count} (${where.id}).`,
+    );
+  }
+
+  // Settle whatever the arriving transition was doing before the one under test.
   await new Promise((done) => setTimeout(done, 900));
 
   // Sampling starts in the same tick as the keypress: the transition is 600ms,
   // and a first look taken after it has finished proves nothing.
   const samples = await window.webContents.executeJavaScript(`(async () => {
-    const stage = () => document.querySelector("[data-present-stage]");
-    const slides = () => document.querySelectorAll("[data-present-stage], [data-present-stage] ~ *").length;
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
 
     const started = performance.now();
@@ -864,6 +929,22 @@ async function runMorph(window: BrowserWindow, record: Record<string, unknown>):
     }
     return seen;
   })()`);
+
+  // Where the press actually took us. A morph gate that never crossed into the
+  // morph is the failure this whole rewrite exists to make impossible.
+  const destination = await at();
+  record.morphInto = destination;
+  if (destination.index !== source + 1) {
+    throw new Error(
+      `The press did not advance the deck: still on slide ${destination.index + 1} (${destination.id}).`,
+    );
+  }
+  if (destination.transition !== "morph") {
+    throw new Error(
+      `Slide ${destination.index + 1} is entered by a "${destination.transition}" transition, not a morph. ` +
+        "This gate was watching the wrong boundary.",
+    );
+  }
 
   const frames = samples as { at: number; t: number; moving: unknown[] }[];
   const movedAt = frames.filter((s) => s.moving.length > 0);

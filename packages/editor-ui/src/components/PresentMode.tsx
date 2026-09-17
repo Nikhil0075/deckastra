@@ -361,7 +361,23 @@ export function PresentMode({
   );
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000" }}>
+    <div
+      style={{ position: "fixed", inset: 0, background: "#000" }}
+      // Which slide is on screen, readable from outside the React tree. The
+      // acceptance harness drives present mode through real key events and had
+      // no way to check where it had arrived: two ArrowRights were assumed to
+      // reach slide 4 and actually spent themselves on slide 2's click reveals,
+      // so a morph gate ran against a slide with no morph on it. A harness that
+      // cannot say which slide it is looking at is a harness making a claim
+      // about a slide it never saw.
+      data-present-slide-id={slide.slideId}
+      data-present-slide-index={index}
+      data-present-slide-count={slides.length}
+      // How the deck moved *into* this slide, which is the thing a transition
+      // gate is actually about. Without it a harness can only guess which
+      // boundary it is standing on.
+      data-present-slide-transition={slide.transition?.type ?? "none"}
+    >
       <div
         ref={containerRef}
         className={idle ? "present-idle" : undefined}

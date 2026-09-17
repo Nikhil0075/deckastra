@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from . import sync
 from .db.models import Presentation, PresentationVersion, TransactionRow
+from .db.session import ensure_physical_transaction
 from .ids import new_id
 from .patch import PatchError, apply_patch
 
@@ -303,12 +304,7 @@ def commit_transaction(
     # when the caller omitted its optional expected-version token. A savepoint
     # removes the losing candidate/history if the caller catches the conflict
     # and commits other work in its outer transaction.
-    connection = session.connection()
-    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
-        # sqlite3's legacy transaction mode does not BEGIN on SELECT/SAVEPOINT.
-        # Without an actual outer transaction, releasing the savepoint commits
-        # the write even if the request subsequently rolls back.
-        connection.exec_driver_sql("BEGIN")
+    ensure_physical_transaction(session)
     with session.begin_nested():
         version_id = new_id("ver")
         session.add(

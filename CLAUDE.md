@@ -2110,6 +2110,78 @@ unbuilt, so nothing this pulls can be sent back yet; assets are not pulled with
 their decks; and a deck that changed on both sides has no reconcile path from a
 bootstrap, only the local one D5.3 built.
 
+### Three things an independent test run found (2026-09-17)
+
+A review pass over `8c376bf` ran the suites, built a fresh package and drove the
+installed app. Its automated gates were green; **everything it found, it found by
+running things in parallel or by reading what a harness actually did** — which is
+the pattern worth noting more than the three bugs.
+
+**A first sign-in races itself.** Two concurrent `POST /v1/dev/session` calls for
+one identity both read no user and both inserted one, and `users.email`'s unique
+index refused the loser with an `IntegrityError` that reached the caller as a 500.
+The tempting reading is "a dev route, under an unrealistic load"; it is neither.
+`provision_personal_account` is what real sign-in provisions through, and a person
+double-clicking a sign-in button is this case exactly.
+
+The read is an optimisation and **the index is the authority**, so the insert is
+now taken inside a savepoint and a collision loses the race rather than the
+request: the savepoint rolls back, the winner's row is read, and the loser
+continues down the existing-user path into the winner's workspace. The savepoint
+is what makes that possible at all — once a statement fails, SQLAlchemy will not
+run another on that connection until something rolls back, so catching the
+violation around a plain flush would hand the caller a session nothing else can
+use. Retrying the insert would have been the wrong repair: it satisfies every
+assertion about status codes while giving one person two personal workspaces, and
+they find out when a deck they made answers 404 from the other one.
+`test_signin_race.py` forces the interleaving with a barrier and fails on the old
+code with the reported error; `ensure_physical_transaction` (`db/session.py`) is
+`store.commit_transaction`'s SQLite `BEGIN` rule, extracted so both savepoints
+obey it.
+
+**The morph gate had never seen a morph.** `runMorph` fired ArrowRight twice and
+began sampling, on the reasoning that the morph is the fixture's last slide. In
+present mode ArrowRight advances a **click segment** first, so both presses were
+spent on slide 2's reveals and the gate then looked for movement on a slide that
+has none. It failed rather than passing falsely, which is the one good thing about
+it, and it verified nothing for the whole of D4.
+
+A harness driving a UI through real key events has to be able to say **where it
+arrived**, and this one could not: present mode exposed no slide identity at all.
+It now carries `data-present-slide-id` / `-index` / `-count` / `-transition` on
+its root, and the harness walks forward until the index actually reaches the slide
+before the last, then asserts after the sampling press that the deck advanced
+*and* that the slide it advanced into is entered by a `morph`. Watching the wrong
+boundary is now an error with the boundary's name in it.
+
+Measured on a fresh profile once it could reach the morph: both paired elements
+translate from `-140px 210px` and `1300px -580px`, **37 sampled frames of
+movement over 615ms**, settled during sampling, nothing displaced afterwards.
+That is the first time this gate has observed the thing it is named after.
+
+One more thing that run exposed, and it is not a product bug: the deck an install
+opens is seeded from the animation fixture on **first launch only**, so a profile
+created before D4.1 added the morph slide still has a three-slide copy. The
+harness now says so by name instead of testing whatever it found.
+
+**`app.exit()` skips the shutdown.** Electron does not emit `before-quit` or
+`will-quit` for it, and `before-quit` is where the sidecar is stopped — so every
+smoke step orphaned its Python child, which then held the database file, the port
+and the single-instance lock, and the next step could not start. The step stops
+the service itself before exiting now and records whether it managed to, because a
+step that could not release its service is one whose result the next step should
+not trust. Verified: `serviceStopped: true`, exit 0, and no Electron or service
+process left behind.
+
+**And one environment-dependent failure that was hiding a weak test.**
+`test_launch.py`'s sweep case configured no asset backend, so
+`object_storage.delete` reached for MinIO on `localhost:9000` and the test failed
+on any machine without docker. Pointing it at a local directory is not just a way
+to make the failure go away — the sweeper deletes *bytes*, and against an S3
+endpoint with nothing listening it could never have checked they were gone. It
+writes a real file now and asserts the file is missing afterwards. The S3 delete
+path stays untested, as it always was.
+
 ### A missing capability is absent, not broken
 
 A packaged-runtime check (2026-09-10) caught the editor showing a Share heading,

@@ -32,11 +32,12 @@ from typing import Any
 import jwt
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import local_mode
 from .db.models import AuthIdentity, Presentation, Project, User, Workspace, WorkspaceMember
-from .db.session import get_session
+from .db.session import ensure_physical_transaction, get_session
 from .ids import new_id
 
 
@@ -182,17 +183,24 @@ def _decode_oidc_token(token: str) -> ExternalClaims:
     )
 
 
-def provision_personal_account(
-    session: Session, *, email: str, name: str | None = None
+def _insert_personal_account(
+    session: Session, normalized_email: str, display_name: str
 ) -> tuple[User, Workspace, Project]:
-    """Create the personal workspace/project journey once for a new identity."""
-    normalized = email.strip().casefold()
-    user = session.scalar(select(User).where(User.email == normalized))
-    if user is None:
-        display_name = (name or normalized.split("@", 1)[0]).strip()[:200]
-        user = User(id=new_id("usr"), email=normalized, name=display_name)
-        session.add(user)
+    """Insert the four rows a new identity needs.
 
+    Inside a savepoint, and that is the load-bearing part rather than a detail:
+    once a statement fails, SQLAlchemy will not run another on that connection
+    until something rolls back, so catching the unique-index violation around a
+    plain flush would leave the caller holding a session nothing else can use.
+    The savepoint is rolled back on the way out, so the caller can go straight on
+    to read the row that beat it.
+
+    Raises `IntegrityError` when another request provisioned this identity first.
+    """
+    ensure_physical_transaction(session)
+    with session.begin_nested():
+        user = User(id=new_id("usr"), email=normalized_email, name=display_name)
+        session.add(user)
         workspace = Workspace(
             id=new_id("wsp"), name=f"{display_name}'s workspace", owner_id=user.id
         )
@@ -213,8 +221,46 @@ def provision_personal_account(
         )
         session.add(project)
         session.flush()
-        return user, workspace, project
+    return user, workspace, project
 
+
+def provision_personal_account(
+    session: Session, *, email: str, name: str | None = None
+) -> tuple[User, Workspace, Project]:
+    """Create the personal workspace/project journey once for a new identity.
+
+    **The read is an optimisation; `users.email` is the authority.** Two first
+    sign-ins for one identity arriving together both read no user and both insert
+    one, and the unique index then refuses the second with an `IntegrityError` —
+    which reached the caller as a 500 on a request that had done nothing wrong.
+    Found by an independent test run driving two parallel dev sign-ins
+    (2026-09-17); it is not specific to the dev route, because real sign-in
+    provisions through this same function and a person clicking twice is the
+    ordinary case.
+
+    So the insert is taken inside a savepoint and a collision **loses the race
+    rather than the request**: the savepoint is rolled back, the winner's row is
+    read, and this caller continues down the existing-user path to the workspace
+    and project the winner created. Retrying the whole insert would be the wrong
+    repair — it would make a *second* workspace for one person, and they would
+    not find out until a deck they created answered 404.
+    """
+    normalized = email.strip().casefold()
+    user = session.scalar(select(User).where(User.email == normalized))
+    if user is None:
+        display_name = (name or normalized.split("@", 1)[0]).strip()[:200]
+        try:
+            return _insert_personal_account(session, normalized, display_name)
+        except IntegrityError:
+            # Somebody else got there between the read and the insert. Their rows
+            # stand; ours went with the savepoint. Read theirs and carry on down
+            # the existing-user path below.
+            user = session.scalar(select(User).where(User.email == normalized))
+            if user is None:
+                # The unique index refused an insert for an email that is not
+                # there. That is not a race, and swallowing it would turn a real
+                # fault into a confusing one somewhere further along.
+                raise
     membership = session.scalar(
         select(WorkspaceMember)
         .where(WorkspaceMember.user_id == user.id)

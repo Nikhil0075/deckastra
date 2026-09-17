@@ -30,6 +30,15 @@ from deckastra_api.db import session as db_session  # noqa: E402
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'launch.db'}")
     monkeypatch.setenv("DECKASTRA_DEV_SECRET", "test-secret")
+    # A local asset directory, which is what a desktop install has. Without it
+    # `object_storage` falls through to its S3 backend and the sweeper's delete
+    # reaches for MinIO on localhost:9000 — so the reclamation test failed on any
+    # machine without docker running (found by an independent run, 2026-09-17).
+    # Pointing it at a real directory is not merely a way to make the failure go
+    # away: the sweeper deletes *bytes*, and against S3-with-nothing-listening it
+    # could never have checked that they were gone. The S3 delete path stays
+    # untested here, as it always was.
+    monkeypatch.setenv("DECKASTRA_ASSET_DIR", str(tmp_path / "assets"))
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
     db_session.reset_engine()
@@ -418,8 +427,15 @@ def test_an_asset_nothing_references_is_a_candidate_not_a_corpse(client, auth):
 
 
 def test_an_old_unreferenced_asset_is_swept_and_its_bytes_reclaimed(client, auth):
-    from deckastra_api import assets
+    from deckastra_api import assets, object_storage
     from deckastra_api.db.models import Asset, WorkspaceMember
+
+    # Real bytes behind the row, because "reclaimed" is a claim about a file. The
+    # row alone only ever proved that the number the sweeper computed matched the
+    # number it was told, which is arithmetic rather than cleanup.
+    object_storage.put_local("uploads/old.png", b"x" * 4096, "image/png")
+    stored = object_storage.local_root() / "uploads/old.png"
+    assert stored.is_file()
 
     with db_session.session_scope() as session:
         workspace_id = session.query(WorkspaceMember).first().workspace_id
@@ -448,6 +464,9 @@ def test_an_old_unreferenced_asset_is_swept_and_its_bytes_reclaimed(client, auth
 
     with db_session.session_scope() as session:
         assert session.get(Asset, asset_id) is None
+    # And the bytes are actually gone from disk, which is the whole point of the
+    # grace period expiring.
+    assert not stored.exists()
 
 
 def test_an_asset_a_document_cites_is_never_swept(client, auth, deck):
