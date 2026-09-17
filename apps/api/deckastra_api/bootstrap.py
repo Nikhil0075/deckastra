@@ -113,7 +113,19 @@ def adopt(
         report.workspaces.append(workspace_id)
 
         for project in described.get("projects") or []:
-            _adopt_project(session, project, workspace_id=workspace_id, report=report)
+            problem = _adopt_project(
+                session, project, workspace_id=workspace_id, report=report
+            )
+            if problem:
+                # Refused, so nothing goes in it — and the return value is *read*
+                # now. It used to be appended to the report and dropped, so a
+                # project this device already had in a local workspace was
+                # refused and then filled with the server's decks anyway: the
+                # takeover the workspace guard exists to prevent, one level down
+                # and through the door beside it (found by review, 2026-09-17).
+                report.refused.append(problem)
+                continue
+
             if pull_decks:
                 _pull_decks(
                     session,
@@ -178,7 +190,12 @@ def _adopt_workspace(
 
 def _adopt_project(
     session: Session, described: dict[str, Any], *, workspace_id: str, report: BootstrapReport
-) -> None:
+) -> str | None:
+    """Create or refresh one mirrored project. Returns a refusal, or None.
+
+    A refusal rather than a report entry, because the caller has to *act* on it:
+    a project that was not adopted must not then be filled with decks.
+    """
     project_id = str(described["id"])
     existing = session.get(Project, project_id)
 
@@ -187,12 +204,12 @@ def _adopt_project(
             # A project cannot change workspace by being mirrored. Moving a deck
             # between workspaces is an explicit act with its own route and its own
             # refusals (D5.1); a pull is not one.
-            report.refused.append(
-                f"project {project_id} is already in another workspace on this device"
+            return (
+                f"project {project_id} is already in another workspace on this device, "
+                "so nothing was pulled into it"
             )
-            return
         existing.name = str(described.get("name") or existing.name)[:200]
-        return
+        return None
 
     session.add(
         Project(
@@ -208,6 +225,8 @@ def _adopt_project(
         )
     )
     session.flush()
+    report.projects_added += 1
+    return None
 
 
 def _local_user(session: Session, workspace_id: str) -> str | None:
@@ -314,6 +333,12 @@ class HttpRemote:
     request, and the first real deployment will be the first time it is exercised.
     """
 
+    #: One request per page. The route caps a page at 500; asking for that many
+    #: keeps an ordinary workspace to a single round trip.
+    PAGE = 500
+    #: A ceiling on the whole walk, so a misbehaving cursor cannot loop forever.
+    MAX_DECKS = 100_000
+
     def __init__(self, base_url: str, token: str, *, timeout: float = 30.0) -> None:
         self.base_url = base_url.rstrip("/")
         self._token = token
@@ -342,7 +367,36 @@ class HttpRemote:
         return self._get("/v1/account")
 
     def presentations(self, project_id: str) -> list[dict[str, Any]]:
-        return list(self._get(f"/v1/projects/{project_id}/presentations")["presentations"])
+        """Every deck in the project, not the first page of them.
+
+        This read the route's default and stopped at 200 without saying so, so a
+        project with more decks than that mirrored a prefix and looked complete
+        (found by review, 2026-09-17). A bootstrap that quietly leaves decks
+        behind is the worst kind of bug here: the person sees a workspace, sees
+        decks in it, and has no reason to think anything is missing.
+
+        Paged by id, which is the ordering that cannot shift under a reader —
+        somebody editing a deck while this walks moves it in `updated_at` order
+        and would skip or repeat it.
+        """
+        found: list[dict[str, Any]] = []
+        after = ""
+        while True:
+            page = self._get(
+                f"/v1/projects/{project_id}/presentations?limit={self.PAGE}&after={after}"
+            )
+            found.extend(page["presentations"])
+            cursor = page.get("next_after")
+            if not cursor:
+                return found
+            if len(found) > self.MAX_DECKS:
+                # A cursor that never ends means the server is answering
+                # something this client does not understand. Stopping with an
+                # error beats looping forever or mirroring half a workspace.
+                raise RemoteUnavailable(
+                    f"The server kept paging past {self.MAX_DECKS} decks in one project."
+                )
+            after = cursor
 
     def document(self, presentation_id: str) -> dict[str, Any]:
         return self._get(f"/v1/presentations/{presentation_id}")

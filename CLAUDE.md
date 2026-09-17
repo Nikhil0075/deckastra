@@ -1599,6 +1599,14 @@ loss:
   merge removed is then sent needlessly, which costs bytes once; the other way
   costs someone their image.
 
+A second review (2026-09-17) found the boundary still wrong in a fourth way, and
+it is the subtlest: **queue order is necessary and not sufficient.** Every change
+already waiting behind a refusal sits after it in the queue — and those were
+authored before anybody knew there was a conflict, so one of them cannot have
+incorporated a merge. Accepting it retired every change between it and the
+refusal. The real test is *time*, so `sync_outbox.refused_at` records when the
+server said no and a resolution must have been written after that.
+
 The resolving change's own row is spared, which is the older subtlety: superseding
 it would strand the reconciliation on this device, the exact failure the person
 just did the work to avoid. Retiring a queue needs editor rights — reading that a
@@ -1837,6 +1845,31 @@ destroying someone's local copy of work they may have authored is a bigger
 decision than a reconnect should make. A read that *fails* raises rather than
 returning nothing, because concluding "no workspaces" from a timeout would lock a
 person out of their own decks because their network was down.
+
+**Two bugs in the first cut of this, both found by review (2026-09-17) and both
+the same shape — a refusal that was recorded and not acted on.**
+
+`_adopt_project` refuses a project whose id this device already uses in another
+workspace, and the loop pulled its decks anyway: the return value was appended to
+the report and never read. So a server naming an id this machine already had
+would have had its decks imported straight into a **local** project — the
+takeover the workspace guard exists to prevent, one level down and through the
+door beside it. The refusal is now returned and the caller skips the pull.
+
+`HttpRemote.presentations` read the deck-list route's *default page* and stopped,
+so a project with more than 200 decks mirrored its first 200 and looked complete.
+That is the worst shape of bug this direction can have: the person sees a
+workspace, sees decks in it, and has no reason to think anything is missing. The
+route now takes an `after` cursor and answers `next_after` exactly when there may
+be more, so a caller loops while there is a cursor rather than comparing a count
+against a limit it has to remember — which is the comparison nobody makes.
+
+**That cursor pages by `id`, and the ordering change is the point.** The default
+listing is "most recently changed first", which is right for a picker reading one
+page and unusable for a reader walking every deck: editing a deck moves it to the
+front, so a walk in that order hands back the same deck twice and skips another.
+Ids never change. The default is untouched, because changing it to suit a sync
+reader would have made every deck list in the product answer in creation order.
 
 **Not done, and not claimed:** `HttpRemote` has never run against a live server,
 because there is no deployed Deckastra to point it at — what is tested is `adopt`,

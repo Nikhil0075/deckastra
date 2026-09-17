@@ -616,6 +616,7 @@ def preview_slide(
 def list_presentations(
     project_id: str,
     limit: int = 200,
+    after: str | None = None,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -627,16 +628,32 @@ def list_presentations(
     window and nothing else. A real Claude Code session found that and said so.
 
     Rows only. Listing a project must not cost a replay of every deck in it.
+
+    **`after` pages, and it changes the ordering on purpose.** Without a cursor
+    this stopped at the limit and said nothing, so a caller reading every deck —
+    a sync bootstrap, say — silently saw the first page and concluded that was
+    all of them (found by review, 2026-09-17). Paging by *id* rather than by
+    "most recently changed" is what makes that safe: ids never change, so a deck
+    edited while the pages are being read cannot jump between them or be skipped,
+    where `updated_at` reorders under a reader mid-walk. The default ordering is
+    unchanged for the UI, which wants recency and reads one page.
+
+    `next_after` is present exactly when there may be more, so a caller loops
+    while it is there rather than comparing counts against a limit it has to
+    remember.
     """
     resolve_project_access(session, user_id=principal.user_id, project_id=project_id)
-    rows = session.scalars(
-        select(Presentation)
-        .where(Presentation.project_id == project_id)
+    size = min(max(limit, 1), 500)
+
+    query = select(Presentation).where(Presentation.project_id == project_id)
+    if after is not None:
+        query = query.where(Presentation.id > after).order_by(Presentation.id)
+    else:
         # `id` breaks ties so two decks touched in the same instant keep one order.
-        .order_by(Presentation.updated_at.desc(), Presentation.id)
-        .limit(min(max(limit, 1), 500))
-    ).all()
-    return {
+        query = query.order_by(Presentation.updated_at.desc(), Presentation.id)
+
+    rows = session.scalars(query.limit(size)).all()
+    answer: dict[str, Any] = {
         "presentations": [
             {
                 "id": row.id,
@@ -647,6 +664,9 @@ def list_presentations(
             for row in rows
         ]
     }
+    if after is not None and len(rows) == size:
+        answer["next_after"] = rows[-1].id
+    return answer
 
 
 class MovePresentationRequest(BaseModel):

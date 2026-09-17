@@ -598,3 +598,55 @@ def test_the_pictures_a_merged_deck_still_needs_are_not_retired(client, diverged
         sync.drain(session, lambda outgoing: (sent.append(outgoing.kind), "ver")[1])
 
     assert "asset" in sent, "the bytes the merged deck still cites were retired"
+
+
+def test_a_change_authored_before_the_conflict_cannot_resolve_it(client):
+    """Found by review, 2026-09-17. The third way this boundary was wrong.
+
+    The first fix required the resolving change to sit *after the refused one in
+    the queue*. Every change queued behind a refusal satisfies that — including
+    the ones that were already waiting when the server said no. Those were
+    authored before anybody knew there was a conflict, so they cannot have
+    incorporated a merge, and accepting one as the resolution retires every change
+    between it and the refusal.
+
+    Built without the `diverged` fixture on purpose: that fixture drains first, so
+    anything written after it is genuinely later than the refusal. The case only
+    exists when the changes are queued **before** the drain that refuses one, which
+    is the ordinary shape of a device that worked offline and then reconnected.
+    """
+    me = sign_in(client, "queued-first@local")
+    project = a_syncing_workspace(client, me)
+    deck = a_deck(client, me, project)
+
+    # A day offline: three changes, none of which knows a conflict is coming.
+    retitle(client, me, deck, "One")
+    retitle(client, me, deck, "Two")
+    third = retitle(client, me, deck, "Three")
+    assert third.status_code == 200, third.text
+
+    theirs = copy.deepcopy(head_of(client, me, deck)["document"])
+    theirs["metadata"] = {**theirs["metadata"], "title": "Edited in the office"}
+
+    def send(outgoing: sync.Outgoing) -> str:
+        if outgoing.kind == "create":
+            return "ver_remote_1"
+        raise sync.SyncRefused(
+            "This deck changed on the server after that change was written.",
+            remote_version_id="ver_remote_7",
+            remote_document=theirs,
+        )
+
+    with db_session.session_scope() as session:
+        sync.drain(session, send)
+        assert sync.blocking_row(session, deck) is not None
+        # Two changes still waiting behind the refused one.
+        assert len(sync.pending_for(session, deck)) == 2
+
+    refused = reconcile(client, me, deck, third.json()["version_id"])
+
+    assert refused.status_code == 409, refused.text
+    assert "before the server refused" in refused.json()["detail"]
+    with db_session.session_scope() as session:
+        assert sync.blocking_row(session, deck) is not None
+        assert len(sync.pending_for(session, deck)) == 2

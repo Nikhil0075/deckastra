@@ -441,6 +441,7 @@ def drain(
                 # succeed by being tried again, and a queue that keeps trying is
                 # a queue that never tells anyone.
                 row.status = "blocked"
+                row.refused_at = moment
                 row.refused_reason = refusal.reason
                 row.remote_version_id = refusal.remote_version_id
                 row.remote_document_json = refusal.remote_document
@@ -624,6 +625,23 @@ def reconciled(
             "That version predates the change the server refused, so it cannot be "
             "the resolution. Merge the two versions, commit the result, and name "
             "that version instead."
+        )
+
+    # Queue order is necessary and not sufficient, which a review found the hard
+    # way (2026-09-17). *Every* change already waiting behind a refusal sits after
+    # it in the queue, and those were authored before anybody knew there was a
+    # conflict — so one of them cannot have incorporated a merge, and accepting it
+    # retires every change between it and the refusal. The real test is time.
+    refused_at = _aware(blocked.refused_at)
+    resolving_transaction = session.get(TransactionRow, resolving.transaction_id)
+    authored_at = _aware(
+        resolving_transaction.created_at if resolving_transaction else resolving.created_at
+    )
+    if refused_at is not None and authored_at is not None and authored_at <= refused_at:
+        raise NotAResolution(
+            "That change was written before the server refused anything, so it "
+            "cannot be the merge that resolves the conflict. Reconcile the two "
+            "versions, commit the result, and name the version that produced."
         )
 
     boundary = position(resolving)

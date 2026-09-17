@@ -515,3 +515,41 @@ def test_being_added_back_works(tmp_path, device):
         status = auth.membership_status(session, device["user_id"], workspace_id)
         assert status.state == "confirmed"
         assert status.authorizes
+
+
+def test_a_refused_project_takes_no_decks(tmp_path, device):
+    """Found by review, 2026-09-17.
+
+    `_adopt_project` refuses a project that already belongs to another workspace
+    on this device — and the loop pulled its decks anyway, because the refusal was
+    appended to the report and the return value was never read. So a server naming
+    an id this machine already uses would have had its decks imported straight
+    into a **local** project: exactly the takeover the workspace guard exists to
+    prevent, one level down and through the door beside it.
+    """
+    server = a_cloud_workspace(tmp_path, decks=2)
+
+    use_store(tmp_path, "device")
+    # The server names a project id this device already has, in its own local
+    # workspace.
+    claimed = server.account()
+    remote_project = claimed["workspaces"][0]["projects"][0]
+    summaries = server.presentations(remote_project["id"])
+    remote_project["id"] = device["project_id"]
+    server._account = claimed
+    server._presentations = {device["project_id"]: summaries}
+
+    with db_session.session_scope() as session:
+        report = bootstrap.adopt(session, server, user_id=device["user_id"])
+
+    assert any("another workspace" in one for one in report.refused)
+    assert report.decks_pulled == []
+
+    with db_session.session_scope() as session:
+        # The local project is untouched: still local, still empty of the
+        # server's decks.
+        project = session.get(Project, device["project_id"])
+        assert project.workspace_id == device["workspace_id"]
+        assert session.query(Presentation).count() == 0
+        # And nothing asked for a document, so it did not even reach across.
+        assert server.asked_for == []

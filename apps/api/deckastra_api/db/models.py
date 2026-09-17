@@ -972,6 +972,17 @@ class SyncOutboxRow(Base, TimestampMixin):
     #: change I called X is version Y over there".
     remote_version_id: Mapped[str | None] = mapped_column(String(64))
 
+    #: When the server refused it (D5.3), which is the boundary a resolution has
+    #: to sit after.
+    #:
+    #: Queue order is not enough, and that was a real bug: every change already
+    #: waiting behind a refusal sits after it in the queue, yet those were
+    #: authored before anyone knew there was a conflict and cannot have
+    #: incorporated a merge. Accepting one as the resolution retired every change
+    #: between it and the refusal (found by review, 2026-09-17). The test is
+    #: **time**: a resolution is a change made after the refusal happened.
+    refused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     #: Why the server refused this change, in its own words (D5.3). Separate from
     #: `last_error`, which is the transport failing and will be retried: this one
     #: will not be, and the distinction is the whole of divergence handling.
