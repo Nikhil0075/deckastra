@@ -43,6 +43,7 @@ import {
   presentation,
   presentationRelationships,
   rootRelationships,
+  imageBackground,
   slide as slidePart,
   slideLayout,
   slideLayoutRelationships,
@@ -53,6 +54,7 @@ import {
   theme,
 } from "./parts";
 import { shapeFor, type ShapeContext } from "./shapes";
+import { MediaRegistry } from "./media";
 import { timingFor, transitionFor } from "./timing";
 import { hex, unitsFor } from "./units";
 import { createZip, type ZipEntry } from "./zip";
@@ -99,6 +101,9 @@ export function buildPptx(input: ExportInput): PptxArtifact {
   const includeNotes = options.includeNotes === true;
   const entries: ZipEntry[] = [];
   const notesPerSlide: (string | undefined)[] = [];
+  // rId1 is the layout and rId2 the notes slide, so pictures start at 3.
+  const media = new MediaRegistry(input.images, 3);
+  const intrinsic = intrinsicSizes(document);
 
   ids.forEach((slideId, index) => {
     input.signal?.throwIfAborted();
@@ -129,7 +134,10 @@ export function buildPptx(input: ExportInput): PptxArtifact {
 
     if (sceneUsedEstimatedMetrics(scene)) ledger.noteEstimatedMetrics();
 
-    const { xmlBody, shapeIds } = shapesFor(scene, units, ledger, elementsById);
+    // Per slide, because a relationship id is unique within one `.rels` part.
+    media.startSlide();
+
+    const { xmlBody, shapeIds } = shapesFor(scene, units, ledger, elementsById, media, intrinsic);
 
     const timeline = compileTimeline(scene, (scene.animations ?? []) as AnimationTrack[], {
       // Full motion: PowerPoint has its own reduced-motion handling, and
@@ -146,7 +154,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
       ledger,
     );
 
-    const background = solidBackground(hex(scene.background?.color ?? palette.background));
+    const background = backgroundFor(scene, palette, media, ledger);
     const notes = includeNotes ? scene.speakerNotes : undefined;
     notesPerSlide.push(notes);
 
@@ -156,7 +164,9 @@ export function buildPptx(input: ExportInput): PptxArtifact {
     });
     entries.push({
       path: `ppt/slides/_rels/slide${index + 1}.xml.rels`,
-      data: slideRelationships(Boolean(notes), index + 1),
+      // Read after the shapes and the background have claimed theirs: the ids in
+      // this part and the `r:embed`s in the slide are the same strings.
+      data: slideRelationships(Boolean(notes), index + 1, media.relationshipsForSlide()),
     });
   });
 
@@ -182,7 +192,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
   // `[Content_Types].xml` first: the OPC specification requires it to be the
   // first part in the package, and readers that stream the zip rely on it.
   const packaged: ZipEntry[] = [
-    { path: "[Content_Types].xml", data: contentTypes(ids.length, hasNotes) },
+    { path: "[Content_Types].xml", data: contentTypes(ids.length, hasNotes, media.extensions()) },
     { path: "_rels/.rels", data: rootRelationships() },
     { path: "docProps/core.xml", data: coreProperties(metadataOf(document)) },
     { path: "docProps/app.xml", data: appProperties(ids.length, document.metadata.title) },
@@ -193,6 +203,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
     { path: "ppt/slideLayouts/slideLayout1.xml", data: slideLayout() },
     { path: "ppt/slideLayouts/_rels/slideLayout1.xml.rels", data: slideLayoutRelationships() },
     { path: "ppt/theme/theme1.xml", data: theme(palette) },
+    ...media.allParts().map((part) => ({ path: part.path, data: part.bytes })),
     ...entries,
   ];
 
@@ -243,6 +254,8 @@ function shapesFor(
   units: ReturnType<typeof unitsFor>,
   ledger: DegradationLedger,
   elementsById: Map<string, { type: string; shape?: string }>,
+  media: MediaRegistry,
+  intrinsic: ReadonlyMap<string, { width: number; height: number }>,
 ): { xmlBody: string; shapeIds: Map<string, number> } {
   const shapeIds = new Map<string, number>();
   // PowerPoint reserves id 1 for the slide's own group; shapes start at 2.
@@ -258,6 +271,8 @@ function shapesFor(
     // the previous slide. Without this the two names differ — they are different
     // elements with different ids — and PowerPoint's Morph pairs nothing, which
     // made "exported with matching shape names" a claim the file did not keep.
+    placePicture: (assetId) => media.place(assetId),
+    intrinsic,
     nameOverrides: new Map(
       (scene.transition?.type === "morph" ? (scene.transition.sharedElements ?? []) : []).map(
         (mapping) => [mapping.destinationElementId, mapping.sourceElementId],
@@ -281,6 +296,74 @@ function shapesFor(
   }
 
   return { xmlBody: parts.join(""), shapeIds };
+}
+
+/**
+ * The slide's background: a picture where there is one, the flat colour otherwise.
+ *
+ * `scene.background.assetId` was ignored outright, so a full-bleed photograph
+ * became the theme's background colour with **nothing in the report saying so** —
+ * the exact silent degradation `DegradationLedger` exists to make impossible. A
+ * background that cannot be embedded now falls back to the colour *and* says why.
+ */
+function backgroundFor(
+  scene: SlideScene,
+  palette: { background: string },
+  media: MediaRegistry,
+  ledger: DegradationLedger,
+): string {
+  const colour = solidBackground(hex(scene.background?.color ?? palette.background));
+  const assetId = scene.background?.assetId;
+  if (!assetId) return colour;
+
+  const claim = media.place(assetId);
+  if ("refused" in claim) {
+    ledger.record({
+      severity: "warning",
+      slideId: scene.slideId,
+      feature: "background image",
+      action: "dropped",
+      message:
+        `This slide's background picture is a flat colour in the file, because ${claim.refused}.`,
+    });
+    return colour;
+  }
+
+  if (scene.background?.overlay || scene.background?.blur) {
+    // The picture is embedded; the scrim over it and the blur are not. Said once
+    // per slide rather than silently dropped, because a background designed to
+    // sit under a scrim is usually too bright to read text on without one.
+    ledger.record({
+      severity: "warning",
+      slideId: scene.slideId,
+      feature: "background treatment",
+      action: "dropped",
+      message:
+        "The background picture is in the file, but its overlay or blur is not — " +
+        "text over it may be harder to read than in the original.",
+    });
+  }
+
+  return imageBackground(claim.placed.relationshipId);
+}
+
+/**
+ * Every asset's own pixel size, from the document's manifest.
+ *
+ * DrawingML has no `object-fit`, so `contain` and `cover` are geometry the
+ * adapter has to compute, and neither can be computed without these. The
+ * manifest is the only place they are recorded.
+ */
+function intrinsicSizes(
+  document: PresentationDocument,
+): ReadonlyMap<string, { width: number; height: number }> {
+  const sizes = new Map<string, { width: number; height: number }>();
+  for (const asset of document.assets ?? []) {
+    if (asset.width && asset.height) {
+      sizes.set(asset.id, { width: asset.width, height: asset.height });
+    }
+  }
+  return sizes;
 }
 
 function flatten(nodes: SlideScene["nodes"]): SlideScene["nodes"] {

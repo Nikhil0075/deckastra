@@ -88,6 +88,9 @@ export async function runExport(
       scenes,
       fontManifest: fontManifest(scenes.values()),
       options: job.options,
+      // PDF reaches its pictures through the render page as `data:` URLs; PPTX
+      // embeds them as parts, so it needs the bytes. Same library, two shapes.
+      images: library.images(),
     };
 
     const filename = `${safeName(job.document.metadata.title)}.${job.kind}`;
@@ -95,6 +98,14 @@ export async function runExport(
     if (job.kind === "pptx") {
       onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
       const artifact = buildPptx(input);
+      // Whatever the deck cites and the exporter was not given. PPTX draws its
+      // own placeholder for one, which is reported by the adapter; this covers
+      // the ones the API could not supply at all, with the reason it gave.
+      for (const warning of library.problems([...scenes.values()])) {
+        if (!artifact.result.report.warnings.some((one) => one.feature === warning.feature)) {
+          artifact.result.report.warnings.push(warning);
+        }
+      }
       onProgress({ progress: 1, stage: "done", message: "Done" });
       return {
         bytes: artifact.bytes,

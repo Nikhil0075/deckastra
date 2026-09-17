@@ -12,6 +12,7 @@ import type { SceneNode, SlideScene } from "@deckastra/renderer";
 import type { DegradationLedger } from "@deckastra/export-core";
 
 import { alpha, hex, rotation, shapeName, xml, type Units } from "./units";
+import { fitPicture } from "./media";
 
 /** Deckastra shape kinds that map to a PPTX preset geometry. */
 const PRESET_GEOMETRY: Record<string, string> = {
@@ -50,6 +51,23 @@ export interface ShapeContext {
   nameOverrides?: ReadonlyMap<string, string>;
   /** Assigned in paint order, because PowerPoint needs unique non-zero ids. */
   nextId(): number;
+  /**
+   * Claim a relationship to an embedded picture, or say why there is not one.
+   *
+   * The adapter used to route every image to `unsupported()` — a dashed box and
+   * a line in the report. Truthful, and not a deck: a client opening "my slides"
+   * to find a grey rectangle where the photograph was is the outcome doc 04
+   * §33.4 exists to prevent.
+   */
+  placePicture?(assetId: string): { placed: { relationshipId: string } } | { refused: string };
+  /**
+   * An asset's own pixel dimensions, from the document's manifest.
+   *
+   * DrawingML has no `object-fit`, so `contain` and `cover` are geometry that
+   * cannot be computed without them. Absent, the picture stretches and the report
+   * says it was approximated.
+   */
+  intrinsic?: ReadonlyMap<string, { width: number; height: number }>;
   /**
    * The document's elements by id.
    *
@@ -104,11 +122,13 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
       // per-run colour; PowerPoint has no code element to map onto.
       return codeShape(node, context);
 
+    case "image":
+      return pictureShape(node, context);
+
     case "table":
     case "chart":
     case "diagram":
     case "icon":
-    case "image":
     case "placeholder":
     default:
       return unsupported(node, context);
@@ -419,7 +439,71 @@ function codeShape(node: SceneNode, context: ShapeContext): string {
  * failure mode a compatibility export cannot have: the user hands the file to a
  * client and finds out from them.
  */
-function unsupported(node: SceneNode, context: ShapeContext): string {
+/**
+ * An embedded picture (`<p:pic>`).
+ *
+ * The bytes live in `ppt/media/`; this is the reference to them, positioned in
+ * the same EMU the rest of the adapter uses so the picture sits exactly where
+ * the author put it. `noChangeAspect` is set because a recipient dragging a
+ * corner handle should not silently distort a photograph.
+ *
+ * A picture that cannot be embedded falls back to the labelled box, with the
+ * registry's own reason attached — "no bytes reached the exporter" and "this is
+ * a format PowerPoint will not open" send someone to different places.
+ */
+function pictureShape(node: SceneNode, context: ShapeContext): string {
+  const payload = node.renderPayload;
+  if (payload.kind !== "image") return unsupported(node, context);
+
+  const claim = context.placePicture?.(payload.assetId);
+  if (!claim || "refused" in claim) {
+    return unsupported(node, context, claim?.refused);
+  }
+
+  const { units } = context;
+  const intrinsic = context.intrinsic?.get(payload.assetId);
+  const fit = payload.objectFit || "cover";
+  const placed = fitPicture(node.bounds, fit, intrinsic);
+
+  if (!intrinsic && fit !== "fill") {
+    // Stated rather than silently stretched: a photograph that arrives the wrong
+    // shape is the kind of thing a recipient notices and the author does not.
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image",
+      action: "approximated",
+      message:
+        `This image is stretched to its box rather than fitted "${fit}", because ` +
+        "the document does not record its pixel dimensions.",
+    });
+  }
+
+  const rotate = rotationOf(node);
+  const attributes = rotate !== 0 ? ` rot="${rotation(rotate)}"` : "";
+
+  return (
+    "<p:pic>" +
+    "<p:nvPicPr>" +
+    `<p:cNvPr id="${context.nextId()}" ` +
+    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
+    "<p:nvPr/>" +
+    "</p:nvPicPr>" +
+    `<p:blipFill><a:blip r:embed="${claim.placed.relationshipId}"/>` +
+    `${placed.srcRect ?? ""}<a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:spPr><a:xfrm${attributes}>` +
+    `<a:off x="${units.px(placed.box.x)}" y="${units.px(placed.box.y)}"/>` +
+    `<a:ext cx="${units.px(Math.max(1, placed.box.width))}" cy="${units.px(Math.max(1, placed.box.height))}"/>` +
+    "</a:xfrm>" +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+    "</p:spPr>" +
+    "</p:pic>"
+  );
+}
+
+function unsupported(node: SceneNode, context: ShapeContext, because?: string): string {
   const kind = node.renderPayload.kind;
 
   context.ledger.record({
@@ -433,9 +517,11 @@ function unsupported(node: SceneNode, context: ShapeContext): string {
     // the friendlier word is the exact failure `DegradationLedger` exists to
     // prevent: the report has to be true about the file it just wrote.
     action: "dropped",
-    message:
-      `${kind} elements are replaced by a labelled placeholder box in this ` +
-      `build — the content is not in the file.`,
+    message: because
+      ? `This ${kind} is a labelled placeholder box and is not in the file, ` +
+        `because ${because}.`
+      : `${kind} elements are replaced by a labelled placeholder box in this ` +
+        `build — the content is not in the file.`,
   });
 
   const { units } = context;

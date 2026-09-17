@@ -2009,11 +2009,68 @@ was extracted: `apps/worker/tests/editor-browser.js` still imported
 digest-parity case in that suite was failing to *build* rather than to compare.
 `test:browser` now runs every `*.browser.test.ts` rather than naming one file.
 
-**Not done, and not claimed:** PPTX still drops images — `shapes.ts` routes them
-to `unsupported` and says so in its report, which is the adapter's limitation
-rather than the renderer's, and unchanged by this. Nothing streams: a deck whose
-images exceed the per-render total gets the pictures that fit and a named warning
-for the rest.
+**Not done, and not claimed:** nothing streams — a deck whose images exceed the
+per-render total gets the pictures that fit and a named warning for the rest.
+
+### A picture in the PowerPoint, not a box where one was (D5.8)
+
+PPTX routed every image to `unsupported()` from the day the adapter was written:
+a dashed box with the element's name in it, and an honest line in the report. It
+was honest and it was not a deck. Doc 04 §33.4's user story is "my client needs a
+.pptx", and the worst outcome is the client finding the grey rectangle first.
+
+**A picture in a `.pptx` is three things that have to agree**, which is why
+`media.ts` allocates all three rather than letting whoever emits the shape do it:
+bytes under `ppt/media/`, a content type for the extension, and a relationship
+from the slide whose `r:embed` names it. Miss one and PowerPoint refuses the
+**whole file** rather than the picture — so they are asserted together, and the
+relationship id in the `.rels` part and the `r:embed` in the shape are literally
+the same string rather than two counters that agree today.
+
+PDF and PPTX need the same pictures in different shapes, and that is the reason
+`ExportInput.images` carries **bytes** while the render page gets `data:` URLs:
+PDF renders in a browser, and a `.pptx` is a zip where a picture is a part inside
+it. One `AssetLibrary` answers both (`images()` beside `resolve`).
+
+**DrawingML has no `object-fit`**, so `contain` and `cover` are geometry the
+adapter computes: `contain` shrinks the *shape* to the picture's aspect ratio and
+centres it, `cover` keeps the shape and crops the *source* with `srcRect` insets.
+Both need the intrinsic size, which only the document's asset manifest records —
+without it the picture stretches and the report says it was approximated rather
+than pretending.
+
+The fit test is measured against a **square** box on purpose. The fixture's own
+image box is already 16:9, so a 16:9 asset fills it exactly whether the adapter
+fitted it or simply stretched it: an assertion there passes against code that
+does nothing, which is how a fit gets quietly lost. The first version of that
+test did exactly that and was caught by reading the EMU it produced.
+
+**The slide background was a silent drop and nobody would have found it.**
+`scene.background.assetId` was read by nothing here, so a full-bleed photograph
+became the theme's flat colour with no line in the report — and a flat background
+looks deliberate. It is a `blipFill` now; one that cannot be embedded falls back
+to the colour *and* says why, and an overlay or blur over it is reported as
+dropped, because a background designed to sit under a scrim is usually too bright
+to read text on without one.
+
+Deduplicated by asset id: a logo on twelve slides is one part and twelve
+relationships, not twelve copies of the bytes. Not by *content* hash — two assets
+with identical bytes are two uploads and the document already treats them as two
+things.
+
+A format PowerPoint will not open is **refused rather than embedded**. A webp put
+in the package because it is "an image" produces a file that opens with a broken
+picture in it, which is worse than a labelled box: the recipient cannot tell
+whether it is their machine.
+
+**Checked by a reader that is not us.** `test_pptx_opens.py` now runs the real
+exporter and asks `python-pptx` for the picture: it resolves the relationship
+itself, reads the bytes back out of the media part, and reports the format, the
+pixel size and the position. Verified load-bearing by withholding the image —
+"the deck exported no picture at all". And end to end through the actual worker
+CLI with an `assetsPath` payload, which is the path an export really takes:
+5 slides, one `PICTURE` shape, 8×8 PNG read back, and `image` gone from the
+report's dropped features.
 
 ### Pulling a workspace down, and why push could not come first (D5.6)
 

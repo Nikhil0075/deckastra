@@ -19,7 +19,7 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { inflateRawSync } from "node:zlib";
+import { crc32, deflateSync, inflateRawSync } from "node:zlib";
 
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
@@ -52,9 +52,17 @@ function inputFor(document: PresentationDocument, options = {}): ExportInput {
 
 /** Read a zip back without a dependency, so the test checks the writer too. */
 function unzip(bytes: Uint8Array): Map<string, string> {
+  const decoder = new TextDecoder();
+  const text = new Map<string, string>();
+  for (const [path, data] of unzipRaw(bytes)) text.set(path, decoder.decode(data));
+  return text;
+}
+
+/** The same walk, keeping the bytes — a media part is not text. */
+function unzipRaw(bytes: Uint8Array): Map<string, Uint8Array> {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const decoder = new TextDecoder();
-  const files = new Map<string, string>();
+  const files = new Map<string, Uint8Array>();
 
   // Walk the central directory rather than scanning for local headers: a local
   // header signature can occur inside compressed data, and scanning finds it.
@@ -82,11 +90,59 @@ function unzip(bytes: Uint8Array): Map<string, string> {
     const dataStart = localOffset + 30 + localNameLength + localExtraLength;
     const data = bytes.subarray(dataStart, dataStart + compressedSize);
 
-    files.set(name, decoder.decode(method === 8 ? inflateRawSync(data) : data));
+    files.set(name, method === 8 ? new Uint8Array(inflateRawSync(data)) : new Uint8Array(data));
     at += 46 + nameLength + extraLength + commentLength;
   }
 
   return files;
+}
+
+/**
+ * The fixture's image asset, and a real PNG for it.
+ *
+ * `technical-deck` cites `fixtures/architecture-overview.png`, which is a storage
+ * key rather than a file on disk — the manifest records what the deck refers to,
+ * not bytes. So the test supplies its own: eight pixels of one colour, written by
+ * hand, because a literal base64 blob would be a magic string nobody can check
+ * and this one says exactly what it is.
+ */
+function pngBytes(): Uint8Array {
+  const raw = Buffer.alloc(8 * (1 + 8 * 3));
+  for (let y = 0; y < 8; y += 1) {
+    const row = y * (1 + 8 * 3);
+    for (let x = 0; x < 8; x += 1) raw[row + 1 + x * 3] = 255;
+  }
+  const chunk = (type: string, body: Buffer): Buffer => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(body.length, 0);
+    head.write(type, 4, "ascii");
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), body])) >>> 0, 0);
+    return Buffer.concat([head, body, tail]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(8, 0);
+  header.writeUInt32BE(8, 4);
+  header[8] = 8;
+  header[9] = 2;
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk("IHDR", header),
+      chunk("IDAT", deflateSync(raw)),
+      chunk("IEND", Buffer.alloc(0)),
+    ]),
+  );
+}
+
+/** The asset the technical fixture's image element points at. */
+function imageAssetId(document: PresentationDocument): string {
+  for (const slide of document.slides) {
+    for (const element of slide.elements as { type: string; assetId?: string }[]) {
+      if (element.type === "image" && element.assetId) return element.assetId;
+    }
+  }
+  throw new Error("The technical fixture no longer carries an image element.");
 }
 
 const TECHNICAL = fixture("technical-deck");
@@ -230,13 +286,18 @@ describe("degradation is reported, never silent", () => {
     expect(result.report.warnings.length).toBeGreaterThan(0);
   });
 
-  it("reports the image it cannot embed", () => {
-    // `shapes.ts` routes `image` to `unsupported`, and until the fixture gained
-    // one (2026-09-17) nothing exercised that branch — the adapter's handling of
-    // the most ordinary element on a slide was covered by no test at all,
-    // because "every MVP element type" had no picture in it.
+  it("reports the image it was given no bytes for", () => {
+    // This `result` is built with no `images` map, which is the honest state for
+    // a caller that has not supplied any: the picture becomes a labelled box and
+    // the report says which one and why. The embedded case is its own block
+    // below — both matter, because "the export succeeded" is true of each and
+    // only one of them is a deck.
     const listed = JSON.stringify(result.report.unsupportedFeatures).toLowerCase();
     expect(listed).toContain("image");
+
+    const warning = result.report.warnings.find((one) => one.feature === "image")!;
+    expect(warning.action).toBe("dropped");
+    expect(warning.message).toMatch(/bytes were not available/);
   });
 
   it("says what happened, not just that something did", () => {
@@ -530,5 +591,198 @@ describe("the zip writer", () => {
     // a reader suspect the file.
     const bytes = createZip([{ path: "t", data: "x" }]);
     expect(unzip(bytes).get("t")).toBe("x");
+  });
+});
+
+// ---------------------------------------------------------------- pictures
+
+/**
+ * A picture in the file (2026-09-17).
+ *
+ * The adapter routed every image to `unsupported()` from the day it was written:
+ * a dashed box with the element's name in it, and a line in the report saying
+ * so. Truthful, and not a deck — a client opening "my slides" to find a grey
+ * rectangle where the product photograph was is precisely the outcome doc 04
+ * §33.4 is about.
+ *
+ * A picture in a `.pptx` is three things that have to agree: **bytes** under
+ * `ppt/media/`, a **content type** for the extension, and a **relationship** from
+ * the slide whose `r:embed` names it. Any one missing and PowerPoint refuses the
+ * whole file rather than the picture, which is why they are asserted together.
+ */
+describe("a picture the exporter was given", () => {
+  const assetId = imageAssetId(TECHNICAL);
+  const png = pngBytes();
+  const { bytes, result } = buildPptx({
+    ...inputFor(TECHNICAL),
+    images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+  });
+  const files = unzipRaw(bytes);
+  const text = unzip(bytes);
+
+  it("puts the bytes in the package, unchanged", () => {
+    const media = [...files.keys()].filter((path) => path.startsWith("ppt/media/"));
+    expect(media).toEqual(["ppt/media/image1.png"]);
+    // Byte for byte: an exporter that re-encoded a photograph would be making a
+    // quality decision nobody asked it to make.
+    expect([...files.get("ppt/media/image1.png")!]).toEqual([...png]);
+  });
+
+  it("names the relationship the slide actually embeds", () => {
+    // The `Id` in the rels part and the `r:embed` in the slide are the same
+    // string, and two places counting is one place getting it wrong.
+    const slide = [...text.entries()].find(
+      ([path, body]) => /^ppt\/slides\/slide\d+\.xml$/.test(path) && body.includes("<p:pic>"),
+    )!;
+    const index = slide[0].match(/slide(\d+)\.xml$/)![1];
+    const embed = slide[1].match(/r:embed="(rId\d+)"/)![1];
+
+    const rels = text.get(`ppt/slides/_rels/slide${index}.xml.rels`)!;
+    expect(rels).toContain(`Id="${embed}"`);
+    expect(rels).toContain('Target="../media/image1.png"');
+    expect(rels).toContain("/relationships/image");
+  });
+
+  it("declares the extension, or the file will not open", () => {
+    expect(text.get("[Content_Types].xml")!).toContain(
+      '<Default Extension="png" ContentType="image/png"/>',
+    );
+  });
+
+  it("stops reporting it as dropped", () => {
+    // The point of the change. A report still saying "dropped" about a picture
+    // that is in the file would be the ledger lying in the other direction, and
+    // someone would go looking for a gap that is not there.
+    const aboutImages = result.report.warnings.filter((one) => one.feature === "image");
+    expect(aboutImages.filter((one) => one.action === "dropped")).toEqual([]);
+    expect(result.report.unsupportedFeatures).not.toContain("image");
+  });
+
+  it("letterboxes a contained picture instead of stretching it", () => {
+    // DrawingML has no `object-fit`. `contain` is geometry: the shape shrinks to
+    // the picture's aspect ratio and centres inside the author's box.
+    //
+    // Measured against a **square** box, deliberately. The fixture's own image
+    // box is already 16:9, so a picture of a 16:9 asset fills it exactly whether
+    // the adapter fitted it or simply stretched it — an assertion there passes
+    // against code that does nothing, which is how a fit gets quietly lost.
+    const square = structuredClone(TECHNICAL);
+    const element = square.slides
+      .flatMap((slide) => slide.elements as { type: string; transform: Record<string, number> }[])
+      .find((one) => one.type === "image")!;
+    element.transform = { ...element.transform, width: 400, height: 400 };
+
+    const { bytes: fitted } = buildPptx({
+      ...inputFor(square),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+    });
+    const drawn = [...unzip(fitted).values()].find((body) => body.includes("<p:pic>"))!;
+    const ext = drawn.match(/<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/)!;
+    const ratio = Number(ext[1]) / Number(ext[2]);
+
+    // The asset's 16:9, not the box's 1:1.
+    expect(Math.abs(ratio - 1600 / 900)).toBeLessThan(0.02);
+    expect(Math.abs(ratio - 1)).toBeGreaterThan(0.5);
+  });
+
+  it("crops a covered picture rather than letterboxing it", () => {
+    // `cover` keeps the author's box and crops the source, which DrawingML
+    // expresses as `srcRect` insets in thousandths of a percent. The two fits
+    // produce visibly different slides and only one of them is what was asked
+    // for, so the adapter has to distinguish them.
+    const covered = structuredClone(TECHNICAL);
+    const element = covered.slides
+      .flatMap((slide) => slide.elements as { type: string; fit?: string; transform: Record<string, number> }[])
+      .find((one) => one.type === "image")!;
+    element.fit = "cover";
+    element.transform = { ...element.transform, width: 400, height: 400 };
+
+    const { bytes: cropped } = buildPptx({
+      ...inputFor(covered),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+    });
+    const drawn = [...unzip(cropped).values()].find((body) => body.includes("<p:pic>"))!;
+
+    // A 16:9 source in a square box loses the sides, half from each.
+    const crop = drawn.match(/<a:srcRect l="(\d+)" t="(\d+)" r="(\d+)" b="(\d+)"\/>/)!;
+    expect(Number(crop[1])).toBeGreaterThan(0);
+    expect(Number(crop[2])).toBe(0);
+    expect(crop[1]).toBe(crop[3]);
+
+    // And the shape still fills the box the author drew.
+    const ext = drawn.match(/<p:pic>[\s\S]*?<a:ext cx="(\d+)" cy="(\d+)"/)!;
+    expect(ext[1]).toBe(ext[2]);
+  });
+
+  it("refuses a format PowerPoint will not open, and says which", () => {
+    // Embedding a webp because it is "an image" produces a file that opens with
+    // a broken picture in it, which is worse than a labelled box: the recipient
+    // cannot tell whether it is their machine.
+    const refused = buildPptx({
+      ...inputFor(TECHNICAL),
+      images: new Map([[assetId, { bytes: png, contentType: "image/webp" }]]),
+    });
+    expect(
+      [...unzipRaw(refused.bytes).keys()].filter((path) => path.startsWith("ppt/media/")),
+    ).toEqual([]);
+
+    const warning = refused.result.report.warnings.find((one) => one.feature === "image")!;
+    expect(warning.action).toBe("dropped");
+    expect(warning.message).toMatch(/does not open image\/webp/);
+  });
+
+  it("writes the same bytes twice", () => {
+    // Doc 04 §32.3 reaches the media parts too: numbering them by insertion order
+    // rather than by anything a run can vary is what keeps that true.
+    const again = buildPptx({
+      ...inputFor(TECHNICAL),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+    });
+    expect([...again.bytes]).toEqual([...bytes]);
+  });
+});
+
+/**
+ * A slide background that is a photograph.
+ *
+ * `scene.background.assetId` was read by nothing in this adapter, so a full-bleed
+ * image became the theme's flat colour with **no line in the report** — the exact
+ * silent degradation the ledger exists to prevent, and one nobody would find by
+ * reading the file, because a flat background looks deliberate.
+ */
+describe("a slide background picture", () => {
+  const assetId = imageAssetId(TECHNICAL);
+  const png = pngBytes();
+
+  function withBackground(): PresentationDocument {
+    const document = structuredClone(TECHNICAL);
+    document.slides[0]!.background = { assetId } as never;
+    return document;
+  }
+
+  it("becomes a blipFill rather than the theme colour", () => {
+    const { bytes } = buildPptx({
+      ...inputFor(withBackground()),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+    });
+    const files = unzip(bytes);
+    const first = files.get("ppt/slides/slide1.xml")!;
+
+    expect(first).toContain("<p:bg><p:bgPr><a:blipFill");
+    expect(first).not.toContain("<p:bg><p:bgPr><a:solidFill");
+
+    const embed = first.match(/<p:bg>[\s\S]*?r:embed="(rId\d+)"/)![1];
+    expect(files.get("ppt/slides/_rels/slide1.xml.rels")!).toContain(`Id="${embed}"`);
+  });
+
+  it("falls back to the colour and says so when it has no bytes", () => {
+    // Without this the picture vanished and the report was silent, which reads as
+    // a deck that was always this colour.
+    const { bytes, result } = buildPptx(inputFor(withBackground()));
+
+    expect(unzip(bytes).get("ppt/slides/slide1.xml")!).toContain("<a:solidFill>");
+    const warning = result.report.warnings.find((one) => one.feature === "background image")!;
+    expect(warning.action).toBe("dropped");
+    expect(warning.message).toMatch(/bytes were not available/);
   });
 });

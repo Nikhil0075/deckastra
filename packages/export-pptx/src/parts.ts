@@ -21,7 +21,11 @@ const NS_PRESENTATION =
   'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' +
   'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
 
-export function contentTypes(slideCount: number, hasNotes: boolean): string {
+export function contentTypes(
+  slideCount: number,
+  hasNotes: boolean,
+  imageExtensions: readonly string[] = [],
+): string {
   const slides = Array.from(
     { length: slideCount },
     (_, index) =>
@@ -47,6 +51,17 @@ export function contentTypes(slideCount: number, hasNotes: boolean): string {
     '<Default Extension="xml" ContentType="application/xml"/>' +
     '<Default Extension="png" ContentType="image/png"/>' +
     '<Default Extension="jpeg" ContentType="image/jpeg"/>' +
+    // Anything beyond the two always-declared defaults. A media part whose
+    // extension has no content type is a package a reader refuses to open, so
+    // this is not decoration: it is the third of the three things that have to
+    // agree about a picture (bytes, content type, relationship).
+    imageExtensions
+      .filter((extension) => extension !== "png" && extension !== "jpeg")
+      .map(
+        (extension) =>
+          `<Default Extension="${extension}" ContentType="image/${extension}"/>`,
+      )
+      .join("") +
     '<Override PartName="/ppt/presentation.xml" ' +
     'ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>' +
     '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ' +
@@ -151,19 +166,54 @@ export function solidBackground(colour: string): string {
   return `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${colour}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
 }
 
-export function slideRelationships(hasNotes: boolean, notesIndex: number): string {
+export function slideRelationships(
+  hasNotes: boolean,
+  notesIndex: number,
+  images: readonly { id: string; target: string }[] = [],
+): string {
   const notes = hasNotes
     ? '<Relationship Id="rId2" ' +
       'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" ' +
       `Target="../notesSlides/notesSlide${notesIndex}.xml"/>`
     : "";
 
+  // One per picture this slide draws. The ids come from the media registry
+  // rather than being counted here, because the `r:embed` inside the shape and
+  // the `Id` here are the same string and two places counting is one place
+  // getting it wrong.
+  const media = images
+    .map(
+      (image) =>
+        `<Relationship Id="${image.id}" ` +
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ' +
+        `Target="${image.target}"/>`,
+    )
+    .join("");
+
   return (
     XML_DECLARATION +
     '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
     '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>' +
     notes +
+    media +
     "</Relationships>"
+  );
+}
+
+/**
+ * A slide whose background is a picture.
+ *
+ * The scene carries `background.assetId` and this adapter ignored it entirely —
+ * a full-bleed photograph simply became the theme's flat colour, with nothing in
+ * the report saying so. `<a:blipFill>` with `stretch` is the background case:
+ * the box is the slide, so there is no fit to honour.
+ */
+export function imageBackground(relationshipId: string): string {
+  return (
+    "<p:bg><p:bgPr>" +
+    `<a:blipFill rotWithShape="1"><a:blip r:embed="${relationshipId}"/>` +
+    "<a:stretch><a:fillRect/></a:stretch></a:blipFill>" +
+    "<a:effectLst/></p:bgPr></p:bg>"
   );
 }
 

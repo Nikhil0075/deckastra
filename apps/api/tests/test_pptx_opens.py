@@ -40,15 +40,62 @@ import { buildPptx } from "@deckastra/export-pptx";
 const doc = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const scene = buildDocumentScene(doc);
 const scenes = new Map(scene.slides.map((s) => [s.slideId, s]));
+
+// The picture the deck cites, supplied the way the worker supplies it. The
+// fixture's storage key names no file on disk — a manifest records what a deck
+// refers to, not bytes — so the caller brings them, which is exactly the
+// contract `ExportInput.images` describes.
+const images = new Map();
+if (process.argv[4]) {
+  const assetId = doc.slides
+    .flatMap((slide) => slide.elements)
+    .find((element) => element.type === "image").assetId;
+  images.set(assetId, {
+    bytes: new Uint8Array(readFileSync(process.argv[4])),
+    contentType: "image/png",
+  });
+}
+
 const { bytes, result } = buildPptx({
   document: doc,
   scenes,
   fontManifest: fontManifest(scenes.values()),
   options: { includeNotes: true },
+  images,
 });
 writeFileSync(process.argv[3], bytes);
 process.stdout.write(JSON.stringify(result.report));
 """
+
+
+def _png(path: Path) -> Path:
+    """A real 8x8 PNG, written here rather than committed.
+
+    A committed binary beside its only consumer is a fixture nobody can read a
+    diff of; eight pixels of one colour say what they are in the code that makes
+    them.
+    """
+    import struct
+    import zlib
+
+    # One filter byte (0 = none) then eight magenta pixels, per row.
+    row = bytes([0]) + bytes([255, 0, 255]) * 8
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    path.write_bytes(
+        bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 8, 8, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(row * 8))
+        + chunk(b"IEND", b"")
+    )
+    return path
 
 
 @pytest.fixture(scope="module")
@@ -57,11 +104,13 @@ def exported(tmp_path_factory) -> tuple[Path, dict]:
     # Inside the workspace, because the package imports resolve through it.
     script = ROOT / "packages/export-pptx/.emit.mts"
     script.write_text(EMIT, encoding="utf-8")
-    out = tmp_path_factory.mktemp("pptx") / "deck.pptx"
+    directory = tmp_path_factory.mktemp("pptx")
+    out = directory / "deck.pptx"
+    picture = _png(directory / "picture.png")
 
     try:
         finished = subprocess.run(
-            ["npx", "tsx", str(script), str(FIXTURE), str(out)],
+            ["npx", "tsx", str(script), str(FIXTURE), str(out), str(picture)],
             cwd=ROOT,
             capture_output=True,
             text=True,
@@ -75,6 +124,48 @@ def exported(tmp_path_factory) -> tuple[Path, dict]:
         pytest.fail(f"the exporter failed:\n{finished.stderr[-2000:]}")
 
     return out, json.loads(finished.stdout.strip().splitlines()[-1])
+
+
+def test_the_picture_is_in_the_package_and_the_reader_finds_it(exported):
+    """Doc 04 §33.4: a client opening this must see the photograph, not a box.
+
+    Every other assertion about the picture is made by the code that embedded it.
+    `python-pptx` resolves the relationship itself, so a picture it can find is a
+    picture PowerPoint can find — and the bytes it hands back are read from the
+    part, not from what the writer believed it wrote.
+    """
+    from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    path, report = exported
+    deck = Presentation(str(path))
+
+    pictures = [
+        shape
+        for slide in deck.slides
+        for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+    ]
+    assert pictures, "the deck exported no picture at all"
+
+    picture = pictures[0]
+    # The bytes came back out of the package intact, through a reader that is not
+    # us. `image.blob` is read from the media part the relationship points at.
+    assert picture.image.blob.startswith(bytes([137, 80, 78, 71]))
+    assert picture.image.ext == "png"
+    assert picture.image.size == (8, 8)
+
+    # Positioned, not dumped at the origin.
+    assert picture.left > 0 and picture.top > 0
+    assert picture.left + picture.width <= deck.slide_width
+
+    # And the report no longer claims it was dropped, because it was not.
+    dropped = [
+        warning
+        for warning in report["warnings"]
+        if warning["feature"] == "image" and warning["action"] == "dropped"
+    ]
+    assert dropped == []
 
 
 def test_a_real_powerpoint_reader_opens_it(exported):

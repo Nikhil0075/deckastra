@@ -32,7 +32,7 @@
  *   reads before downloading (doc 04 §32.2).
  */
 
-import type { ExportWarning } from "@deckastra/export-core";
+import type { ExportImage, ExportWarning } from "@deckastra/export-core";
 import type { SceneNode, SlideScene } from "@deckastra/renderer";
 
 /**
@@ -77,6 +77,20 @@ function decodedBytes(data: string): number {
 interface Accepted {
   url: string;
   storageKey?: string;
+}
+
+/**
+ * Base64 to bytes, without Node's `Buffer`.
+ *
+ * `atob` is on `globalThis` in Node 18+ and in every browser, and it keeps this
+ * module runnable in either — the worker's bundle has no Node polyfills beyond
+ * what it imports explicitly.
+ */
+function base64Bytes(data: string): Uint8Array {
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
 }
 
 /**
@@ -147,6 +161,28 @@ export class AssetLibrary {
       // the other should still find the picture.
       if (asset.storageKey) this.byKey.set(asset.storageKey, entry);
     }
+  }
+
+  /**
+   * The same pictures as raw bytes, for an adapter that must embed rather than
+   * reference them.
+   *
+   * PDF gets `data:` URLs because it renders in a browser; a `.pptx` is a zip and
+   * a picture in one is a part inside it, so PPTX needs the bytes themselves.
+   * Decoded once per export rather than per slide — a logo on twelve slides is
+   * one decode and one part.
+   */
+  images(): ReadonlyMap<string, ExportImage> {
+    const byId = new Map<string, ExportImage>();
+    for (const [assetId, entry] of this.byId) {
+      const comma = entry.url.indexOf(",");
+      const header = entry.url.slice("data:".length, entry.url.indexOf(";base64"));
+      byId.set(assetId, {
+        bytes: base64Bytes(entry.url.slice(comma + 1)),
+        contentType: header,
+      });
+    }
+    return byId;
   }
 
   /** The resolver `SlideView` takes. Bound, so it can be passed as a value. */

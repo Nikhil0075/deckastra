@@ -69,6 +69,23 @@ export interface ExportInput {
   fontManifest: FontSpec[];
   options: ExportOptions;
   signal?: AbortSignal;
+  /**
+   * The deck's pictures, by asset id.
+   *
+   * Handed in rather than fetched, for the reason the renderer's are: an
+   * exporter has no session and no network. PDF gets them as `data:` URLs
+   * through the render page; PPTX needs the **bytes**, because a `.pptx` is a
+   * zip and a picture in one is a part inside it. An asset that is absent here
+   * is a picture the adapter reports rather than draws.
+   */
+  images?: ReadonlyMap<string, ExportImage>;
+}
+
+/** One picture, as an adapter that must embed it needs it. */
+export interface ExportImage {
+  bytes: Uint8Array;
+  /** `image/png`, `image/jpeg`, … — decides the part's extension. */
+  contentType: string;
 }
 
 export interface FontSpec {
