@@ -288,6 +288,16 @@ export function EditorCanvas({
           if (found && found.element.locked !== true && textTargetOf(found.element)) {
             return { ...current, selectedIds: [hitId], primaryId: hitId, editingTextId: hitId };
           }
+          // An equation's words are its LaTeX, which is edited in the inspector
+          // with a preview beside it; a double-click goes there. When the
+          // inspector is hidden there is no field, and nothing happens.
+          if (found && found.element.locked !== true && found.element.type === "equation") {
+            requestAnimationFrame(() => {
+              const field = window.document.getElementById(`latex-${hitId}`);
+              field?.focus();
+              field?.scrollIntoView({ block: "nearest" });
+            });
+          }
           return current;
         }
 

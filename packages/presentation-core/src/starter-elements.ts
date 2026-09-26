@@ -13,7 +13,8 @@ export type StarterElementKind =
   | "chart"
   | "diagram"
   | "table"
-  | "code";
+  | "code"
+  | "equation";
 
 export interface StarterElementInput {
   kind: StarterElementKind;
@@ -143,6 +144,19 @@ export function makeStarterElement(input: StarterElementInput): PresentationElem
         showLineNumbers: true,
         wrap: true,
       } as PresentationElement;
+    case "equation":
+      // A real formula rather than a placeholder, so the first thing on the
+      // slide shows what the element is for; the alt text says it in words.
+      return {
+        ...base,
+        type: "equation",
+        latex: String.raw`x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}`,
+        display: true,
+        // Display maths reads at heading size; the body size the element
+        // otherwise inherits is set for paragraphs, not for a formula on its own.
+        fontSize: 56,
+        altText: "The quadratic formula",
+      } as PresentationElement;
   }
 }
 
@@ -156,5 +170,6 @@ function defaultSize(kind: StarterElementKind): { width: number; height: number 
     case "diagram": return { width: 680, height: 360 };
     case "table": return { width: 640, height: 300 };
     case "code": return { width: 680, height: 320 };
+    case "equation": return { width: 560, height: 160 };
   }
 }

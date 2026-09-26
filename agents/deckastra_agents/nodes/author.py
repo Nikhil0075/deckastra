@@ -50,8 +50,12 @@ well.
   have `rotation` (degrees). Keep elements inside the viewport and do not let
   text boxes overlap unless layering is the point.
 - Element types: `text`, `shape`, `image`, `group`, `chart`, `table`,
-  `diagram`, `icon`, `code`. Copy the shape of an existing element of the same
-  type from the slide JSON rather than guessing fields.
+  `diagram`, `icon`, `code`, `equation`. Copy the shape of an existing element
+  of the same type from the slide JSON rather than guessing fields.
+- An equation is `{"type": "equation", "latex": "...", "display": true,
+  "fontSize": 48, "altText": "..."}` with a transform like any element; the
+  LaTeX is typeset by KaTeX, so write standard math-mode LaTeX without `$`
+  delimiters. Say in `altText` what the equation means in words.
 - Colours in element styles may be literal (`"#1A1A1A"`) or theme references
   (`{"token": "colors.accent"}`) — match what the slide already uses. A theme
   change is a `replace` on `/theme/colors`, `/theme/typography` or the whole

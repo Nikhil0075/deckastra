@@ -62,6 +62,11 @@ function summarisePayload(node: SceneNode): string {
     case "image":
       return `image ${payload.assetId} fit=${payload.objectFit} at=${payload.objectPosition}`;
 
+    case "equation":
+      // The source, hashed: two equations of one length that typeset
+      // differently must not digest the same.
+      return `equation latex=${digestHash(payload.latex)} size=${n(payload.fontSize)} display=${payload.display} align=${payload.align} color=${payload.color}${payload.error ? " error" : ""}`;
+
     case "code":
       return `code ${payload.language} lines=${payload.lines.length} tokens=${payload.lines.reduce(
         (sum, line) => sum + line.tokens.length,

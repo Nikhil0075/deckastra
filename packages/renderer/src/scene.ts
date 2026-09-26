@@ -12,6 +12,7 @@ import {
   type TypographyStyle,
 } from "@deckastra/presentation-schema";
 
+import { typesetEquation } from "./equation";
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
 import { paintToCss, resolveTheme, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
@@ -139,12 +140,31 @@ export type RenderPayload =
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
   | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
+  | EquationPayload
   | TablePayload
   | ChartPayload
   | DiagramPayload
   | IconPayload
   | { kind: "group"; containerLayout?: unknown }
   | { kind: "placeholder"; label: string; reason: string };
+
+/**
+ * A typeset equation. `html` is KaTeX's markup, derived from `latex` here so the
+ * React layer inserts it and computes nothing, and so an export draws exactly
+ * what the editor showed.
+ */
+export interface EquationPayload {
+  kind: "equation";
+  latex: string;
+  html: string;
+  display: boolean;
+  fontSize: number;
+  color: string;
+  align: "left" | "center" | "right";
+  altText?: string;
+  /** Why the source did not typeset; the box shows it in red. */
+  error?: string;
+}
 
 export interface CodeLine {
   number: number;
@@ -318,6 +338,7 @@ function layerFor(type: string): SceneLayer {
     case "text":
     case "image":
     case "code":
+    case "equation":
     case "table":
     case "video":
     case "audio":
@@ -823,6 +844,35 @@ function buildPayload(
         objectFit: el.fit ?? "cover",
         objectPosition: `${(focal.x * 100).toFixed(1)}% ${(focal.y * 100).toFixed(1)}%`,
         altText: el.altText,
+      };
+    }
+
+    case "equation": {
+      const el = element as unknown as {
+        latex?: string;
+        display?: boolean;
+        fontSize?: number;
+        color?: string;
+        align?: "left" | "center" | "right";
+        altText?: string;
+      };
+      const body = resolveTypography(theme, {
+        fontFamily: "token:typography.body.fontFamily",
+        fontSize: "token:typography.body.fontSize" as never,
+        color: "token:colors.foreground",
+      } as TypographyStyle);
+      const latex = typeof el.latex === "string" ? el.latex : "";
+      const typeset = typesetEquation(latex, el.display ?? true);
+      return {
+        kind: "equation",
+        latex,
+        html: typeset.html,
+        display: el.display ?? true,
+        fontSize: el.fontSize ?? (typeof body.fontSize === "number" ? body.fontSize : 32),
+        color: String(el.color ? resolveValue(theme, el.color, body.color ?? "#111") : (body.color ?? "#111")),
+        align: el.align ?? "center",
+        ...(el.altText ? { altText: el.altText } : {}),
+        ...(typeset.error ? { error: typeset.error } : {}),
       };
     }
 

@@ -593,6 +593,33 @@ export const CodeElementSchema = z.looseObject({
   fileName: z.string().optional(),
 });
 
+// ------------------------------------------------------------------- equation
+
+/**
+ * A mathematical expression, written in LaTeX (Design tab review, 2026-09-26).
+ *
+ * The source is the document's fact; the typeset form is derived by the renderer
+ * every time, the same way a chart's bars are. Storing rendered markup would be
+ * a second description of the maths that could disagree with the first, and
+ * would make an emailed deck carry HTML someone else wrote into every reader.
+ *
+ * Bounded, because LaTeX macros expand: a short source can ask the typesetter
+ * for a great deal of work, and the renderer runs it on every open.
+ */
+export const EQUATION_MAX_LENGTH = 4000;
+
+export const EquationElementSchema = z.looseObject({
+  ...baseElementShape,
+  type: z.literal("equation"),
+  latex: z.string().max(EQUATION_MAX_LENGTH),
+  /** Display style (larger operators, limits above and below) rather than inline. */
+  display: z.boolean().optional(),
+  /** Logical px. Omitted means the theme's body size. */
+  fontSize: FiniteNumber.positive().optional(),
+  color: ColorValueSchema.optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+});
+
 // ----------------------------------------------------------- video / audio / embed
 
 export const VideoElementSchema = z.looseObject({
@@ -688,6 +715,7 @@ export type ChartElement = z.infer<typeof ChartElementSchema>;
 export type DiagramElement = z.infer<typeof DiagramElementSchema>;
 export type TableElement = z.infer<typeof TableElementSchema>;
 export type CodeElement = z.infer<typeof CodeElementSchema>;
+export type EquationElement = z.infer<typeof EquationElementSchema>;
 export type VideoElement = z.infer<typeof VideoElementSchema>;
 export type AudioElement = z.infer<typeof AudioElementSchema>;
 export type WebEmbedElement = z.infer<typeof WebEmbedElementSchema>;
@@ -740,6 +768,7 @@ export type PresentationElement =
   | DiagramElement
   | TableElement
   | CodeElement
+  | EquationElement
   | VideoElement
   | AudioElement
   | WebEmbedElement
@@ -795,6 +824,7 @@ const KNOWN_ELEMENT_SCHEMAS = [
   DiagramElementSchema,
   TableElementSchema,
   CodeElementSchema,
+  EquationElementSchema,
   VideoElementSchema,
   AudioElementSchema,
   WebEmbedElementSchema,
@@ -821,6 +851,7 @@ export const ELEMENT_SCHEMA_BY_TYPE: Record<string, z.ZodType<unknown>> = {
   diagram: DiagramElementSchema as unknown as z.ZodType<unknown>,
   table: TableElementSchema as unknown as z.ZodType<unknown>,
   code: CodeElementSchema as unknown as z.ZodType<unknown>,
+  equation: EquationElementSchema as unknown as z.ZodType<unknown>,
   video: VideoElementSchema as unknown as z.ZodType<unknown>,
   audio: AudioElementSchema as unknown as z.ZodType<unknown>,
   webEmbed: WebEmbedElementSchema as unknown as z.ZodType<unknown>,

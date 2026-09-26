@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@deckastra/layout-engine": "*",
-    "@deckastra/presentation-schema": "*"
+    "@deckastra/presentation-schema": "*",
+    "katex": "^0.18.9"
   },
   "peerDependencies": {
     "react": ">=18",

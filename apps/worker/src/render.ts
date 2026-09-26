@@ -28,11 +28,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import type { AnimationTrack, PresentationDocument } from "@deckastra/presentation-schema";
-import type { DocumentScene, SlideScene } from "@deckastra/renderer";
+import type { DocumentScene, SceneNode, SlideScene } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { buildCriticReport, type CriticRenderReport } from "./critic-report";
 import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine";
-import type { ExportWarning, FontSpec } from "@deckastra/export-core";
+import type { ExportImage, ExportWarning, FontSpec } from "@deckastra/export-core";
+import { equationImageKey } from "@deckastra/export-pptx";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
 import { buildBrowserScene } from "./text-measurement";
 import { AssetLibrary, type InlineAsset } from "./assets";
@@ -594,4 +595,47 @@ export function deckHtml(
     ".deckastra-page:last-child{break-after:auto}" +
     `</style><body>${pages}</body>`
   );
+}
+
+/**
+ * Every equation in these slides, captured as a transparent PNG of the element
+ * as drawn (Design tab review, 2026-09-26), keyed as the PPTX adapter asks for
+ * it. PowerPoint cannot read LaTeX; the picture is the maths as the author saw
+ * it, typeset by the same KaTeX in the same browser the PDF uses.
+ *
+ * Each is drawn alone on an otherwise empty slide — no background, no other
+ * element — so the picture carries the equation and nothing that happened to be
+ * behind it.
+ */
+export async function captureEquations(
+  slides: readonly SlideScene[],
+  page: RenderPage,
+  fontCss = "",
+): Promise<Map<string, ExportImage>> {
+  const captured = new Map<string, ExportImage>();
+  for (const slide of slides) {
+    const equations: SceneNode[] = [];
+    const walk = (nodes: readonly SceneNode[] | undefined): void => {
+      for (const node of nodes ?? []) {
+        if (node.renderPayload.kind === "equation") equations.push(node);
+        walk(node.children);
+      }
+    };
+    walk(slide.nodes);
+
+    for (const node of equations) {
+      const alone: SlideScene = { ...slide, background: undefined, nodes: [node] } as SlideScene;
+      await page.setContent(slideHtml(alone, "final", [], undefined, fontCss), { waitUntil: "load" });
+      await settle(page);
+      const clip = {
+        x: Math.max(0, Math.floor(node.bounds.x)),
+        y: Math.max(0, Math.floor(node.bounds.y)),
+        width: Math.max(1, Math.ceil(node.bounds.width)),
+        height: Math.max(1, Math.ceil(node.bounds.height)),
+      };
+      const bytes = await page.screenshot({ type: "png", clip, omitBackground: true, animations: "disabled" });
+      captured.set(equationImageKey(node.id), { bytes, contentType: "image/png" });
+    }
+  }
+  return captured;
 }

@@ -447,3 +447,4 @@ function sceneUsedEstimatedMetrics(scene: SlideScene): boolean {
 
 export { createZip } from "./zip";
 export * from "./units";
+export { equationImageKey } from "./shapes";

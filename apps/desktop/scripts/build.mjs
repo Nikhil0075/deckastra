@@ -182,7 +182,18 @@ for (const css of stylesheets) {
   // The licence travels with the files it covers.
   await copyFile(join(dirname(source), "LICENSE"), join(dirname(target), "LICENSE")).catch(() => undefined);
 }
-console.log(`desktop: ${stylesheets.length} bundled fonts copied for the exporter`);
+// KaTeX's stylesheet and its woff2 faces, for equations (`EQUATION_STYLESHEET`).
+{
+  const source = requireFrom.resolve("katex/dist/katex.min.css");
+  const target = join(out, "worker", "fonts", "katex", "dist");
+  await mkdir(join(target, "fonts"), { recursive: true });
+  await copyFile(source, join(target, "katex.min.css"));
+  for (const file of await readdir(join(dirname(source), "fonts"))) {
+    if (file.endsWith(".woff2")) await copyFile(join(dirname(source), "fonts", file), join(target, "fonts", file));
+  }
+  await copyFile(join(dirname(source), "..", "LICENSE"), join(target, "..", "LICENSE")).catch(() => undefined);
+}
+console.log(`desktop: ${stylesheets.length} bundled fonts and the equation faces copied for the exporter`);
 
 const renderer = await vite({ root, configFile: join(root, "vite.config.ts") });
 

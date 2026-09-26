@@ -18,7 +18,7 @@ import { useEditor, type EditorApi } from "../src/lib/useEditor";
 vi.mock("../src/lib/measurer", () => ({ useBrowserMeasurer: () => undefined }));
 
 /** A minimal TrueType file: an sfnt header and a `name` table, nothing else. */
-function sfnt(names: Record<number, string>): Uint8Array {
+function sfnt(names: Record<number, string>): Uint8Array<ArrayBuffer> {
   const entries = Object.entries(names).map(([id, text]) => {
     const bytes: number[] = [];
     for (const char of text) bytes.push(0, char.charCodeAt(0));
@@ -27,7 +27,7 @@ function sfnt(names: Record<number, string>): Uint8Array {
   const stringOffset = 6 + entries.length * 12;
   const stringsLength = entries.reduce((sum, entry) => sum + entry.bytes.length, 0);
   const nameLength = stringOffset + stringsLength;
-  const out = new Uint8Array(12 + 16 + nameLength);
+  const out = new Uint8Array(new ArrayBuffer(12 + 16 + nameLength));
   const view = new DataView(out.buffer);
   view.setUint32(0, 0x00010000);
   view.setUint16(4, 1);
@@ -126,6 +126,7 @@ it("uploads a font from the picker and uses it on the text, as one undo step", a
   doc.slides[0]!.elements.push(element);
   const assetsBefore = doc.assets.length;
   render(<Harness doc={doc} id={element.id} />, { wrapper: withWorkspaceClient() });
+  await waitFor(() => expect(editor.recoveryReady).toBe(true));
 
   fireEvent.click(screen.getByTestId("font-family"));
   const input = screen.getByTestId("font-upload-input") as HTMLInputElement;
@@ -151,7 +152,7 @@ it("uploads a font from the picker and uses it on the text, as one undo step", a
   act(() => editor.undo());
   expect(editor.document.assets.length).toBe(assetsBefore);
   expect((resolveElementById(editor.document, element.id)!.element as TextElement).typography.fontFamily).toBe(
-    element.typography.fontFamily,
+    (element as TextElement).typography.fontFamily,
   );
 });
 

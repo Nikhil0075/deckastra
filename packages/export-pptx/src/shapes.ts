@@ -126,6 +126,9 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
     case "image":
       return pictureShape(node, context);
 
+    case "equation":
+      return equationShape(node, context);
+
     case "table":
       return tableShape(node, context);
     case "chart":
@@ -569,6 +572,59 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     `<p:spPr><a:xfrm${attributes}>` +
     `<a:off x="${units.px(placed.box.x)}" y="${units.px(placed.box.y)}"/>` +
     `<a:ext cx="${units.px(Math.max(1, placed.box.width))}" cy="${units.px(Math.max(1, placed.box.height))}"/>` +
+    "</a:xfrm>" +
+    '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
+    "</p:spPr>" +
+    "</p:pic>"
+  );
+}
+
+/** The key an equation's captured picture travels under in `ExportInput.images`. */
+export function equationImageKey(elementId: string): string {
+  return `equation:${elementId}`;
+}
+
+/**
+ * An equation, as the picture the exporter captured of it.
+ *
+ * The capture is of the element as drawn on the slide, rotation included, over
+ * its axis-aligned bounds — so it is placed on those bounds unrotated. The
+ * LaTeX goes into the description, where a reader of the file can still find
+ * the maths that the picture shows.
+ */
+function equationShape(node: SceneNode, context: ShapeContext): string {
+  const payload = node.renderPayload;
+  if (payload.kind !== "equation") return unsupported(node, context);
+  const claim = context.placePicture?.(equationImageKey(node.id));
+  if (!claim || "refused" in claim) {
+    return unsupported(node, context, "it could not be drawn as a picture for PowerPoint");
+  }
+
+  context.ledger.record({
+    severity: "info",
+    slideId: context.scene.slideId,
+    elementId: node.id,
+    feature: "equation",
+    action: "rasterized",
+    message:
+      "Equations are embedded as pictures, because PowerPoint cannot read LaTeX. " +
+      "They look the same and cannot be edited as maths in PowerPoint.",
+  });
+
+  const { units } = context;
+  const description = (node.a11y.label ?? payload.altText ?? payload.latex).slice(0, 300);
+  return (
+    "<p:pic>" +
+    "<p:nvPicPr>" +
+    `<p:cNvPr id="${context.nextId()}" ` +
+    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}" descr="${xml(description)}"/>` +
+    '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
+    "<p:nvPr/>" +
+    "</p:nvPicPr>" +
+    `<p:blipFill><a:blip r:embed="${claim.placed.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    "<p:spPr><a:xfrm>" +
+    `<a:off x="${units.px(node.bounds.x)}" y="${units.px(node.bounds.y)}"/>` +
+    `<a:ext cx="${units.px(Math.max(1, node.bounds.width))}" cy="${units.px(Math.max(1, node.bounds.height))}"/>` +
     "</a:xfrm>" +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
     "</p:spPr>" +

@@ -314,6 +314,37 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
       );
     }
 
+    case "equation": {
+      // Markup typeset in the scene build from the document's own source, by a
+      // typesetter run with `trust: false` — never markup a document carried.
+      // No role or label here: KaTeX's MathML is what a screen reader reads, and
+      // a label would hide the maths behind a sentence about it.
+      return (
+        <div
+          className="deckastra-equation"
+          data-equation-error={payload.error ? "" : undefined}
+          title={payload.error}
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: payload.align === "left" ? "flex-start" : payload.align === "right" ? "flex-end" : "center",
+            // KaTeX sizes itself in em, from 1.21em of this.
+            fontSize: payload.fontSize / 1.21,
+            color: payload.color,
+            overflow: "hidden",
+            lineHeight: 1.2,
+          }}
+        >
+          {/* KaTeX gives display maths a vertical margin meant for a page of
+              prose; in a box the author sized, it pushes the equation off centre. */}
+          <style>{".deckastra-equation .katex-display{margin:0}"}</style>
+          <div dangerouslySetInnerHTML={{ __html: payload.html }} />
+        </div>
+      );
+    }
+
     case "code": {
       return (
         <div

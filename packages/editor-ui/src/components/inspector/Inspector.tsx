@@ -8,6 +8,7 @@ import {
   type ShadowStyle,
   type TableElement,
   type TextElement,
+  type EquationElement,
 } from "@deckastra/presentation-schema";
 import { resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
 
@@ -41,6 +42,7 @@ import { EffectsSection } from "./paint";
 import { BackgroundSection } from "./BackgroundSection";
 import { TableSection } from "./TableSection";
 import { TextSection } from "./TextSection";
+import { EquationSection } from "./EquationSection";
 
 export type ReorderDirection = "forward" | "backward" | "front" | "back";
 
@@ -299,6 +301,7 @@ function ElementSections({ editor, element }: { editor: EditorApi; element: Pres
       </Section>
 
       {element.type === "text" ? <TextSection document={doc} element={element as TextElement} edit={edit} disabled={disabled} /> : null}
+      {element.type === "equation" ? <EquationSection document={doc} element={element as EquationElement} edit={edit} disabled={disabled} /> : null}
       {element.type === "shape" ? <ShapeLabelSection document={doc} element={element} edit={edit} disabled={disabled} /> : null}
       {element.type === "chart" ? <ChartSection document={doc} element={element as ChartElement} edit={edit} disabled={disabled} /> : null}
       {element.type === "table" ? <TableSection document={doc} element={element as TableElement} edit={edit} disabled={disabled} /> : null}

@@ -77,6 +77,10 @@ export interface ExportInput {
    * through the render page; PPTX needs the **bytes**, because a `.pptx` is a
    * zip and a picture in one is a part inside it. An asset that is absent here
    * is a picture the adapter reports rather than draws.
+   *
+   * Also keyed `equation:<element id>` for an equation the exporter typeset in
+   * its browser and captured: PowerPoint has no LaTeX, and a picture of the
+   * maths is truer to the slide than the source text would be.
    */
   images?: ReadonlyMap<string, ExportImage>;
 }

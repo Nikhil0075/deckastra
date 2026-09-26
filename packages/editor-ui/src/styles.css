@@ -17,6 +17,10 @@
  * depends on a CDN renders in the fallback face offline.
  */
 
+/* Equations are typeset by KaTeX (renderer/src/equation.ts); its stylesheet and
+   fonts are local files, like the text faces, because the desktop CSP allows
+   nothing remote. */
+@import "katex/dist/katex.min.css";
 @import "@fontsource-variable/inter/wght.css";
 @import "@fontsource-variable/jost/wght.css";
 /* The bundled slide font library (renderer/src/font-library.ts). Kept in step

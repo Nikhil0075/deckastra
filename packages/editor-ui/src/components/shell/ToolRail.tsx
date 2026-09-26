@@ -27,6 +27,7 @@ const OBJECTS: readonly Tool[] = [
   { id: "diagram", label: "Diagram", icon: "diagram", kind: "diagram" },
   { id: "table", label: "Table", icon: "table", kind: "table" },
   { id: "code", label: "Code", icon: "code", kind: "code" },
+  { id: "equation", label: "Equation", icon: "equation", kind: "equation" },
   { id: "icon", label: "Icon", icon: "grid", kind: "icon" },
 ];
 

@@ -4069,6 +4069,83 @@
             },
             "type": {
               "type": "string",
+              "const": "equation"
+            },
+            "latex": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "display": {
+              "type": "boolean"
+            },
+            "fontSize": {
+              "exclusiveMinimum": 0,
+              "$ref": "#/$defs/__schema0"
+            },
+            "color": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "align": {
+              "type": "string",
+              "enum": [
+                "left",
+                "center",
+                "right"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "transform",
+            "type",
+            "latex"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/__schema31"
+            },
+            "name": {
+              "$ref": "#/$defs/__schema32"
+            },
+            "semanticRole": {
+              "$ref": "#/$defs/__schema33"
+            },
+            "transform": {
+              "$ref": "#/$defs/__schema34"
+            },
+            "style": {
+              "$ref": "#/$defs/__schema35"
+            },
+            "opacity": {
+              "$ref": "#/$defs/__schema36"
+            },
+            "visible": {
+              "$ref": "#/$defs/__schema37"
+            },
+            "locked": {
+              "$ref": "#/$defs/__schema38"
+            },
+            "zIndex": {
+              "$ref": "#/$defs/__schema39"
+            },
+            "constraints": {
+              "$ref": "#/$defs/__schema40"
+            },
+            "bindings": {
+              "$ref": "#/$defs/__schema44"
+            },
+            "metadata": {
+              "$ref": "#/$defs/__schema47"
+            },
+            "extensions": {
+              "$ref": "#/$defs/__schema48"
+            },
+            "type": {
+              "type": "string",
               "const": "video"
             },
             "assetId": {
@@ -4418,6 +4495,7 @@
                   "diagram",
                   "table",
                   "code",
+                  "equation",
                   "video",
                   "audio",
                   "webEmbed",

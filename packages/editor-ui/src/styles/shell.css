@@ -2325,3 +2325,43 @@
   outline: 2px solid var(--dk-blue);
   outline-offset: -2px;
 }
+
+/* Equation section: source, a live preview, and insert buttons. */
+.dk-equation__source {
+  font-family: var(--dk-font-mono);
+}
+.dk-equation__preview {
+  min-height: 48px;
+  margin: var(--dk-space-1) 0;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  overflow-x: auto;
+  text-align: center;
+  font-size: 18px;
+}
+.dk-equation__preview .katex-display {
+  margin: 0;
+}
+.dk-equation__templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+  margin-bottom: var(--dk-space-1);
+}
+.dk-equation__symbols {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: var(--dk-space-2);
+}
+.dk-equation__symbol {
+  min-height: 28px;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.dk-equation__symbol:hover:not(:disabled) {
+  background: var(--dk-sunk);
+}

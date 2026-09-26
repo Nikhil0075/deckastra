@@ -112,6 +112,48 @@ export function bundledFontCss(font: BundledFont): Promise<string> {
   return pending;
 }
 
+/** KaTeX's stylesheet, as the package ships it; its fonts sit beside it in `fonts/`. */
+export const EQUATION_STYLESHEET = "katex/dist/katex.min.css";
+
+let equationStyles: Promise<string> | undefined;
+
+/** Whether any slide carries an equation, anywhere in its tree. */
+export function hasEquation(document: PresentationDocument): boolean {
+  const walk = (elements: readonly unknown[] | undefined): boolean =>
+    (elements ?? []).some((element) => {
+      const node = element as { type?: string; children?: unknown[] };
+      return node.type === "equation" || walk(node.children);
+    });
+  return document.slides.some((slide) => walk(slide.elements as unknown[]));
+}
+
+/**
+ * KaTeX's rules with its fonts inlined, woff2 only. Loaded only for a deck
+ * that has an equation: the stylesheet and its twenty faces are the better part
+ * of a megabyte, and a page that declares them is a page Chromium parses.
+ */
+export function equationCss(): Promise<string> {
+  if (!equationStyles) {
+    equationStyles = (async () => {
+      const path = stylesheetPath(EQUATION_STYLESHEET);
+      const source = await readFile(path, "utf8");
+      const files = [...new Set([...source.matchAll(/url\(fonts\/([^)]+\.woff2)\)/g)].map((match) => match[1]!))];
+      const inlined = new Map<string, string>();
+      for (const file of files) {
+        inlined.set(file, (await readFile(join(dirname(path), "fonts", file))).toString("base64"));
+      }
+      return source.replace(
+        /src:url\(fonts\/([^)]+\.woff2)\) format\("woff2"\)[^;}]*/g,
+        (_rule, file: string) => `src:url(data:font/woff2;base64,${inlined.get(file)}) format("woff2")`,
+      );
+    })();
+    equationStyles.catch(() => {
+      equationStyles = undefined;
+    });
+  }
+  return equationStyles;
+}
+
 /** The deck's uploaded faces, from the bytes the library accepted. */
 export function uploadedFontCss(document: PresentationDocument, library: AssetLibrary): string {
   const rules: string[] = [];
@@ -141,6 +183,13 @@ export async function pageFontCss(document: PresentationDocument, library: Asset
       parts.push(await bundledFontCss(font));
     } catch {
       // Named in the scene's font digest as unavailable, which the report reads.
+    }
+  }
+  if (hasEquation(document)) {
+    try {
+      parts.push(await equationCss());
+    } catch {
+      // The equation then draws in the page's text face, still legible.
     }
   }
   parts.push(uploadedFontCss(document, library));

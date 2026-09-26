@@ -40,7 +40,7 @@ export type RenderHostRequest =
   | {
       id: number;
       method: "screenshot";
-      params: { pageId: number; type: "png" | "jpeg"; clip: RenderHostClip };
+      params: { pageId: number; type: "png" | "jpeg"; clip: RenderHostClip; omitBackground?: boolean };
     }
   | {
       id: number;

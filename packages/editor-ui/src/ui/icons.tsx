@@ -37,6 +37,8 @@ const PATHS = {
   ),
   table: <path d="M2.5 3h11v10h-11ZM2.5 6.5h11M2.5 10h11M6.5 3v10" />,
   code: <path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5" />,
+  // A square root over x: reads as maths at 16px where a sigma reads as a letter.
+  equation: <path d="M1.5 9 3.5 8l2 5 3-10.5h6M9.5 6.5l3.5 4M13 6.5l-3.5 4" />,
   undo: <path d="M5 3.5 2.5 6 5 8.5M2.5 6H10a3.5 3.5 0 0 1 0 7H6" />,
   redo: <path d="m11 3.5 2.5 2.5L11 8.5M13.5 6H6a3.5 3.5 0 0 0 0 7h4" />,
   plus: <path d="M8 3v10M3 8h10" />,

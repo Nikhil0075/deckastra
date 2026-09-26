@@ -33,6 +33,8 @@ export interface ScreenshotOptions {
   clip: RenderClip;
   /** Finish finite animations and cancel infinite ones before capture. */
   animations?: "disabled";
+  /** A transparent PNG where the page draws nothing — an equation for PowerPoint. */
+  omitBackground?: boolean;
 }
 
 /** The subset of Playwright's PDF options the exporter uses. */
@@ -135,6 +137,7 @@ function playwrightPage(page: import("playwright").Page): RenderPage {
           type: options.type,
           clip: options.clip,
           ...(options.animations ? { animations: options.animations } : {}),
+          ...(options.omitBackground ? { omitBackground: true } : {}),
         }),
       ),
     pdf: async (options) => new Uint8Array(await page.pdf(options)),

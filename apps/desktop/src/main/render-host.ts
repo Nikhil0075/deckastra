@@ -167,11 +167,25 @@ export function runRenderHost(): void {
         await window.webContents.executeJavaScript(
           `document.getAnimations().forEach((animation) => { try { animation.finish(); } catch { animation.cancel(); } })`,
         );
-        const shot = (await window.webContents.debugger.sendCommand("Page.captureScreenshot", {
-          format: request.params.type,
-          clip: { ...request.params.clip, scale: 1 },
-        })) as { data: string };
-        return shot.data;
+        // What Playwright's `omitBackground` does: a transparent default
+        // background for this capture only, then the page's own again.
+        const transparent = request.params.omitBackground === true && request.params.type === "png";
+        if (transparent) {
+          await window.webContents.debugger.sendCommand("Emulation.setDefaultBackgroundColorOverride", {
+            color: { r: 0, g: 0, b: 0, a: 0 },
+          });
+        }
+        try {
+          const shot = (await window.webContents.debugger.sendCommand("Page.captureScreenshot", {
+            format: request.params.type,
+            clip: { ...request.params.clip, scale: 1 },
+          })) as { data: string };
+          return shot.data;
+        } finally {
+          if (transparent) {
+            await window.webContents.debugger.sendCommand("Emulation.setDefaultBackgroundColorOverride", {});
+          }
+        }
       }
 
       case "pdf": {

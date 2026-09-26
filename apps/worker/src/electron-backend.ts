@@ -216,6 +216,7 @@ export class ElectronPage implements RenderPage {
       pageId: this.pageId,
       type: options.type,
       clip: options.clip,
+      ...(options.omitBackground ? { omitBackground: true } : {}),
     })) as string;
     return new Uint8Array(Buffer.from(base64, "base64"));
   }

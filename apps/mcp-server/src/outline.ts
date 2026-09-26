@@ -84,7 +84,14 @@ function outlineElement(element: Record<string, any>): ElementOutline {
   const summary: ElementOutline = { id: String(element.id), type: String(element.type) };
   if (element.semanticRole) summary.role = String(element.semanticRole);
 
-  const text = textOf(element);
+  // An equation's content is its source, and an agent asked to fix a formula
+  // has to be able to read the one it is fixing.
+  const text =
+    element.type === "equation" && typeof element.latex === "string"
+      ? element.latex.length > TEXT_LIMIT
+        ? { text: `${element.latex.slice(0, TEXT_LIMIT)}…`, truncated: true }
+        : { text: element.latex, truncated: false }
+      : textOf(element);
   if (text) {
     summary.text = text.text;
     if (text.truncated) summary.truncated = true;

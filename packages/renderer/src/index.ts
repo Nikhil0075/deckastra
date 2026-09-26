@@ -22,6 +22,7 @@ export * from "./fonts";
 export * from "./font-library";
 export * from "./icons";
 export * from "./highlight";
+export * from "./equation";
 export * from "./charts";
 export * from "./diagram";
 export * from "./scene";
