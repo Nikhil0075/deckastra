@@ -227,6 +227,10 @@ const q = encodeURIComponent;
         const current = store.read();
         if (current) store.write({ ...current, workspaceId, projectId });
       },
+      readPreference: async (key, request) => (await json<{ value: unknown }>(`/v1/me/preferences/${q(key)}`, { ...request })).value,
+      writePreference: async (key, value, request) => {
+        await json<unknown>(`/v1/me/preferences/${q(key)}`, { method: "PUT", body: { value }, ...request });
+      },
     },
 
     documents: {

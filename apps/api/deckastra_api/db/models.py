@@ -78,6 +78,29 @@ class User(Base, TimestampMixin):
     )
 
 
+class UserPreference(Base, TimestampMixin):
+    """A person's own editor settings that should follow them between devices.
+
+    The Add library's recent and favourite items were kept in one browser only
+    (design review, 2026-09-27). They are not about any deck, so they live with
+    the user, keyed by a short name the service allowlists, and never with a
+    workspace, where they would be shared with everyone in it.
+    """
+
+    __tablename__ = "user_preferences"
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_user_preferences_user_key"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    value_json: Mapped[Any] = mapped_column(JsonColumn, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now, server_default=func.now(), nullable=False
+    )
+
+
 class AuthIdentity(Base, TimestampMixin):
     """A stable external login mapped to one Deckastra user.
 

@@ -98,6 +98,13 @@ export interface WorkspaceClient {
     ): Promise<AccountProject>;
     /** Remember which project new decks go to. Local to this surface. */
     selectProject(workspaceId: string, projectId: string): void;
+    /**
+     * The person's own editor settings, kept by the service so they follow the
+     * person between devices (design review, 2026-09-27). Optional: a surface
+     * with no service to keep them keeps them locally instead.
+     */
+    readPreference?(key: "library", options?: RequestOptions): Promise<unknown>;
+    writePreference?(key: "library", value: unknown, options?: RequestOptions): Promise<void>;
   };
 
   readonly documents: {

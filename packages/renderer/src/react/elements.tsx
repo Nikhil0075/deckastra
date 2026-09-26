@@ -885,9 +885,9 @@ function IconContent({
       height={height}
       viewBox={`0 0 ${payload.viewBox} ${payload.viewBox}`}
       style={{ position: "absolute", inset: 0 }}
-      fill="none"
-      stroke={payload.color}
-      strokeWidth={payload.strokeWidth}
+      fill={payload.fill ? payload.color : "none"}
+      stroke={payload.fill ? "none" : payload.color}
+      strokeWidth={payload.fill ? undefined : payload.strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       role="img"

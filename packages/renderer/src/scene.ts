@@ -180,6 +180,8 @@ export interface IconPayload {
   color: string;
   strokeWidth: number;
   viewBox: number;
+  /** Filled shapes rather than strokes: a brand's logo mark. */
+  fill?: boolean;
   /** Set when the icon is not in the curated set; the renderer draws its name. */
   missing?: string;
 }
@@ -929,7 +931,14 @@ function buildPayload(
         strokeWidth?: number;
       };
 
-      const definition = findIcon(el.icon.name);
+      // A brand icon is the theme's own (design review, 2026-09-27); anything
+      // else is looked up in the built-in set.
+      const brand =
+        el.icon.set === "brand"
+          ? (theme.source as { icons?: Record<string, { viewBox: number; paths: string[]; circles?: [number, number, number][]; fill?: boolean }> }).icons?.[el.icon.name]
+          : undefined;
+      const definition = brand ?? (el.icon.set === "brand" ? undefined : findIcon(el.icon.name));
+      const viewBox = brand?.viewBox ?? ICON_VIEWBOX;
       const color = String(
         resolveValue(theme, el.color ?? "token:colors.foreground", "currentColor"),
       );
@@ -944,11 +953,14 @@ function buildPayload(
         // Scaled with the box so a large icon keeps its weight rather than
         // turning into a hairline drawing.
         strokeWidth:
-          el.strokeWidth ?? Math.max(1, (ICON_VIEWBOX / Math.max(1, Math.min(width, height))) * 2.2),
-        viewBox: ICON_VIEWBOX,
+          el.strokeWidth ?? Math.max(1, (viewBox / Math.max(1, Math.min(width, height))) * 2.2),
+        viewBox,
+        ...(brand?.fill ? { fill: true } : {}),
         missing: definition
           ? undefined
-          : `${el.icon.set}/${el.icon.name} is not in the curated icon set`,
+          : el.icon.set === "brand"
+            ? `The theme has no icon called ${el.icon.name}`
+            : `${el.icon.set}/${el.icon.name} is not in the curated icon set`,
       };
     }
 

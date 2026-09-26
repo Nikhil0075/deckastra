@@ -22,6 +22,8 @@ export interface StarterElementInput {
   shape?: ShapeKind;
   /** The curated icon to start with, for an icon chosen from the library. */
   icon?: string;
+  /** Which set it is from: the built-in one, or "brand" for one of the theme's own. */
+  iconSet?: string;
 }
 
 /**
@@ -84,7 +86,7 @@ export function makeStarterElement(input: StarterElementInput): PresentationElem
       return {
         ...base,
         type: "icon",
-        icon: { set: "lucide", name: input.icon ?? "database" },
+        icon: { set: input.iconSet ?? "lucide", name: input.icon ?? "database" },
         color: "token:colors.accent",
         strokeWidth: 2,
       } as PresentationElement;

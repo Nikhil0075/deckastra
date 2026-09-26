@@ -330,7 +330,10 @@ export const ImageElementSchema = z.looseObject({
  * request "a database icon" without generating one.
  */
 export const IconReferenceSchema = z.object({
-  /** "lucide", "simple-icons", "custom" */
+  /**
+   * "lucide", "simple-icons", "custom", or "brand": one of the theme's own
+   * icons (`theme.icons`), found by `name`.
+   */
   set: z.string(),
   /** "database", "shield-check" */
   name: z.string(),

@@ -1,9 +1,12 @@
-import { useMemo, useRef, useState } from "react";
-import type { ShapeKind } from "@deckastra/presentation-schema";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { BrandIcon, PatchOperation, PresentationDocument, ShapeKind } from "@deckastra/presentation-schema";
 import type { StarterElementKind } from "@deckastra/presentation-core";
-import { ICON_NAMES, ICON_VIEWBOX, findIcon, shapeGeometry } from "@deckastra/renderer";
+import { ICON_CATEGORIES, ICON_NAMES, ICON_VIEWBOX, findIcon, shapeGeometry } from "@deckastra/renderer";
+import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
 
-import { Button, Icon, IconButton, Tabs, TextField, cx, type IconName } from "../../ui";
+import { pptxFidelity } from "../../lib/export-fidelity";
+import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
+import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx, type IconName } from "../../ui";
 
 /**
  * The Add library (design review, 2026-09-26): everything that can be put on a
@@ -18,12 +21,12 @@ import { Button, Icon, IconButton, Tabs, TextField, cx, type IconName } from "..
  * they never reach a document.
  */
 
-export type LibraryTab = "shapes" | "icons" | "media";
+export type LibraryTab = "shapes" | "icons" | "brand" | "media";
 
 export type LibraryItem =
   | { kind: "shape"; shape: ShapeKind }
   | { kind: "line" }
-  | { kind: "icon"; name: string }
+  | { kind: "icon"; name: string; set?: "brand" }
   | { kind: "object"; object: StarterElementKind };
 
 interface ShapeEntry {
@@ -62,13 +65,17 @@ const STORE = "deckastra.library";
 const RECENT_LIMIT = 8;
 
 function keyOf(item: LibraryItem): string {
-  return item.kind === "shape" ? `shape:${item.shape}` : item.kind === "line" ? "shape:line" : item.kind === "icon" ? `icon:${item.name}` : `object:${item.object}`;
+  if (item.kind === "icon") return item.set === "brand" ? `brand:${item.name}` : `icon:${item.name}`;
+  return item.kind === "shape" ? `shape:${item.shape}` : item.kind === "line" ? "shape:line" : `object:${item.object}`;
 }
 
-function itemOf(key: string): LibraryItem | undefined {
-  const [kind, name] = key.split(":") as [string, string];
+function itemOf(key: string, brand: Record<string, BrandIcon> = {}): LibraryItem | undefined {
+  const at = key.indexOf(":");
+  const kind = key.slice(0, at);
+  const name = key.slice(at + 1);
   if (kind === "shape") return name === "line" ? { kind: "line" } : SHAPES.some((s) => s.shape === name) ? { kind: "shape", shape: name as ShapeKind } : undefined;
   if (kind === "icon") return findIcon(name) ? { kind: "icon", name } : undefined;
+  if (kind === "brand") return brand[name] ? { kind: "icon", name, set: "brand" } : undefined;
   if (kind === "object") return OBJECTS.some((o) => o.object === name) ? { kind: "object", object: name as StarterElementKind } : undefined;
   return undefined;
 }
@@ -78,13 +85,19 @@ interface Saved {
   favourites: string[];
 }
 
+/**
+ * Keys only: whether each still names something is decided where they are
+ * shown, because a brand icon's name means something only against a deck.
+ */
+function clean(value: unknown): Saved {
+  const parsed = (value && typeof value === "object" ? value : {}) as Partial<Saved>;
+  const keys = (list: unknown) => (Array.isArray(list) ? list.filter((key): key is string => typeof key === "string" && key.length < 120).slice(0, 60) : []);
+  return { recent: keys(parsed.recent).slice(0, RECENT_LIMIT), favourites: keys(parsed.favourites) };
+}
+
 function load(): Saved {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORE) ?? "{}") as Partial<Saved>;
-    return {
-      recent: Array.isArray(parsed.recent) ? parsed.recent.filter((key) => typeof key === "string" && itemOf(key)) : [],
-      favourites: Array.isArray(parsed.favourites) ? parsed.favourites.filter((key) => typeof key === "string" && itemOf(key)) : [],
-    };
+    return clean(JSON.parse(localStorage.getItem(STORE) ?? "{}"));
   } catch {
     return { recent: [], favourites: [] };
   }
@@ -120,12 +133,23 @@ export function ShapeThumb({ shape }: { shape: ShapeKind | "line" }) {
   );
 }
 
-/** A curated icon, drawn from the same paths the slide uses. */
-export function IconThumb({ name }: { name: string }) {
-  const icon = findIcon(name);
+/** A curated icon, or one of the theme's own, drawn from the same paths the slide uses. */
+export function IconThumb({ name, brand }: { name: string; brand?: BrandIcon }) {
+  const icon = brand ?? findIcon(name);
   if (!icon) return null;
+  const box = brand?.viewBox ?? ICON_VIEWBOX;
+  const filled = Boolean(brand?.fill);
   return (
-    <svg viewBox={`0 0 ${ICON_VIEWBOX} ${ICON_VIEWBOX}`} aria-hidden="true" className="dk-library__icon" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox={`0 0 ${box} ${box}`}
+      aria-hidden="true"
+      className="dk-library__icon"
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
+      strokeWidth={filled ? undefined : (1.8 * box) / ICON_VIEWBOX}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       {icon.paths.map((d, index) => (
         <path key={index} d={d} />
       ))}
@@ -149,28 +173,76 @@ export interface AddLibraryProps {
   onClose: () => void;
   onAdd: (item: LibraryItem) => void;
   onAddImage: (file: File) => void | Promise<void>;
+  /** The deck, for its brand icons; and a way to add or remove one. */
+  document?: PresentationDocument;
+  apply?: (operations: PatchOperation[], label: string) => void;
 }
 
-export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibraryProps) {
+export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, apply }: AddLibraryProps) {
+  const client = useOptionalWorkspaceClient();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("All");
+  const [iconCategory, setIconCategory] = useState<string>("All");
   const [saved, setSaved] = useState<Saved>(load);
+  const [svgProblem, setSvgProblem] = useState<string | undefined>();
   const fileInput = useRef<HTMLInputElement>(null);
+  const svgInput = useRef<HTMLInputElement>(null);
   const needle = query.trim().toLowerCase();
+  const brand = (document?.theme.icons ?? {}) as Record<string, BrandIcon>;
+
+  // Recent and favourites follow the person (design review, 2026-09-27): read
+  // from the service once, merged with this browser's copy, which stays as the
+  // offline cache. A service that cannot keep them leaves the local copy alone.
+  useEffect(() => {
+    if (!client?.session.readPreference) return;
+    let live = true;
+    client.session
+      .readPreference("library")
+      .then((value) => {
+        if (!live || !value) return;
+        const remote = clean(value);
+        setSaved((local) => {
+          const merged = {
+            recent: [...new Set([...local.recent, ...remote.recent])].slice(0, RECENT_LIMIT),
+            favourites: [...new Set([...remote.favourites, ...local.favourites])],
+          };
+          save(merged);
+          return merged;
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [client]);
+
+  const remember = (next: Saved) => {
+    setSaved(next);
+    save(next);
+    void client?.session.writePreference?.("library", next).catch(() => undefined);
+  };
 
   const add = (item: LibraryItem) => {
     const key = keyOf(item);
-    const next = { ...saved, recent: [key, ...saved.recent.filter((existing) => existing !== key)].slice(0, RECENT_LIMIT) };
-    setSaved(next);
-    save(next);
+    remember({ ...saved, recent: [key, ...saved.recent.filter((existing) => existing !== key)].slice(0, RECENT_LIMIT) });
     onAdd(item);
   };
   const toggleFavourite = (item: LibraryItem) => {
     const key = keyOf(item);
     const favourites = saved.favourites.includes(key) ? saved.favourites.filter((existing) => existing !== key) : [...saved.favourites, key];
-    const next = { ...saved, favourites };
-    setSaved(next);
-    save(next);
+    remember({ ...saved, favourites });
+  };
+
+  const uploadSvg = async (file: File) => {
+    if (!document || !apply) return;
+    const result = parseSvgIcon(await readText(file));
+    if (!result.ok) {
+      setSvgProblem(result.reason);
+      return;
+    }
+    const name = brandIconName(document, file.name);
+    apply(addBrandIconOperations(document, name, result.icon), `Add the ${name} icon`);
+    setSvgProblem(undefined);
   };
 
   const shapes = SHAPES.filter(
@@ -181,12 +253,16 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
   const icons = useMemo(
     () =>
       ICON_NAMES.filter((name) => {
+        const icon = findIcon(name);
+        if (iconCategory !== "All" && icon?.category !== iconCategory) return false;
         if (!needle) return true;
-        const keywords = findIcon(name)?.keywords.join(" ") ?? "";
-        return `${name} ${keywords}`.toLowerCase().includes(needle);
+        return `${name} ${icon?.keywords.join(" ") ?? ""}`.toLowerCase().includes(needle);
       }),
-    [needle],
+    [needle, iconCategory],
   );
+  const brandNames = Object.keys(brand)
+    .filter((name) => !needle || `${name} ${brand[name]!.keywords?.join(" ") ?? ""}`.toLowerCase().includes(needle))
+    .sort((a, b) => a.localeCompare(b));
 
   const tile = (item: LibraryItem, art: React.ReactNode, caption?: string) => {
     const key = keyOf(item);
@@ -219,7 +295,20 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
   };
 
   const artFor = (item: LibraryItem) =>
-    item.kind === "icon" ? <IconThumb name={item.name} /> : item.kind === "object" ? <Icon name={OBJECTS.find((o) => o.object === item.object)!.icon} size={22} /> : <ShapeThumb shape={item.kind === "line" ? "line" : item.shape} />;
+    item.kind === "icon" ? <IconThumb name={item.name} brand={item.set === "brand" ? brand[item.name] : undefined} /> : item.kind === "object" ? <Icon name={OBJECTS.find((o) => o.object === item.object)!.icon} size={22} /> : <ShapeThumb shape={item.kind === "line" ? "line" : item.shape} />;
+
+  /** An object, with what it becomes in PowerPoint said before it is added. */
+  const objectTile = (entry: (typeof OBJECTS)[number]) => {
+    const fidelity = pptxFidelity(entry.object);
+    return (
+      <div key={entry.object} className="dk-library__objecttile" title={`In PowerPoint: ${fidelity.detail}`}>
+        {tile({ kind: "object", object: entry.object }, <Icon name={entry.icon} size={22} />, entry.label)}
+        <StatusChip tone={fidelity.fidelity === "native" ? "neutral" : "waiting"} className="dk-library__fidelity">
+          {fidelity.label}
+        </StatusChip>
+      </div>
+    );
+  };
 
   const quick = (title: string, keys: string[], empty: string) => (
     <section className="dk-library__section">
@@ -227,7 +316,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
       {keys.length ? (
         <div className="dk-library__grid dk-library__grid--small">
           {keys.map((key) => {
-            const item = itemOf(key);
+            const item = itemOf(key, brand);
             return item ? tile(item, artFor(item)) : null;
           })}
         </div>
@@ -261,9 +350,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
       {!needle ? (
         <>
           <h4 className="dk-library__heading">Objects</h4>
-          <div className="dk-library__grid">
-            {OBJECTS.map((entry) => tile({ kind: "object", object: entry.object }, <Icon name={entry.icon} size={22} />, entry.label))}
-          </div>
+          <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
         </>
       ) : null}
     </>
@@ -271,11 +358,72 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
 
   const iconsPanel = (
     <>
+      <div className="dk-library__chips" role="group" aria-label="Icon category">
+        {["All", ...ICON_CATEGORIES].map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={cx("dk-chipbutton", iconCategory === name && "dk-chipbutton--on")}
+            aria-pressed={iconCategory === name}
+            onClick={() => setIconCategory(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
       <div className="dk-library__grid dk-library__grid--icons" data-testid="library-icons">
         {icons.map((name) => tile({ kind: "icon", name }, <IconThumb name={name} />))}
       </div>
       {icons.length === 0 ? <p className="dk-field__hint">No icon matches "{query}". Try a word like "user", "chart" or "time".</p> : null}
-      <p className="dk-field__hint">{ICON_NAMES.length} icons, drawn as lines that take your colours and export as shapes.</p>
+      <p className="dk-field__hint">
+        {ICON_NAMES.length} icons, drawn as lines that take your colours. In PowerPoint they are editable shapes.
+      </p>
+    </>
+  );
+
+  const brandPanel = (
+    <>
+      {apply && document ? (
+        <Button variant="primary" icon="upload" onClick={() => svgInput.current?.click()} data-testid="library-upload-svg">
+          Upload an SVG icon
+        </Button>
+      ) : null}
+      <input
+        ref={svgInput}
+        type="file"
+        accept="image/svg+xml,.svg"
+        aria-label="SVG icon file"
+        tabIndex={-1}
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void uploadSvg(file);
+        }}
+      />
+      {svgProblem ? (
+        <p className="dk-field__hint dk-field__hint--error" role="alert" data-testid="library-svg-problem">
+          {svgProblem}
+        </p>
+      ) : null}
+      {brandNames.length ? (
+        <div className="dk-library__grid dk-library__grid--icons" data-testid="library-brand">
+          {brandNames.map((name) => (
+            <div key={name} className="dk-library__brandtile">
+              {tile({ kind: "icon", name, set: "brand" }, <IconThumb name={name} brand={brand[name]} />, name)}
+              {apply && document ? (
+                <IconButton icon="trash" size="sm" label={`Remove ${name} from the brand icons`} onClick={() => apply(removeBrandIconOperations(document, name), `Remove the ${name} icon`)} />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="dk-field__hint">
+          Your brand&apos;s own icons and logo marks. Upload an SVG and it is kept with the theme, so it travels to every deck that uses it
+          and into a saved workspace theme.
+        </p>
+      )}
+      <p className="dk-field__hint">Only the drawing is kept; anything else in the file is left behind.</p>
     </>
   );
 
@@ -299,9 +447,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
       />
       <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG. You can also paste a picture or drop one on the slide.</p>
       <h4 className="dk-library__heading">Objects</h4>
-      <div className="dk-library__grid">
-        {OBJECTS.map((entry) => tile({ kind: "object", object: entry.object }, <Icon name={entry.icon} size={22} />, entry.label))}
-      </div>
+      <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
     </>
   );
 
@@ -330,6 +476,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
         items={[
           { value: "shapes", label: "Shapes", panel: shapesPanel },
           { value: "icons", label: "Icons", panel: iconsPanel },
+          { value: "brand", label: "Brand", panel: brandPanel },
           { value: "media", label: "Media", panel: mediaPanel },
         ]}
       />
@@ -337,4 +484,14 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage }: AddLibrar
       {quick("Favourites", saved.favourites, "Star anything to keep it here.")}
     </aside>
   );
+}
+
+/** A file's text through FileReader, which every browser and test environment has. */
+function readText(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
 }

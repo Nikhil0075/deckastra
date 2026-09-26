@@ -20,9 +20,13 @@
  * one `strokeWidth` scales the whole set coherently.
  */
 
+import { ICON_LIBRARY, LIBRARY_CATEGORIES, type LibraryCategory } from "./icon-library";
+
 export interface IconDefinition {
   /** Path `d` values, stroked in order. */
   paths: string[];
+  /** Where the Add library files it. */
+  category?: LibraryCategory;
   /** Circles drawn after the paths, as [cx, cy, r]. */
   circles?: [number, number, number][];
   /** Search terms an agent or the editor's picker can match on. */
@@ -242,6 +246,27 @@ const ICONS: Record<string, IconDefinition> = {
     keywords: ["idea", "insight", "innovation", "concept"],
   },
 };
+
+/**
+ * Where each curated icon sits in the Add library. The extended library
+ * (`icon-library.ts`, generated from Lucide) brings its own categories; a
+ * curated icon keeps its name, its drawing and this category over any Lucide
+ * icon of the same name.
+ */
+const CURATED_CATEGORY: Record<string, LibraryCategory> = {
+  database: "Data", server: "Data", cloud: "Data", cpu: "Data", network: "Data", api: "Data", terminal: "Product",
+  layers: "Product", workflow: "Data", git: "Arrows", check: "General", "check-circle": "General", close: "General",
+  alert: "General", info: "General", shield: "General", lock: "General", key: "General", eye: "General", zap: "General",
+  file: "General", folder: "General", code: "Product", chart: "Data", clock: "General", calendar: "General",
+  mail: "People", search: "General", settings: "Manufacturing", link: "General", user: "People", users: "People",
+  building: "Places", globe: "Places", "arrow-right": "Arrows", "arrow-up-right": "Arrows",
+  "arrow-down-right": "Arrows", refresh: "Arrows", play: "Product", target: "General", star: "General", lightbulb: "General",
+};
+
+for (const [name, definition] of Object.entries(ICONS)) definition.category ??= CURATED_CATEGORY[name] ?? "General";
+for (const [name, definition] of Object.entries(ICON_LIBRARY)) ICONS[name] ??= definition;
+
+export const ICON_CATEGORIES = LIBRARY_CATEGORIES;
 
 export const ICON_NAMES = Object.keys(ICONS).sort();
 

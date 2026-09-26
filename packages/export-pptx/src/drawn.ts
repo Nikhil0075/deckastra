@@ -544,9 +544,11 @@ export function iconShape(node: SceneNode, context: ShapeContext): string | unde
   };
   const writer: Writer = { node, context, place, parts: [], index: 0 };
   const stroke = payload.strokeWidth * base.scale * s;
-  for (const d of payload.paths) addPath(writer, d, { stroke: payload.color, strokeWidth: stroke, roundCap: true });
+  // A brand's logo mark is filled shapes; a line icon is outlines.
+  const look = payload.fill ? { fill: payload.color } : { stroke: payload.color, strokeWidth: stroke };
+  for (const d of payload.paths) addPath(writer, d, payload.fill ? look : { ...look, roundCap: true });
   for (const [cx, cy, r] of payload.circles) {
-    addBox(writer, { x: cx - r, y: cy - r, width: r * 2, height: r * 2 }, { stroke: payload.color, strokeWidth: stroke, ellipse: true });
+    addBox(writer, { x: cx - r, y: cy - r, width: r * 2, height: r * 2 }, { ...look, ellipse: true });
   }
   if (payload.paths.some((d) => /[Aa]/.test(d))) {
     context.ledger.record({

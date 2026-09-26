@@ -14,8 +14,9 @@ decks, no user list — a link to one deck is not a foothold in a workspace.
 
 from __future__ import annotations
 
-import logging
 import hashlib
+import json
+import logging
 import os
 import time
 from typing import Any, Literal
@@ -45,6 +46,7 @@ from .db.models import (
     Project,
     Theme,
     User,
+    UserPreference,
     Workspace,
     WorkspaceMember,
 )
@@ -175,6 +177,75 @@ def account_context(
 ) -> dict[str, Any]:
     """The complete picker context; no implicit first-workspace ambiguity."""
     return _account_context(session, principal)
+
+
+# ---------------------------------------------------------------- preferences
+
+#: The settings a person's editor may keep here, and how large each may be.
+#: An allowlist rather than any key: this is a person's own storage, and a
+#: route that took any key and any size would be a place to put anything.
+PREFERENCE_KEYS = {"library"}
+PREFERENCE_MAX_BYTES = 16_384
+
+
+class PreferenceRequest(BaseModel):
+    value: Any
+
+
+def _preference_key(key: str) -> str:
+    if key not in PREFERENCE_KEYS:
+        raise HTTPException(status_code=404, detail="Not found.")
+    return key
+
+
+@router.get("/me/preferences/{key}")
+def read_preference(
+    key: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """One of the person's own settings, or null when they have none yet.
+
+    The Add library's recent and favourite items (design review, 2026-09-27)
+    were kept in one browser; kept here they follow the person to another
+    machine. Nothing here is about a deck or a workspace.
+    """
+    _preference_key(key)
+    row = session.scalar(
+        select(UserPreference).where(
+            UserPreference.user_id == principal.user_id, UserPreference.key == key
+        )
+    )
+    return {"key": key, "value": row.value_json if row else None}
+
+
+@router.put("/me/preferences/{key}")
+def write_preference(
+    key: str,
+    request: PreferenceRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    _preference_key(key)
+    if len(json.dumps(request.value, separators=(",", ":"))) > PREFERENCE_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="That setting is too large to keep.")
+    row = session.scalar(
+        select(UserPreference).where(
+            UserPreference.user_id == principal.user_id, UserPreference.key == key
+        )
+    )
+    if row is None:
+        session.add(
+            UserPreference(
+                id=new_id("prf"), user_id=principal.user_id, key=key, value_json=request.value
+            )
+        )
+    else:
+        # A fresh object, never a mutation: JsonColumn is not MutableDict, and
+        # an in-place change would issue no UPDATE (CLAUDE.md).
+        row.value_json = request.value
+    session.flush()
+    return {"key": key, "value": request.value}
 
 
 @router.post("/workspaces", status_code=201)

@@ -308,6 +308,24 @@ export const ColorModeSchema = z.looseObject({
 });
 export type ColorMode = z.infer<typeof ColorModeSchema>;
 
+/**
+ * An icon someone brought (design review, 2026-09-27): an uploaded SVG reduced
+ * to path data and circles on a square grid, kept with the theme so a brand's
+ * icons travel with its colours and faces — into every deck that uses the
+ * theme, and into a saved workspace theme. Only geometry survives the import:
+ * no markup, no styles, no links, so a deck that carries one is still safe to
+ * email. The same path grammar a custom shape is held to.
+ */
+export const BrandIconSchema = z.looseObject({
+  viewBox: FiniteNumber.positive(),
+  paths: z.array(z.string().max(20_000).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\-+\s]+$/)).max(200),
+  circles: z.array(z.tuple([FiniteNumber, FiniteNumber, FiniteNumber.min(0)])).max(200).optional(),
+  /** Filled shapes (a logo mark) rather than outlines (a line icon). */
+  fill: z.boolean().optional(),
+  keywords: z.array(z.string().max(40)).max(20).optional(),
+});
+export type BrandIcon = z.infer<typeof BrandIconSchema>;
+
 export const ThemeDefinitionSchema = z.looseObject({
   id: prefixedId("thm"),
   name: z.string().min(1),
@@ -329,6 +347,8 @@ export const ThemeDefinitionSchema = z.looseObject({
   logoAssetIds: z.array(IdSchema).optional(),
   /** Named object styles, keyed by name (no dots). See `ObjectStyleSchema`. */
   objectStyles: z.record(z.string().min(1).max(60).regex(/^[^.]+$/), ObjectStyleSchema).optional(),
+  /** The brand's own icons by name, drawn with `icon.set: "brand"`. See `BrandIconSchema`. */
+  icons: z.record(z.string().min(1).max(60).regex(/^[^./~]+$/), BrandIconSchema).optional(),
   /** Colour modes by name. See `ColorModeSchema`. */
   modes: z.record(z.string().min(1).max(40), ColorModeSchema).optional(),
   /** Inherit from a workspace theme. */

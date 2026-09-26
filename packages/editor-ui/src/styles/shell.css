@@ -3078,3 +3078,21 @@
   padding-bottom: var(--dk-space-2);
   border-bottom: var(--dk-line) solid var(--dk-rule-soft);
 }
+
+/* --- Add library: brand icons, PowerPoint notes (design review, 2026-09-27) -- */
+
+.dk-library__brandtile,
+.dk-library__objecttile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+.dk-library__brandtile > .dk-iconbtn {
+  align-self: center;
+}
+.dk-library__fidelity {
+  align-self: center;
+  font-size: 10px;
+}

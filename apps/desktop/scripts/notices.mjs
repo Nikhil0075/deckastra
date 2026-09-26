@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { parseLock } from "./sbom.mjs";
@@ -33,6 +34,7 @@ import { parseLock } from "./sbom.mjs";
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const desktop = dirname(here);
 const dist = join(desktop, "dist");
 
@@ -60,6 +62,33 @@ function npmComponents() {
     })),
     problems: [],
   };
+}
+
+/**
+ * Content copied into this repository's source from a package that is not
+ * itself bundled: the extended icon library is Lucide's geometry, generated
+ * into `packages/renderer/src/icon-library.ts` by `scripts/build-icon-library.mjs`
+ * (design review, 2026-09-27). Its licence (ISC, with MIT for the icons that
+ * came from Feather) has to travel with the copy all the same, so it is read
+ * from the development dependency the generator used.
+ */
+const VENDORED = [{ name: "lucide-static", license: "ISC AND MIT", usedFor: "icon library geometry" }];
+
+function vendoredComponents() {
+  const components = [];
+  const problems = [];
+  for (const entry of VENDORED) {
+    let dir;
+    try {
+      dir = dirname(require.resolve(`${entry.name}/package.json`));
+    } catch {
+      problems.push(`${entry.name} (${entry.usedFor}) is not installed; its licence text cannot be included.`);
+      continue;
+    }
+    const version = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")).version;
+    components.push({ ecosystem: "vendored", name: entry.name, version, license: entry.license, texts: licenseTexts(dir) });
+  }
+  return { components, problems };
 }
 
 const PYTHON_DUMP = `
@@ -129,10 +158,11 @@ function pythonComponents() {
 export function buildNotices() {
   const npm = npmComponents();
   const py = pythonComponents();
-  const components = [...npm.components, ...py.components];
+  const vendored = vendoredComponents();
+  const components = [...npm.components, ...vendored.components, ...py.components];
   const unresolved = components.filter((c) => c.texts.length === 0 && !c.license).map((c) => `${c.name}@${c.version}`);
   const withoutText = components.filter((c) => c.texts.length === 0 && c.license).map((c) => `${c.name}@${c.version} (${c.license})`);
-  const problems = [...npm.problems, ...py.problems];
+  const problems = [...npm.problems, ...vendored.problems, ...py.problems];
   if (py.cpython && !py.cpython.text) problems.push("The CPython licence text could not be found for the embedded interpreter.");
 
   const rule = "=".repeat(78);
@@ -157,6 +187,7 @@ export function buildNotices() {
     }
   };
   section("The editor, exporter and agent server (JavaScript)", npm.components);
+  section("Content included in the editor's own code (icon geometry)", vendored.components);
   section("The workspace service (Python)", py.components);
   if (py.cpython) {
     lines.push(rule, `Python ${py.cpython.version} (embedded interpreter)`, rule, "", py.cpython.text, "");

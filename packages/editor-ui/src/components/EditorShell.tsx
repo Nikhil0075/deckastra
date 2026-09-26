@@ -303,9 +303,9 @@ export function EditorShell(props: EditorShellProps) {
   }, [apply, doc, selection.selectedIds, slide]);
 
   const addStarter = useCallback(
-    (kind: StarterElementKind, shape?: ShapeKind, icon?: string) => {
+    (kind: StarterElementKind, shape?: ShapeKind, icon?: string, iconSet?: string) => {
       if (!slide) return;
-      const element = makeStarterElement({ kind, viewport: doc.viewport, shape, icon });
+      const element = makeStarterElement({ kind, viewport: doc.viewport, shape, icon, ...(iconSet ? { iconSet } : {}) });
 
       apply(addElement(doc, { slideId: slide.id, element }), {
         label: `Add ${icon ? `${icon} icon` : (shape ?? kind)}`,
@@ -920,13 +920,15 @@ export function EditorShell(props: EditorShellProps) {
             onTab={(tab) => setSide({ panel: "library", tab })}
             onClose={() => setSide((current) => ({ ...current, panel: undefined }))}
             onAddImage={addImage}
+            document={doc}
+            apply={(operations, label) => apply(operations, { label })}
             onAdd={(item) =>
               item.kind === "shape"
                 ? addStarter("shape", item.shape)
                 : item.kind === "line"
                   ? addStarter("line")
                   : item.kind === "icon"
-                    ? addStarter("icon", undefined, item.name)
+                    ? addStarter("icon", undefined, item.name, item.set)
                     : addStarter(item.object)
             }
           />

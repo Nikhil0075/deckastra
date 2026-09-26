@@ -941,6 +941,25 @@ describe("icons are editable shapes (design review, 2026-09-27)", () => {
     expect(result.report.warnings.filter((warning) => warning.feature === "icon" && warning.action === "dropped")).toEqual([]);
   });
 
+  it("draws a brand's own filled icon as filled shapes", () => {
+    const document = structuredClone(TECHNICAL);
+    (document.theme as { icons?: unknown }).icons = { Mark: { viewBox: 24, paths: ["M2 2H22V22H2Z"], fill: true } };
+    (document.slides[0]!.elements as unknown[]).push({
+      id: "el_01JICONICONICONICONICONICO",
+      type: "icon",
+      icon: { set: "brand", name: "Mark" },
+      color: "#1E4BD2",
+      transform: { x: 200, y: 200, width: 120, height: 120 },
+    });
+    const { bytes } = buildPptx(inputFor(document));
+    const slide = [...unzip(bytes).entries()].find(([path]) => path === "ppt/slides/slide1.xml")![1];
+    const start = slide.indexOf('name="deckastra-el_01JICONICONICONICONICONICO"');
+    const group = slide.slice(slide.lastIndexOf("<p:grpSp>", start), slide.indexOf("</p:grpSp>", start));
+    expect(group).toContain("<a:custGeom>");
+    expect(group).toMatch(/<a:solidFill><a:srgbClr val="1E4BD2"/);
+    expect(group).not.toContain('cap="rnd"');
+  });
+
   it("still reports an icon this build does not know, as the labelled box it draws", () => {
     const { result } = buildPptx(inputFor(withIcon("no-such-icon-anywhere")));
     const icon = result.report.warnings.filter((warning) => warning.elementId === "el_01JICONICONICONICONICONICO");
