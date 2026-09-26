@@ -27,7 +27,7 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
       items={[
         { value: "gallery", label: "Gallery", panel: <ThemeGallery editor={editor} /> },
         { value: "workspace", label: "Workspace", panel: <WorkspaceThemes editor={editor} presentationId={presentationId} /> },
-        { value: "file", label: "File", panel: <ThemeFile editor={editor} /> },
+        { value: "file", label: "Import", panel: <ThemeFile editor={editor} presentationId={presentationId} /> },
       ]}
     />
   );
@@ -40,9 +40,29 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
  * refusal names what was wrong. An imported theme gets a fresh id, so two decks
  * that imported the same file are not mistaken for the same saved theme.
  */
-function ThemeFile({ editor }: { editor: EditorApi }) {
+function ThemeFile({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
+  const client = useWorkspaceClient();
   const input = useRef<HTMLInputElement>(null);
+  const office = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
+  const [notes, setNotes] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const readOffice = async (file: File) => {
+    setMessage(undefined);
+    setNotes([]);
+    setBusy(true);
+    try {
+      const imported = await client.themes.importOffice(presentationId, file);
+      editor.apply(applyThemeOperations(editor.document, imported.theme), { label: `Import the ${imported.theme.name} theme` });
+      setMessage(`Imported ${imported.theme.name} from ${file.name}. Undo puts the previous theme back.`);
+      setNotes(imported.notes);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "That file could not be read.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const download = () => {
     const theme = editor.document.theme;
@@ -82,8 +102,24 @@ function ThemeFile({ editor }: { editor: EditorApi }) {
         Download this theme
       </Button>
       <Button size="sm" variant="ghost" icon="upload" onClick={() => input.current?.click()} data-testid="theme-import">
-        Import a theme file…
+        Import a theme file (.json)…
       </Button>
+      <Button size="sm" variant="ghost" icon="upload" disabled={busy} onClick={() => office.current?.click()} data-testid="theme-import-office">
+        {busy ? "Reading…" : "Import from PowerPoint (.thmx, .pptx)…"}
+      </Button>
+      <input
+        ref={office}
+        type="file"
+        accept=".thmx,.pptx,.potx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        hidden
+        data-testid="theme-import-office-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void readOffice(file);
+        }}
+      />
+      <DeckThemePicker editor={editor} presentationId={presentationId} onMessage={setMessage} />
       <input
         ref={input}
         type="file"
@@ -101,6 +137,94 @@ function ThemeFile({ editor }: { editor: EditorApi }) {
           {message}
         </p>
       ) : null}
+      {notes.length ? (
+        <ul className="dk-muted dk-theme-notes">
+          {notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Take the theme another deck in the workspace uses.
+ *
+ * Decks are listed when the list is opened, not on mount: a workspace with
+ * hundreds of decks should not pay for a list nobody asked to see.
+ */
+function DeckThemePicker({
+  editor,
+  presentationId,
+  onMessage,
+}: {
+  editor: EditorApi;
+  presentationId: string;
+  onMessage: (message: string) => void;
+}) {
+  const client = useWorkspaceClient();
+  const [decks, setDecks] = useState<{ id: string; title: string }[] | null>(null);
+  const [chosen, setChosen] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    setBusy(true);
+    try {
+      const account = await client.session.account();
+      const lists = await Promise.all(
+        account.workspaces.flatMap((workspace) => workspace.projects.map((project) => client.documents.list(project.id))),
+      );
+      setDecks(lists.flat().filter((deck) => deck.id !== presentationId).map((deck) => ({ id: deck.id, title: deck.title || "Untitled deck" })));
+    } catch (error) {
+      onMessage(error instanceof Error ? error.message : "The decks could not be listed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (decks === null) {
+    return (
+      <Button size="sm" variant="ghost" disabled={busy} onClick={() => void load()} data-testid="theme-from-deck">
+        {busy ? "Listing decks…" : "Use another deck's theme…"}
+      </Button>
+    );
+  }
+  if (decks.length === 0) return <p className="dk-muted">There are no other decks in this workspace yet.</p>;
+
+  return (
+    <div className="dk-themes__field">
+      <label className="dk-label" htmlFor={`theme-deck-${presentationId}`}>
+        Another deck
+      </label>
+      <select id={`theme-deck-${presentationId}`} className="dk-input" value={chosen} onChange={(event) => setChosen(event.target.value)}>
+        <option value="">Choose a deck</option>
+        {decks.map((deck) => (
+          <option key={deck.id} value={deck.id}>
+            {deck.title}
+          </option>
+        ))}
+      </select>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={!chosen || busy}
+        data-testid="theme-from-deck-apply"
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const read = await client.documents.read(chosen);
+            editor.apply(applyThemeOperations(editor.document, read.document.theme), { label: `Use ${read.document.theme.name} from another deck` });
+            onMessage(`Now using ${read.document.theme.name}, the theme of "${decks.find((deck) => deck.id === chosen)?.title}".`);
+          } catch (error) {
+            onMessage(error instanceof Error ? error.message : "That deck could not be read.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Use its theme
+      </Button>
     </div>
   );
 }

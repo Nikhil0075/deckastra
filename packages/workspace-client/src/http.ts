@@ -32,6 +32,7 @@ import type {
   Repository,
   RepositoryList,
   RequestOptions,
+  ImportedTheme,
   SaveThemeRequest,
   SavedTheme,
   Session,
@@ -113,6 +114,8 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
   interface SendInit extends RequestOptions {
     method?: string;
     body?: unknown;
+    /** A file sent as the request body itself, not as JSON. */
+    raw?: Blob;
     auth?: boolean;
     cache?: RequestCache;
     /** Message when the server gives no usable `detail`. */
@@ -122,6 +125,7 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
   async function send(path: string, init: SendInit = {}): Promise<Response> {
     const headers: Record<string, string> = {};
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
+    if (init.raw !== undefined) headers["Content-Type"] = init.raw.type || "application/octet-stream";
     if (init.auth !== false) {
       // Read the cached session synchronously rather than awaiting it.
       //
@@ -135,10 +139,11 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
     }
 
     const request: RequestInit = {
-      method: init.method ?? (init.body === undefined ? "GET" : "POST"),
+      method: init.method ?? (init.body === undefined && init.raw === undefined ? "GET" : "POST"),
       headers,
     };
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
+    if (init.raw !== undefined) request.body = init.raw;
     if (init.signal) request.signal = init.signal;
     if (init.fresh) request.cache = "no-store";
     else if (init.cache) request.cache = init.cache;
@@ -511,6 +516,8 @@ const q = encodeURIComponent;
         }),
       save: (presentationId, body: SaveThemeRequest, request) =>
         json<SavedTheme>(`/v1/presentations/${q(presentationId)}/themes`, { body, ...request }),
+      importOffice: (presentationId, file, request) =>
+        json<ImportedTheme>(`/v1/presentations/${q(presentationId)}/themes/import`, { raw: file, ...request }),
     },
 
     repositories: {

@@ -98,7 +98,7 @@ it("leaves lines, text and locked cards alone when restyling", () => {
 
 it("imports a theme file, and refuses one that is not a theme", async () => {
   await mount();
-  fireEvent.click(screen.getByRole("tab", { name: "File" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Import" }));
   const input = screen.getByTestId("theme-import-input") as HTMLInputElement;
 
   const bad = new File(["{\"name\": 3}"], "bad.json", { type: "application/json" });
@@ -113,4 +113,30 @@ it("imports a theme file, and refuses one that is not a theme", async () => {
   // A fresh id: two decks that imported one file are not one saved theme.
   expect(editor.document.theme.id).not.toBe(pastel.id);
   expect(ThemeDefinitionSchema.safeParse(editor.document.theme).success).toBe(true);
+});
+
+it("sends a PowerPoint theme as the request body and applies what comes back, with its notes", async () => {
+  const midnight = findPreset("midnight")!.theme;
+  const sent: { url: string; body: unknown; type: string | null }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: RequestInit = {}) => {
+      sent.push({ url, body: init.body, type: new Headers(init.headers).get("Content-Type") });
+      if (String(url).includes("/themes/import")) {
+        return { ok: true, status: 200, json: async () => ({ theme: midnight, notes: ["Hyperlink colours were not carried over."] }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ themes: [], version_id: "v1", token: "t", user_id: "u", workspace_id: "w" }) };
+    }),
+  );
+  await mount();
+  fireEvent.click(screen.getByRole("tab", { name: "Import" }));
+  const file = new File(["PK"], "brand.thmx", { type: "" });
+  fireEvent.change(screen.getByTestId("theme-import-office-input"), { target: { files: [file] } });
+
+  expect(await screen.findByText(/Imported Midnight from brand.thmx/)).toBeTruthy();
+  expect(screen.getByText("Hyperlink colours were not carried over.")).toBeTruthy();
+  const request = sent.find((entry) => entry.url.includes("/themes/import"))!;
+  expect(request.body).toBe(file);
+  expect(request.type).toBe("application/octet-stream");
+  expect(editor.document.theme.colors).toEqual(midnight.colors);
 });

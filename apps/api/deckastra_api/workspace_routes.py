@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 
 from . import assets as asset_service
 from . import agent_service, backup, local_mode
-from . import object_storage, quotas, sharing, store, telemetry, themes
+from . import object_storage, office_theme, quotas, sharing, store, telemetry, themes
 from .auth import (
     Principal,
     Role,
@@ -51,7 +51,7 @@ from .db.models import (
 from .db.session import get_session
 from .ids import new_id
 from .patch import PatchError, apply_patch
-from .schema import validate_document
+from .schema import validate_document, validate_theme
 from deckastra_agents.router import generation_status
 
 logger = logging.getLogger("deckastra.workspace")
@@ -923,6 +923,37 @@ def save_presentation_theme(
     except themes.ThemeError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return themes.describe(theme)
+
+
+@router.post("/presentations/{presentation_id}/themes/import")
+async def import_office_theme(
+    presentation_id: str,
+    request: Request,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """A PowerPoint theme (.thmx) or template (.pptx), read into a theme.
+
+    The file is the request body, so no multipart parser is needed for one
+    upload. Read-only: nothing is stored and the deck is not changed. The editor
+    applies the theme through its own `apply`, the same as a gallery preset, so
+    it is one change with one undo — and a person can look before keeping it.
+    """
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > office_theme.MAX_PACKAGE_BYTES:
+        raise HTTPException(status_code=413, detail="That file is larger than a theme or template should be (over 20 MB).")
+    data = await request.body()
+    try:
+        theme, notes = office_theme.theme_from_office(data)
+    except office_theme.OfficeThemeError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    problems = validate_theme(theme)
+    if problems:
+        # Built from a validated template, so this is a bug here rather than in
+        # the file; said plainly rather than handed to the editor to apply.
+        raise HTTPException(status_code=500, detail=f"The imported theme did not validate: {problems[0]}")
+    return {"theme": theme, "notes": notes}
 
 
 @router.post("/presentations/{presentation_id}/theme/{theme_id}")

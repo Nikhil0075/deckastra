@@ -31,7 +31,7 @@ import type { Repository, RepositoryList, SlideSources } from "./repositories";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
 import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
-import type { SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
+import type { ImportedTheme, SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
 
 /**
  * Per-call transport options.
@@ -344,6 +344,8 @@ export interface WorkspaceClient {
       body: SaveThemeRequest,
       options?: RequestOptions,
     ): Promise<SavedTheme>;
+    /** Read a PowerPoint theme (.thmx) or template (.pptx). Changes nothing. */
+    importOffice(presentationId: string, file: Blob, options?: RequestOptions): Promise<ImportedTheme>;
   };
 
   readonly repositories: {

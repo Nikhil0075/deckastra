@@ -1,4 +1,4 @@
-import type { PatchOperation } from "@deckastra/presentation-schema";
+import type { PatchOperation, ThemeDefinition } from "@deckastra/presentation-schema";
 
 export interface SavedTheme {
   id: string;
@@ -27,4 +27,11 @@ export interface SaveThemeRequest {
   name: string;
   definition: unknown;
   is_default: boolean;
+}
+
+/** A PowerPoint theme read into a Deckastra theme: nothing is stored until the editor applies it. */
+export interface ImportedTheme {
+  theme: ThemeDefinition;
+  /** What could not be carried over, in words for a person. */
+  notes: string[];
 }
