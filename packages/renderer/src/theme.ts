@@ -115,14 +115,40 @@ export function resolveValue<T = unknown>(
   fallback?: T,
 ): T | undefined {
   if (value === undefined || value === null) return fallback;
-  if (!isTokenRef(value)) return value as T;
+  let current: unknown = value;
+  // A token may name another token: a role such as "On primary" is an alias of
+  // a primitive (design review, 2026-09-27). Follow the chain a few steps; a
+  // cycle or a dangling link falls back rather than drawing a token string.
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (!isTokenRef(current)) return current as T;
+    const path = tokenPath(current);
+    const resolved =
+      theme.tokens.get(path) ??
+      resolveToken(theme.source, path) ??
+      (theme.parent ? resolveToken(theme.parent, path) : undefined);
+    if (resolved === undefined || resolved === null) return fallback;
+    current = resolved;
+  }
+  return fallback;
+}
 
-  const path = tokenPath(value);
-  const resolved =
-    theme.tokens.get(path) ??
-    resolveToken(theme.source, path) ??
-    (theme.parent ? resolveToken(theme.parent, path) : undefined);
-  return (resolved as T) ?? fallback;
+/**
+ * The theme a slide draws with: the deck's, or the deck's with a colour mode's
+ * colours over it. Only colour tokens change, so every size, face and space is
+ * the same in every mode.
+ */
+export function themeForMode(theme: ThemeDefinition, mode: string | undefined, parent?: ThemeDefinition): ResolvedTheme {
+  const modes = (theme as { modes?: Record<string, { appearance?: "light" | "dark"; colors?: Record<string, unknown> }> }).modes;
+  const chosen = mode ? modes?.[mode] : undefined;
+  if (!chosen) return resolveTheme(theme, parent);
+  return resolveTheme(
+    {
+      ...theme,
+      mode: chosen.appearance ?? theme.mode,
+      colors: { ...theme.colors, ...(chosen.colors ?? {}) } as ThemeDefinition["colors"],
+    },
+    parent,
+  );
 }
 
 /** True when a string is a token reference the theme cannot resolve. */

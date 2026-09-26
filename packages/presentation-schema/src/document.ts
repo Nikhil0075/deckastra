@@ -151,6 +151,8 @@ export interface Slide {
   timelineMarkers?: z.infer<typeof TimelineMarkerSchema>[];
   speakerNotes?: z.infer<typeof RichTextDocumentSchema> | string;
   hidden?: boolean;
+  /** A colour mode from `theme.modes`, drawn instead of the theme's own colours. */
+  colorMode?: string;
   metadata?: Record<string, unknown>;
   extensions?: Record<string, unknown>;
   [key: string]: unknown;
@@ -175,6 +177,12 @@ export const SlideSchema: z.ZodType<Slide> = z.looseObject({
   timelineMarkers: z.array(TimelineMarkerSchema).optional(),
   speakerNotes: z.union([RichTextDocumentSchema, z.string()]).optional(),
   hidden: z.boolean().optional(),
+  /**
+   * A colour mode from `theme.modes` (design review, 2026-09-27): this slide
+   * draws with the mode's colours over the theme's. A name the theme does not
+   * have draws the theme's own colours.
+   */
+  colorMode: z.string().min(1).max(40).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   extensions: z.record(z.string(), z.unknown()).optional(),
 }) as unknown as z.ZodType<Slide>;

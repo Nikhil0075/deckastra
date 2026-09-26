@@ -296,6 +296,18 @@ export const ObjectStyleSchema = z.looseObject({
 });
 export type ObjectStyle = z.infer<typeof ObjectStyleSchema>;
 
+/**
+ * A colour mode (design review, 2026-09-27): a dark version of a light deck, a
+ * section in the brand's second palette. It overrides some colour tokens and
+ * nothing else, so everything that refers to a token follows it and a slide
+ * picks one with `colorMode`.
+ */
+export const ColorModeSchema = z.looseObject({
+  appearance: z.enum(["light", "dark"]).optional(),
+  colors: ColorTokensSchema.partial(),
+});
+export type ColorMode = z.infer<typeof ColorModeSchema>;
+
 export const ThemeDefinitionSchema = z.looseObject({
   id: prefixedId("thm"),
   name: z.string().min(1),
@@ -317,6 +329,8 @@ export const ThemeDefinitionSchema = z.looseObject({
   logoAssetIds: z.array(IdSchema).optional(),
   /** Named object styles, keyed by name (no dots). See `ObjectStyleSchema`. */
   objectStyles: z.record(z.string().min(1).max(60).regex(/^[^.]+$/), ObjectStyleSchema).optional(),
+  /** Colour modes by name. See `ColorModeSchema`. */
+  modes: z.record(z.string().min(1).max(40), ColorModeSchema).optional(),
   /** Inherit from a workspace theme. */
   extends: IdSchema.optional(),
 });

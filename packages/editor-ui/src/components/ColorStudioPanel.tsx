@@ -24,7 +24,20 @@ import {
   tokenUseCount,
   type ThemeColorGroup,
 } from "../lib/colors";
-import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx } from "../ui";
+import {
+  addModeOperations,
+  aliasOf,
+  colorModes,
+  generateOppositeMode,
+  modeColor,
+  modeNameProblem,
+  removeModeOperations,
+  setModeColorOperations,
+  standardRolesOperations,
+  STANDARD_ROLES,
+  wouldLoop,
+} from "../lib/color-modes";
+import { Button, Icon, IconButton, Segmented, Select, StatusChip, Tabs, TextField, cx } from "../ui";
 import { ColorField } from "./inspector/controls";
 import { ColorRamp } from "./inspector/ColorRamp";
 
@@ -251,29 +264,53 @@ function ColorRow({
 
 // --------------------------------------------------------------------- tabs
 
+const THEME_MODE = "__theme";
+
 function ThemeColors({ document, apply, focus }: { document: PresentationDocument; apply: Apply; focus?: string }) {
   const colors = document.theme.colors as unknown as Record<string, unknown>;
   const available = THEME_COLOR_ROLES.filter((role) => typeof colors[role.token] === "string");
   const [selected, setSelected] = useState(() => (focus && available.some((role) => role.token === focus) ? focus : "accent"));
+  const modes = colorModes(document);
+  const [modeName, setModeName] = useState<string>(THEME_MODE);
+  const mode = modes.some((candidate) => candidate.name === modeName) ? modeName : undefined;
   useEffect(() => {
     if (focus && available.some((role) => role.token === focus)) setSelected(focus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
   const role = available.find((candidate) => candidate.token === selected) ?? available[0];
+  const modeColors = (name: string | undefined) => (name ? ((document.theme.modes?.[name]?.colors ?? {}) as Record<string, string>) : {});
+  const colorOf = (token: string) => (mode ? modeColor(document, mode, token) : resolveColorValue(document, colors[token] as string | undefined));
+  const overridden = (token: string) => Boolean(mode && modeColors(mode)[token] !== undefined);
+  const opposite = (document.theme.mode ?? "light") === "dark" ? "Light" : "Dark";
 
   return (
     <div className="dk-colorstudio__list">
+      <ModeBar document={document} apply={apply} value={mode ?? THEME_MODE} onChange={setModeName} opposite={opposite} />
       {role ? (
         <ColorEditor
           title={role.label}
-          meta={`Theme colour · ${usesText(tokenUseCount(document, themeColorToken(role.token)))}`}
-          value={colors[role.token] as string}
-          resolved={resolveColorValue(document, colors[role.token] as string)}
-          against={role.against ? { label: THEME_COLOR_ROLES.find((r) => r.token === role.against)?.label ?? role.against, color: resolveColorValue(document, colors[role.against] as string | undefined) } : undefined}
-          coalesceKey={`colors:theme:${role.token}`}
+          meta={
+            mode
+              ? `${mode} mode · ${overridden(role.token) ? "its own colour" : "same as the theme"}`
+              : `Theme colour · ${usesText(tokenUseCount(document, themeColorToken(role.token)))}`
+          }
+          value={mode ? (modeColors(mode)[role.token] ?? (colors[role.token] as string)) : (colors[role.token] as string)}
+          resolved={colorOf(role.token)}
+          against={role.against ? { label: THEME_COLOR_ROLES.find((r) => r.token === role.against)?.label ?? role.against, color: colorOf(role.against) } : undefined}
+          coalesceKey={`colors:${mode ?? "theme"}:${role.token}`}
           hexTestId={`theme-color-${role.token}`}
-          onCommit={(value, key) => apply(setThemeColorOperations(document, role.token, value), `Change ${role.label} colour`, key)}
-        />
+          onCommit={(value, key) =>
+            mode
+              ? apply(setModeColorOperations(document, mode, role.token, value), `Change ${role.label} in ${mode} mode`, key)
+              : apply(setThemeColorOperations(document, role.token, value), `Change ${role.label} colour`, key)
+          }
+        >
+          {mode && overridden(role.token) ? (
+            <Button size="sm" variant="ghost" onClick={() => apply(setModeColorOperations(document, mode, role.token, undefined), `Use the theme colour for ${role.label} in ${mode} mode`)}>
+              Use the theme colour
+            </Button>
+          ) : null}
+        </ColorEditor>
       ) : null}
       {GROUPS.map((group) => {
         const roles = available.filter((candidate) => candidate.group === group);
@@ -286,8 +323,8 @@ function ThemeColors({ document, apply, focus }: { document: PresentationDocumen
                 key={candidate.token}
                 id={candidate.token}
                 name={candidate.label}
-                meta={usesText(tokenUseCount(document, themeColorToken(candidate.token)))}
-                color={resolveColorValue(document, colors[candidate.token] as string)}
+                meta={mode ? (overridden(candidate.token) ? `${mode} only` : "as theme") : usesText(tokenUseCount(document, themeColorToken(candidate.token)))}
+                color={colorOf(candidate.token)}
                 selected={candidate.token === role?.token}
                 onSelect={() => setSelected(candidate.token)}
               />
@@ -295,6 +332,71 @@ function ThemeColors({ document, apply, focus }: { document: PresentationDocumen
           </section>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Which colours are being edited: the theme's own, or a mode's (design review,
+ * 2026-09-27). A mode starts generated from the theme and is then the
+ * person's to adjust; slides choose it under Slide design.
+ */
+function ModeBar({
+  document,
+  apply,
+  value,
+  onChange,
+  opposite,
+}: {
+  document: PresentationDocument;
+  apply: Apply;
+  value: string;
+  onChange: (next: string) => void;
+  opposite: string;
+}) {
+  const modes = colorModes(document);
+  const inUse = (name: string) => document.slides.filter((slide) => slide.colorMode === name).length;
+  const canAdd = !modeNameProblem(document, opposite);
+  return (
+    <div className="dk-colorstudio__modes" data-testid="color-modes">
+      {modes.length ? (
+        <Segmented
+          label="Colour mode"
+          size="sm"
+          value={value}
+          onChange={onChange}
+          items={[{ value: THEME_MODE, label: "Theme" }, ...modes.map((mode) => ({ value: mode.name, label: mode.name }))]}
+        />
+      ) : null}
+      <div className="dk-styles__actions">
+        {canAdd ? (
+          <Button
+            size="sm"
+            icon="plus"
+            data-testid="color-mode-add"
+            onClick={() => {
+              apply(addModeOperations(document, opposite, generateOppositeMode(document)), `Add ${opposite.toLowerCase()} mode`);
+              onChange(opposite);
+            }}
+          >
+            {opposite} mode
+          </Button>
+        ) : null}
+        {value !== THEME_MODE ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon="trash"
+            onClick={() => {
+              apply(removeModeOperations(document, value), `Delete ${value} mode`);
+              onChange(THEME_MODE);
+            }}
+          >
+            Delete {value} mode{inUse(value) ? ` (${inUse(value)} slide${inUse(value) === 1 ? "" : "s"} go back to the theme)` : ""}
+          </Button>
+        ) : null}
+      </div>
+      {value !== THEME_MODE ? <p className="dk-field__hint">Choose which slides use it under Slide design, Colours.</p> : null}
     </div>
   );
 }
@@ -351,6 +453,7 @@ function NamedColors({ document, apply, focus }: { document: PresentationDocumen
             apply={apply}
             onRenamed={(next) => setSelected(next)}
           />
+          <FollowsField document={document} name={current.name} value={current.value} apply={apply} />
           {deleting ? (
             <div className="dk-colorstudio__confirm" role="group" aria-label={`Delete ${current.name}`}>
               <span className="dk-field__hint">
@@ -387,12 +490,25 @@ function NamedColors({ document, apply, focus }: { document: PresentationDocumen
         </p>
       )}
 
+      {standardRolesOperations(document).length ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="plus"
+          data-testid="color-roles-add"
+          title={STANDARD_ROLES.map((role) => role.name).join(", ")}
+          onClick={() => apply(standardRolesOperations(document), "Add colour roles")}
+        >
+          Add colour roles (Primary, On primary, Surface…)
+        </Button>
+      ) : null}
+
       {named.map((color) => (
         <ColorRow
           key={color.name}
           id={color.name}
           name={color.name}
-          meta={tokenUseCount(document, color.token) ? `used ${tokenUseCount(document, color.token)}×` : "unused"}
+          meta={`${aliasOf(color.value) ? `follows ${aliasLabel(document, color.value)} · ` : ""}${tokenUseCount(document, color.token) ? `used ${tokenUseCount(document, color.token)}×` : "unused"}`}
           color={resolveColorValue(document, color.value)}
           selected={color.name === current?.name}
           testId="named-color-row"
@@ -437,6 +553,48 @@ function NamedColors({ document, apply, focus }: { document: PresentationDocumen
       </div>
     </div>
   );
+}
+
+/**
+ * What a named colour is: a colour of its own, or a role that follows another
+ * colour (design review, 2026-09-27). Following keeps it in step with the
+ * colour it names, in every mode; choosing "its own" keeps the colour it has
+ * now as a plain value.
+ */
+function FollowsField({ document, name, value, apply }: { document: PresentationDocument; name: string; value: string; apply: Apply }) {
+  const own = "__own";
+  const colors = document.theme.colors as unknown as Record<string, unknown>;
+  const options = [
+    { value: own, label: "Its own colour" },
+    ...THEME_COLOR_ROLES.filter((role) => typeof colors[role.token] === "string").map((role) => ({
+      value: themeColorToken(role.token),
+      label: `Theme: ${role.label}`,
+    })),
+    ...namedColors(document)
+      .filter((color) => color.name !== name && !wouldLoop(document, name, color.token))
+      .map((color) => ({ value: color.token, label: `Named: ${color.name}` })),
+  ];
+  const current = aliasOf(value) ?? own;
+  return (
+    <Select
+      label="Follows"
+      value={options.some((option) => option.value === current) ? current : own}
+      options={options}
+      data-testid="named-color-follows"
+      onChange={(next) => {
+        if (next === current) return;
+        const target = next === own ? (resolveColorValue(document, value) ?? value) : next;
+        apply(setNamedColorOperations(document, name, target), next === own ? `Give "${name}" its own colour` : `Make "${name}" follow ${aliasLabel(document, next)}`);
+      }}
+    />
+  );
+}
+
+function aliasLabel(document: PresentationDocument, token: string): string {
+  void document;
+  const path = token.slice("token:colors.".length);
+  if (path.startsWith("custom.")) return path.slice("custom.".length);
+  return THEME_COLOR_ROLES.find((role) => role.token === path)?.label ?? path;
 }
 
 /** A named colour's name, renamed on Enter or blur; every reference is rewritten with it. */

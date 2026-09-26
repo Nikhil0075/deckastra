@@ -14,7 +14,7 @@ import {
 
 import { typesetEquation } from "./equation";
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
-import { paintToCss, resolveTheme, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
+import { paintToCss, resolveTheme, resolveTypography, resolveValue, themeForMode, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
 import { contrastRatio, parseColor } from "./semantic";
 import {
@@ -1295,8 +1295,20 @@ export function buildDocumentScene(
   const theme = resolveTheme(document.theme, options.parentTheme);
   watch.mark("theme");
 
+  // A slide in a colour mode draws with that mode's colours; one resolved
+  // theme per mode, so a deck of forty dark slides resolves it once.
+  const byMode = new Map<string, ResolvedTheme>();
+  const themeFor = (mode: string | undefined): ResolvedTheme => {
+    if (!mode || !(document.theme as { modes?: Record<string, unknown> }).modes?.[mode]) return theme;
+    let resolved = byMode.get(mode);
+    if (!resolved) {
+      resolved = themeForMode(document.theme, mode, options.parentTheme);
+      byMode.set(mode, resolved);
+    }
+    return resolved;
+  };
   const slides = document.slides.map((slide, i) =>
-    buildSlideScene(document, slide, i, theme, options),
+    buildSlideScene(document, slide, i, themeFor(slide.colorMode), options),
   );
   watch.mark("slides");
 

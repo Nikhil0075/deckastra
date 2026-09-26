@@ -46,20 +46,20 @@ it("sets every size on a modular scale from one body size", () => {
   const after = run(document, typeScaleOperations(document, 20, 1.25));
   const typography = after.theme.typography as unknown as Record<string, { fontSize: number }> & { scaleRatio: number };
   expect(typography.scaleRatio).toBe(1.25);
-  expect(typography.body.fontSize).toBe(20);
-  expect(typography.h3.fontSize).toBe(25);
-  expect(typography.h2.fontSize).toBe(31);
-  expect(typography.h1.fontSize).toBe(39);
-  expect(typography.caption.fontSize).toBe(13);
+  expect(typography.body!.fontSize).toBe(20);
+  expect(typography.h3!.fontSize).toBe(25);
+  expect(typography.h2!.fontSize).toBe(31);
+  expect(typography.h1!.fontSize).toBe(39);
+  expect(typography.caption!.fontSize).toBe(13);
 });
 
 it("pairs a heading face with a body face across every text style", () => {
   const document = technical();
   const after = run(document, fontPairOperations(document, "Lora", "Inter"));
   const typography = after.theme.typography as unknown as Record<string, { fontFamily: string }>;
-  expect([typography.h1.fontFamily, typography.display.fontFamily, typography.metric.fontFamily]).toEqual(["Lora", "Lora", "Lora"]);
-  expect([typography.body.fontFamily, typography.caption.fontFamily]).toEqual(["Inter", "Inter"]);
-  expect(typography.code.fontFamily).not.toBe("Lora");
+  expect([typography.h1!.fontFamily, typography.display!.fontFamily, typography.metric!.fontFamily]).toEqual(["Lora", "Lora", "Lora"]);
+  expect([typography.body!.fontFamily, typography.caption!.fontFamily]).toEqual(["Inter", "Inter"]);
+  expect(typography.code!.fontFamily).not.toBe("Lora");
 });
 
 it("puts a logo on every slide inside the safe area, moves it, and takes it away", () => {

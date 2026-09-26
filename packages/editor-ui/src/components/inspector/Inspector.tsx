@@ -49,6 +49,7 @@ import { LayoutSection } from "./LayoutSection";
 import { selectedElements } from "../../lib/multi-edit";
 import { useColorStudio } from "../../lib/color-studio";
 import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
+import { colorModes, slideModeOperations } from "../../lib/color-modes";
 
 export type ReorderDirection = "forward" | "backward" | "front" | "back";
 
@@ -448,6 +449,49 @@ function ColorsSection({ editor, defaultOpen }: { editor: EditorApi; defaultOpen
           Edit colours…
         </Button>
       ) : null}
+      <SlideModeField editor={editor} />
     </Section>
+  );
+}
+
+/**
+ * The colours this slide draws with: the theme's, or one of its modes (design
+ * review, 2026-09-27). Offered once the deck has a mode; modes are made in the
+ * Colours view.
+ */
+function SlideModeField({ editor }: { editor: EditorApi }) {
+  const doc = editor.document;
+  const modes = colorModes(doc);
+  const slide = doc.slides[editor.slideIndex];
+  if (!slide || modes.length === 0) return null;
+  const theme = "__theme";
+  const current = slide.colorMode && modes.some((mode) => mode.name === slide.colorMode) ? slide.colorMode : theme;
+  const set = (ids: string[], mode: string | undefined, label: string) => {
+    const operations = slideModeOperations(doc, ids, mode);
+    if (operations.length) editor.apply(operations, { label });
+  };
+  return (
+    <div className="dk-field">
+      <Select
+        label="This slide's colours"
+        value={current}
+        data-testid="slide-color-mode"
+        options={[{ value: theme, label: "Theme colours" }, ...modes.map((mode) => ({ value: mode.name, label: `${mode.name} mode` }))]}
+        onChange={(value) => set([slide.id], value === theme ? undefined : value, value === theme ? "Use the theme colours" : `Use ${value} mode on this slide`)}
+      />
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() =>
+          set(
+            doc.slides.map((candidate) => candidate.id),
+            current === theme ? undefined : current,
+            current === theme ? "Use the theme colours on every slide" : `Use ${current} mode on every slide`,
+          )
+        }
+      >
+        Use on every slide
+      </Button>
+    </div>
   );
 }
