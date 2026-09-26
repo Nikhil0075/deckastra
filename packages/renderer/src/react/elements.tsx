@@ -5,6 +5,7 @@ import type {
   ChartPayload,
   DiagramPayload,
   IconPayload,
+  ResolvedGradient,
   SceneNode,
   TablePayload,
   TextBlockPayload,
@@ -167,8 +168,16 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
     }
 
     case "shape": {
-      const { fill, stroke, opacity } = node.resolvedStyle;
+      // Opacity is applied once, by the positioned box around this SVG. It used
+      // to be applied here as well, so a shape at 50% drew at 25%.
+      const { fill, gradient, stroke } = node.resolvedStyle;
       const strokeWidth = stroke?.width ?? 0;
+      // An SVG `fill` cannot be a CSS gradient (it draws nothing), so a
+      // gradient becomes a definition the shape points at. The id is the
+      // node id, so two copies of one slide (canvas and thumbnail) define the
+      // same gradient and either definition draws it correctly.
+      const gradientId = gradient ? `dk-fill-${node.id}` : undefined;
+      const paint = gradientId ? `url(#${gradientId})` : (fill ?? "none");
 
       return (
         <>
@@ -179,6 +188,7 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
             style={{ position: "absolute", inset: 0, overflow: "visible" }}
             aria-hidden="true"
           >
+            {gradient && gradientId ? <GradientDefinition id={gradientId} gradient={gradient} /> : null}
             {payload.preferRect ? (
               <rect
                 x={strokeWidth / 2}
@@ -186,21 +196,19 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
                 width={Math.max(0, width - strokeWidth)}
                 height={Math.max(0, height - strokeWidth)}
                 rx={payload.radius || undefined}
-                fill={fill ?? "none"}
+                fill={paint}
                 stroke={stroke?.color}
                 strokeWidth={strokeWidth || undefined}
                 strokeDasharray={stroke?.dash?.join(" ")}
-                opacity={opacity}
               />
             ) : (
               <path
                 d={payload.pathData}
-                fill={fill ?? "none"}
+                fill={paint}
                 stroke={stroke?.color}
                 strokeWidth={strokeWidth || undefined}
                 strokeDasharray={stroke?.dash?.join(" ")}
                 strokeLinejoin="round"
-                opacity={opacity}
               />
             )}
           </svg>
@@ -865,6 +873,37 @@ function IconContent({
 }
 
 /**
+ * A gradient as SVG, from the scene's structured form. CSS angles: 0 points up
+ * and 90 right, so the gradient runs along (sin a, -cos a) through the centre
+ * of the shape's box, the same line `linear-gradient(a deg)` draws.
+ */
+function GradientDefinition({ id, gradient }: { id: string; gradient: ResolvedGradient }): ReactNode {
+  const stops = gradient.stops.map((stop, index) => (
+    <stop key={index} offset={stop.offset} stopColor={stop.color} />
+  ));
+  if (gradient.kind === "radial") {
+    return (
+      <defs>
+        <radialGradient id={id} cx="0.5" cy="0.5" r="0.5">
+          {stops}
+        </radialGradient>
+      </defs>
+    );
+  }
+  const radians = (gradient.angle * Math.PI) / 180;
+  const dx = Math.sin(radians) / 2;
+  const dy = -Math.cos(radians) / 2;
+  const at = (value: number) => Math.round(value * 10000) / 10000;
+  return (
+    <defs>
+      <linearGradient id={id} x1={at(0.5 - dx)} y1={at(0.5 - dy)} x2={at(0.5 + dx)} y2={at(0.5 + dy)}>
+        {stops}
+      </linearGradient>
+    </defs>
+  );
+}
+
+/**
  * Positioned box for one scene node. Geometry comes from the scene; this only
  * emits it.
  *
@@ -896,6 +935,8 @@ export function positionStyle(
     opacity: node.resolvedStyle.opacity,
     boxShadow: node.resolvedStyle.shadow,
     filter: node.resolvedStyle.filter,
+    backdropFilter: node.resolvedStyle.backdropFilter,
+    WebkitBackdropFilter: node.resolvedStyle.backdropFilter,
     mixBlendMode: node.resolvedStyle.blendMode as CSSProperties["mixBlendMode"],
     background: isContainer ? fill : undefined,
     border:

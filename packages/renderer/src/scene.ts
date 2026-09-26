@@ -76,12 +76,38 @@ export interface SceneFlags {
 
 export interface ResolvedStyle {
   fill?: string;
+  /**
+   * A gradient fill, structured, beside its CSS form in `fill`. An SVG shape
+   * cannot take a CSS gradient as its `fill` (it silently draws nothing), and
+   * PowerPoint needs the stops to write a native gradient, so both read this.
+   */
+  gradient?: ResolvedGradient;
   stroke?: { color: string; width: number; dash?: number[] };
   cornerRadius?: number;
   opacity: number;
   shadow?: string;
+  /** The same shadows, structured, for adapters that cannot read CSS. */
+  shadows?: ResolvedShadow[];
   filter?: string;
+  /** Applied to what is behind the element: frosted glass is a blur here. */
+  backdropFilter?: string;
   blendMode?: string;
+}
+
+export interface ResolvedGradient {
+  kind: "linear" | "radial";
+  /** CSS convention: 0 points up, 90 points right. */
+  angle: number;
+  stops: { offset: number; color: string }[];
+}
+
+export interface ResolvedShadow {
+  inset: boolean;
+  x: number;
+  y: number;
+  blur: number;
+  spread: number;
+  color: string;
 }
 
 export interface SceneNode {
@@ -351,6 +377,17 @@ function resolveStyle(
   if (!style) return out;
 
   out.fill = paintToCss(theme, style.fill);
+  const fill = style.fill as { type?: string; angle?: number; stops?: { offset: number; color: unknown }[] } | undefined;
+  if ((fill?.type === "linearGradient" || fill?.type === "radialGradient") && fill.stops?.length) {
+    out.gradient = {
+      kind: fill.type === "linearGradient" ? "linear" : "radial",
+      angle: fill.angle ?? 180,
+      stops: fill.stops.map((stop) => ({
+        offset: stop.offset,
+        color: resolveValue<string>(theme, stop.color) ?? "transparent",
+      })),
+    };
+  }
 
   if (style.stroke) {
     const color = paintToCss(theme, style.stroke.paint);
@@ -372,17 +409,29 @@ function resolveStyle(
   }
 
   if (style.shadow?.length) {
-    out.shadow = style.shadow
-      .map((s) => {
-        const color = resolveValue<string>(theme, s.color) ?? "rgba(0,0,0,0.3)";
-        const inset = s.type === "inner" ? "inset " : "";
-        return `${inset}${s.offsetX}px ${s.offsetY}px ${s.blur}px ${s.spread ?? 0}px ${color}`;
-      })
+    out.shadows = style.shadow.map((s) => ({
+      inset: s.type === "inner",
+      x: s.offsetX,
+      y: s.offsetY,
+      blur: s.blur,
+      spread: s.spread ?? 0,
+      color: resolveValue<string>(theme, s.color) ?? "rgba(0,0,0,0.3)",
+    }));
+    out.shadow = out.shadows
+      .map((s) => `${s.inset ? "inset " : ""}${s.x}px ${s.y}px ${s.blur}px ${s.spread}px ${s.color}`)
       .join(", ");
   }
 
-  if (style.filters?.length) {
-    out.filter = style.filters
+  if (style.filters?.length) out.filter = filtersToCss(style.filters);
+  if (style.backdropFilters?.length) out.backdropFilter = filtersToCss(style.backdropFilters);
+
+  if (style.blendMode && style.blendMode !== "normal") out.blendMode = style.blendMode;
+
+  return out;
+}
+
+function filtersToCss(filters: NonNullable<CommonStyle["filters"]>): string {
+  return filters
       .map((f) => {
         switch (f.type) {
           case "blur":
@@ -396,11 +445,6 @@ function resolveStyle(
         }
       })
       .join(" ");
-  }
-
-  if (style.blendMode && style.blendMode !== "normal") out.blendMode = style.blendMode;
-
-  return out;
 }
 
 /**
@@ -1010,7 +1054,14 @@ function buildBackground(
   theme: ResolvedTheme,
   background: BackgroundDefinition | undefined,
 ): SceneBackground | undefined {
-  if (!background) return undefined;
+  // No background of its own means the theme's, not "transparent". Transparent
+  // let whatever was behind the slide show through, which is black in present
+  // mode and the chrome in the editor, so a light theme applied to such a
+  // slide never reached it.
+  if (!background) {
+    const color = resolveValue<string>(theme, "token:colors.background");
+    return typeof color === "string" ? { color } : undefined;
+  }
 
   const paint = paintToCss(theme, background.paint);
   const isGradient = paint?.includes("gradient");

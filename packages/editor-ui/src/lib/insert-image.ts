@@ -171,23 +171,7 @@ export function replaceImageOperations(
   const element = found.element as { assetId: string; altText?: string; transform: PresentationElement["transform"] };
   const { asset } = input;
 
-  const operations: PatchOperation[] = [];
-  if (!document.assets.some((existing) => existing.id === asset.id)) {
-    operations.push({
-      op: "add",
-      path: "/assets/-",
-      value: {
-        id: asset.id,
-        type: "image",
-        storageKey: asset.storage_key,
-        ...(asset.filename ? { fileName: asset.filename } : {}),
-        ...(asset.content_type ? { mimeType: asset.content_type } : {}),
-        ...(asset.bytes ? { byteSize: asset.bytes } : {}),
-        ...(asset.width ? { width: asset.width } : {}),
-        ...(asset.height ? { height: asset.height } : {}),
-      },
-    });
-  }
+  const operations: PatchOperation[] = [...manifestOperations(document, asset)];
   operations.push({ op: "replace", path: `${found.path}/assetId`, value: asset.id });
 
   if (input.box === "match" && asset.width && asset.height) {
@@ -207,6 +191,40 @@ export function replaceImageOperations(
     return { operations, altTextNeedsReview: true };
   }
   return { operations, altTextNeedsReview: element.altText !== undefined && element.altText !== "" };
+}
+
+/**
+ * The manifest entry an uploaded picture needs before anything may cite it, or
+ * nothing when the deck already lists it. A citation without its entry is a
+ * picture nothing can resolve, so every path that cites an upload starts here.
+ */
+export function manifestOperations(document: PresentationDocument, asset: UploadedAsset): PatchOperation[] {
+  if (document.assets.some((existing) => existing.id === asset.id)) return [];
+  return [
+    {
+      op: "add",
+      path: "/assets/-",
+      value: {
+        id: asset.id,
+        type: "image",
+        storageKey: asset.storage_key,
+        ...(asset.filename ? { fileName: asset.filename } : {}),
+        ...(asset.content_type ? { mimeType: asset.content_type } : {}),
+        ...(asset.bytes ? { byteSize: asset.bytes } : {}),
+        ...(asset.width ? { width: asset.width } : {}),
+        ...(asset.height ? { height: asset.height } : {}),
+      },
+    },
+  ];
+}
+
+/** Upload a picture into the deck's workspace, measured first, and hand back the stored asset. */
+export async function uploadPicture(
+  client: Pick<WorkspaceClient, "assets" | "session">,
+  file: File,
+): Promise<UploadedAsset> {
+  const session = await client.session.ensure();
+  return client.assets.upload(file, { workspaceId: session.workspaceId, ...(await imageSize(file)) });
 }
 
 /** Upload a file and produce the patch that swaps it into an image element. */

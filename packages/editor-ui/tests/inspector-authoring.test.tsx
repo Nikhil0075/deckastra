@@ -95,14 +95,14 @@ it("applies a text style preset as the element's own values", async () => {
 
 it("recolours a shape's fill, adds and dashes an outline, and removes the fill (MA-15)", async () => {
   const { current, original } = await mountWith("shape");
-  choose(/^Fill(?! &)/, "Secondary");
+  choose(/^Fill colour/, "Secondary");
   choose(/^Outline/, "Text");
   choose(/^Dash/, "Dashed");
   expect(current().style).toMatchObject({
     fill: { type: "solid", color: "token:colors.secondary" },
     stroke: { paint: { type: "solid", color: "token:colors.foreground" }, width: 2, dash: [8, 6] },
   });
-  choose(/^Fill(?! &)/, "None");
+  fireEvent.click(screen.getByRole("radio", { name: "None" }));
   expect(current().style?.fill).toEqual({ type: "none" });
   for (let i = 0; i < 4; i += 1) act(() => editor.undo());
   expect(editor.document).toEqual(original);
@@ -110,8 +110,8 @@ it("recolours a shape's fill, adds and dashes an outline, and removes the fill (
 
 it("a custom fill colour commits once, when it is a whole valid hex", async () => {
   const { current } = await mountWith("shape");
-  choose(/^Fill(?! &)/, "Custom colour…");
-  const hex = screen.getByLabelText("Fill hex value");
+  choose(/^Fill colour/, "Custom colour…");
+  const hex = screen.getByLabelText("Fill colour hex value");
   fireEvent.change(hex, { target: { value: "#1e4" } });
   fireEvent.change(hex, { target: { value: "#zzzzzz" } });
   fireEvent.blur(hex);
@@ -120,6 +120,40 @@ it("a custom fill colour commits once, when it is a whole valid hex", async () =
   fireEvent.change(hex, { target: { value: "#1E4BD2" } });
   fireEvent.keyDown(hex, { key: "Enter" });
   expect(current().style?.fill).toEqual({ type: "solid", color: "#1E4BD2" });
+});
+
+it("turns a fill into a gradient and edits its stops, each as one undo step", async () => {
+  const { current, original } = await mountWith("shape");
+  fireEvent.click(screen.getByRole("radio", { name: "Gradient" }));
+  const fill = current().style?.fill as { type: string; angle: number; stops: { offset: number; color: string }[] };
+  expect(fill.type).toBe("linearGradient");
+  expect(fill.stops).toHaveLength(2);
+  // The colour it had becomes the first stop, so the gradient starts from the object.
+  expect(fill.stops[0]).toEqual({ offset: 0, color: "token:colors.accent" });
+
+  fireEvent.click(screen.getByRole("button", { name: /Add stop/ }));
+  expect((current().style?.fill as typeof fill).stops).toHaveLength(3);
+  fireEvent.click(screen.getByRole("radio", { name: "Radial" }));
+  expect(current().style?.fill?.type).toBe("radialGradient");
+
+  for (let i = 0; i < 3; i += 1) act(() => editor.undo());
+  expect(editor.document).toEqual(original);
+});
+
+it("gives a card a named shadow and a frosted-glass blur", async () => {
+  const { current, original } = await mountWith("shape");
+  // Closed until an object has an effect, like any section with nothing in it.
+  fireEvent.click(screen.getByRole("button", { name: /^Effects/ }));
+  choose(/^Shadow/, "Neumorphic");
+  expect(current().style?.shadow).toHaveLength(2);
+  const blur = screen.getByLabelText("Background blur");
+  fireEvent.change(blur, { target: { value: "16" } });
+  fireEvent.keyDown(blur, { key: "Enter" });
+  expect(current().style?.backdropFilters).toEqual([{ type: "blur", radius: 16 }]);
+  choose(/^Shadow(?! colour)/, "None");
+  expect(current().style?.shadow).toBeUndefined();
+  for (let i = 0; i < 3; i += 1) act(() => editor.undo());
+  expect(editor.document).toEqual(original);
 });
 
 it("changes a line's colour, width and arrowheads", async () => {

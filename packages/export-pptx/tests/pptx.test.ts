@@ -861,3 +861,43 @@ describe("SVG paths as DrawingML", () => {
     expect(parsePath("m 10 10 h 5 v 5 z").map((segment) => segment.op)).toEqual(["M", "L", "L", "Z"]);
   });
 });
+
+describe("fills and effects", () => {
+  it("writes a gradient as a native gradient, a shadow pair as its first shadow, and reports what it could not keep", () => {
+    const document = structuredClone(fixture("technical-deck"));
+    const slide = document.slides[1]!;
+    slide.elements.push({
+      id: "el_01JB8Z9K2QW4RN7F3XG5HTM900",
+      type: "shape",
+      shape: "rectangle",
+      transform: { x: 100, y: 100, width: 400, height: 200 },
+      style: {
+        fill: {
+          type: "linearGradient",
+          angle: 90,
+          stops: [
+            { offset: 0, color: "#FF000080" },
+            { offset: 1, color: "#0000FF" },
+          ],
+        },
+        shadow: [
+          { type: "drop", offsetX: 10, offsetY: 10, blur: 20, spread: 0, color: "#00000029" },
+          { type: "drop", offsetX: -10, offsetY: -10, blur: 20, spread: 0, color: "#FFFFFFB3" },
+        ],
+        backdropFilters: [{ type: "blur", radius: 16 }],
+      },
+    } as never);
+
+    const { bytes, result } = buildPptx(inputFor(document));
+    const xmlText = unzip(bytes).get("ppt/slides/slide2.xml")!;
+    const shape = xmlText.slice(xmlText.indexOf("el_01JB8Z9K2QW4RN7F3XG5HTM900"));
+    // 90 degrees in CSS points right, which is 0 in DrawingML.
+    expect(shape).toMatch(/<a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:srgbClr val="FF0000"><a:alpha val="50196"\/>/);
+    expect(shape).toMatch(/<a:lin ang="0" scaled="0"\/>/);
+    expect(shape).toMatch(/<a:effectLst><a:outerShdw /);
+    expect(shape.match(/<a:outerShdw /g)).toHaveLength(1);
+
+    const features = result.report.warnings.filter((warning) => warning.elementId === "el_01JB8Z9K2QW4RN7F3XG5HTM900").map((w) => w.feature);
+    expect(features).toEqual(expect.arrayContaining(["backdropFilter", "shadow"]));
+  });
+});

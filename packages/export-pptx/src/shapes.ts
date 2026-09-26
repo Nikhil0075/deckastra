@@ -169,12 +169,72 @@ function rotationOf(node: SceneNode): number {
 }
 
 function fillFor(node: SceneNode): string {
-  const fill = node.resolvedStyle.fill;
+  const { fill, gradient, opacity } = node.resolvedStyle;
+  if (gradient) return gradientFill(gradient, opacity);
   if (!fill) return "<a:noFill/>";
+  return `<a:solidFill>${colour(fill, opacity)}</a:solidFill>`;
+}
 
-  const transparency = alpha(node.resolvedStyle.opacity);
-  const inner = transparency === undefined ? "" : `<a:alpha val="${transparency}"/>`;
-  return `<a:solidFill><a:srgbClr val="${hex(fill)}">${inner}</a:srgbClr></a:solidFill>`;
+/**
+ * A colour with its transparency: the colour's own alpha (an 8-digit hex, an
+ * rgba) times the element's opacity. `hex()` drops the alpha digits, so a
+ * translucent glass card used to arrive in PowerPoint fully opaque.
+ */
+function colour(value: string, opacity = 1): string {
+  const transparency = alpha(colourAlpha(value) * opacity);
+  return `<a:srgbClr val="${hex(value)}">${transparency === undefined ? "" : `<a:alpha val="${transparency}"/>`}</a:srgbClr>`;
+}
+
+function colourAlpha(value: string): number {
+  const text = value.trim();
+  const long = /^#[0-9a-f]{8}$/i.exec(text);
+  if (long) return parseInt(text.slice(7, 9), 16) / 255;
+  const short = /^#[0-9a-f]{4}$/i.exec(text);
+  if (short) return parseInt(text[4]! + text[4]!, 16) / 255;
+  const rgba = /^rgba\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+[\s,/]+([\d.]+%?)\s*\)$/i.exec(text);
+  if (rgba) return rgba[1]!.endsWith("%") ? Number(rgba[1]!.slice(0, -1)) / 100 : Number(rgba[1]);
+  return 1;
+}
+
+/**
+ * A native gradient, so the recipient can still edit its stops.
+ *
+ * DrawingML measures a linear angle from pointing right, clockwise, in
+ * 60000ths of a degree; CSS measures from pointing up. 90 in CSS is 0 here.
+ * `scaled="0"` keeps the angle as given rather than stretching it with the box.
+ */
+function gradientFill(gradient: NonNullable<SceneNode["resolvedStyle"]["gradient"]>, opacity: number): string {
+  const stops = gradient.stops
+    .map((stop) => `<a:gs pos="${Math.round(Math.min(1, Math.max(0, stop.offset)) * 100_000)}">${colour(stop.color, opacity)}</a:gs>`)
+    .join("");
+  const shade =
+    gradient.kind === "radial"
+      ? `<a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path>`
+      : `<a:lin ang="${Math.round((((gradient.angle - 90) % 360) + 360) % 360) * 60_000}" scaled="0"/>`;
+  return `<a:gradFill rotWithShape="1"><a:gsLst>${stops}</a:gsLst>${shade}</a:gradFill>`;
+}
+
+/**
+ * The first drop shadow, and the first inner one, as DrawingML effects.
+ *
+ * PowerPoint holds one of each, so a stack of shadows (a neumorphic pair) keeps
+ * its first and says so. The offset becomes a distance and a direction; the
+ * spread has no equivalent and is left out.
+ */
+function effectsFor(node: SceneNode, units: Units): string {
+  const shadows = node.resolvedStyle.shadows ?? [];
+  const outer = shadows.find((shadow) => !shadow.inset);
+  const inner = shadows.find((shadow) => shadow.inset);
+  if (!outer && !inner) return "";
+  const effect = (tag: string, shadow: (typeof shadows)[number]) => {
+    const distance = Math.hypot(shadow.x, shadow.y);
+    const direction = ((((Math.atan2(shadow.y, shadow.x) * 180) / Math.PI) % 360) + 360) % 360;
+    return (
+      `<a:${tag} blurRad="${units.px(shadow.blur)}" dist="${units.px(distance)}" dir="${Math.round(direction * 60_000)}"` +
+      `${tag === "outerShdw" ? ' algn="ctr" rotWithShape="0"' : ""}>${colour(shadow.color)}</a:${tag}>`
+    );
+  };
+  return `<a:effectLst>${outer ? effect("outerShdw", outer) : ""}${inner ? effect("innerShdw", inner) : ""}</a:effectLst>`;
 }
 
 function strokeFor(node: SceneNode, units: Units): string {
@@ -219,7 +279,7 @@ function textShape(node: SceneNode, context: ShapeContext): string {
   return (
     `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>` +
-    `${node.resolvedStyle.fill ? fillFor(node) : "<a:noFill/>"}${strokeFor(node, units)}</p:spPr>` +
+    `${node.resolvedStyle.fill ? fillFor(node) : "<a:noFill/>"}${strokeFor(node, units)}${effectsFor(node, units)}</p:spPr>` +
     `<p:txBody>` +
     // `spAutoFit` off and `wrap="square"`: the scene already decided where the
     // lines break, and letting PowerPoint re-fit would move text that the author
@@ -350,7 +410,7 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
     `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}` +
     `<a:prstGeom prst="${geometry}">${radius}</a:prstGeom>` +
-    `${fillFor(node)}${strokeFor(node, units)}</p:spPr>${label}</p:sp>`
+    `${fillFor(node)}${strokeFor(node, units)}${effectsFor(node, units)}</p:spPr>${label}</p:sp>`
   );
 }
 
@@ -564,6 +624,31 @@ function reportUnsupportedStyling(node: SceneNode, context: ShapeContext): void 
       message:
         "PowerPoint has no equivalent for this filter, so it was removed. The " +
         "element is still there, without the effect.",
+    });
+  }
+
+  if (style.backdropFilter) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "backdropFilter",
+      action: "approximated",
+      message:
+        "PowerPoint cannot blur what is behind a shape, so this frosted-glass " +
+        "effect keeps its translucent fill without the blur.",
+    });
+  }
+
+  const shadows = style.shadows ?? [];
+  if (shadows.filter((shadow) => !shadow.inset).length > 1 || shadows.filter((shadow) => shadow.inset).length > 1) {
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "shadow",
+      action: "approximated",
+      message: "PowerPoint holds one outer and one inner shadow per shape; the first of each was kept.",
     });
   }
 

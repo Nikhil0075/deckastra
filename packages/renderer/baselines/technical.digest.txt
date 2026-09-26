@@ -8,7 +8,7 @@ el_01JB8Z9K2QW4RN7F3X01000200 | text | eyebrow | z=0 | b=120,320,800,40 | m=1,0,
 el_01JB8Z9K2QW4RN7F3X01000400 | text | headline | z=1 | b=120,380,1300,240 | m=1,0,0,1,120,380 | fill=- | stroke=- | opacity=1 | a11y=heading/101 | text size=93 lines=2 chars=46
 el_01JB8Z9K2QW4RN7F3X01000600 | text | subtitle | z=2 | b=120,650,1000,80 | m=1,0,0,1,120,650 | fill=- | stroke=- | opacity=1 | a11y=paragraph/202 | text size=24 lines=1 chars=54
 slide sld_01JB8Z9K2QW4RN7F3X01000800 1920x1080
-background -
+background #0B0F14
 transition fade
 el_01JB8Z9K2QW4RN7F3X01000900 | text | headline | z=0 | b=120,120,1200,100 | m=1,0,0,1,120,120 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=32
 el_01JB8Z9K2QW4RN7F3X01001100 | group | - | z=1 | b=120,340,1680,240 | m=1,0,0,1,120,340 | fill=- | stroke=- | opacity=1 | a11y=group/5001 | group
@@ -25,18 +25,18 @@ el_01JB8Z9K2QW4RN7F3X01002700 | group | - | z=1.3 | b=1398,340,402,240 | m=1,0,0
 el_01JB8Z9K2QW4RN7F3X01002800 | text | metric | z=1.3.0 | b=1430,372,316,100 | m=1,0,0,1,1430,372 | fill=- | stroke=- | opacity=1 | a11y=paragraph/312 | text size=72 lines=1 chars=5
 el_01JB8Z9K2QW4RN7F3X01003000 | text | caption | z=1.3.1 | b=1430,488,316,56 | m=1,0,0,1,1430,488 | fill=- | stroke=- | opacity=1 | a11y=paragraph/1413 | text size=18 lines=1 chars=20
 slide sld_01JB8Z9K2QW4RN7F3X01003800 1920x1080
-background -
+background #0B0F14
 transition fade
 el_01JB8Z9K2QW4RN7F3X01003900 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=15
 el_01JB8Z9K2QW4RN7F3X01004100 | diagram | mainDiagram | z=1 | b=120,260,1680,620 | m=1,0,0,1,120,260 | fill=- | stroke=- | opacity=1 | a11y=img/901 | diagram architecture/layered nodes=003200@50,275.7,201.2,68.6;003300@359.059,264.612,212.816,90.776;003400@715.308,158.312,237.5,68.6;003500@679.734,370.912,308.648,90.776;003600@1096.241,275.7,140,68.6;003700@1344.1,250.312,285.9,119.376 edges=004200:M 251.2 310 C 294.344 310 315.915 310 359.059 310;004300:M 571.875 276.111 C 633.668 276.111 664.565 226.912 726.358 226.912;004400:M 571.875 340.688 C 615.019 340.688 636.59 371.794 679.734 371.794;004500:M 931.12 226.912 C 997.168 226.912 1030.193 285.263 1096.241 285.263;004600:M 975.894 361.912 C 1024.033 361.912 1048.102 323.4 1096.241 323.4;004700:M 1236.241 310 C 1279.385 310 1300.956 310 1344.1 310;004800:M 1096.241 341.4 C 1048.102 341.4 1024.033 379.912 975.894 379.912 edgeLabels=004500:"story plan"@1013.68,248.087,15.84;004600:"candidates"@1036.068,334.656,15.84;004700:"accepted patch"@1256.679,244.816,15.84;004800:"revise"@1036.068,381.248,15.84 groups=335.059,108.312,925.182,377.376
 el_01JB8Z9K2QW4RN7F3X01006900 | image | - | z=2 | b=120,900,280,158 | m=1,0,0,1,120,900 | fill=- | stroke=- | opacity=1 | a11y=img/5002 | image ast_01JB8Z9K2QW4RN7F3X01006800 fit=contain at=50.0% 50.0%
 slide sld_01JB8Z9K2QW4RN7F3X01005000 1920x1080
-background -
+background #0B0F14
 transition fade
 el_01JB8Z9K2QW4RN7F3X01005100 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=20
 el_01JB8Z9K2QW4RN7F3X01005300 | table | - | z=1 | b=120,280,1680,480 | m=1,0,0,1,120,280 | fill=- | stroke=- | opacity=1 | a11y=table/5001 | table 3x4 borders=horizontal banding=rows
 slide sld_01JB8Z9K2QW4RN7F3X01006100 1920x1080
-background -
+background #0B0F14
 transition fade
 el_01JB8Z9K2QW4RN7F3X01006200 | text | headline | z=0 | b=120,100,1200,90 | m=1,0,0,1,120,100 | fill=- | stroke=- | opacity=1 | a11y=heading/100 | text size=64 lines=1 chars=27
 el_01JB8Z9K2QW4RN7F3X01006400 | code | - | z=1 | b=120,300,1680,320 | m=1,0,0,1,120,300 | fill=- | stroke=- | opacity=1 | a11y=presentation/5001 | code json lines=5 tokens=19

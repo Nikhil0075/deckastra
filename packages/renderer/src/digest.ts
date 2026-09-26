@@ -132,6 +132,12 @@ function nodeLine(node: SceneNode): string {
     `fill=${style.fill ?? "-"}`,
     `stroke=${style.stroke ? `${style.stroke.color}/${n(style.stroke.width)}` : "-"}`,
     `opacity=${n(style.opacity)}`,
+    // Only when present, so a digest line for an element without them is the
+    // line it has always been.
+    ...(style.gradient
+      ? [`grad=${style.gradient.kind}/${n(style.gradient.angle)}/${style.gradient.stops.map((s) => `${s.color}@${n(s.offset)}`).join(",")}`]
+      : []),
+    ...(style.backdropFilter ? [`backdrop=${style.backdropFilter}`] : []),
     `a11y=${node.a11y.role}/${node.a11y.order}`,
     summarisePayload(node),
   ].join(" | ");

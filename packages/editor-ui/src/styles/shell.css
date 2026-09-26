@@ -2152,3 +2152,37 @@
   margin-bottom: var(--dk-space-2);
   font-size: var(--dk-text-sm);
 }
+
+/* Fills, gradients and slide backgrounds (Design tab review). */
+.dk-paintfield {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-gradient {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-gradient__preview,
+.dk-background__preview {
+  display: block;
+  height: 28px;
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-background__preview {
+  height: 48px;
+  margin-bottom: var(--dk-space-2);
+}
+.dk-gradient__stop {
+  display: grid;
+  grid-template-columns: 1fr 72px auto;
+  align-items: end;
+  gap: var(--dk-space-2);
+}
+.dk-background__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-2);
+  margin-top: var(--dk-space-2);
+}

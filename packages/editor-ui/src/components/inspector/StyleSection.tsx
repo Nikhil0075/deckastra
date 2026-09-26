@@ -11,6 +11,7 @@ import { applyPlainTextEdit, richTextToPlain } from "@deckastra/editor";
 
 import { NumberField, Section, Select } from "../../ui";
 import { ColorField, Hint } from "./controls";
+import { PaintField } from "./paint";
 
 /**
  * Fill, stroke and corners (manual-authoring review MA-15), and a shape's label
@@ -59,7 +60,6 @@ export function StyleSection({
   // control whose change never appears is worse than no control.
   const fillable = element.type === "shape" || element.type === "group";
   const fill = style.fill;
-  const fillColor = fill?.type === "solid" ? fill.color : undefined;
   const stroke = style.stroke as StrokeStyle | undefined;
   const strokeColor = stroke?.paint.type === "solid" ? stroke.paint.color : undefined;
   const hasStroke = stroke !== undefined && stroke.paint.type !== "none";
@@ -68,22 +68,21 @@ export function StyleSection({
   return (
     <Section title={isLine ? "Line" : "Fill & outline"} defaultOpen>
       {fillable ? (
-        <>
-          {fill && fill.type !== "solid" && fill.type !== "none" ? (
-            <Hint>This object has a {fill.type === "image" ? "picture" : "gradient"} fill. Choosing a colour replaces it; Undo brings it back.</Hint>
-          ) : null}
-          <ColorField
-            label="Fill"
-            value={fillColor}
-            theme={document.theme}
-            allowNone
-            disabled={disabled}
-            data-testid="fill-color"
-            onChange={(color) =>
-              set("style.fill", color ? { type: "solid", color } : element.type === "shape" ? { type: "none" } : undefined, color ? "Change fill" : "Remove fill")
-            }
-          />
-        </>
+        <PaintField
+          label="Fill"
+          value={fill}
+          theme={document.theme}
+          allowNone
+          disabled={disabled}
+          data-testid="fill-paint"
+          onChange={(paint) =>
+            set(
+              "style.fill",
+              paint ?? (element.type === "shape" ? { type: "none" } : undefined),
+              paint && paint.type !== "none" ? "Change fill" : "Remove fill",
+            )
+          }
+        />
       ) : null}
 
       <ColorField

@@ -5,6 +5,7 @@ import {
   type ImageElement,
   type PatchOperation,
   type PresentationElement,
+  type ShadowStyle,
   type TableElement,
   type TextElement,
 } from "@deckastra/presentation-schema";
@@ -36,6 +37,8 @@ import { ChartSection } from "./ChartSection";
 import { DiagramSection } from "./DiagramSection";
 import { ImageSection } from "./ImageSection";
 import { ShapeLabelSection, StyleSection } from "./StyleSection";
+import { EffectsSection } from "./paint";
+import { BackgroundSection } from "./BackgroundSection";
 import { TableSection } from "./TableSection";
 import { TextSection } from "./TextSection";
 
@@ -104,6 +107,9 @@ export function Inspector({
       )}
 
       {selected && !many ? <ElementSections editor={editor} element={selected} /> : null}
+      {/* Open when nothing is selected: clicking the empty slide is how people
+          reach for the slide itself. */}
+      <BackgroundSection key={`bg-${slide?.id}`} editor={editor} defaultOpen={!selected && !many} />
       <ArrangeSection editor={editor} />
 
       <Section title="Layers" meta={`${objectCount} object${objectCount === 1 ? "" : "s"}`} defaultOpen={!selected}>
@@ -303,6 +309,20 @@ function ElementSections({ editor, element }: { editor: EditorApi; element: Pres
 
       {element.type === "shape" || element.type === "line" || element.type === "icon" || isGroup(element) ? (
         <StyleSection document={doc} element={element} edit={edit} disabled={disabled} />
+      ) : null}
+
+      {element.type !== "line" ? (
+        <EffectsSection
+          shadows={element.style?.shadow as ShadowStyle[] | undefined}
+          blur={(element.style?.backdropFilters as { type: string; radius?: number }[] | undefined)?.find((f) => f.type === "blur")?.radius}
+          canBlur={element.type === "shape" || isGroup(element)}
+          theme={doc.theme}
+          disabled={disabled}
+          onShadows={(shadows) => change("style.shadow", shadows, shadows ? "Change shadow" : "Remove shadow")}
+          onBlur={(radius) =>
+            change("style.backdropFilters", radius ? [{ type: "blur", radius }] : undefined, radius ? "Blur what is behind" : "Remove background blur")
+          }
+        />
       ) : null}
 
       <Section title="Appearance" defaultOpen>
