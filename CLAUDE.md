@@ -1399,6 +1399,11 @@ Two environment notes that cost an hour each if unknown:
 - **`electron`'s binary comes from GitHub releases.** Where that is unreachable,
   `ELECTRON_MIRROR=https://registry.npmmirror.com/-/binary/electron/ npm install`
   works.
+- **Packaging downloads Electron from GitHub unless told not to.** Where GitHub
+  is unreachable (`EHOSTUNREACH`; npm still works), pass the copy npm already
+  installed, which is the same pinned version:
+  `npx electron-builder --publish never -c.electronDist=../../node_modules/electron/dist`
+  from `apps/desktop`. Used for the 2026-09-26 installer.
 - **Packaging needs symlink privilege on Windows.** `electron-builder` always
   fetches its `winCodeSign` bundle, which contains macOS symlinks that 7-Zip
   cannot create without Developer Mode or an elevated shell. `electronVersion` is
