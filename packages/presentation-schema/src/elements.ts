@@ -218,6 +218,18 @@ export const ShapeElementSchema = z.looseObject({
    */
   text: RichTextDocumentSchema.optional(),
   textPadding: InsetsSchema.optional(),
+  /**
+   * How the label looks. Partial on purpose: a label names what it changes
+   * (size, weight, colour) and takes the rest from the theme's body style. With
+   * no colour the renderer picks whichever of the theme's foreground and
+   * background reads against the shape's fill — a label with no colour of its
+   * own used to inherit the page's and vanish on a dark card.
+   */
+  typography: TypographyStyleSchema.partial().optional(),
+  /** Horizontal alignment of the label. Centred when absent, as a shape's label is everywhere else. */
+  paragraph: ParagraphStyleSchema.optional(),
+  /** Vertical alignment of the label. Middle when absent. */
+  verticalAlign: VerticalAlignSchema.optional(),
 });
 
 // ----------------------------------------------------------------------- line

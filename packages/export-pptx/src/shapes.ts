@@ -337,7 +337,9 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
   const geometry = preset ?? "rect";
   const label =
     payload.kind === "shape" && payload.label
-      ? `<p:txBody><a:bodyPr wrap="square" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
+      ? `<p:txBody><a:bodyPr wrap="square" anchor="${
+          payload.labelVerticalAlign === "top" ? "t" : payload.labelVerticalAlign === "bottom" ? "b" : "ctr"
+        }"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
         payload.label
           .map((block) => paragraph(block as TextBlockLike, payload.labelTypography ?? {}, units, "center"))
           .join("") +

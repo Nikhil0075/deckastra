@@ -46,8 +46,15 @@ function summarisePayload(node: SceneNode): string {
         .filter(Boolean)
         .join(" ");
 
-    case "shape":
-      return `shape d=${payload.pathData.length} rect=${payload.preferRect} r=${n(payload.radius)}`;
+    case "shape": {
+      const base = `shape d=${payload.pathData.length} rect=${payload.preferRect} r=${n(payload.radius)}`;
+      if (!payload.label?.length || !payload.labelTypography) return base;
+      // A label is part of what the shape looks like: its colour, size and
+      // alignment are exactly what went wrong unnoticed when none of them
+      // were recorded here.
+      const align = payload.label[0]?.align ?? "left";
+      return `${base} label size=${n(payload.labelTypography.fontSize)} color=${String(payload.labelTypography.color ?? "inherit")} align=${align} v=${payload.labelVerticalAlign ?? "middle"}`;
+    }
 
     case "line":
       return `line ${n(payload.x1)},${n(payload.y1)}->${n(payload.x2)},${n(payload.y2)}`;

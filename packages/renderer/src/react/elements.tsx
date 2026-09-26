@@ -212,8 +212,15 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
                 inset: 0,
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "center",
-                padding: 16,
+                justifyContent:
+                  payload.labelVerticalAlign === "top"
+                    ? "flex-start"
+                    : payload.labelVerticalAlign === "bottom"
+                      ? "flex-end"
+                      : "center",
+                padding: payload.labelPadding
+                  ? `${payload.labelPadding.top}px ${payload.labelPadding.right}px ${payload.labelPadding.bottom}px ${payload.labelPadding.left}px`
+                  : 16,
                 ...typographyToCss(payload.labelTypography),
               }}
             >

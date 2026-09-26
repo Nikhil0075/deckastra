@@ -15,6 +15,7 @@ import {
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
 import { paintToCss, resolveTheme, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
+import { contrastRatio, parseColor } from "./semantic";
 import {
   defaultTextMeasurer,
   type TextMeasurer,
@@ -108,7 +109,7 @@ export interface SceneNode {
 
 export type RenderPayload =
   | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets }
-  | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle }
+  | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
   | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
@@ -402,6 +403,40 @@ function resolveStyle(
   return out;
 }
 
+/**
+ * A shape label's typography: the theme's body style, the element's overrides,
+ * and a colour that reads against the fill when the element names none.
+ *
+ * The colour is chosen between the theme's own foreground and background, so it
+ * is always a colour the deck already uses; a gradient is judged by its first
+ * stop. Without this the label inherited the page's colour and disappeared on
+ * any card darker or lighter than the page.
+ */
+function labelTypography(
+  theme: ResolvedTheme,
+  overrides: Partial<TypographyStyle> | undefined,
+  fill: string | undefined,
+): TypographyStyle {
+  const style = resolveTypography(theme, {
+    fontFamily: "token:typography.body.fontFamily",
+    fontSize: 20,
+    ...(overrides ?? {}),
+  } as TypographyStyle);
+  if (style.color !== undefined) return style;
+
+  const foreground = String(resolveValue(theme, "token:colors.foreground", "#111111"));
+  const background = String(resolveValue(theme, "token:colors.background", "#FFFFFF"));
+  const behind = parseColor(fill ? (/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i.exec(fill)?.[0] ?? fill) : undefined);
+  if (!behind) return { ...style, color: foreground };
+  const light = parseColor(foreground);
+  const dark = parseColor(background);
+  if (!light || !dark) return { ...style, color: foreground };
+  return {
+    ...style,
+    color: contrastRatio(light, behind) >= contrastRatio(dark, behind) ? foreground : background,
+  };
+}
+
 function textBlocks(theme: ResolvedTheme, content: unknown, align?: string): TextBlockPayload[] {
   const doc = content as { blocks?: unknown[] } | undefined;
   if (!doc?.blocks) return [];
@@ -636,6 +671,9 @@ function buildPayload(
         innerRadius?: number;
         text?: unknown;
         textPadding?: Insets;
+        typography?: Partial<TypographyStyle>;
+        paragraph?: { align?: string };
+        verticalAlign?: string;
       };
 
       const geometry = shapeGeometry({
@@ -657,11 +695,12 @@ function buildPayload(
         pathData: geometry.pathData,
         preferRect: geometry.preferRect,
         radius,
-        label: el.text ? textBlocks(theme, el.text) : undefined,
-        labelTypography: resolveTypography(theme, {
-          fontFamily: "token:typography.body.fontFamily",
-          fontSize: 20,
-        }),
+        // Centred, as a shape's label is in every tool people have used: a
+        // label that starts at the left edge of a circle looks like a mistake.
+        label: el.text ? textBlocks(theme, el.text, el.paragraph?.align ?? "center") : undefined,
+        labelTypography: labelTypography(theme, el.typography, paintToCss(theme, element.style?.fill)),
+        labelVerticalAlign: el.verticalAlign ?? "middle",
+        labelPadding: el.textPadding,
       };
     }
 

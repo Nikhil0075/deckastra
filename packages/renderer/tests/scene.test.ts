@@ -369,3 +369,43 @@ describe("identity", () => {
     expect(multiply(IDENTITY, m)).toEqual(m);
   });
 });
+
+describe("a shape's label", () => {
+  // The fixture's two "Proposed" / "Applied" cards: dark fill, a label, and
+  // nothing said about how the label should look.
+  const labelled = (document: PresentationDocument) => {
+    const scene = buildDocumentScene(document);
+    for (const slide of scene.slides) {
+      const node = slide.nodes.find((candidate) => candidate.renderPayload.kind === "shape" && "label" in candidate.renderPayload && candidate.renderPayload.label);
+      if (node && node.renderPayload.kind === "shape") return node.renderPayload;
+    }
+    throw new Error("the animation fixture has no labelled shape");
+  };
+
+  it("is centred and reads against a dark fill when it names no colour", () => {
+    const payload = labelled(animation);
+    expect(payload.label![0]!.align).toBe("center");
+    expect(payload.labelVerticalAlign).toBe("middle");
+    // The theme's light foreground on the card's near-black fill. It used to
+    // inherit the page's colour, and on a card that is how a label vanishes.
+    expect(payload.labelTypography!.color).toBe(animation.theme.colors.foreground);
+  });
+
+  it("takes the theme's dark colour on a light fill, and honours what the element says", () => {
+    const light = structuredClone(animation) as PresentationDocument;
+    const card = light.slides
+      .flatMap((slide) => slide.elements)
+      .find((element) => element.type === "shape" && (element as { text?: unknown }).text) as Record<string, unknown>;
+    card.style = { ...(card.style as object), fill: { type: "solid", color: "#FFFFFF" } };
+    expect(labelled(light).labelTypography!.color).toBe(light.theme.colors.background);
+
+    card.typography = { fontSize: 36, color: "#FF0000" };
+    card.paragraph = { align: "left" };
+    card.verticalAlign = "top";
+    const styled = labelled(light);
+    expect(styled.labelTypography!.fontSize).toBe(36);
+    expect(styled.labelTypography!.color).toBe("#FF0000");
+    expect(styled.label![0]!.align).toBe("left");
+    expect(styled.labelVerticalAlign).toBe("top");
+  });
+});
