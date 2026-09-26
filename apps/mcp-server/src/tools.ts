@@ -450,6 +450,24 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       guard(async () => json(await client.agent.proposals(presentation_id, { fresh: true }))),
   );
 
+  server.registerTool(
+    "proposal_withdraw",
+    {
+      title: "Withdraw your own pending proposal",
+      description:
+        "Take back a change you proposed that the user has not decided yet — because you found " +
+        "a mistake in it, or want to propose something better instead. Only proposals this " +
+        "client made can be withdrawn, and only while pending. This is not a way to decline " +
+        "someone else's change: approving and rejecting are the user's, in the app.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        proposal_id: z.string().min(1).describe("The transaction_id document_propose returned."),
+      },
+    },
+    async ({ presentation_id, proposal_id }) =>
+      guard(async () => json(await withdrawAuthored(client, attached, presentation_id, proposal_id))),
+  );
+
   // ---------------------------------------------------------------- exporting
 
   server.registerTool(
@@ -559,4 +577,38 @@ export async function proposeAuthored(
     throw error;
   }
   return payload as unknown as AuthoredResult;
+}
+
+/**
+ * Withdraw a proposal this client made, through the same direct route as
+ * `proposeAuthored` and for the same reason: only this surface has a use for it.
+ */
+export async function withdrawAuthored(
+  client: WorkspaceClient,
+  attached: Attached,
+  presentationId: string,
+  proposalId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Record<string, unknown>> {
+  const response = await fetchImpl(
+    `${attached.baseUrl}/v1/presentations/${encodeURIComponent(presentationId)}/proposals/${encodeURIComponent(proposalId)}/withdraw`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${attached.attachment.grant}`,
+      },
+      body: JSON.stringify({ client_label: client.clientId.replace(/^mcp:/, "") }),
+    },
+  );
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    const detail = payload.detail as { message?: string } | string | undefined;
+    const message =
+      typeof detail === "string" ? detail : (detail?.message ?? `The withdrawal was refused (${response.status}).`);
+    const error = new Error(message);
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+  return payload;
 }

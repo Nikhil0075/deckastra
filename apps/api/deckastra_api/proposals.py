@@ -330,6 +330,48 @@ def approve(
     }
 
 
+def withdraw(
+    session: Session, *, presentation_id: str, transaction_id: str, agent_id: str
+) -> TransactionRow:
+    """An external agent takes back a change it proposed and the person has not yet decided.
+
+    Declining is the person's (`reject`, which needs `approve`); taking back
+    one's own offer is not a decision about someone else's work, so it needs
+    only `write`. Two rules keep it that narrow:
+
+    - **Only an external agent's proposal**, never one the product's own agents
+      made: those are the person's to decide, and an MCP client withdrawing one
+      would be deciding on their behalf.
+    - **Only the agent that proposed it**, by label. The label is not an
+      authenticated identity — anything holding a grant can claim any label —
+      so this stops one agent tidying away another's work by mistake rather than
+      by design; the grant is the security boundary, and it cannot approve.
+
+    Recorded as `rejected` with the reason saying who withdrew it, rather than
+    as a status of its own: a withdrawn offer is a declined one, and a new
+    status would mean rebuilding the transactions table on every install for a
+    distinction the reason already carries. Kept, not deleted: "an agent
+    offered this and took it back" is history someone may want to read.
+    """
+    transaction = session.get(TransactionRow, transaction_id)
+    if transaction is None or transaction.presentation_id != presentation_id:
+        raise ProposalError("No such proposal.", code="E404")
+    if transaction.status != "pending":
+        raise ProposalError(f"This proposal is {transaction.status}, not pending.", code="E409")
+    if not (transaction.agent_id or "").startswith("mcp:"):
+        raise ProposalError(
+            "Only a proposal an external agent made can be withdrawn by one; the person decides this one.",
+            code="E403",
+        )
+    if transaction.agent_id != agent_id:
+        raise ProposalError("This proposal was made by a different agent.", code="E403")
+
+    transaction.status = "rejected"
+    transaction.reason = f"{transaction.reason or ''}\nWithdrawn by {agent_id}.".strip()
+    session.flush()
+    return transaction
+
+
 def reject(
     session: Session, *, presentation_id: str, transaction_id: str, reason: str | None = None
 ) -> TransactionRow:

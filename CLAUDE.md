@@ -1567,6 +1567,16 @@ process, and a tool that took a path would let a deck someone emailed you choose
 where bytes are written. A test asserts each absence, so none is restored by
 someone wiring up "the missing tool".
 
+**Withdrawing is not rejecting** (`proposal_withdraw`, 2026-09-26). Rejecting
+needs `approve`, which no grant carries, so an agent that saw a mistake in its
+own pending change could only ask the person to reject it. Withdrawing needs
+`write`: nothing applies and nobody else's work is decided. It is refused for a
+proposal the product's own agents made (the person's to decide) and for another
+agent's by label — a label is not an authenticated identity, so that stops
+accidents, not attacks; the grant is the boundary. It is recorded as `rejected`
+with "Withdrawn by mcp:…" in the reason, because a status of its own would
+rebuild the transactions table on every install for what the reason says.
+
 **Verified from a freshly built installer, 2026-09-12** (260MB, built from
 current source, installed silently in 32s). Export from the app's own window:
 finished in 8s, no CSP violations, artifact stored in

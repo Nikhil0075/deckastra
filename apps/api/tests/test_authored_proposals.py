@@ -360,3 +360,78 @@ def test_a_pending_proposal_can_be_read_with_its_operations(client, auth, deck):
 
     # And another deck's id answers the same as a missing one.
     assert client.get(f"/v1/presentations/{presentation_id}/proposals/txn_nope", headers=auth).status_code == 404
+
+
+# ------------------------------------------------------------- withdrawing
+
+
+def pending_proposal(client, auth, deck, *, label: str = "claude-code") -> str:
+    presentation_id = deck["presentation_id"]
+    slide = deck["document"]["slides"][0]
+    ids = [element["id"] for element in slide["elements"][:2]]
+    response = propose(
+        client,
+        auth,
+        presentation_id,
+        operations=[{"op": "remove", "path": f"/slides/id:{slide['id']}/elements/id:{i}"} for i in ids],
+        intent="Clear the opening slide",
+        expected_version_id=head_version(client, auth, presentation_id),
+        client_label=label,
+    )
+    assert response.json()["outcome"] == "pending", response.text
+    return response.json()["transaction_id"]
+
+
+def withdraw(client, auth, deck, proposal_id: str, label: str):
+    return client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{proposal_id}/withdraw",
+        headers=auth,
+        json={"client_label": label},
+    )
+
+
+def test_an_agent_can_withdraw_its_own_pending_proposal(client, auth, deck):
+    """It could not before: rejecting needs `approve`, which no agent grant carries."""
+    proposal_id = pending_proposal(client, auth, deck)
+
+    response = withdraw(client, auth, deck, proposal_id, "claude-code")
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "rejected"
+
+    pending = client.get(f"/v1/presentations/{deck['presentation_id']}/proposals", headers=auth).json()
+    assert proposal_id not in [item["id"] for item in pending]
+    # Kept, not deleted: that an agent offered this and took it back is history.
+    with db_session.session_scope() as session:
+        row = session.get(TransactionRow, proposal_id)
+        assert row.status == "rejected"
+        assert "Withdrawn by mcp:claude-code" in row.reason
+
+    # Once withdrawn it is not pending, so it cannot be withdrawn again or approved.
+    assert withdraw(client, auth, deck, proposal_id, "claude-code").status_code == 409
+    approve = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{proposal_id}/approve", headers=auth
+    )
+    assert approve.status_code == 409
+
+
+def test_an_agent_cannot_withdraw_another_agents_proposal(client, auth, deck):
+    proposal_id = pending_proposal(client, auth, deck, label="codex")
+    response = withdraw(client, auth, deck, proposal_id, "claude-code")
+    assert response.status_code == 403
+    assert "different agent" in response.json()["detail"]["message"]
+
+
+def test_an_agent_cannot_withdraw_a_proposal_the_product_made(client, auth, deck):
+    """The product's own agents' proposals are the person's to decide."""
+    proposal_id = pending_proposal(client, auth, deck)
+    with db_session.session_scope() as session:
+        session.get(TransactionRow, proposal_id).agent_id = "editor"
+    response = withdraw(client, auth, deck, proposal_id, "editor")
+    assert response.status_code == 403
+
+
+def test_withdrawing_needs_write_and_not_approve():
+    from deckastra_api.grants import required_scope
+
+    assert required_scope("POST", "/v1/presentations/doc_x/proposals/txn_y/withdraw") == "write"
+    assert required_scope("POST", "/v1/presentations/doc_x/proposals/txn_y/reject") == "approve"

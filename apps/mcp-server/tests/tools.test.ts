@@ -121,6 +121,10 @@ describe("the tool surface", () => {
     expect(names.filter((name) => name.includes("share"))).toEqual([]);
     // It can still see what is waiting, which is what makes the refusal usable.
     expect(names).toContain("proposal_list");
+    // And it can take back its own offer, which is not a decision about anyone
+    // else's work — the one thing it could not do before, short of asking the
+    // user to reject a change the agent itself knew was wrong.
+    expect(names).toContain("proposal_withdraw");
   });
 
   it("gives an agent no way to move a deck out of the workspace it was authored in", async () => {

@@ -616,6 +616,41 @@ def approve_proposal(
         raise HTTPException(status_code=code, detail={"message": str(error), "code": error.code}) from error
 
 
+class WithdrawalRequest(BaseModel):
+    #: The label the agent proposed under, without the `mcp:` prefix.
+    client_label: str = Field(min_length=1, max_length=60)
+
+
+@router.post("/presentations/{presentation_id}/proposals/{proposal_id}/withdraw")
+def withdraw_proposal(
+    presentation_id: str,
+    proposal_id: str,
+    request: WithdrawalRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> ProposalSummary:
+    """An external agent takes back its own pending change (`proposals.withdraw`).
+
+    `write`, not `approve`: nothing is applied and nobody else's work is
+    decided. Nothing is written to project memory either — the agent changed
+    its mind, which says nothing about what the person wants.
+    """
+    resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR
+    )
+    try:
+        row = proposals.withdraw(
+            session,
+            presentation_id=presentation_id,
+            transaction_id=proposal_id,
+            agent_id=f"mcp:{request.client_label}"[:120],
+        )
+    except proposals.ProposalError as error:
+        code = {"E404": 404, "E403": 403}.get(error.code, 409)
+        raise HTTPException(status_code=code, detail={"message": str(error), "code": error.code}) from error
+    return _summary(row)
+
+
 @router.post("/presentations/{presentation_id}/proposals/{proposal_id}/reject")
 def reject_proposal(
     presentation_id: str,
