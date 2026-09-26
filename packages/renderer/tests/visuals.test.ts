@@ -379,3 +379,85 @@ describe("render digest", () => {
     expect(hash).toMatch(/^[0-9a-f]{8}$/);
   });
 });
+
+// ------------------------------------------------- diagrams that fill and route
+
+describe("a diagram fills its box and routes around its nodes", () => {
+  const chain = ["A", "B", "C", "D"].map((label, index) => ({
+    id: `nd_01JB8Z9K2QW4RN7F3XG5HTM${String(index).padStart(3, "0")}`,
+    label,
+  }));
+  const forward = chain.slice(1).map((node, index) => ({
+    id: `edg_01JB8Z9K2QW4RN7F3XG5HTM${String(100 + index)}`,
+    from: chain[index]!.id,
+    to: node.id,
+  }));
+  // D back to A: across B and C, which a straight curve would run through.
+  const loopBack = { id: "edg_01JB8Z9K2QW4RN7F3XG5HTM200", from: chain[3]!.id, to: chain[0]!.id, label: "retry" };
+
+  const boxes = (payload: DiagramPayload) => payload.nodes.map((node) => ({ ...node }));
+  const pointsOf = (d: string) => {
+    const numbers = d.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+    const points: { x: number; y: number }[] = [];
+    for (let index = 0; index + 1 < numbers.length; index += 2) points.push({ x: numbers[index]!, y: numbers[index + 1]! });
+    return points;
+  };
+
+  it("sends a loop-back along a lane outside the nodes, not through them", () => {
+    const payload = diagram({ diagramType: "flow", layoutHint: { direction: "LR" }, nodes: chain, edges: [...forward, loopBack] });
+    const edge = payload.edges.find((candidate) => candidate.id === loopBack.id)!;
+    const top = Math.min(...payload.nodes.map((node) => node.y));
+    // Orthogonal, and its lane is above every node.
+    expect(edge.d).toMatch(/ L /);
+    expect(Math.min(...pointsOf(edge.d).map((point) => point.y))).toBeLessThan(top);
+    // No point of it is inside a node other than its two ends.
+    const between = boxes(payload).filter((node) => node.id === chain[1]!.id || node.id === chain[2]!.id);
+    for (const point of pointsOf(edge.d)) {
+      for (const node of between) {
+        const inside = point.x > node.x && point.x < node.x + node.width && point.y > node.y && point.y < node.y + node.height;
+        expect(inside).toBe(false);
+      }
+    }
+    // And the lane was paid for: the whole diagram is still inside the element.
+    expect(top).toBeGreaterThan(0);
+    // Adjacent forward edges keep their curve.
+    expect(payload.edges.find((candidate) => candidate.id === forward[0]!.id)!.d).toMatch(/ C /);
+  });
+
+  it("spreads to use a large element instead of sitting small in its middle", () => {
+    const payload = diagram({
+      transform: { x: 0, y: 0, width: 1800, height: 500 },
+      layoutHint: { direction: "LR" },
+      nodes: chain,
+      edges: forward,
+    });
+    const left = Math.min(...payload.nodes.map((node) => node.x));
+    const right = Math.max(...payload.nodes.map((node) => node.x + node.width));
+    expect(right - left).toBeGreaterThan(1800 * 0.8);
+  });
+
+  it("shrinks rather than spilling out of a small element", () => {
+    const payload = diagram({
+      transform: { x: 0, y: 0, width: 520, height: 200 },
+      layoutHint: { direction: "LR" },
+      nodes: chain,
+      edges: forward,
+    });
+    const right = Math.max(...payload.nodes.map((node) => node.x + node.width));
+    expect(right).toBeLessThanOrEqual(520 + 1);
+    expect(payload.nodes[0]!.labelSize).toBeLessThan(22);
+  });
+});
+
+describe("edges that run both ways between two nodes", () => {
+  it("are drawn apart, not one on top of the other", () => {
+    const [a, b] = NODES;
+    const there = { id: "edg_01JB8Z9K2QW4RN7F3XG5HTM301", from: a!.id, to: b!.id };
+    const back = { id: "edg_01JB8Z9K2QW4RN7F3XG5HTM302", from: b!.id, to: a!.id };
+    const payload = diagram({ layoutHint: { direction: "LR" }, nodes: [a!, b!], edges: [there, back] });
+    const start = (id: string) => payload.edges.find((edge) => edge.id === id)!.d.split(" ").slice(1, 3).map(Number);
+    const end = (id: string) => payload.edges.find((edge) => edge.id === id)!.d.split(" ").slice(-2).map(Number);
+    // The outbound edge starts where the return edge ends, unless they are separated.
+    expect(start(there.id)[1]).not.toBe(end(back.id)[1]);
+  });
+});

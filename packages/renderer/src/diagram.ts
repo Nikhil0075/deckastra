@@ -103,19 +103,21 @@ interface Sized {
   height: number;
 }
 
-function sizeNode(node: DiagramNode, labelSize: number, sublabelSize: number): Sized {
+function sizeNode(node: DiagramNode, labelSize: number, sublabelSize: number, scale = 1): Sized {
   const labelWidth = estimateLabelWidth(node.label, labelSize);
   const sublabelWidth = node.sublabel ? estimateLabelWidth(node.sublabel, sublabelSize) : 0;
+  const padX = NODE_PADDING_X * scale;
+  const padY = NODE_PADDING_Y * scale;
 
   const width = Math.min(
-    MAX_NODE_WIDTH,
-    Math.max(MIN_NODE_WIDTH, Math.max(labelWidth, sublabelWidth) + NODE_PADDING_X * 2),
+    MAX_NODE_WIDTH * scale,
+    Math.max(MIN_NODE_WIDTH * scale, Math.max(labelWidth, sublabelWidth) + padX * 2),
   );
 
   // Wrapping is estimated, like every other pre-DOM measurement in the renderer.
-  const lines = Math.max(1, Math.ceil(labelWidth / Math.max(1, width - NODE_PADDING_X * 2)));
+  const lines = Math.max(1, Math.ceil(labelWidth / Math.max(1, width - padX * 2)));
   const height =
-    NODE_PADDING_Y * 2 + lines * labelSize * 1.3 + (node.sublabel ? sublabelSize * 1.4 : 0);
+    padY * 2 + lines * labelSize * 1.3 + (node.sublabel ? sublabelSize * 1.4 : 0);
 
   return { node, width: round(width), height: round(height) };
 }
@@ -263,10 +265,27 @@ function layeredLayout(
     return { rank, ids, along, across };
   });
 
-  const totalAcross = rankExtent.reduce(
+  // Spare room is shared out as spacing, so a diagram fills the element it was
+  // given instead of sitting small in the middle of it. Bounded at three times
+  // the declared spacing: past that, nodes stop reading as connected.
+  const boxAcross = vertical ? box.height : box.width;
+  const boxAlong = vertical ? box.width : box.height;
+  const packedAcross = rankExtent.reduce(
     (sum, r) => sum + r.across,
     hint.rankSpacing * (rankExtent.length - 1),
   );
+  const rankGap =
+    rankExtent.length > 1 && packedAcross < boxAcross
+      ? hint.rankSpacing + Math.min(hint.rankSpacing * 2, (boxAcross - packedAcross) / (rankExtent.length - 1))
+      : hint.rankSpacing;
+  const widest = rankExtent.reduce((best, r) => (r.along > best.along ? r : best), rankExtent[0]!);
+  const nodeGap =
+    widest.ids.length > 1 && widest.along < boxAlong
+      ? hint.nodeSpacing + Math.min(hint.nodeSpacing * 2, (boxAlong - widest.along) / (widest.ids.length - 1))
+      : hint.nodeSpacing;
+  for (const r of rankExtent) r.along += (nodeGap - hint.nodeSpacing) * (r.ids.length - 1);
+
+  const totalAcross = rankExtent.reduce((sum, r) => sum + r.across, rankGap * (rankExtent.length - 1));
 
   const placements = new Map<string, Placement>();
   const forward = hint.direction === "RL" || hint.direction === "BT" ? -1 : 1;
@@ -292,10 +311,10 @@ function layeredLayout(
         height: size.height,
       });
 
-      alongCursor += alongSize + hint.nodeSpacing;
+      alongCursor += alongSize + nodeGap;
     }
 
-    acrossCursor += forward * (across + hint.rankSpacing);
+    acrossCursor += forward * (across + rankGap);
   }
 
   return placements;
@@ -588,71 +607,125 @@ export function buildDiagramPayload(
     algorithm = "layered";
   }
 
-  const sized = element.nodes.map((node) => sizeNode(node, labelSize, sublabelSize));
   const box = { width, height };
+  const vertical = direction === "TB" || direction === "BT";
 
   // Group labels need headroom, and a boundary drawn tight to its nodes reads as
   // a border on the node rather than around the set.
   const groupInset = (element.groups?.length ?? 0) > 0 ? GROUP_PADDING + GROUP_LABEL_SPACE : 0;
-  const layoutBox = {
-    width: Math.max(1, width - groupInset * 2),
-    height: Math.max(1, height - groupInset * 2),
-  };
 
-  let placements: Map<string, Placement>;
-  switch (algorithm) {
-    case "grid":
-      placements = gridLayout(sized, layoutBox, nodeSpacing);
-      break;
-    case "radial":
-      placements = radialLayout(sized, element.edges, layoutBox);
-      break;
-    case "force":
-      placements = forceLayout(sized, element.edges, layoutBox, hint.seed!);
-      break;
-    case "manual":
-      placements = new Map(
-        sized.map((s) => [
-          s.node.id,
-          {
-            x: round(s.node.position?.x ?? 0),
-            y: round(s.node.position?.y ?? 0),
-            width: s.width,
-            height: s.height,
-          },
-        ]),
-      );
-      break;
-    default:
-      placements = layeredLayout(sized, element.edges, layoutBox, {
-        direction,
-        nodeSpacing,
-        rankSpacing,
-      });
-  }
+  /**
+   * One layout at a given scale, with room held back for edge lanes. The lanes
+   * run alongside the flow — above and below a left-to-right diagram, left and
+   * right of a top-to-bottom one — so the room comes off that axis.
+   */
+  const layOut = (scale: number, lanes: { before: number; after: number }) => {
+    const sizedAt = element.nodes.map((node) =>
+      sizeNode(node, round(labelSize * scale), round(sublabelSize * scale), scale),
+    );
+    const reserve = lanes.before + lanes.after;
+    const layoutBox = {
+      width: Math.max(1, width - groupInset * 2 - (vertical ? reserve : 0)),
+      height: Math.max(1, height - groupInset * 2 - (vertical ? 0 : reserve)),
+    };
 
-  if (groupInset > 0) {
-    for (const placement of placements.values()) {
-      placement.x = round(placement.x + groupInset);
-      placement.y = round(placement.y + groupInset);
-    }
-  }
-
-  // Hybrid honours a user's drag and lays out everything else. Doc 02 §18.5 calls
-  // out that silently discarding the drag is the one outcome that must not be
-  // reachable, which is why "managed" has to be asked for explicitly.
-  if (mode !== "managed" && algorithm !== "manual") {
-    for (const s of sized) {
-      if (s.node.position) {
-        placements.set(s.node.id, {
-          x: round(s.node.position.x),
-          y: round(s.node.position.y),
-          width: s.width,
-          height: s.height,
+    let placed: Map<string, Placement>;
+    switch (algorithm) {
+      case "grid":
+        placed = gridLayout(sizedAt, layoutBox, nodeSpacing * scale);
+        break;
+      case "radial":
+        placed = radialLayout(sizedAt, element.edges, layoutBox);
+        break;
+      case "force":
+        placed = forceLayout(sizedAt, element.edges, layoutBox, hint.seed!);
+        break;
+      case "manual":
+        placed = new Map(
+          sizedAt.map((s) => [
+            s.node.id,
+            {
+              x: round(s.node.position?.x ?? 0),
+              y: round(s.node.position?.y ?? 0),
+              width: s.width,
+              height: s.height,
+            },
+          ]),
+        );
+        break;
+      default:
+        placed = layeredLayout(sizedAt, element.edges, layoutBox, {
+          direction,
+          nodeSpacing: nodeSpacing * scale,
+          rankSpacing: rankSpacing * scale,
         });
+    }
+
+    const offsetX = groupInset + (vertical ? lanes.before : 0);
+    const offsetY = groupInset + (vertical ? 0 : lanes.before);
+    if (offsetX > 0 || offsetY > 0) {
+      for (const placement of placed.values()) {
+        placement.x = round(placement.x + offsetX);
+        placement.y = round(placement.y + offsetY);
       }
     }
+
+    // Hybrid honours a user's drag and lays out everything else. Doc 02 §18.5
+    // calls out that silently discarding the drag is the one outcome that must
+    // not be reachable, which is why "managed" has to be asked for explicitly.
+    if (mode !== "managed" && algorithm !== "manual") {
+      for (const s of sizedAt) {
+        if (s.node.position) {
+          placed.set(s.node.id, {
+            x: round(s.node.position.x),
+            y: round(s.node.position.y),
+            width: s.width,
+            height: s.height,
+          });
+        }
+      }
+    }
+    return { sized: sizedAt, placements: placed };
+  };
+
+  // The laid-out nodes are sized to the element: a diagram in a large box grows
+  // to use it and one in a small box shrinks rather than spilling out. Bounded,
+  // because type much larger than the deck's body text reads as a mistake and
+  // much smaller cannot be read at all. Only the automatic layouts are fitted;
+  // a manual one is where its author put it.
+  const fitted = algorithm === "layered" || algorithm === "grid";
+  let scale = 1;
+  let lanes = { before: 0, after: 0 };
+  let laid = layOut(scale, lanes);
+  if (fitted) {
+    const extent = extentOf([...laid.placements.values()]);
+    const availableW = Math.max(1, width - groupInset * 2);
+    const availableH = Math.max(1, height - groupInset * 2);
+    const fit = Math.min(availableW / Math.max(1, extent.width), availableH / Math.max(1, extent.height));
+    const next = round(Math.min(1.4, Math.max(0.55, fit)));
+    if (Math.abs(next - 1) > 0.03) {
+      scale = next;
+      laid = layOut(scale, lanes);
+    }
   }
+
+  // Edges whose curve would cut through a node are routed around the outside,
+  // in lanes of their own: against the flow on one side, long jumps forward on
+  // the other. The first diagram drew a loop-back straight through every node
+  // between its ends, which reads as the loop passing through each of them.
+  let routed = routeEdges(element.edges, laid.placements, vertical, direction);
+  if (routed.before.length + routed.after.length > 0) {
+    lanes = {
+      before: routed.before.length > 0 ? LANE_OFFSET + LANE_GAP * routed.before.length : 0,
+      after: routed.after.length > 0 ? LANE_OFFSET + LANE_GAP * routed.after.length : 0,
+    };
+    laid = layOut(scale, lanes);
+    routed = routeEdges(element.edges, laid.placements, vertical, direction);
+  }
+  const sized = laid.sized;
+  const placements = laid.placements;
+  const nodeLabelSize = round(labelSize * scale);
+  const nodeSublabelSize = round(sublabelSize * scale);
 
   const roleStyles = diagramTheme?.roleStyles ?? {};
 
@@ -683,14 +756,13 @@ export function buildDiagramPayload(
       label: s.node.label,
       sublabel: s.node.sublabel,
       labelColor,
-      labelSize,
-      sublabelSize,
+      labelSize: nodeLabelSize,
+      sublabelSize: nodeSublabelSize,
       role,
     };
   });
 
-  const vertical = direction === "TB" || direction === "BT";
-
+  const reciprocal = new Set(element.edges.map((edge) => `${edge.from}->${edge.to}`));
   const edges: DiagramEdgeMark[] = element.edges.flatMap((edge) => {
     const from = placements.get(edge.from);
     const to = placements.get(edge.to);
@@ -703,10 +775,31 @@ export function buildDiagramPayload(
     }
 
     const selfEdge = edge.from === edge.to;
-    const start = selfEdge ? { x: 0, y: 0 } : anchorOn(from, to);
-    const end = selfEdge ? { x: 0, y: 0 } : anchorOn(to, from);
-
-    const d = selfEdge ? selfLoop(from) : edgePath(start, end, vertical);
+    const lane = routed.lanes.get(edge.id);
+    let start = selfEdge ? { x: 0, y: 0 } : anchorOn(from, to);
+    let end = selfEdge ? { x: 0, y: 0 } : anchorOn(to, from);
+    // Two edges running both ways between one pair of nodes would be drawn on
+    // the same curve, one hiding the other and both labels piled on it. Each
+    // is moved to its own side of the line between them.
+    if (!selfEdge && !lane && reciprocal.has(`${edge.to}->${edge.from}`)) {
+      const side = edge.from < edge.to ? -1 : 1;
+      const shift = RECIPROCAL_OFFSET * side;
+      if (vertical) {
+        start = { x: round(start.x + shift), y: start.y };
+        end = { x: round(end.x + shift), y: end.y };
+      } else {
+        start = { x: start.x, y: round(start.y + shift) };
+        end = { x: end.x, y: round(end.y + shift) };
+      }
+    }
+    let d = selfEdge ? selfLoop(from) : edgePath(start, end, vertical);
+    if (lane) {
+      const path = lanePath(from, to, lane, vertical);
+      d = path.d;
+      // The label sits on the lane, where the edge actually runs.
+      start = path.labelAt;
+      end = path.labelAt;
+    }
     const direction_ = edge.direction ?? "forward";
 
     const dash =
@@ -726,7 +819,7 @@ export function buildDiagramPayload(
               text: edge.label,
               x: round(selfEdge ? from.x + from.width + 26 : (start.x + end.x) / 2),
               y: round(selfEdge ? from.y - 8 : (start.y + end.y) / 2 - 8),
-              size: sublabelSize,
+              size: nodeSublabelSize,
               color: edgeLabelColor,
             }
           : undefined,
@@ -832,9 +925,140 @@ export function buildDiagramPayload(
     nodes,
     edges,
     groups,
-    typography: nodeTypography,
+    typography: scale === 1 ? nodeTypography : { ...nodeTypography, fontSize: nodeLabelSize },
     warnings,
   };
 }
 
-export const DIAGRAM_INTERNALS = { assignRanks, seededRandom, anchorOn, sizeNode };
+// --------------------------------------------------------------- edge lanes
+
+/** Clearance from the nodes to the first lane, and between lanes. */
+const LANE_OFFSET = 28;
+const LANE_GAP = 16;
+const LANE_CORNER = 10;
+/** How far apart two edges running both ways between one pair of nodes are drawn. */
+const RECIPROCAL_OFFSET = 9;
+
+interface Lane {
+  side: "before" | "after";
+  /** The lane's coordinate across the flow: a y for a left-to-right diagram, an x for a top-to-bottom one. */
+  at: number;
+}
+
+function extentOf(placements: Placement[]): { x: number; y: number; width: number; height: number } {
+  if (placements.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+  const minX = Math.min(...placements.map((p) => p.x));
+  const minY = Math.min(...placements.map((p) => p.y));
+  const maxX = Math.max(...placements.map((p) => p.x + p.width));
+  const maxY = Math.max(...placements.map((p) => p.y + p.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/**
+ * Which edges need a lane, and where each lane runs.
+ *
+ * An edge needs one when its ordinary curve passes through a node other than
+ * its own two — checked by sampling the curve, so the rule holds for any
+ * layout rather than only for ranks. Edges running against the flow take the
+ * lanes on one side and the rest the other, so a loop-back and a long jump
+ * never share a lane, and each edge has a lane of its own so none overlap.
+ */
+function routeEdges(
+  edges: DiagramEdge[],
+  placements: Map<string, Placement>,
+  vertical: boolean,
+  direction: string,
+): { before: string[]; after: string[]; lanes: Map<string, Lane> } {
+  const before: string[] = [];
+  const after: string[] = [];
+  const reversed = direction === "RL" || direction === "BT";
+
+  for (const edge of edges) {
+    if (edge.from === edge.to) continue;
+    const from = placements.get(edge.from);
+    const to = placements.get(edge.to);
+    if (!from || !to) continue;
+    const start = anchorOn(from, to);
+    const end = anchorOn(to, from);
+    const others = [...placements.entries()].filter(([id]) => id !== edge.from && id !== edge.to);
+    if (!crossesAny(edgePath(start, end, vertical), others.map(([, placement]) => placement))) continue;
+    const flow = vertical ? to.y - from.y : to.x - from.x;
+    const against = reversed ? flow > 0 : flow <= 0;
+    (against ? before : after).push(edge.id);
+  }
+
+  const extent = extentOf([...placements.values()]);
+  const lanes = new Map<string, Lane>();
+  before.forEach((id, index) => {
+    lanes.set(id, {
+      side: "before",
+      at: round((vertical ? extent.x : extent.y) - LANE_OFFSET - LANE_GAP * index),
+    });
+  });
+  after.forEach((id, index) => {
+    lanes.set(id, {
+      side: "after",
+      at: round((vertical ? extent.x + extent.width : extent.y + extent.height) + LANE_OFFSET + LANE_GAP * index),
+    });
+  });
+  return { before, after, lanes };
+}
+
+/** Whether a cubic path passes through any of the boxes (sampled; the ends are skipped). */
+function crossesAny(d: string, boxes: Placement[]): boolean {
+  const numbers = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  if (numbers.length < 8) return false;
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = numbers as [number, number, number, number, number, number, number, number];
+  for (let step = 1; step < 20; step += 1) {
+    const t = step / 20;
+    const u = 1 - t;
+    const x = u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3;
+    const y = u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3;
+    for (const box of boxes) {
+      if (x > box.x + 2 && x < box.x + box.width - 2 && y > box.y + 2 && y < box.y + box.height - 2) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * An edge routed along its lane: out of the side of its source that faces the
+ * lane, along the lane, and into the same side of its target, with rounded
+ * corners. Orthogonal, because a lane is only a lane if the edge stays in it.
+ */
+function lanePath(
+  from: Placement,
+  to: Placement,
+  lane: Lane,
+  vertical: boolean,
+): { d: string; labelAt: { x: number; y: number } } {
+  const r = LANE_CORNER;
+  if (!vertical) {
+    const y0 = lane.side === "before" ? from.y : from.y + from.height;
+    const y1 = lane.side === "before" ? to.y : to.y + to.height;
+    const x0 = round(from.x + from.width / 2);
+    const x1 = round(to.x + to.width / 2);
+    const toward = Math.sign(lane.at - y0) || -1;
+    const across = Math.sign(x1 - x0) || 1;
+    const d =
+      `M ${x0} ${round(y0)} L ${x0} ${round(lane.at - toward * r)} ` +
+      `Q ${x0} ${lane.at} ${round(x0 + across * r)} ${lane.at} ` +
+      `L ${round(x1 - across * r)} ${lane.at} ` +
+      `Q ${x1} ${lane.at} ${x1} ${round(lane.at - toward * r)} L ${x1} ${round(y1)}`;
+    return { d, labelAt: { x: round((x0 + x1) / 2), y: round(lane.at + (lane.side === "before" ? -4 : 20)) } };
+  }
+  const x0 = lane.side === "before" ? from.x : from.x + from.width;
+  const x1 = lane.side === "before" ? to.x : to.x + to.width;
+  const y0 = round(from.y + from.height / 2);
+  const y1 = round(to.y + to.height / 2);
+  const toward = Math.sign(lane.at - x0) || -1;
+  const across = Math.sign(y1 - y0) || 1;
+  const d =
+    `M ${round(x0)} ${y0} L ${round(lane.at - toward * r)} ${y0} ` +
+    `Q ${lane.at} ${y0} ${lane.at} ${round(y0 + across * r)} ` +
+    `L ${lane.at} ${round(y1 - across * r)} ` +
+    `Q ${lane.at} ${y1} ${round(lane.at - toward * r)} ${y1} L ${round(x1)} ${y1}`;
+  return { d, labelAt: { x: round(lane.at), y: round((y0 + y1) / 2) } };
+}
+
+export const DIAGRAM_INTERNALS = { assignRanks, seededRandom, anchorOn, sizeNode, routeEdges, crossesAny };
