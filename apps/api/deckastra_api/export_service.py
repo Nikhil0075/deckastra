@@ -166,7 +166,11 @@ def run_job(
     # Without this an export of a deck with photographs arrives with a dashed
     # placeholder wherever one should be — the failure that looks like success.
     assets = asset_service.inline_for_render(
-        session, presentation_id=job.presentation_id, document=document
+        session,
+        presentation_id=job.presentation_id,
+        document=document,
+        # PowerPoint plays an animated picture; a PDF can only hold one frame of it.
+        still=job.kind != "pptx",
     )
 
     try:

@@ -49,6 +49,11 @@ boto3>=1.40,<2
 python-pptx>=1.0,<2
 pypdf>=5,<7
 
+# Choosing a still frame of an animated picture for a PDF or a preview
+# (`assets.representative_frame`). Already installed through python-pptx; named
+# because the service imports it directly.
+pillow>=11,<13
+
 # Observability: API handles alone do not export anything. These matching SDK
 # and HTTP/protobuf exporter versions are exercised by local collector tests.
 opentelemetry-sdk==1.42.1

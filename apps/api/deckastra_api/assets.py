@@ -170,7 +170,7 @@ MAX_RENDER_TOTAL_BYTES = 32 * 1024 * 1024
 
 
 def inline_for_render(
-    session: Session, *, presentation_id: str, document: dict[str, Any]
+    session: Session, *, presentation_id: str, document: dict[str, Any], still: bool = True
 ) -> list[dict[str, Any]]:
     """The pictures a headless render needs, as bytes it can embed.
 
@@ -191,6 +191,13 @@ def inline_for_render(
     "this file is too large to embed" and "this deck cites an asset that does not
     exist" are different things to tell a person and a missing entry cannot tell
     them apart.
+
+    `still` is for a render that produces a picture — a PDF, a PNG, a preview. An
+    animated image there is caught on whatever frame the browser happens to be
+    showing, which for many animations is the first, and the first is often
+    black: a fade-in starts from nothing. So an animation is handed over as one
+    representative frame instead. PowerPoint plays an animation, so a `.pptx`
+    asks for the original bytes (`still=False`).
     """
     cited = referenced_ids(document)
     if not cited:
@@ -262,13 +269,60 @@ def inline_for_render(
                         "a single render can embed"
                     )
                 else:
+                    mime = (stored_type or kind).split(";", 1)[0].strip().lower()
+                    frame = representative_frame(data) if still else None
+                    if frame is not None:
+                        data, mime = frame, "image/png"
+                        charge = max(charge, len(data))
                     total += charge
-                    entry["mimeType"] = (stored_type or kind).split(";", 1)[0].strip().lower()
+                    entry["mimeType"] = mime
                     entry["data"] = base64.b64encode(data).decode("ascii")
 
         supplied.append(entry)
 
     return supplied
+
+
+#: Frames looked at when choosing a still. Enough to find the one that shows
+#: something in a long animation, few enough that a render never waits on it.
+_FRAMES_SAMPLED = 48
+
+
+def representative_frame(data: bytes) -> bytes | None:
+    """One frame of an animated image that shows what it is, as PNG; None when it is not animated.
+
+    Chosen as the frame with the most tonal contrast, among frames sampled evenly
+    through the animation, earliest on a tie so the choice is the same every
+    time. Contrast rather than brightness: a frame of an animation that fades in
+    is dark because nothing has arrived yet, and the frame worth showing is the
+    one where the picture is. Anything that cannot be decoded is left as it was —
+    the browser still draws the original, and a render is not failed over it.
+    """
+    try:
+        from io import BytesIO
+
+        from PIL import Image, ImageStat
+    except ImportError:  # pragma: no cover - the service is built with Pillow
+        return None
+    try:
+        with Image.open(BytesIO(data)) as image:
+            frames = int(getattr(image, "n_frames", 1) or 1)
+            if frames <= 1:
+                return None
+            step = max(1, frames // _FRAMES_SAMPLED)
+            best_index, best_score = 0, -1.0
+            for index in range(0, frames, step):
+                image.seek(index)
+                grey = image.convert("L")
+                score = float(ImageStat.Stat(grey).stddev[0])
+                if score > best_score + 1e-9:
+                    best_index, best_score = index, score
+            image.seek(best_index)
+            out = BytesIO()
+            image.convert("RGBA").save(out, format="PNG")
+            return out.getvalue()
+    except Exception:  # noqa: BLE001 - an undecodable image keeps its original bytes
+        return None
 
 
 def recount_references(session: Session, workspace_id: str) -> int:

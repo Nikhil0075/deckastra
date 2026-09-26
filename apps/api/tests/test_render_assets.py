@@ -285,3 +285,63 @@ def test_a_deck_citing_nothing_reads_nothing(store):
         )
 
     assert supplied == []
+
+
+def animated_gif() -> bytes:
+    """Three frames: black, then a picture, then black again — a fade in and out."""
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    frames = []
+    for index in range(3):
+        frame = Image.new("RGB", (32, 32), "black")
+        if index == 1:
+            draw = ImageDraw.Draw(frame)
+            draw.rectangle((0, 0, 15, 31), fill=(255, 0, 0))
+            draw.rectangle((16, 0, 31, 31), fill=(255, 255, 255))
+        frames.append(frame)
+    out = BytesIO()
+    frames[0].save(out, format="GIF", save_all=True, append_images=frames[1:], duration=100, loop=0)
+    return out.getvalue()
+
+
+def test_a_still_render_gets_the_frame_of_an_animation_that_shows_something(store):
+    """A PDF caught an animated GIF on its first frame, and its first frame was black."""
+    from io import BytesIO
+
+    from PIL import Image
+
+    gif = animated_gif()
+    with Session(store) as session:
+        workspace_id, presentation_id = workspace_with_deck(session, name="animated")
+        asset = stored_image(session, workspace_id=workspace_id, data=gif, content_type="image/gif")
+        session.commit()
+        document = document_citing(asset.id)
+
+        still = asset_service.inline_for_render(session, presentation_id=presentation_id, document=document)[0]
+        moving = asset_service.inline_for_render(
+            session, presentation_id=presentation_id, document=document, still=False
+        )[0]
+
+    assert still["mimeType"] == "image/png"
+    picture = Image.open(BytesIO(base64.b64decode(still["data"]))).convert("RGB")
+    # The frame with the picture in it, not the black one the browser began on.
+    assert picture.getpixel((4, 4)) == (255, 0, 0)
+    assert picture.getpixel((28, 4)) == (255, 255, 255)
+
+    # PowerPoint plays an animation, so a .pptx gets the original bytes.
+    assert moving["mimeType"] == "image/gif"
+    assert base64.b64decode(moving["data"]) == gif
+
+
+def test_a_picture_that_does_not_move_is_left_alone(store):
+    with Session(store) as session:
+        workspace_id, presentation_id = workspace_with_deck(session, name="still")
+        asset = stored_image(session, workspace_id=workspace_id)
+        session.commit()
+        entry = asset_service.inline_for_render(
+            session, presentation_id=presentation_id, document=document_citing(asset.id)
+        )[0]
+    assert base64.b64decode(entry["data"]) == PNG
+    assert entry["mimeType"] == "image/png"
