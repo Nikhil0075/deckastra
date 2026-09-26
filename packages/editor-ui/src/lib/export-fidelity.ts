@@ -26,7 +26,7 @@ const ROWS: Record<string, FidelityRow> = {
   line: { fidelity: "native", label: "Native", detail: "Becomes an editable PowerPoint line." },
   image: { fidelity: "native", label: "Native", detail: "Becomes a PowerPoint picture." },
   table: { fidelity: "native", label: "Native", detail: "Becomes an editable PowerPoint table." },
-  icon: { fidelity: "placeholder", label: "Placeholder", detail: "PowerPoint gets a labelled box in its place." },
+  icon: { fidelity: "native", label: "Native", detail: "Drawn as editable PowerPoint outlines, grouped under the icon's name." },
   chart: { fidelity: "approximated", label: "Drawn", detail: "Drawn as shapes with editable labels, not as a PowerPoint chart object." },
   diagram: { fidelity: "approximated", label: "Drawn", detail: "Drawn as shapes and connectors with editable labels." },
   code: { fidelity: "approximated", label: "Text", detail: "Becomes a monospaced text box; colours are kept, highlighting logic is not." },

@@ -13,7 +13,7 @@ import type { DegradationLedger } from "@deckastra/export-core";
 
 import { alpha, hex, rotation, shapeName, xml, type Units } from "./units";
 import { fitPicture } from "./media";
-import { chartShape, diagramShape, tableShape } from "./drawn";
+import { chartShape, diagramShape, iconShape, tableShape } from "./drawn";
 
 /** Deckastra shape kinds that map to a PPTX preset geometry. */
 const PRESET_GEOMETRY: Record<string, string> = {
@@ -136,6 +136,9 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
     case "diagram":
       return diagramShape(node, context);
     case "icon":
+      // A curated icon is drawn natively; one this build does not know is
+      // still the labelled box, and says so.
+      return iconShape(node, context) ?? unsupported(node, context);
     case "placeholder":
     default:
       return unsupported(node, context);

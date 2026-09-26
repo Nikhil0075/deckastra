@@ -75,14 +75,15 @@ function outline(
   color: string | undefined,
   width: number,
   units: Units,
-  extra: { dash?: string; opacity?: number; head?: boolean; tail?: boolean } = {},
+  extra: { dash?: string; opacity?: number; head?: boolean; tail?: boolean; roundCap?: boolean } = {},
 ): string {
   if (!color || width <= 0) return "<a:ln><a:noFill/></a:ln>";
   const dash = extra.dash ? `<a:prstDash val="${dashPreset(extra.dash)}"/>` : "";
   // DrawingML's `tailEnd` is the path's last point, `headEnd` its first — the
   // SVG `markerEnd` / `markerStart` respectively.
   const ends = `${extra.head ? '<a:headEnd type="triangle"/>' : ""}${extra.tail ? '<a:tailEnd type="triangle"/>' : ""}`;
-  return `<a:ln w="${units.px(width)}">${solid(color, extra.opacity)}${dash}<a:round/>${ends}</a:ln>`;
+  const cap = extra.roundCap ? ' cap="rnd"' : "";
+  return `<a:ln w="${units.px(width)}"${cap}>${solid(color, extra.opacity)}${dash}<a:round/>${ends}</a:ln>`;
 }
 
 function dashPreset(dash: string): string {
@@ -357,7 +358,7 @@ function fontFamily(writer: Writer): string {
 function addPath(
   writer: Writer,
   d: string,
-  look: { fill?: string; fillOpacity?: number; stroke?: string; strokeWidth?: number; dash?: string; head?: boolean; tail?: boolean },
+  look: { fill?: string; fillOpacity?: number; stroke?: string; strokeWidth?: number; dash?: string; head?: boolean; tail?: boolean; roundCap?: boolean },
 ): void {
   const segments = parsePath(d);
   if (segments.length === 0) return;
@@ -368,7 +369,7 @@ function addPath(
     `<p:sp><p:nvSpPr><p:cNvPr id="${writer.context.nextId()}" name="${name(writer, "path")}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>` +
       `<p:spPr>${frame(box, writer.place, units)}${customGeometry(segments, box, writer.place.scale, units, filled)}` +
       `${filled ? solid(look.fill, look.fillOpacity) : "<a:noFill/>"}` +
-      `${outline(look.stroke, look.strokeWidth ?? 0, units, { dash: look.dash, head: look.head, tail: look.tail })}</p:spPr></p:sp>`,
+      `${outline(look.stroke, look.strokeWidth ?? 0, units, { dash: look.dash, head: look.head, tail: look.tail, roundCap: look.roundCap })}</p:spPr></p:sp>`,
   );
 }
 
@@ -511,6 +512,52 @@ export function diagramShape(node: SceneNode, context: ShapeContext): string | u
       "Diagrams are drawn as boxes and connector paths with their labels as editable text; " +
       "they will not re-lay themselves out if a box is added in PowerPoint.",
   });
+  return group(writer);
+}
+
+// --------------------------------------------------------------------- icon
+
+/**
+ * An icon as editable freeform shapes (design review, 2026-09-27). Icons used
+ * to arrive in PowerPoint as labelled placeholder boxes — the one object a deck
+ * could look right with in the editor and lose on export. Every curated icon is
+ * stroked paths and circles in a square viewBox, drawn centred and contained
+ * in the element's box (SVG's default `xMidYMid meet`), so each becomes a
+ * `custGeom` outline or an ellipse in the same place, at the same weight, with
+ * round caps and joins, grouped under the element's name.
+ *
+ * Arcs in a path are flattened to short segments, as a chart's pie slices are,
+ * and the report says so; an icon with none is exact.
+ */
+export function iconShape(node: SceneNode, context: ShapeContext): string | undefined {
+  const payload = node.renderPayload;
+  if (payload.kind !== "icon" || payload.missing) return undefined;
+  const base = placementOf(node);
+  const { width, height } = node.localBounds;
+  const s = Math.min(width, height) / payload.viewBox;
+  const ox = (width - payload.viewBox * s) / 2;
+  const oy = (height - payload.viewBox * s) / 2;
+  const place: Placement = {
+    scale: base.scale * s,
+    rotate: base.rotate,
+    map: (x, y) => base.map(ox + x * s, oy + y * s),
+  };
+  const writer: Writer = { node, context, place, parts: [], index: 0 };
+  const stroke = payload.strokeWidth * base.scale * s;
+  for (const d of payload.paths) addPath(writer, d, { stroke: payload.color, strokeWidth: stroke, roundCap: true });
+  for (const [cx, cy, r] of payload.circles) {
+    addBox(writer, { x: cx - r, y: cy - r, width: r * 2, height: r * 2 }, { stroke: payload.color, strokeWidth: stroke, ellipse: true });
+  }
+  if (payload.paths.some((d) => /[Aa]/.test(d))) {
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "icon",
+      action: "approximated",
+      message: `The "${payload.name}" icon's curves are drawn as short straight segments; it is still an editable shape.`,
+    });
+  }
   return group(writer);
 }
 

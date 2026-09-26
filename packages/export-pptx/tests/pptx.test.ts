@@ -916,3 +916,34 @@ describe("fills and effects", () => {
     expect(background).not.toContain("solidFill");
   });
 });
+
+describe("icons are editable shapes (design review, 2026-09-27)", () => {
+  function withIcon(name: string) {
+    const document = structuredClone(TECHNICAL);
+    (document.slides[0]!.elements as unknown[]).push({
+      id: "el_01JICONICONICONICONICONICO",
+      type: "icon",
+      icon: { name },
+      transform: { x: 200, y: 200, width: 120, height: 120 },
+    });
+    return document;
+  }
+
+  it("draws a curated icon as outlines in a group named for the element, not a placeholder", () => {
+    const { bytes, result } = buildPptx(inputFor(withIcon("database")));
+    const slide = [...unzip(bytes).entries()].find(([path]) => path === "ppt/slides/slide1.xml")![1];
+    const start = slide.indexOf('name="deckastra-el_01JICONICONICONICONICONICO"');
+    expect(start).toBeGreaterThan(-1);
+    const group = slide.slice(slide.lastIndexOf("<p:grpSp>", start), slide.indexOf("</p:grpSp>", start));
+    expect(group).toMatch(/<a:custGeom>|prst="ellipse"/);
+    expect(group).toContain('cap="rnd"');
+    expect(group).not.toMatch(/<a:t>database<\/a:t>/);
+    expect(result.report.warnings.filter((warning) => warning.feature === "icon" && warning.action === "dropped")).toEqual([]);
+  });
+
+  it("still reports an icon this build does not know, as the labelled box it draws", () => {
+    const { result } = buildPptx(inputFor(withIcon("no-such-icon-anywhere")));
+    const icon = result.report.warnings.filter((warning) => warning.elementId === "el_01JICONICONICONICONICONICO");
+    expect(icon.map((warning) => warning.action)).toContain("dropped");
+  });
+});
