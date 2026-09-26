@@ -139,12 +139,13 @@ it("saves a custom colour as a named colour from the picker, converting its othe
 it("edits a theme colour, and shows its contrast against what it is read on", async () => {
   await mount({ panel: true });
   const panel = screen.getByTestId("color-studio");
+  // Pick "Text" from the list; it is then the colour being edited at the top.
+  fireEvent.click(within(panel).getByRole("button", { name: "Edit Text" }));
   const text = within(panel).getByTestId("theme-color-foreground");
   fireEvent.change(text, { target: { value: "#777777" } });
   fireEvent.keyDown(text, { key: "Enter" });
   expect((editor.document.theme.colors as { foreground: string }).foreground).toBe("#777777");
-  const row = panel.querySelector('[data-color-row="foreground"]') as HTMLElement;
-  expect(within(row).getByTitle(/Contrast/).textContent).toMatch(/:1/);
+  expect(within(panel).getByTitle(/Contrast/).textContent).toMatch(/:1/);
 });
 
 it("gives a chart its own colours, one per series, and hands them back to the theme", async () => {

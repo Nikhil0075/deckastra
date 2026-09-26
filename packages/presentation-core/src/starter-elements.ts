@@ -20,6 +20,8 @@ export interface StarterElementInput {
   kind: StarterElementKind;
   viewport: { width: number; height: number };
   shape?: ShapeKind;
+  /** The curated icon to start with, for an icon chosen from the library. */
+  icon?: string;
 }
 
 /**
@@ -82,7 +84,7 @@ export function makeStarterElement(input: StarterElementInput): PresentationElem
       return {
         ...base,
         type: "icon",
-        icon: { set: "lucide", name: "database" },
+        icon: { set: "lucide", name: input.icon ?? "database" },
         color: "token:colors.accent",
         strokeWidth: 2,
       } as PresentationElement;

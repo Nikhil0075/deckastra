@@ -382,7 +382,7 @@ async function runEditor(
     // Driven through the real toolbar rather than through the client, so the
     // whole path is under test: React → editor → patch → transaction → the IPC
     // bridge → the file on disk.
-    const clicked = await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+    const clicked = await window.webContents.executeJavaScript(ADD_RECTANGLE);
     record.clickedAddRect = clicked;
 
     // "Saved" is the editor's own acknowledgement, and the acknowledgement is the
@@ -1383,7 +1383,7 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
   }
 
   // Something to animate, then an animation on it.
-  await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await window.webContents.executeJavaScript(ADD_RECTANGLE);
   await until(window, 'document.querySelectorAll("[data-element-id]").length > 0');
 
   record.addedAnimation = await window.webContents.executeJavaScript(`(() => {
@@ -2544,9 +2544,13 @@ async function runMorph(window: BrowserWindow, record: Record<string, unknown>):
     const seen = [];
     for (let i = 0; i < 90; i += 1) {
       await new Promise((r) => requestAnimationFrame(r));
-      const moving = [...document.querySelectorAll("[data-element-id]")]
+      // The morph draws two travelling copies of each pair above both slides
+      // (\`[data-morph-target]\`) and hides the originals, so the originals'
+      // own boxes never move; the copies do. Watching only element boxes
+      // measured the implementation this replaced (2026-09-26).
+      const moving = [...document.querySelectorAll("[data-element-id], [data-morph-target]")]
         .filter((el) => !atRest(el.style.translate))
-        .map((el) => ({ id: el.getAttribute("data-element-id"), translate: el.style.translate, scale: el.style.scale }));
+        .map((el) => ({ id: el.getAttribute("data-element-id") ?? el.getAttribute("data-morph-target"), translate: el.style.translate, scale: el.style.scale }));
       seen.push({
         at: i,
         t: Math.round(performance.now() - started),
@@ -2862,7 +2866,9 @@ async function runMenu(
     notices = BrowserWindow.getAllWindows().find((candidate) => !before.has(candidate));
   }
   if (!notices) throw new Error("Help > Third-party notices opened no window");
-  await new Promise((done) => setTimeout(done, 500));
+  // The window exists before its file has loaded; wait for the navigation
+  // rather than a fixed half second, which a busy machine does not honour.
+  for (let i = 0; i < 20 && !notices.webContents.getURL(); i += 1) await new Promise((done) => setTimeout(done, 250));
   const noticesUrl = notices.webContents.getURL();
   record.noticesUrl = noticesUrl;
   if (!/THIRD_PARTY_NOTICES\.txt$/.test(noticesUrl)) throw new Error(`the notices window shows ${noticesUrl}`);
@@ -3162,6 +3168,25 @@ async function runIntelligence(window: BrowserWindow, record: Record<string, unk
   }
 }
 
+/**
+ * Add a rectangle the way a person now does (design review, 2026-09-26): the
+ * rail's Shapes opens the Add library, the Rectangle tile inserts one, and the
+ * library is closed again so the steps after this see the layout they expect.
+ * Each press goes through `clickTestId`'s hit test, so a covered control fails.
+ */
+const ADD_RECTANGLE = `(async () => {
+  const settle = () => new Promise((done) => setTimeout(done, 150));
+  if (!document.querySelector('[data-testid="library-shape-rectangle"]')) {
+    if (!${clickTestId("tool-shapes")}) return false;
+    await settle();
+  }
+  const added = ${clickTestId("library-shape-rectangle")};
+  await settle();
+  document.querySelector('[aria-label="Close the library"]')?.click();
+  await settle();
+  return added;
+})()`;
+
 function clickTestId(id: string): string {
   return `(() => {
     const target = document.querySelector('[data-testid="${id}"]');
@@ -3255,7 +3280,7 @@ async function runResilience(
   record.startingElements = await window.webContents.executeJavaScript(ELEMENT_COUNT);
 
   // A baseline edit that succeeds, so a later failure is attributable.
-  await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await window.webContents.executeJavaScript(ADD_RECTANGLE);
   record.firstSaveAcknowledged = await until(window, `document.body.innerText.includes("Saved")`, 30_000);
 
   await controls.stopService();
@@ -3267,7 +3292,7 @@ async function runResilience(
 
   // An edit with nowhere to go. The document must still show it, and the app must
   // not pretend it was saved.
-  await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await window.webContents.executeJavaScript(ADD_RECTANGLE);
   await new Promise((done) => setTimeout(done, 3_000));
   record.elementsWhileDown = await window.webContents.executeJavaScript(ELEMENT_COUNT);
   record.offlineEditKeptOnScreen =
@@ -3295,7 +3320,7 @@ async function runResilience(
 
   // One more edit to trigger a drain. The queued work is addressed against the
   // version it was authored on, so it goes out with this one or not at all.
-  await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await window.webContents.executeJavaScript(ADD_RECTANGLE);
   record.savedAfterRecovery = await until(window, `document.body.innerText.includes("Saved")`, 60_000);
   record.elementsAfterRecovery = await window.webContents.executeJavaScript(ELEMENT_COUNT);
 
@@ -3345,9 +3370,9 @@ async function runWindows(
   record.secondWindowStorage = other;
 
   // Both windows edit; neither may lose the other's work.
-  await window.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await window.webContents.executeJavaScript(ADD_RECTANGLE);
   await until(window, `document.body.innerText.includes("Saved")`, 30_000);
-  await second.webContents.executeJavaScript(clickTestId("tool-rect"));
+  await second.webContents.executeJavaScript(ADD_RECTANGLE);
   const secondSaved = await until(second, `document.body.innerText.includes("Saved")`, 30_000);
   record.secondWindowSaved = secondSaved;
 
@@ -3870,7 +3895,7 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
     record.background = paint.type;
 
     // ---- the Glassmorphism preset, with a card to restyle, applied and undone
-    await press("tool-rect");
+    if (!(await page<boolean>(ADD_RECTANGLE))) throw new Error("design: the Add library did not add a rectangle");
     await settle();
     const themeBefore = JSON.stringify((await stored(created)).theme);
     await key("Escape");
@@ -3957,7 +3982,7 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
     await press("open-color-studio");
     await need("the Colours panel did not reopen", `document.querySelector('[data-testid="color-studio"]')`, 5_000);
     await pressText('[data-testid="color-studio"] [role="tab"]', /^Named/);
-    await trustedClick(window, '[data-testid="named-color-row"] .dk-colorstudio__input .dk-input');
+    await trustedClick(window, '[data-testid="color-editor-hex"]');
     await key("A", ["control"]);
     await window.webContents.insertText("#1F7A3D");
     await key("Enter");

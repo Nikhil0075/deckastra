@@ -21,6 +21,12 @@ export interface AppBarProps {
   extras?: ReactNode;
   /** Which panels are on screen, and how to change that (lib/panels.ts). */
   panels?: { visibility: PanelVisibility; onChange: (next: PanelVisibility) => void };
+  /**
+   * Open version history. In the bar rather than the Design panel, because
+   * going back to an earlier deck is not a design choice (design review,
+   * 2026-09-26).
+   */
+  onHistory?: () => void;
 }
 
 /**
@@ -29,7 +35,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels, onHistory }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -87,6 +93,11 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
 
       <div className="dk-appbar__end">
         {extras}
+        {onHistory ? (
+          // An icon, named in its tooltip and accessible name: a labelled button
+          // here pushed the bar's end group across the mode switch.
+          <IconButton icon="history" label="Version history" size="sm" variant="secondary" onClick={onHistory} data-testid="open-history" />
+        ) : null}
         {panels ? <PanelsMenu visibility={panels.visibility} onChange={panels.onChange} /> : null}
         <ThemeMenu />
         <Popover
@@ -94,7 +105,7 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
           align="end"
           className="dk-appbar__popover"
           trigger={(props) => (
-            <Button size="sm" variant="ghost" icon="share" data-testid="open-share" {...props}>
+            <Button size="sm" variant="ghost" icon="share" title="Share" data-testid="open-share" {...props}>
               Share
             </Button>
           )}
@@ -110,7 +121,7 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
           className="dk-appbar__popover"
           data-testid="export-popover"
           trigger={(props) => (
-            <Button size="sm" variant="ghost" icon="download" data-testid="open-export" {...props}>
+            <Button size="sm" variant="ghost" icon="download" title="Export" data-testid="open-export" {...props}>
               Export
             </Button>
           )}

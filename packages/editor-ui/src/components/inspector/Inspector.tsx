@@ -43,6 +43,7 @@ import { BackgroundSection } from "./BackgroundSection";
 import { TableSection } from "./TableSection";
 import { TextSection } from "./TextSection";
 import { EquationSection } from "./EquationSection";
+import { IconPicker, ShapePicker } from "./pickers";
 import { useColorStudio } from "../../lib/color-studio";
 import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
 
@@ -84,8 +85,16 @@ export function Inspector({
   const many = selection.selectedIds.length > 1;
   const objectCount = slide ? countElements(slide.elements) : 0;
 
+  const hasSelection = Boolean(selected) || many;
+
   return (
     <div className="dk-inspector">
+      {/* What is being styled, said first: an object, or the slide itself. The
+          deck-wide design (theme, colours, background) follows in that order,
+          from the broadest choice to the narrowest (design review, 2026-09-26). */}
+      <h2 className="dk-inspector__title" data-testid="inspector-scope">
+        {hasSelection ? "Selected object" : "Slide design"}
+      </h2>
       {many ? (
         <div className="dk-inspector__head">
           <span className="dk-inspector__name">{selection.selectedIds.length} objects</span>
@@ -106,58 +115,24 @@ export function Inspector({
         />
       ) : (
         <p className="dk-inspector__empty">
-          Nothing selected. Click an object on the slide, or pick one from Layers.
+          Choose a theme, colours and a background for this slide. Click an object on the slide to style it.
         </p>
       )}
 
       {selected && !many ? <ElementSections editor={editor} element={selected} /> : null}
-      {/* Open when nothing is selected: clicking the empty slide is how people
-          reach for the slide itself. */}
-      <BackgroundSection key={`bg-${slide?.id}`} editor={editor} defaultOpen={!selected && !many} />
-      <ArrangeSection editor={editor} />
+      {hasSelection ? <ArrangeSection editor={editor} /> : null}
 
-      <Section title="Layers" meta={`${objectCount} object${objectCount === 1 ? "" : "s"}`} defaultOpen={!selected}>
-        <LayersList editor={editor} />
-      </Section>
-      <Section title="Theme" meta={doc.theme.name}>
+      {hasSelection ? <h2 className="dk-inspector__title dk-inspector__title--rule">Slide design</h2> : null}
+      <Section title="Theme" meta={doc.theme.name} defaultOpen={!hasSelection}>
         <ThemePanel key={presentationId} editor={editor} presentationId={presentationId} />
       </Section>
-      <ColorsSection editor={editor} />
-      <Section title="Accessibility" meta="WCAG 2.1 AA">
-        <AccessibilityPanel
-          document={doc}
-          slideId={slide?.id}
-          onSelect={(targetSlideId, elementId) => {
-            const targetIndex = doc.slides.findIndex((candidate) => candidate.id === targetSlideId);
-            if (targetIndex < 0) return;
-            editor.setSlideIndex(targetIndex);
-            if (elementId) {
-              editor.setSelection((current) => ({ ...current, selectedIds: [elementId], primaryId: elementId }));
-            }
-          }}
-        />
-      </Section>
-      <Section title="This session" meta={`${editor.historyEntries.length} change${editor.historyEntries.length === 1 ? "" : "s"}`}>
-        <ol className="dk-history">
-          {editor.historyEntries.slice(0, 20).map((entry) => (
-            <li key={entry.id} className="dk-history__row">
-              <span className={entry.source === "agent" ? "dk-history__who dk-history__who--agent" : "dk-history__who"}>
-                {entry.source === "agent" ? "AI" : "You"}
-              </span>
-              <span>{entry.label}</span>
-            </li>
-          ))}
-          {editor.historyEntries.length === 0 ? <li className="dk-history__row">No changes yet.</li> : null}
-        </ol>
-      </Section>
-      {/* Every saved version, not only this session's edits. A drawer rather
-          than a section: previewing a past version needs the room, and the
-          editor behind it must not be edited while one is on screen. */}
-      <button type="button" className="dk-inspector__link" onClick={onOpenHistory} data-testid="open-history">
-        <Icon name="history" size={14} />
-        <span className="dk-inspector__link-title">Version history</span>
-        <span className="dk-inspector__link-meta">All saved versions</span>
-      </button>
+      <ColorsSection editor={editor} defaultOpen />
+      {/* Open when nothing is selected: clicking the empty slide is how people
+          reach for the slide itself. */}
+      <BackgroundSection key={`bg-${slide?.id}`} editor={editor} defaultOpen={!hasSelection} />
+      {objectCount === 0 && !hasSelection ? (
+        <p className="dk-field__hint">This slide is empty. Use Add on the left to put shapes, icons, text or media on it.</p>
+      ) : null}
     </div>
   );
 }
@@ -346,11 +321,11 @@ function ElementSections({ editor, element }: { editor: EditorApi; element: Pres
         </div>
 
         {element.type === "shape" ? (
-          <Select label="Shape" value={String(el.shape)} options={options(SHAPES)} disabled={disabled} onChange={(v) => change("shape", v, "Change shape")} />
+          <ShapePicker value={String(el.shape)} disabled={disabled} onChange={(v) => change("shape", v, "Change shape")} />
         ) : null}
 
         {element.type === "icon" ? (
-          <TextField label="Icon" value={String((el.icon as { name?: unknown } | undefined)?.name ?? "")} disabled={disabled} onChange={(v) => change("icon.name", v, "Change icon")} />
+          <IconPicker value={String((el.icon as { name?: unknown } | undefined)?.name ?? "")} disabled={disabled} onChange={(v) => change("icon.name", v, "Change icon")} />
         ) : null}
 
         {element.type === "code" ? (
@@ -423,7 +398,7 @@ function countElements(elements: readonly PresentationElement[]): number {
  * wizard, 2026-09-26): the brand roles and the named colours as swatches, and a
  * count of loose colours that will not follow a new theme.
  */
-function ColorsSection({ editor }: { editor: EditorApi }) {
+function ColorsSection({ editor, defaultOpen }: { editor: EditorApi; defaultOpen?: boolean }) {
   const studio = useColorStudio();
   const doc = editor.document;
   const named = namedColors(doc);
@@ -431,7 +406,7 @@ function ColorsSection({ editor }: { editor: EditorApi }) {
   const colors = doc.theme.colors as unknown as Record<string, unknown>;
   const brand = ["accent", "secondary", "foreground", "background", "surface"].filter((token) => typeof colors[token] === "string");
   return (
-    <Section title="Colours" meta={`${named.length} named${loose ? ` · ${loose} loose` : ""}`}>
+    <Section title="Colours" meta={`${named.length} named${loose ? ` · ${loose} loose` : ""}`} defaultOpen={defaultOpen}>
       <div className="dk-swatches" aria-label="Deck colours">
         {brand.map((token) => (
           <span key={token} className="dk-swatch dk-swatch--static" title={token} style={{ background: resolveColorValue(doc, colors[token] as string) }} />

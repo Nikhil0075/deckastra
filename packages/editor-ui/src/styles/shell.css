@@ -2528,3 +2528,399 @@
   width: 100%;
   min-width: 0;
 }
+
+/* ------------------------------------------------------------ colour ramp */
+
+.dk-ramp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  margin: var(--dk-space-2) 0;
+}
+.dk-ramp--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* The square: its gradients are inline (they are the colour, not chrome). */
+.dk-ramp__area {
+  position: relative;
+  height: 132px;
+  border: var(--dk-line) solid var(--dk-rule);
+  cursor: crosshair;
+  touch-action: none;
+}
+.dk-ramp__area:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-ramp__handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--dk-surface);
+  outline: var(--dk-line) solid var(--dk-ink);
+  pointer-events: none;
+}
+.dk-ramp__hue {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+  cursor: pointer;
+}
+.dk-ramp__hue::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 18px;
+  background: var(--dk-surface);
+  border: 2px solid var(--dk-ink);
+}
+.dk-ramp__hue::-moz-range-thumb {
+  width: 8px;
+  height: 18px;
+  background: var(--dk-surface);
+  border: 2px solid var(--dk-ink);
+  border-radius: 0;
+}
+.dk-ramp__hue:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-ramp__steps {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 3px;
+}
+.dk-ramp__step {
+  min-width: 0;
+}
+
+/* ----------------------------------------- labelled rail and the Add library */
+
+.dk-rail--labelled {
+  width: 68px;
+  gap: 2px;
+  overflow-y: auto;
+}
+.dk-rail__spacer {
+  flex: 1;
+}
+.dk-railbutton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 58px;
+  min-height: 50px;
+  padding: 4px 2px;
+  border: var(--dk-line) solid transparent;
+  background: transparent;
+  color: var(--dk-ink);
+  cursor: pointer;
+}
+.dk-railbutton:hover:not(:disabled) {
+  background: var(--dk-sunk);
+}
+.dk-railbutton--active {
+  border-color: var(--dk-rule);
+  background: var(--dk-sunk);
+}
+.dk-railbutton--primary {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+  margin-bottom: var(--dk-space-1);
+}
+.dk-railbutton--primary:hover:not(:disabled) {
+  background: var(--dk-blue);
+  outline: 2px solid var(--dk-ink);
+  outline-offset: -2px;
+}
+.dk-railbutton:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: -2px;
+}
+.dk-railbutton__label {
+  font-size: 11px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.dk-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  width: 300px;
+  flex: none;
+  padding: var(--dk-space-3, 12px);
+  overflow-y: auto;
+  border-right: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-library__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dk-library__title {
+  margin: 0;
+  font-size: var(--dk-text-md);
+  font-weight: 600;
+}
+.dk-library__heading {
+  margin: var(--dk-space-2) 0 var(--dk-space-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+.dk-library__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: var(--dk-space-2) 0;
+}
+.dk-chipbutton {
+  padding: 3px 10px;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: transparent;
+  color: var(--dk-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.dk-chipbutton--on {
+  background: var(--dk-blue);
+  border-color: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-library__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.dk-library__grid--icons {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.dk-library__grid--small {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.dk-library__tile {
+  position: relative;
+}
+.dk-library__add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 4px;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-ground);
+  color: var(--dk-ink);
+  cursor: pointer;
+}
+.dk-library__add:hover {
+  border-color: var(--dk-ink);
+}
+.dk-library__add:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 1px;
+}
+.dk-library__art {
+  width: 100%;
+  max-height: 34px;
+}
+.dk-library__icon {
+  width: 22px;
+  height: 22px;
+}
+.dk-library__caption {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The star shows on hover and focus, and always once it is on. */
+.dk-library__star {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0;
+}
+.dk-library__tile:hover .dk-library__star,
+.dk-library__star:focus-visible,
+.dk-library__star--on {
+  opacity: 1;
+}
+.dk-library__star--on {
+  color: var(--dk-ink);
+}
+.dk-library__section {
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+  padding-top: var(--dk-space-1);
+}
+
+/* ------------------------------------------------ docked Colours view */
+
+.dk-colorstudio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+}
+.dk-colorstudio__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-colorstudio__title {
+  margin: 0;
+  font-size: var(--dk-text-md);
+  font-weight: 600;
+}
+.dk-colorstudio__head .dk-colorstudio__meta {
+  margin-left: auto;
+}
+.dk-coloreditor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  margin-bottom: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+}
+.dk-coloreditor__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-coloreditor__swatch {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-coloreditor__contrast {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  font-size: 12px;
+}
+.dk-colorrow {
+  display: flex;
+  align-items: center;
+}
+.dk-colorrow__pick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
+  padding: 6px var(--dk-space-1);
+  border: 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-colorrow__pick:hover {
+  background: var(--dk-sunk);
+}
+.dk-colorrow--selected .dk-colorrow__pick {
+  background: var(--dk-sunk);
+  outline: 2px solid var(--dk-blue);
+  outline-offset: -2px;
+}
+.dk-colorrow__pick .dk-colorfield__swatch {
+  width: 22px;
+  height: 22px;
+}
+.dk-colorrow__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dk-inspector__title {
+  margin: 0 0 var(--dk-space-1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+  color: var(--dk-ink-muted);
+}
+.dk-inspector__title--rule {
+  margin-top: var(--dk-space-3);
+  padding-top: var(--dk-space-2);
+  border-top: var(--dk-line) solid var(--dk-rule);
+}
+
+.dk-visualpicker {
+  width: 300px;
+}
+.dk-visualpicker__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-visualpicker__thumb {
+  display: inline-flex;
+  width: 28px;
+  height: 20px;
+  flex: none;
+}
+.dk-visualpicker__thumb svg {
+  width: 100%;
+  height: 100%;
+}
+.dk-visualpicker__list {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: var(--dk-space-2);
+}
+.dk-visualpicker__on {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: -2px;
+}
+
+/* On a narrower window the bar's end group keeps its buttons and drops their
+   words, so it never runs across the mode switch; each keeps its name for
+   screen readers and in its tooltip (design review, 2026-09-26). Present keeps
+   its label: it is the one action the bar exists for. */
+@media (max-width: 1500px) {
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip) .dk-btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip) {
+    position: relative;
+  }
+}
+/* The scope heading sits on the same inset as the header and sections below it. */
+.dk-inspector__title {
+  padding: var(--dk-space-2) var(--dk-space-3) 0;
+}
+.dk-inspector__title--rule {
+  margin-top: var(--dk-space-3);
+}

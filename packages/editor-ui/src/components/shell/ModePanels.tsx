@@ -78,6 +78,7 @@ export function CodePanel({ editor }: { editor: EditorApi }) {
   const subject = showElement ? primary : slide;
   const json = useMemo(() => (subject ? JSON.stringify(canonicalize(subject), null, 2) : ""), [subject]);
   const [copied, setCopied] = useState<{ json: string; ok: boolean } | null>(null);
+  const history = editor.historyEntries ?? [];
 
   const copy = async () => {
     try {
@@ -122,6 +123,22 @@ export function CodePanel({ editor }: { editor: EditorApi }) {
       <pre className="dk-code__body dk-scroll" tabIndex={0} aria-label="Canonical JSON" data-testid="code-json">
         {json}
       </pre>
+      {/* This session's changes, as the undo history has them. Moved here from
+          the Design panel (design review, 2026-09-26): it is a record of what
+          happened, not a design control. */}
+      <Section title="This session" meta={`${history.length} change${history.length === 1 ? "" : "s"}`}>
+        <ol className="dk-history">
+          {history.slice(0, 20).map((entry) => (
+            <li key={entry.id} className="dk-history__row">
+              <span className={entry.source === "agent" ? "dk-history__who dk-history__who--agent" : "dk-history__who"}>
+                {entry.source === "agent" ? "AI" : "You"}
+              </span>
+              <span>{entry.label}</span>
+            </li>
+          ))}
+          {history.length === 0 ? <li className="dk-history__row">No changes yet.</li> : null}
+        </ol>
+      </Section>
     </div>
   );
 }

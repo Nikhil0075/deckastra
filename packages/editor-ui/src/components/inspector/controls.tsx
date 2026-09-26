@@ -3,6 +3,7 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { Button, IconButton, Popover, TextField, cx } from "../../ui";
 import { useColorStudio } from "../../lib/color-studio";
+import { ColorRamp } from "./ColorRamp";
 import {
   HEX_COLOR,
   THEME_COLOR_ROLES,
@@ -177,6 +178,7 @@ export function ColorField({ label, value, theme, onChange, allowNone, disabled,
       <span className="dk-label">{label}</span>
       <Popover
         label={`${label} choices`}
+        align="end"
         open={open}
         onOpenChange={setOpen}
         className="dk-colorpicker"
@@ -238,6 +240,18 @@ export function ColorField({ label, value, theme, onChange, allowNone, disabled,
             Custom colour…
           </button>
         </div>
+
+        <ColorRamp
+          label={label}
+          alpha
+          value={literal ? value : swatch && HEX.test(swatch) ? swatch : undefined}
+          disabled={disabled}
+          onCommit={(next) => {
+            setHex(next);
+            setError(undefined);
+            if (next !== value) onChange(next);
+          }}
+        />
 
         <div className="dk-colorpicker__hex">
           <input

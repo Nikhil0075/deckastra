@@ -205,7 +205,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
 
   const agentControl = (
     <>
-      <Button size="sm" variant="secondary" icon="ai" onClick={() => setIntelligenceOpen(true)} data-testid="open-intelligence">
+      <Button size="sm" variant="secondary" icon="ai" title="Intelligence" onClick={() => setIntelligenceOpen(true)} data-testid="open-intelligence">
         Intelligence
       </Button>
       <AgentAccessControl access={access} onChange={(allow) => void bridge.setAgentAccess({ allow }).then(setAccess)} />

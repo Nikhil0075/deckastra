@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isGroup, type PresentationElement } from "@deckastra/presentation-schema";
+import { isGroup, type PresentationElement, type ShapeKind } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { useAssetUrls } from "../lib/asset-urls";
@@ -72,8 +72,12 @@ import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { PresentMode } from "./PresentMode";
 import { VersionHistory } from "./VersionHistory";
 import { ColorStudioPanel } from "./ColorStudioPanel";
+import { AddLibrary, type LibraryTab } from "./shell/AddLibrary";
+import type { SidePanel } from "./shell/ToolRail";
+import { LayersList } from "./inspector/LayersList";
+import { AccessibilityPanel } from "./AccessibilityPanel";
 import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
-import { Button } from "../ui";
+import { Button, IconButton } from "../ui";
 
 /**
  * The editor shell (Figma: MAIN SCREEN): top bar, insert rail, slide strip,
@@ -136,6 +140,17 @@ export function EditorShell(props: EditorShellProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   // The Colours panel, and what it opens at (a theme role or a named colour).
   const [colors, setColors] = useState<{ open: boolean; focus?: string }>({ open: false });
+  // The left side panel: the Add library, Layers, or the accessibility Check.
+  // Editor state; it never reaches the document.
+  const [side, setSide] = useState<{ panel?: SidePanel; tab: LibraryTab }>({ tab: "shapes" });
+  const togglePanel = useCallback((panel: SidePanel, tab?: LibraryTab) => {
+    setSide((current) => {
+      // The same button again closes it, except a library button asking for a
+      // different tab, which switches tab.
+      if (current.panel === panel && (panel !== "library" || !tab || tab === current.tab)) return { ...current, panel: undefined };
+      return { panel, tab: tab ?? current.tab };
+    });
+  }, []);
   const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("design");
   const [zoom, setZoom] = useState<Zoom>("fit");
@@ -260,6 +275,8 @@ export function EditorShell(props: EditorShellProps) {
         setHistoryOpen(true);
         break;
       case "colors":
+        // Colours is part of Design; opening it from another mode goes there.
+        setMode("design");
         setColors({ open: true });
         break;
     }
@@ -284,12 +301,12 @@ export function EditorShell(props: EditorShellProps) {
   }, [apply, doc, selection.selectedIds, slide]);
 
   const addStarter = useCallback(
-    (kind: StarterElementKind, shape?: "rectangle" | "ellipse") => {
+    (kind: StarterElementKind, shape?: ShapeKind, icon?: string) => {
       if (!slide) return;
-      const element = makeStarterElement({ kind, viewport: doc.viewport, shape });
+      const element = makeStarterElement({ kind, viewport: doc.viewport, shape, icon });
 
       apply(addElement(doc, { slideId: slide.id, element }), {
-        label: `Add ${shape ?? kind}`,
+        label: `Add ${icon ? `${icon} icon` : (shape ?? kind)}`,
         selectionAfter: [element.id],
       });
       // The new object is selected; the canvas takes focus so its shortcuts —
@@ -780,7 +797,11 @@ export function EditorShell(props: EditorShellProps) {
 
   const selected = selection.primaryId ? resolveElementById(doc, selection.primaryId) : undefined;
 
-  const rightPanel =
+  const rightPanel = colors.open && mode === "design" ? (
+    // Docked in the panel rather than floating over it (design review,
+    // 2026-09-26): the slide stays in view and nothing is covered.
+    <ColorStudioPanel editor={editor} open focus={colors.focus} onClose={() => setColors({ open: false })} />
+  ) :
     mode === "ai" ? (
       <AiPanel editor={editor} presentationId={props.presentationId} />
     ) : mode === "code" ? (
@@ -806,7 +827,10 @@ export function EditorShell(props: EditorShellProps) {
     apply: (operations, label) => {
       if (operations.length) editor.apply(operations, { label });
     },
-    open: (focus) => setColors({ open: true, ...(focus ? { focus } : {}) }),
+    open: (focus) => {
+      setMode("design");
+      setColors({ open: true, ...(focus ? { focus } : {}) });
+    },
   };
 
   return (
@@ -821,6 +845,7 @@ export function EditorShell(props: EditorShellProps) {
         onExit={exit ? () => exit() : undefined}
         extras={props.barExtras}
         panels={{ visibility: panels, onChange: setPanels }}
+        onHistory={() => setHistoryOpen(true)}
       />
 
       <ConflictRecovery editor={editor} />
@@ -877,7 +902,59 @@ export function EditorShell(props: EditorShellProps) {
       ) : null}
 
       <div className="dk-shell__body">
-        {panels.tools ? <ToolRail onAdd={addStarter} onAddImage={addImage} /> : null}
+        {panels.tools ? (
+          <ToolRail
+            onAdd={(kind) => addStarter(kind)}
+            onAddImage={addImage}
+            onPanel={togglePanel}
+            open={side.panel}
+            libraryTab={side.tab}
+          />
+        ) : null}
+        {side.panel === "library" ? (
+          <AddLibrary
+            tab={side.tab}
+            onTab={(tab) => setSide({ panel: "library", tab })}
+            onClose={() => setSide((current) => ({ ...current, panel: undefined }))}
+            onAddImage={addImage}
+            onAdd={(item) =>
+              item.kind === "shape"
+                ? addStarter("shape", item.shape)
+                : item.kind === "line"
+                  ? addStarter("line")
+                  : item.kind === "icon"
+                    ? addStarter("icon", undefined, item.name)
+                    : addStarter(item.object)
+            }
+          />
+        ) : side.panel === "layers" ? (
+          <aside className="dk-library" aria-label="Layers" data-region="library" data-testid="layers-panel">
+            <div className="dk-library__head">
+              <h3 className="dk-library__title">Layers</h3>
+              <IconButton icon="close" label="Close layers" size="sm" onClick={() => setSide((current) => ({ ...current, panel: undefined }))} />
+            </div>
+            <p className="dk-field__hint">Everything on this slide, front to back. Pick one to select it.</p>
+            <LayersList editor={editor} />
+          </aside>
+        ) : side.panel === "check" ? (
+          <aside className="dk-library" aria-label="Check" data-region="library" data-testid="check-panel">
+            <div className="dk-library__head">
+              <h3 className="dk-library__title">Check</h3>
+              <IconButton icon="close" label="Close check" size="sm" onClick={() => setSide((current) => ({ ...current, panel: undefined }))} />
+            </div>
+            <p className="dk-field__hint">Accessibility against WCAG 2.1 AA: alt text, contrast and reading order.</p>
+            <AccessibilityPanel
+              document={doc}
+              slideId={slide.id}
+              onSelect={(targetSlideId, elementId) => {
+                const targetIndex = doc.slides.findIndex((candidate) => candidate.id === targetSlideId);
+                if (targetIndex < 0) return;
+                editor.setSlideIndex(targetIndex);
+                if (elementId) editor.setSelection((current) => ({ ...current, selectedIds: [elementId], primaryId: elementId }));
+              }}
+            />
+          </aside>
+        ) : null}
         {panels.slides ? (
         <SlideStrip
           editor={editor}
@@ -955,12 +1032,6 @@ export function EditorShell(props: EditorShellProps) {
           onClose={() => setHistoryOpen(false)}
         />
 
-        <ColorStudioPanel
-          editor={editor}
-          open={colors.open}
-          focus={colors.focus}
-          onClose={() => setColors({ open: false })}
-        />
 
         {panels.inspector ? (
           <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>

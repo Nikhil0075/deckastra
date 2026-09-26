@@ -3863,6 +3863,60 @@ with it and changes the colour once. It then checks, from the store, that the
 title still holds the reference. `python-pptx` reads the title's run in the
 changed colour.
 
+### Adding is separate from styling (design review, 2026-09-26)
+
+An audit found the Design tab capable but hard to find things in. The product
+had 11 shapes and 42 icons, yet the rail showed two shapes, and an icon was
+chosen by typing its name. So people concluded there were none. The layout
+follows two concepts generated with OpenArt from the real screen; they are
+kept under `.artifacts/concepts/` (ignored by git).
+
+- **The rail is labelled, and Add comes first** (`shell/ToolRail.tsx`).
+  - **Add** opens the library.
+  - **Text** and **Image** insert in one click, because slides are mostly
+    made of them.
+  - **Shapes** and **Icons** open the library at their tab.
+  - The object kinds (chart, table, diagram, equation, code) insert directly.
+  - **Layers** and **Check** (accessibility) sit at the bottom as side panels.
+    They are about the slide, not about adding to it.
+- **The Add library** (`shell/AddLibrary.tsx`) sits between the rail and the
+  slide strip. The slide stays in view and the styling panel stays usable.
+  - Each shape is drawn by the renderer's own `shapeGeometry`, including a
+    pill's radius, so the tile is exactly what arrives.
+  - Each icon is drawn from its paths. Search matches names and keywords,
+    and categories are Basic, Arrows, Flowchart and Callouts.
+  - Recent and favourites are editor state in `localStorage`
+    (`deckastra.library`) and never reach a document.
+- **The right panel says what it is styling.** "Selected object" comes first
+  when something is selected. Then comes "Slide design": Theme → Colours →
+  Slide background, from the broadest choice to the narrowest.
+  - Layers and Accessibility moved to the left side panels.
+  - "This session" moved to Code mode.
+  - Version history moved to an icon in the top bar, keeping the
+    `open-history` id.
+  - A shape is changed with a visual `ShapePicker`, and an icon with a
+    searchable `IconPicker`, instead of a dropdown and a text field.
+- **The Colours view is docked, not floating.** It replaces the right panel
+  while open, with a back arrow, so nothing on the slide is covered. It shows
+  only in Design mode; opening it from elsewhere switches to Design. Each tab
+  shows the chosen colour's editor at the top and the list below.
+- **Colours are picked by eye** (`inspector/ColorRamp.tsx`,
+  `lib/color-math.ts`).
+  - A saturation/brightness square, a hue strip, an opacity strip (8-digit
+    hex), and a nine-step tint-to-shade ramp. The hex field stays for anyone
+    who has one.
+  - Dragging previews locally and commits once on release, so a drag is one
+    Undo step. Arrow keys move the square's handle and commit each step.
+  - Its gradients are inline styles: the palette gate forbids colour literals
+    in CSS, and these are pictures of the colour, not chrome.
+- **The top bar's end group drops button words below 1500 px**, keeping each
+  button's accessible name and tooltip. A labelled History button had pushed
+  the group across the mode switch. The `a11y` step's hit test found it, as
+  "cannot press mode-motion". Present and the agent-access chip keep their
+  words: the chip's words are its status.
+- **The harness adds a rectangle through the library** (`ADD_RECTANGLE` in
+  `smoke.ts`), the way a person now does. `tool-rect` no longer exists.
+
 ### Validation is a product surface
 
 `RULES` in `src/validate.ts` is the catalog (doc 02 §42). Codes are stable because the editor, agents, exporters and the MCP surface all reference the same rule. Messages must be actionable and name the offending id.
