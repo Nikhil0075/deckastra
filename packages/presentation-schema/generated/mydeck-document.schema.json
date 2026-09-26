@@ -1612,6 +1612,31 @@
               "kind"
             ]
           },
+          "fontFamily": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "fontWeight": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              {
+                "type": "string",
+                "pattern": "^\\d{1,4}( \\d{1,4})?$"
+              }
+            ]
+          },
+          "fontStyle": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "italic"
+            ]
+          },
           "createdBy": {
             "type": "string",
             "enum": [

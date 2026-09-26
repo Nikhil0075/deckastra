@@ -75,11 +75,12 @@ function browserBundle(): Promise<string> {
 }
 
 /** Doc 04 §31.2: one asynchronous batch between two synchronous scene builds. */
-export async function buildBrowserScene(deck: PresentationDocument, page: Page) {
+export async function buildBrowserScene(deck: PresentationDocument, page: Page, fontCss = "") {
   const recording = new RecordingMeasurer();
   buildDocumentScene(deck, { measurer: recording });
   // Per-page/deck cache: font state must never leak between warm-pool jobs.
-  await page.setContent('<!doctype html><meta charset="utf-8"><body></body>');
+  // The deck's own faces, so a line is measured in the font it will print in.
+  await page.setContent(`<!doctype html><meta charset="utf-8"><style>${fontCss}</style><body></body>`);
   await page.addScriptTag({ content: await browserBundle() });
   const requests = [...recording.requests.entries()];
   const measured = await page.evaluate(async (batch) => {

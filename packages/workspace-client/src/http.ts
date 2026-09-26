@@ -409,9 +409,9 @@ const q = encodeURIComponent;
           body: {
             workspace_id: body.workspaceId,
             filename: file.name,
-            content_type: file.type || "application/octet-stream",
+            content_type: body.contentType || file.type || "application/octet-stream",
             size_bytes: file.size,
-            kind: "image",
+            kind: body.kind ?? "image",
             ...(body.width ? { width: body.width } : {}),
             ...(body.height ? { height: body.height } : {}),
           },

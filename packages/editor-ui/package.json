@@ -24,8 +24,22 @@
     "@deckastra/transactions": "*",
     "@deckastra/workspace-client": "*",
     "@deckastra/workspace-contracts": "*",
+    "@fontsource-variable/caveat": "^5.3.0",
+    "@fontsource-variable/dm-sans": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
-    "@fontsource-variable/jost": "^5.3.0"
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/jost": "^5.3.0",
+    "@fontsource-variable/lora": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/nunito": "^5.3.0",
+    "@fontsource-variable/playfair-display": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.0",
+    "@fontsource-variable/space-grotesk": "^5.3.0",
+    "@fontsource-variable/work-sans": "^5.3.0",
+    "@fontsource/archivo-black": "^5.3.0",
+    "@fontsource/bebas-neue": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0"
   },
   "peerDependencies": {
     "react": ">=18",

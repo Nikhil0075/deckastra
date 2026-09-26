@@ -326,7 +326,15 @@ export interface WorkspaceClient {
      */
     upload(
       file: File,
-      body: { workspaceId: string; width?: number; height?: number },
+      body: {
+        workspaceId: string;
+        width?: number;
+        height?: number;
+        /** Defaults to an image. A font is `"font"` with its `font/*` type. */
+        kind?: "image" | "font";
+        /** Overrides the file's own type, which a browser often leaves empty for fonts. */
+        contentType?: string;
+      },
       options?: RequestOptions,
     ): Promise<UploadedAsset>;
   };

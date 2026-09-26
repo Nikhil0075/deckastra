@@ -26,6 +26,7 @@ import { buildPptx } from "@deckastra/export-pptx";
 
 import { RenderPool, renderDeadlineFor, renderPdfScene } from "./render";
 import { buildBrowserScene } from "./text-measurement";
+import { fontsNotEmbedded, pageFontCss } from "./fonts";
 import { AssetLibrary, type InlineAsset } from "./assets";
 
 export type ExportKind = "pdf" | "pptx";
@@ -84,7 +85,8 @@ export async function runExport(
     // Final measured scenes are shared with the adapter (doc 04 §32.1). An adapter
     // that resolved its own would be a second layout engine, free to disagree with
     // what the author approved on screen.
-    const scene = await buildBrowserScene(job.document, page);
+    const fontCss = await pageFontCss(job.document, library);
+    const scene = await buildBrowserScene(job.document, page, fontCss);
     const scenes = new Map<string, SlideScene>(
       scene.slides.map((slide) => [slide.slideId, slide]),
     );
@@ -112,6 +114,7 @@ export async function runExport(
           artifact.result.report.warnings.push(warning);
         }
       }
+      artifact.result.report.warnings.push(...fontsNotEmbedded(job.document));
       onProgress({ progress: 1, stage: "done", message: "Done" });
       return {
         bytes: artifact.bytes,
@@ -130,7 +133,7 @@ export async function runExport(
     });
 
     const artifact = await buildPdf(input, async ({ slideIds, atTime }) => {
-      const rendered = await renderPdfScene(scene, slideIds, atTime, page, library);
+      const rendered = await renderPdfScene(scene, slideIds, atTime, page, library, fontCss);
       // The warnings come back now, because whether a picture decoded is only
       // known once the browser has tried — see `DocumentRenderResult`.
       return { bytes: rendered.bytes, warnings: rendered.warnings };

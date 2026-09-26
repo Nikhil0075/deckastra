@@ -19,6 +19,7 @@ export * from "./dom-measurer";
 export * from "./format";
 export * from "./scale";
 export * from "./fonts";
+export * from "./font-library";
 export * from "./icons";
 export * from "./highlight";
 export * from "./charts";

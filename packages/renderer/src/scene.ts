@@ -212,6 +212,16 @@ export interface SceneBackground {
   blur?: number;
 }
 
+export interface SceneFontFace {
+  family: string;
+  assetId: string;
+  storageKey?: string;
+  mimeType?: string;
+  /** A CSS `font-weight` value: one weight, or a "min max" range for a variable font. */
+  weight?: string;
+  style?: "normal" | "italic";
+}
+
 export interface SlideScene {
   slideId: string;
   index: number;
@@ -246,6 +256,13 @@ export interface SlideScene {
       matchMode?: "position" | "positionAndScale" | "full";
     }[];
   };
+  /**
+   * Fonts uploaded to this deck, to be declared with `@font-face` wherever the
+   * slide is drawn. A deck carries its own faces the way it carries its
+   * pictures: by asset id, resolved to bytes by whoever draws it. Absent when
+   * the deck has none.
+   */
+  fontFaces?: SceneFontFace[];
   speakerNotes?: string;
   /**
    * The notes as authored, when they are rich text; absent for plain notes.
@@ -1166,6 +1183,7 @@ export function buildSlideScene(
     height: document.viewport.height,
     safeArea: document.viewport.safeArea,
     background: buildBackground(theme, slide.background),
+    ...(fontFacesOf(document).length ? { fontFaces: fontFacesOf(document) } : {}),
     nodes: roots,
     paintOrder,
     theme,
@@ -1249,4 +1267,22 @@ function colorAlpha(value: string | undefined): number {
   const rgba = /^rgba\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+[\s,/]+([\d.]+)(%?)\s*\)$/i.exec(text);
   if (rgba) return rgba[2] ? Number(rgba[1]) / 100 : Number(rgba[1]);
   return 1;
+}
+
+/** The deck's uploaded fonts that name a family, as the renderer declares them. */
+function fontFacesOf(document: PresentationDocument): SceneFontFace[] {
+  const faces: SceneFontFace[] = [];
+  for (const asset of document.assets ?? []) {
+    const font = asset as { type?: string; id: string; fontFamily?: string; storageKey?: string; mimeType?: string; fontWeight?: number | string; fontStyle?: "normal" | "italic" };
+    if (font.type !== "font" || !font.fontFamily) continue;
+    faces.push({
+      family: font.fontFamily,
+      assetId: font.id,
+      ...(font.storageKey ? { storageKey: font.storageKey } : {}),
+      ...(font.mimeType ? { mimeType: font.mimeType } : {}),
+      ...(font.fontWeight !== undefined ? { weight: String(font.fontWeight) } : {}),
+      ...(font.fontStyle ? { style: font.fontStyle } : {}),
+    });
+  }
+  return faces;
 }

@@ -36,6 +36,7 @@ import type { ExportWarning, FontSpec } from "@deckastra/export-core";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
 import { buildBrowserScene } from "./text-measurement";
 import { AssetLibrary, type InlineAsset } from "./assets";
+import { pageFontCss } from "./fonts";
 
 export type RenderFormat = "png" | "jpeg";
 
@@ -314,6 +315,9 @@ function beforeDeadline<T>(
  */
 async function settle(page: RenderPage): Promise<string[]> {
   return page.evaluate(async () => {
+    // Every declared face, not only the ones layout has asked for yet: a face
+    // requested after `ready` resolved would be captured as its fallback.
+    await Promise.all([...globalThis.document.fonts].map((face) => face.load().catch(() => undefined)));
     await globalThis.document.fonts.ready;
 
     const failed: string[] = [];
@@ -346,7 +350,8 @@ export async function render(
   const scale = request.scale ?? 1;
   const library = new AssetLibrary(request.assets);
   return pool.withPage(scale, async (page) => {
-    const scene = await buildBrowserScene(request.document, page);
+    const fontCss = await pageFontCss(request.document, library);
+    const scene = await buildBrowserScene(request.document, page, fontCss);
     const wanted = request.slideIds ? new Set(request.slideIds) : undefined;
     const slides = scene.slides.filter((slide) => !wanted || wanted.has(slide.slideId));
 
@@ -357,7 +362,7 @@ export async function render(
 
     for (const slide of slides) {
       if (sceneUsedEstimatedMetrics(slide)) metricsEstimated = true;
-      const html = slideHtml(slide, request.atTimeMs ?? "final", warnings, library.resolve);
+      const html = slideHtml(slide, request.atTimeMs ?? "final", warnings, library.resolve, fontCss);
       await page.setContent(html, { waitUntil: "load" });
       undecodable.push(...(await settle(page)));
       const bytes = await page.screenshot({
@@ -394,16 +399,17 @@ export function slideHtml(
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
+  fontCss = "",
 ): string {
   const markup = renderToStaticMarkup(
     // `mode="export"` excludes editor chrome structurally — the subtree is never
     // mounted, so no CSS override can put a selection handle in a customer's PDF.
-    createElement(SlideView, { scene: slide, mode: "export" as const, resolveAssetUrl }),
+    createElement(SlideView, { scene: withoutFaces(slide), mode: "export" as const, resolveAssetUrl }),
   );
 
   return (
     "<!doctype html><meta charset=\"utf-8\">" +
-    `<style>${pageStyles(slide)}</style>` +
+    `<style>${fontCss}${pageStyles(slide)}</style>` +
     `<body>${markup}${motionStyles(slide, atTime, warnings)}</body>`
   );
 }
@@ -415,10 +421,21 @@ function pageStyles(slide: SlideScene): string {
     // blank page, and an exact size plus overflow:hidden is the fix.
     `@page{size:${slide.width / 96}in ${slide.height / 96}in;margin:0}` +
     "body>*{overflow:hidden}" +
-    // No web fonts. They load asynchronously and would make two renders of the
-    // same slide differ; the curated families are installed on the render host.
-    "*{font-family:Inter,ui-sans-serif,system-ui,sans-serif}"
+    // The default for anything with no family of its own. The page's faces are
+    // declared in its head from `data:` URLs (`fonts.ts`) and loaded before the
+    // capture (`settle`), so two renders of one slide draw the same glyphs.
+    '*{font-family:"Inter Variable",Inter,ui-sans-serif,system-ui,sans-serif}'
   );
+}
+
+/**
+ * A slide without its `@font-face` rules: the page declares the deck's faces
+ * once in its head, and `SlideView` would otherwise repeat them per slide.
+ */
+function withoutFaces(slide: SlideScene): SlideScene {
+  if (!slide.fontFaces) return slide;
+  const { fontFaces: _faces, ...rest } = slide;
+  return rest;
 }
 
 /**
@@ -503,8 +520,9 @@ export async function renderPdf(
 ): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
   const library = new AssetLibrary(assets);
   return pool.withPage(1, async (page) => {
-    const scene = await buildBrowserScene(deck, page);
-    return renderPdfScene(scene, slideIds, atTime, page, library);
+    const fontCss = await pageFontCss(deck, library);
+    const scene = await buildBrowserScene(deck, page, fontCss);
+    return renderPdfScene(scene, slideIds, atTime, page, library, fontCss);
   });
 }
 
@@ -515,12 +533,13 @@ export async function renderPdfScene(
   atTime: number | "final" | "initial",
   page: RenderPage,
   library: AssetLibrary = new AssetLibrary(),
+  fontCss = "",
 ): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
   const wanted = new Set(slideIds);
   const slides = scene.slides.filter((slide) => wanted.has(slide.slideId));
   const warnings: ExportWarning[] = [];
 
-  await page.setContent(deckHtml(slides, atTime, warnings, library.resolve), {
+  await page.setContent(deckHtml(slides, atTime, warnings, library.resolve, fontCss), {
     waitUntil: "load",
   });
 
@@ -549,11 +568,12 @@ export function deckHtml(
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
+  fontCss = "",
 ): string {
   const pages = slides
     .map((slide) => {
       const markup = renderToStaticMarkup(
-        createElement(SlideView, { scene: slide, mode: "export" as const, resolveAssetUrl }),
+        createElement(SlideView, { scene: withoutFaces(slide), mode: "export" as const, resolveAssetUrl }),
       );
       return (
         `<section class="deckastra-page" style="width:${slide.width}px;height:${slide.height}px">` +
@@ -566,7 +586,7 @@ export function deckHtml(
 
   return (
     '<!doctype html><meta charset="utf-8">' +
-    `<style>${pageStyles(first ?? ({ width: 1920, height: 1080 } as SlideScene))}` +
+    `<style>${fontCss}${pageStyles(first ?? ({ width: 1920, height: 1080 } as SlideScene))}` +
     // `break-after: page` on every section but the last. A trailing break is
     // doc 04 §34.3's "extra blank page" — one empty sheet at the end of every
     // export, which looks like a mistake because it is one.

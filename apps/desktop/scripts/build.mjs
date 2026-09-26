@@ -1,4 +1,5 @@
-import { rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { recordBundledPackages } from "./bundled-packages.mjs";
 import { fileURLToPath } from "node:url";
@@ -155,6 +156,33 @@ const measurer = await esbuild({
   target: "es2022",
   logLevel: "info",
 });
+
+// The bundled fonts, for the exporter's render page (`apps/worker/src/fonts.ts`).
+// A packaged app has no node_modules, so the stylesheets and their Latin files
+// are copied beside the exporter, laid out as the package paths the library
+// names; `DECKASTRA_FONTS_DIR` points there. The list is read from the library
+// itself rather than restated, so a font added there is shipped here.
+const library = await readFile(join(root, "..", "..", "packages", "renderer", "src", "font-library.ts"), "utf8");
+const stylesheets = [...library.matchAll(/css: "([^"]+)"/g)].map((match) => match[1]);
+if (stylesheets.length === 0) {
+  console.error("desktop: no bundled fonts found in font-library.ts");
+  process.exit(1);
+}
+const requireFrom = createRequire(join(root, "..", "..", "packages", "editor-ui", "package.json"));
+for (const css of stylesheets) {
+  const source = requireFrom.resolve(css);
+  const target = join(out, "worker", "fonts", css);
+  await mkdir(join(dirname(target), "files"), { recursive: true });
+  await copyFile(source, target);
+  for (const file of await readdir(join(dirname(source), "files"))) {
+    if (/-(latin|latin-ext)-/.test(file) && file.endsWith(".woff2")) {
+      await copyFile(join(dirname(source), "files", file), join(dirname(target), "files", file));
+    }
+  }
+  // The licence travels with the files it covers.
+  await copyFile(join(dirname(source), "LICENSE"), join(dirname(target), "LICENSE")).catch(() => undefined);
+}
+console.log(`desktop: ${stylesheets.length} bundled fonts copied for the exporter`);
 
 const renderer = await vite({ root, configFile: join(root, "vite.config.ts") });
 

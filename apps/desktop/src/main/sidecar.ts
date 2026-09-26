@@ -88,6 +88,7 @@ function exporterEnvironment(): NodeJS.ProcessEnv {
     // Built alongside the exporter, because the packaged app has neither the
     // measurer's TypeScript source nor esbuild to compile it with.
     DECKASTRA_MEASURER_JS: join(worker, "measurement-browser.js"),
+    DECKASTRA_FONTS_DIR: join(worker, "fonts"),
     // Render with this app's own Chromium instead of Playwright's, which a
     // packaged build does not carry. The exporter starts this same binary in
     // render-host mode (`render-host.ts`) and drives it over IPC — no debugging

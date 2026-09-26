@@ -1,8 +1,13 @@
 import type { PatchOperation, PresentationDocument, RichTextDocument, TextElement } from "@deckastra/presentation-schema";
 import { setPropertyDeep } from "@deckastra/presentation-core";
+import { useWorkspaceClient } from "@deckastra/workspace-client/react";
+import { useState } from "react";
+
+import { uploadFont } from "../../lib/font-file";
 import { applyPlainTextEdit, richTextToPlain } from "@deckastra/editor";
 
 import { NumberField, Section, Segmented, Select } from "../../ui";
+import { FontPicker, previewFamily } from "./FontPicker";
 import { ColorField, Hint } from "./controls";
 
 /**
@@ -30,19 +35,6 @@ const STYLE_LABELS: Record<(typeof TEXT_STYLES)[number], string> = {
   metric: "Big number",
 };
 
-const FAMILIES: { value: string; label: string }[] = [
-  { value: "token:typography.h1.fontFamily", label: "Theme heading font" },
-  { value: "token:typography.body.fontFamily", label: "Theme body font" },
-  { value: "token:typography.code.fontFamily", label: "Theme code font" },
-  { value: "Inter", label: "Inter" },
-  { value: "Jost", label: "Jost" },
-  { value: "Arial", label: "Arial" },
-  { value: "Helvetica", label: "Helvetica" },
-  { value: "Georgia", label: "Georgia" },
-  { value: "Times New Roman", label: "Times New Roman" },
-  { value: "Verdana", label: "Verdana" },
-  { value: "Courier New", label: "Courier New" },
-];
 
 const WEIGHTS = [300, 400, 500, 600, 700, 800, 900];
 const WEIGHT_LABELS: Record<number, string> = {
@@ -60,14 +52,31 @@ export function TextSection({
   edit: Edit;
   disabled: boolean;
 }) {
+  const client = useWorkspaceClient();
+  const [fontMessage, setFontMessage] = useState<string | undefined>();
   const typography = element.typography;
+  /** Upload a font and use it here, as one patch: the face is declared and used together. */
+  const onUploadFont = async (file: File) => {
+    setFontMessage("Uploading font…");
+    try {
+      const uploaded = await uploadFont(client, { document, file });
+      edit(
+        [...uploaded.operations, ...setPropertyDeep(document, element.id, "typography.fontFamily", uploaded.family)],
+        "Upload font",
+      );
+      setFontMessage(
+        uploaded.fromFile
+          ? `Using ${uploaded.family}.`
+          : `Using ${uploaded.family} (named from the file, which does not say its family).`,
+      );
+    } catch (error) {
+      setFontMessage(error instanceof Error ? error.message : "That font could not be uploaded.");
+    }
+  };
   const set = (property: string, value: unknown, label: string) =>
     edit(setPropertyDeep(document, element.id, property, value), label, `inspector:${element.id}:${property}`);
 
   const family = typography.fontFamily;
-  const families = FAMILIES.some((option) => option.value === family)
-    ? FAMILIES
-    : [{ value: family, label: family.startsWith("token:") ? family.replace(/^token:typography\.|\.fontFamily$/g, "") : family }, ...FAMILIES];
   const weight = typography.fontWeight ?? 400;
   const align = element.paragraph?.align ?? "left";
   const themeTypography = document.theme.typography as Record<string, { fontSize?: number; fontWeight?: number; lineHeight?: number; letterSpacing?: number; textTransform?: string } | undefined>;
@@ -95,37 +104,53 @@ export function TextSection({
       />
       <Hint>Formatting is kept. Double-click the text on the slide to make words bold or italic, or to start a list.</Hint>
 
-      <Select
-        label="Style"
-        value=""
-        options={[
-          { value: "", label: "Apply a text style…" },
-          ...TEXT_STYLES.filter((name) => themeTypography[name]).map((name) => ({ value: name, label: STYLE_LABELS[name] })),
-        ]}
-        disabled={disabled}
-        data-testid="text-style"
-        onChange={(name) => {
-          const token = themeTypography[name];
-          if (!name || !token) return;
-          // The theme's style for the role, carried as the element's own values
-          // (with the family as a token, so it still re-themes). The colour is
-          // the author's and is left alone.
-          const next: Record<string, unknown> = {
-            ...typography,
-            fontFamily: `token:typography.${name}.fontFamily`,
-            ...(token.fontSize ? { fontSize: token.fontSize } : {}),
-            ...(token.fontWeight ? { fontWeight: token.fontWeight } : {}),
-            ...(token.lineHeight ? { lineHeight: token.lineHeight } : {}),
-          };
-          if (token.letterSpacing !== undefined) next.letterSpacing = token.letterSpacing;
-          else delete next.letterSpacing;
-          if (token.textTransform) next.textTransform = token.textTransform;
-          else delete next.textTransform;
-          edit(setPropertyDeep(document, element.id, "typography", next), `Apply ${STYLE_LABELS[name as keyof typeof STYLE_LABELS]} style`);
-        }}
-      />
+      <span className="dk-label">Text style</span>
+      <div className="dk-textstyles" role="group" aria-label="Text style" data-testid="text-style">
+        {TEXT_STYLES.filter((name) => themeTypography[name]).map((name) => {
+          const token = themeTypography[name]!;
+          const current =
+            typography.fontFamily === `token:typography.${name}.fontFamily` && typography.fontSize === token.fontSize;
+          const face = (token as { fontFamily?: string }).fontFamily ?? "";
+          return (
+            <button
+              key={name}
+              type="button"
+              className="dk-textstyle"
+              aria-pressed={current}
+              disabled={disabled}
+              title={`${STYLE_LABELS[name]}: ${token.fontSize ?? ""}px`}
+              style={{
+                fontFamily: previewFamily(face),
+                fontWeight: token.fontWeight,
+                fontSize: Math.max(12, Math.min(22, (token.fontSize ?? 24) / 3.2)),
+                textTransform: token.textTransform as never,
+              }}
+              onClick={() => {
+                // The theme's style for the role, carried as the element's own
+                // values (with the family as a token, so it still re-themes).
+                // The colour is the author's and is left alone.
+                const next: Record<string, unknown> = {
+                  ...typography,
+                  fontFamily: `token:typography.${name}.fontFamily`,
+                  ...(token.fontSize ? { fontSize: token.fontSize } : {}),
+                  ...(token.fontWeight ? { fontWeight: token.fontWeight } : {}),
+                  ...(token.lineHeight ? { lineHeight: token.lineHeight } : {}),
+                };
+                if (token.letterSpacing !== undefined) next.letterSpacing = token.letterSpacing;
+                else delete next.letterSpacing;
+                if (token.textTransform) next.textTransform = token.textTransform;
+                else delete next.textTransform;
+                edit(setPropertyDeep(document, element.id, "typography", next), `Apply ${STYLE_LABELS[name]} style`);
+              }}
+            >
+              {STYLE_LABELS[name]}
+            </button>
+          );
+        })}
+      </div>
 
-      <Select label="Font" value={family} options={families} disabled={disabled} data-testid="font-family" onChange={(v) => set("typography.fontFamily", v, "Change font")} />
+      <FontPicker label="Font" value={family} document={document} disabled={disabled} data-testid="font-family" onChange={(v) => set("typography.fontFamily", v, "Change font")} onUpload={(file) => void onUploadFont(file)} />
+      {fontMessage ? <span className="dk-field__hint" role="status" data-testid="font-upload-status">{fontMessage}</span> : null}
       <div className="dk-grid2">
         <Select
           label="Weight"

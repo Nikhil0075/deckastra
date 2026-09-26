@@ -247,6 +247,29 @@ def test_refuses_something_stored_as_a_document(store):
     assert "application/pdf" in supplied[0]["problem"]
 
 
+def test_supplies_a_font_the_deck_uploaded(store):
+    """A deck's uploaded face travels as pictures do (Design tab review, 2026-09-26).
+
+    The manifest entry is what cites a font — text names it by family, not by
+    id — and the bytes must reach a render host that cannot fetch them.
+    """
+    font = b"wOF2" + bytes(60)
+    with Session(store) as session:
+        workspace_id, presentation_id = workspace_with_deck(session, name="ours")
+        asset = stored_image(session, workspace_id=workspace_id, data=font, content_type="font/woff2")
+        session.commit()
+        document = {
+            "id": new_id("doc"),
+            "assets": [{"id": asset.id, "type": "font", "storageKey": asset.storage_key, "fontFamily": "Acme"}],
+            "slides": [],
+        }
+        supplied = asset_service.inline_for_render(session, presentation_id=presentation_id, document=document)
+
+    assert supplied[0]["mimeType"] == "font/woff2"
+    assert base64.b64decode(supplied[0]["data"]) == font
+    assert "problem" not in supplied[0]
+
+
 def test_answers_the_same_payload_twice(store):
     # Doc 04 §32.3 wants a byte-stable artifact, so "which image was dropped once
     # the budget ran out" must not depend on the order rows came back in.

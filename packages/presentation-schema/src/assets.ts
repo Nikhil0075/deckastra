@@ -56,6 +56,14 @@ export const AssetReferenceSchema = z.looseObject({
    *  full-resolution originals in export (doc 04 §19.3). */
   variants: z.array(AssetVariantSchema).optional(),
   license: AssetLicenseSchema.optional(),
+  /**
+   * For a font: the family a deck names to use it, read from the file itself
+   * where it could be, and the weight and style it covers ("100 900" for a
+   * variable font). The renderer declares it with `@font-face` under this name.
+   */
+  fontFamily: z.string().min(1).max(120).optional(),
+  fontWeight: z.union([z.number().int().min(1).max(1000), z.string().regex(/^\d{1,4}( \d{1,4})?$/)]).optional(),
+  fontStyle: z.enum(["normal", "italic"]).optional(),
   createdBy: z.enum(["upload", "generated", "import", "integration"]).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });

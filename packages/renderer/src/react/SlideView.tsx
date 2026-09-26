@@ -97,6 +97,8 @@ export function SlideView({
         />
       ) : null}
 
+      {scene.fontFaces?.length ? <FontFaces faces={scene.fontFaces} resolveAssetUrl={resolveAssetUrl} /> : null}
+
       {nodes.map((node) => (
         <SceneNodeView
           key={node.id}
@@ -207,4 +209,34 @@ export function ScaledSlide({ width, scene, style, ...rest }: ScaledSlideProps):
       </div>
     </div>
   );
+}
+
+/**
+ * The deck's own fonts, declared where the slide is drawn.
+ *
+ * Resolved through the same `resolveAssetUrl` as pictures, so the editor gets
+ * an authenticated URL and an export gets the bytes as a `data:` URL, and the
+ * render host still fetches nothing. A face whose bytes did not arrive is
+ * skipped: the text then draws in its fallback, which the export report names.
+ */
+function FontFaces({
+  faces,
+  resolveAssetUrl,
+}: {
+  faces: NonNullable<SlideScene["fontFaces"]>;
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+}): ReactNode {
+  const rules = faces
+    .map((face) => {
+      const url = resolveAssetUrl?.(face.assetId, face.storageKey);
+      if (!url) return "";
+      const family = face.family.replace(/["\\\n]/g, "");
+      return (
+        `@font-face{font-family:"${family}";src:url("${url.replace(/["\\]/g, "")}");` +
+        `font-weight:${/^\d{1,4}( \d{1,4})?$/.test(face.weight ?? "") ? face.weight : "100 900"};` +
+        `font-style:${face.style === "italic" ? "italic" : "normal"};font-display:block}`
+      );
+    })
+    .join("");
+  return rules ? <style data-deckastra-fonts="">{rules}</style> : null;
 }

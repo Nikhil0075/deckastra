@@ -38,6 +38,26 @@ export interface CuratedFont {
   /** Weights the renderer will request. Asking for a weight a face lacks makes
    *  the browser synthesise it, which looks wrong and measures wrong. */
   weights: number[];
+  /**
+   * The face this product ships for the family, when it ships one: the name
+   * its bundled `@font-face` registers under. Fontsource's variable builds
+   * register as "Inter Variable", not "Inter", so a deck asking for "Inter"
+   * matched only an installed copy and fell back everywhere else, the bundled
+   * one sitting unused a few bytes away.
+   */
+  face?: string;
+}
+
+function bundled(
+  family: string,
+  category: FontCategory,
+  averageAdvance: number,
+  capHeight: number,
+  lineHeight: number,
+  fallbacks: string[],
+  face?: string,
+): CuratedFont {
+  return { family, category, metrics: { averageAdvance, capHeight, lineHeight }, fallbacks, weights: [400, 500, 600, 700], ...(face ? { face } : {}) };
 }
 
 /**
@@ -56,7 +76,24 @@ const CURATED: CuratedFont[] = [
     metrics: { averageAdvance: 0.515, capHeight: 0.727, lineHeight: 1.35 },
     fallbacks: ["Helvetica Neue", "Arial", "Roboto", "Segoe UI"],
     weights: [400, 500, 600, 700],
+    face: "Inter Variable",
   },
+  // The bundled library (Design tab review, 2026-09-26). Metrics are estimates
+  // for the Node-side text estimator; a browser measures the real face.
+  bundled("Jost", "sans", 0.5, 0.7, 1.35, ["Futura", "Inter", "Arial"], "Jost Variable"),
+  bundled("Manrope", "sans", 0.53, 0.72, 1.37, ["Inter", "Helvetica Neue", "Arial"], "Manrope Variable"),
+  bundled("DM Sans", "sans", 0.52, 0.7, 1.3, ["Inter", "Helvetica Neue", "Arial"], "DM Sans Variable"),
+  bundled("Work Sans", "sans", 0.54, 0.66, 1.35, ["Inter", "Helvetica Neue", "Arial"], "Work Sans Variable"),
+  bundled("Space Grotesk", "sans", 0.54, 0.7, 1.28, ["Inter", "Arial"], "Space Grotesk Variable"),
+  bundled("Nunito", "sans", 0.51, 0.705, 1.36, ["Inter", "Arial"], "Nunito Variable"),
+  bundled("Bebas Neue", "sans", 0.38, 0.7, 1.2, ["Impact", "Arial Narrow", "Arial"]),
+  bundled("Archivo Black", "sans", 0.6, 0.72, 1.1, ["Arial Black", "Inter", "Arial"]),
+  bundled("Caveat", "sans", 0.42, 0.62, 1.26, ["Segoe Print", "Comic Sans MS"], "Caveat Variable"),
+  bundled("Playfair Display", "serif", 0.5, 0.71, 1.33, ["Georgia", "Times New Roman"], "Playfair Display Variable"),
+  bundled("Lora", "serif", 0.52, 0.7, 1.28, ["Georgia", "Times New Roman"], "Lora Variable"),
+  bundled("Source Serif 4", "serif", 0.5, 0.67, 1.25, ["Georgia", "Times New Roman"], "Source Serif 4 Variable"),
+  bundled("Fraunces", "serif", 0.52, 0.7, 1.23, ["Georgia", "Times New Roman"], "Fraunces Variable"),
+  bundled("IBM Plex Mono", "mono", 0.6, 0.7, 1.3, ["JetBrains Mono", "Consolas", "Menlo"]),
   {
     family: "Söhne",
     category: "sans",
@@ -105,6 +142,7 @@ const CURATED: CuratedFont[] = [
     metrics: { averageAdvance: 0.6, capHeight: 0.73, lineHeight: 1.5 },
     fallbacks: ["SF Mono", "Menlo", "Consolas", "Liberation Mono"],
     weights: [400, 500, 700],
+    face: "JetBrains Mono Variable",
   },
   {
     family: "Consolas",
@@ -182,7 +220,9 @@ export function resolveFontStack(family: string | undefined): string {
 
   const quote = (name: string): string => (/[^A-Za-z0-9-]/.test(name) ? `"${name}"` : name);
 
-  return [quote(requested), ...chain.map(quote), GENERIC[category]].join(", ");
+  // An installed copy first, then the one this product ships, then fallbacks.
+  const face = known?.face ? [known.face] : [];
+  return [quote(requested), ...face.map(quote), ...chain.map(quote), GENERIC[category]].join(", ");
 }
 
 // ------------------------------------------------------------- availability
@@ -220,7 +260,9 @@ export function detectFontAvailability(): FontAvailability {
   const available = new Set<string>();
   for (const font of CURATED) {
     try {
-      if (fonts.check(`16px "${font.family}"`)) available.add(font.family);
+      if (fonts.check(`16px "${font.family}"`) || (font.face !== undefined && fonts.check(`16px "${font.face}"`))) {
+        available.add(font.family);
+      }
     } catch {
       // A malformed shorthand throws in some engines; treat it as unavailable
       // rather than aborting the whole probe.

@@ -19,6 +19,23 @@
 
 @import "@fontsource-variable/inter/wght.css";
 @import "@fontsource-variable/jost/wght.css";
+/* The bundled slide font library (renderer/src/font-library.ts). Kept in step
+   with that list by a test, because a family offered in the picker and missing
+   here would draw in a fallback face while claiming to be the real one. */
+@import "@fontsource-variable/manrope/wght.css";
+@import "@fontsource-variable/dm-sans/wght.css";
+@import "@fontsource-variable/work-sans/wght.css";
+@import "@fontsource-variable/nunito/wght.css";
+@import "@fontsource-variable/playfair-display/wght.css";
+@import "@fontsource-variable/lora/wght.css";
+@import "@fontsource-variable/source-serif-4/wght.css";
+@import "@fontsource-variable/fraunces/wght.css";
+@import "@fontsource-variable/space-grotesk/wght.css";
+@import "@fontsource/bebas-neue/index.css";
+@import "@fontsource/archivo-black/index.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+@import "@fontsource/ibm-plex-mono/index.css";
+@import "@fontsource-variable/caveat/wght.css";
 @import "./styles/tokens.css";
 @import "./styles/components.css";
 @import "./styles/shell.css";

@@ -66,6 +66,12 @@ export const MAX_INLINE_TOTAL_BYTES = 32 * 1024 * 1024;
 
 /** `data:` is the only scheme `render-page.ts` lets through, so images must be it. */
 const IMAGE_TYPE = /^image\/[a-z0-9][a-z0-9.+-]*$/;
+/**
+ * A deck's uploaded fonts travel the same way (Design tab review, 2026-09-26):
+ * the render page declares them with `@font-face` from a `data:` URL, because
+ * it can fetch nothing else. Only the formats Chromium draws.
+ */
+const FONT_TYPE = /^(font\/(ttf|otf|woff|woff2|sfnt)|application\/font-woff)$/;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /** Bytes a base64 string decodes to, without decoding it. */
@@ -118,8 +124,8 @@ export class AssetLibrary {
       }
 
       const type = (asset.mimeType ?? "").split(";", 1)[0]!.trim().toLowerCase();
-      if (!IMAGE_TYPE.test(type)) {
-        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image`);
+      if (!IMAGE_TYPE.test(type) && !FONT_TYPE.test(type)) {
+        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image or a font`);
         continue;
       }
 
@@ -177,6 +183,9 @@ export class AssetLibrary {
     for (const [assetId, entry] of this.byId) {
       const comma = entry.url.indexOf(",");
       const header = entry.url.slice("data:".length, entry.url.indexOf(";base64"));
+      // A font is not a picture; PowerPoint cannot embed one from here and the
+      // PPTX report says so rather than dropping it into ppt/media.
+      if (!header.startsWith("image/")) continue;
       byId.set(assetId, {
         bytes: base64Bytes(entry.url.slice(comma + 1)),
         contentType: header,
@@ -221,6 +230,19 @@ export class AssetLibrary {
     };
 
     for (const slide of slides) {
+      for (const face of slide.fontFaces ?? []) {
+        if (reported.has(face.assetId) || (this.byId.has(face.assetId) && !failed.has(face.assetId))) continue;
+        reported.add(face.assetId);
+        warnings.push({
+          severity: "warning",
+          slideId: slide.slideId,
+          feature: `font:${face.assetId}`,
+          action: "approximated",
+          message: `The uploaded font "${face.family}" could not be used because ${
+            this.refused.get(face.assetId) ?? "it was not available to the renderer"
+          }. Text set in it is drawn in a fallback font.`,
+        });
+      }
       for (const [assetId, elementId] of neededAssets(slide)) {
         if (this.byId.has(assetId) && !failed.has(assetId)) continue;
         const why =

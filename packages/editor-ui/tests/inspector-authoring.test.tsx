@@ -87,7 +87,7 @@ it("styles a text box's own font, weight, colour and alignment, without touching
 
 it("applies a text style preset as the element's own values", async () => {
   const { current } = await mountWith("text");
-  choose(/^Style/, "Title");
+  fireEvent.click(within(screen.getByTestId("text-style")).getByRole("button", { name: "Title" }));
   const typography = (current() as TextElement).typography;
   expect(typography.fontFamily).toBe("token:typography.h1.fontFamily");
   expect(typography.fontSize).toBe((editor.document.theme.typography as { h1: { fontSize: number } }).h1.fontSize);

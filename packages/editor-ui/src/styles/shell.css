@@ -2259,3 +2259,69 @@
   flex-direction: column;
   gap: var(--dk-space-2);
 }
+
+/* The font picker. Each option draws in its own face (set inline). */
+.dk-fontpicker__trigger {
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+.dk-fontpicker {
+  width: 260px;
+}
+.dk-fontpicker__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: var(--dk-space-2) 0;
+}
+.dk-fontpicker__group {
+  padding: var(--dk-space-2) var(--dk-space-2) var(--dk-space-1);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dk-ink-muted);
+}
+.dk-fontpicker__option {
+  padding: 6px var(--dk-space-2);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-fontpicker__option:hover {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-fontpicker__option--selected {
+  background: var(--dk-sunk);
+}
+
+/* Text style tiles: each drawn in the theme's own style for that role. */
+.dk-textstyles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dk-space-1);
+  margin-bottom: var(--dk-space-2);
+}
+.dk-textstyle {
+  min-height: 44px;
+  padding: var(--dk-space-1);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: transparent;
+  color: inherit;
+  line-height: 1.1;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.dk-textstyle[aria-pressed="true"] {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: -2px;
+}

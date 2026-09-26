@@ -232,7 +232,9 @@ def inline_for_render(
 
         entry: dict[str, Any] = {"assetId": row.id, "storageKey": row.storage_key}
         kind = (row.content_type or "").split(";", 1)[0].strip().lower()
-        if not kind.startswith("image/"):
+        # Fonts travel the same way as pictures: a deck's uploaded face has to
+        # reach a render host that cannot fetch it (Design tab review, 2026-09-26).
+        if not kind.startswith("image/") and not _is_font(kind):
             entry["problem"] = f"it is stored as {kind or 'an unknown type'}, which this renderer cannot embed"
         elif row.bytes > MAX_RENDER_ASSET_BYTES:
             entry["problem"] = (
@@ -270,7 +272,7 @@ def inline_for_render(
                     )
                 else:
                     mime = (stored_type or kind).split(";", 1)[0].strip().lower()
-                    frame = representative_frame(data) if still else None
+                    frame = representative_frame(data) if still and mime.startswith("image/") else None
                     if frame is not None:
                         data, mime = frame, "image/png"
                         charge = max(charge, len(data))
@@ -281,6 +283,13 @@ def inline_for_render(
         supplied.append(entry)
 
     return supplied
+
+
+FONT_TYPES = ("font/ttf", "font/otf", "font/woff", "font/woff2", "font/sfnt", "application/font-woff")
+
+
+def _is_font(content_type: str) -> bool:
+    return content_type in FONT_TYPES
 
 
 #: Frames looked at when choosing a still. Enough to find the one that shows
