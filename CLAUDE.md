@@ -700,6 +700,10 @@ DECKASTRA_SMOKE_FIXTURES=packages/presentation-schema/fixtures DECKASTRA_SMOKE_B
 # issued. Delete userData/agent-access.json first to start where a user does.
 DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=consent npx electron .
 
+# The Design tab: panels, a gradient background, a preset and its undo, an
+# uploaded font, an equation, and both exports written beside the record.
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=design npx electron .
+
 # Item 14: back up with a note still in its field, change the deck, restore, and
 # find the earlier deck, the note and the recovery journal all back.
 DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=backup npx electron .
@@ -3719,6 +3723,79 @@ Status per item is in `docs/MANUAL_AUTHORING_AND_PRE_RELEASE_GAP_PLAN_2026_09_21
 - **Subprocess pipes are UTF-8 by declaration.** `text=True` alone is the locale code page on Windows (cp1252), which turned every em dash from the exporter into "â€”".
 - **Windows that are not editors** (the notices window) are excluded by `isAuxiliaryWindow` from menu-command targets and the close barrier.
 - **Test isolation:** several test files install a fake `navigator.locks` that outlives them in a single-process run. A test that depends on lock behaviour must declare it.
+
+### The Design tab (2026-09-26)
+
+Panels, backgrounds, fills and effects, a theme gallery, theme import, fonts
+and equations. Rules that are easy to undo:
+
+- **Which panels are showing is editor state** (`lib/panels.ts`,
+  `localStorage` key `deckastra.panels`). It never reaches a document. Focus
+  mode is "all hidden", not a separate mode. The desktop View menu sends
+  `panel-*` command names, like every other menu item.
+- **A slide with no background draws the theme's background**, not
+  transparent. Transparent showed black in present mode and the chrome in the
+  editor, so a light theme never reached such a slide.
+- **A gradient is carried structured as well as CSS** (`ResolvedGradient` on a
+  node's style, `gradientStops` on a slide background). PowerPoint writes a
+  native `a:gradFill` and cannot read CSS. A background that had only the CSS
+  string arrived in PowerPoint flat. The `design` step found this through
+  `python-pptx`.
+- **Theme presets are one definition** (`presentation-schema/src/theme-presets.ts`).
+  They are emitted to `generated/theme-presets.json` under the drift gate, and
+  that file is what Python reads. Each preset passes AA contrast in both
+  languages. A preset's style kit (card fill, stroke, shadow, blur, background)
+  is applied only when "restyle" is ticked, in the same patch as the theme, so
+  one Undo takes both.
+- **PowerPoint theme import reads one part and executes nothing**
+  (`office_theme.py`). Size, entry count and part size are capped, and a
+  `DOCTYPE` is refused. `lt1` is always the background and `dk1` the text,
+  regardless of which is darker. Guessing roles from luminance swapped them on
+  dark templates.
+- **Sixteen OFL families ship with the app** (`renderer/src/font-library.ts`).
+  That one list is read by the editor stylesheet, the font picker, the curated
+  metrics and the exporter. A test holds all of them to it. Fontsource
+  registers faces as "X Variable", so `resolveFontStack` inserts the face name
+  after the family. A stack that named only the family fell through to the
+  fallback.
+- **An uploaded font is declared in the deck's asset manifest and used in one
+  patch.** The family is read from the file's `name` table where the file is an
+  uncompressed sfnt, and from the file name otherwise. `SlideView` declares
+  uploaded faces through `resolveAssetUrl`, exactly like pictures.
+- **The export page declares every face once, as `data:` URLs**
+  (`apps/worker/src/fonts.ts`). This covers the bundled families the deck
+  names (Latin subsets), its uploaded faces, and KaTeX's when there is an
+  equation. Every declared face is loaded before measuring and before
+  capture: a face loads only when used, and `fonts.ready` resolves before the
+  first layout. A packaged app reads the copied stylesheets from
+  `DECKASTRA_FONTS_DIR`. PowerPoint names fonts without carrying them, and the
+  report says so per family.
+- **An equation stores LaTeX, never markup.** KaTeX typesets it in the scene
+  build with `trust: false` and bounded expansion, and emits MathML for screen
+  readers. The React layer only inserts the result. PowerPoint cannot read
+  LaTeX, so the exporter captures each equation alone as a transparent PNG
+  (`omitBackground`, which both render backends now support). It is embedded
+  with the LaTeX as its description and reported `rasterized`. The starter
+  carries no alt text: a description written at insertion goes stale when the
+  formula is retyped.
+
+The `design` smoke step works on a deck of its own:
+
+- It hides and shows every panel through the menu, and uses focus mode.
+- It sets a gradient background.
+- It applies Glassmorphism with restyle, then undoes it.
+- It uploads one of the app's own font files and uses it.
+- It inserts an equation and retypes it.
+- It exports both formats and writes `design.pdf` and `design.pptx` beside the
+  record, for `pypdf` and `python-pptx`.
+
+Measured 2026-09-26, development build:
+
+- **The steps:** `design` and `authoring` are green with no console errors.
+- **The PDF:** 1 page at 1440×810pt, with the title and the equation as
+  extractable text and KaTeX's face embedded.
+- **The PPTX:** the uploaded family named on the title, a gradient `p:bg`, and
+  the equation as a PNG picture described by its LaTeX.
 
 ### Validation is a product surface
 

@@ -227,6 +227,7 @@ export interface TextBlockPayload {
 export interface SceneBackground {
   color?: string;
   gradient?: string;
+  gradientStops?: ResolvedGradient;
   assetId?: string;
   overlay?: string;
   blur?: number;
@@ -415,17 +416,8 @@ function resolveStyle(
   if (!style) return out;
 
   out.fill = paintToCss(theme, style.fill);
-  const fill = style.fill as { type?: string; angle?: number; stops?: { offset: number; color: unknown }[] } | undefined;
-  if ((fill?.type === "linearGradient" || fill?.type === "radialGradient") && fill.stops?.length) {
-    out.gradient = {
-      kind: fill.type === "linearGradient" ? "linear" : "radial",
-      angle: fill.angle ?? 180,
-      stops: fill.stops.map((stop) => ({
-        offset: stop.offset,
-        color: resolveValue<string>(theme, stop.color) ?? "transparent",
-      })),
-    };
-  }
+  const gradient = resolveGradient(theme, style.fill);
+  if (gradient) out.gradient = gradient;
 
   if (style.stroke) {
     const color = paintToCss(theme, style.stroke.paint);
@@ -1143,12 +1135,30 @@ function buildBackground(
   const paint = paintToCss(theme, background.paint);
   const isGradient = paint?.includes("gradient");
 
+  const stops = resolveGradient(theme, background.paint);
   return {
     color: isGradient ? undefined : paint,
     gradient: isGradient ? paint : undefined,
+    // The same gradient with its stops, because PowerPoint writes a native one
+    // and cannot read CSS. Without it a gradient slide arrived there flat.
+    ...(stops ? { gradientStops: stops } : {}),
     assetId: background.assetId,
     overlay: paintToCss(theme, background.overlay),
     blur: background.blur,
+  };
+}
+
+/** A gradient paint with its stops resolved, for an adapter that writes a native one. */
+function resolveGradient(theme: ResolvedTheme, paint: unknown): ResolvedGradient | undefined {
+  const fill = paint as { type?: string; angle?: number; stops?: { offset: number; color: unknown }[] } | undefined;
+  if ((fill?.type !== "linearGradient" && fill?.type !== "radialGradient") || !fill.stops?.length) return undefined;
+  return {
+    kind: fill.type === "linearGradient" ? "linear" : "radial",
+    angle: fill.angle ?? 180,
+    stops: fill.stops.map((stop) => ({
+      offset: stop.offset,
+      color: resolveValue<string>(theme, stop.color) ?? "transparent",
+    })),
   };
 }
 

@@ -43,6 +43,7 @@ import {
   presentation,
   presentationRelationships,
   rootRelationships,
+  gradientBackground,
   imageBackground,
   slide as slidePart,
   slideLayout,
@@ -53,7 +54,7 @@ import {
   solidBackground,
   theme,
 } from "./parts";
-import { shapeFor, type ShapeContext } from "./shapes";
+import { gradientFill, shapeFor, type ShapeContext } from "./shapes";
 import { MediaRegistry } from "./media";
 import { timingFor, transitionFor } from "./timing";
 import { hex, unitsFor } from "./units";
@@ -312,7 +313,9 @@ function backgroundFor(
   media: MediaRegistry,
   ledger: DegradationLedger,
 ): string {
-  const colour = solidBackground(hex(scene.background?.color ?? palette.background));
+  const colour = scene.background?.gradientStops
+    ? gradientBackground(gradientFill(scene.background.gradientStops, 1))
+    : solidBackground(hex(scene.background?.color ?? palette.background));
   const assetId = scene.background?.assetId;
   if (!assetId) return colour;
 

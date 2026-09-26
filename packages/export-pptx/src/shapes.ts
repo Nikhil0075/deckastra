@@ -206,7 +206,7 @@ function colourAlpha(value: string): number {
  * 60000ths of a degree; CSS measures from pointing up. 90 in CSS is 0 here.
  * `scaled="0"` keeps the angle as given rather than stretching it with the box.
  */
-function gradientFill(gradient: NonNullable<SceneNode["resolvedStyle"]["gradient"]>, opacity: number): string {
+export function gradientFill(gradient: NonNullable<SceneNode["resolvedStyle"]["gradient"]>, opacity: number): string {
   const stops = gradient.stops
     .map((stop) => `<a:gs pos="${Math.round(Math.min(1, Math.max(0, stop.offset)) * 100_000)}">${colour(stop.color, opacity)}</a:gs>`)
     .join("");

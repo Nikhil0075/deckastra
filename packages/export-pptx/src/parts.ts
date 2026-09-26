@@ -208,6 +208,11 @@ export function slideRelationships(
  * the report saying so. `<a:blipFill>` with `stretch` is the background case:
  * the box is the slide, so there is no fit to honour.
  */
+/** A gradient background: the same `a:gradFill` a shape's gradient writes. */
+export function gradientBackground(fill: string): string {
+  return `<p:bg><p:bgPr>${fill}<a:effectLst/></p:bgPr></p:bg>`;
+}
+
 export function imageBackground(relationshipId: string): string {
   return (
     "<p:bg><p:bgPr>" +

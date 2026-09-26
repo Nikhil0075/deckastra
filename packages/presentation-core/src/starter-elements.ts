@@ -146,7 +146,7 @@ export function makeStarterElement(input: StarterElementInput): PresentationElem
       } as PresentationElement;
     case "equation":
       // A real formula rather than a placeholder, so the first thing on the
-      // slide shows what the element is for; the alt text says it in words.
+      // slide shows what the element is for.
       return {
         ...base,
         type: "equation",
@@ -155,7 +155,9 @@ export function makeStarterElement(input: StarterElementInput): PresentationElem
         // Display maths reads at heading size; the body size the element
         // otherwise inherits is set for paragraphs, not for a formula on its own.
         fontSize: 56,
-        altText: "The quadratic formula",
+        // No description: one written here goes stale the moment the formula is
+        // retyped, and a PowerPoint picture then describes maths it does not
+        // show. Without one, exports describe the equation by its LaTeX.
       } as PresentationElement;
   }
 }

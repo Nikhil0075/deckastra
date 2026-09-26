@@ -900,4 +900,19 @@ describe("fills and effects", () => {
     const features = result.report.warnings.filter((warning) => warning.elementId === "el_01JB8Z9K2QW4RN7F3XG5HTM900").map((w) => w.feature);
     expect(features).toEqual(expect.arrayContaining(["backdropFilter", "shadow"]));
   });
+
+  it("writes a gradient slide background as a native gradient, not the flat colour", () => {
+    // Found by the desktop `design` step: python-pptx read a SOLID background
+    // off a slide the editor showed as a gradient.
+    const document = structuredClone(fixture("technical-deck"));
+    document.slides[0]!.background = {
+      paint: { type: "linearGradient", angle: 180, stops: [{ offset: 0, color: "#112233" }, { offset: 1, color: "#445566" }] },
+    } as never;
+    const { bytes } = buildPptx(inputFor(document));
+    const xmlText = unzip(bytes).get("ppt/slides/slide1.xml")!;
+    const background = xmlText.slice(xmlText.indexOf("<p:bg>"), xmlText.indexOf("</p:bg>"));
+    expect(background).toMatch(/<a:gradFill[^>]*><a:gsLst><a:gs pos="0"><a:srgbClr val="112233"/);
+    expect(background).toMatch(/<a:gs pos="100000"><a:srgbClr val="445566"/);
+    expect(background).not.toContain("solidFill");
+  });
 });

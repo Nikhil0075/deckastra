@@ -59,6 +59,7 @@ export type SmokeStep =
   | "performance"
   | "intelligence"
   | "authoring"
+  | "design"
   | "handoff";
 
 /**
@@ -299,6 +300,8 @@ export async function runSmoke(
       await runHandoff(window, dir, record);
     } else if (current === "authoring") {
       await runAuthoring(window, dir, record);
+    } else if (current === "design") {
+      await runDesign(window, dir, record);
     } else if (current === "intelligence") {
       await runIntelligence(window, record);
     } else if (current === "close-verify") {
@@ -3572,8 +3575,9 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
   try {
     // ---- slide 1: a title, styled from the inspector
     await addText("Quarterly review");
-    await trustedClick(window, `[data-testid="text-style"]`);
-    await pressText('[role="option"]', "Title");
+    // The style gallery is a row of tiles, each drawn in its style (Design tab
+    // review, 2026-09-26); a person presses the one that looks like a title.
+    await pressText('[data-testid="text-style"] button', "Title");
     await settle();
     let deck = await stored(created);
     const title = deck.slides[0]!.elements.find((e: any) => e.type === "text");
@@ -3735,6 +3739,228 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     record.steps = steps;
     record.elapsedMs = Date.now() - started;
     // Leave as found.
+    await page(`fetch("/__api/v1/presentations/${created}", { method: "DELETE" }).then((r) => r.status)`).catch(() => undefined);
+    await page(`window.deckastra.openPresentation({ presentationId: ${JSON.stringify(original)} })`).catch(() => undefined);
+  }
+}
+
+/**
+ * The Design tab (Design tab review, 2026-09-26), in the real window.
+ *
+ * On a deck of its own: every panel hidden and shown again, and focus mode;
+ * a gradient slide background; the Glassmorphism preset applied with its
+ * cards restyled and then undone; a font uploaded and used on the title; an
+ * equation inserted from the rail and its LaTeX retyped. Each result is read
+ * from the store. Then the deck is exported to PDF and PowerPoint through the
+ * service, and both files are written beside the record so readers that are
+ * not us (`pypdf`, `python-pptx`) can be run over them. The deck is deleted
+ * and the original reopened at the end.
+ *
+ * The font is one of the app's own bundled files, taken from beside the
+ * exporter, because a packaged build carries nothing else to upload. It is
+ * handed to the upload field as a real `File`, which is the one step here that
+ * cannot go through the input pipeline: a native file dialog is outside the
+ * page.
+ */
+async function runDesign(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
+  const page = <T = unknown>(js: string) => window.webContents.executeJavaScript(js) as Promise<T>;
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  const need = async (what: string, expression: string, timeoutMs = 15_000) => {
+    if (!(await until(window, expression, timeoutMs))) throw new Error(`design: ${what}`);
+  };
+  const current = async () => (await page<{ presentationId: string }>(`window.deckastra.currentPresentation()`)).presentationId;
+  const stored = async (id: string) =>
+    page<{ slides: Array<Record<string, any>>; assets: Array<Record<string, any>>; theme: Record<string, any> }>(
+      `fetch("/__api/v1/presentations/${id}").then((r) => r.json()).then((j) => j.document)`,
+    );
+  const settle = async () => {
+    for (let quiet = 0, i = 0; quiet < 3; i += 1) {
+      if (i > 150) throw new Error("design: the edits never finished saving");
+      await sleep(200);
+      const status = await page<string | null>(`document.querySelector("[data-save-status]")?.getAttribute("data-save-status") ?? null`);
+      quiet = status === "saved" ? quiet + 1 : 0;
+    }
+  };
+  const key = async (keyCode: string, modifiers: string[] = []) => {
+    window.focus();
+    window.webContents.focus();
+    window.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers } as Electron.KeyboardInputEvent);
+    if (keyCode.length === 1) window.webContents.sendInputEvent({ type: "char", keyCode, modifiers } as Electron.KeyboardInputEvent);
+    window.webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers } as Electron.KeyboardInputEvent);
+    await sleep(150);
+  };
+  const pressText = async (selector: string, text: string | RegExp) => {
+    const tag = `smoke-${Math.random().toString(36).slice(2)}`;
+    const found = await page<boolean>(`(() => {
+      const wanted = ${text instanceof RegExp ? text.toString() : JSON.stringify(text)};
+      const hit = [...document.querySelectorAll(${JSON.stringify(selector)})].find((node) => {
+        const words = (node.textContent || "").trim();
+        return typeof wanted === "string" ? words === wanted : wanted.test(words);
+      });
+      if (!hit) return false;
+      hit.setAttribute("data-smoke-target", ${JSON.stringify(tag)});
+      return true;
+    })()`);
+    if (!found) throw new Error(`design: no ${selector} reading ${String(text)}`);
+    await trustedClick(window, `[data-smoke-target="${tag}"]`);
+  };
+  const press = (testId: string) => trustedClick(window, `[data-testid="${testId}"]`);
+  const region = (name: string) => `Boolean(document.querySelector('[data-region="${name}"]'))`;
+  const openSection = async (title: RegExp) => {
+    const open = await page<boolean>(`(() => {
+      const toggle = [...document.querySelectorAll(".dk-section__toggle")].find((b) => ${title.toString()}.test((b.textContent || "").trim()));
+      return toggle ? toggle.getAttribute("aria-expanded") === "true" : false;
+    })()`);
+    if (!open) await pressText(".dk-section__toggle", title);
+  };
+
+  await need("the editor never opened", `document.querySelector("[data-editor-canvas]")`, 30_000);
+  const original = await current();
+
+  await press("open-deck-list");
+  await need("the deck list never offered New deck", `document.querySelector('[data-testid="new-deck"]') && !document.querySelector('[data-testid="new-deck"]').disabled`, 20_000);
+  await press("new-deck");
+  let created = original;
+  for (let i = 0; i < 120 && created === original; i += 1) {
+    await sleep(250);
+    created = await current();
+  }
+  if (created === original) throw new Error("design: New deck did not open a deck");
+  await need("the new deck never opened in the editor", `document.querySelector("[data-editor-canvas]")`, 20_000);
+  record.created = created;
+
+  try {
+    // ---- panels: each one away and back through the menu, then focus mode
+    const panels: Record<string, string> = {
+      "Insert tools": "tools",
+      Slides: "slides",
+      "Side panel": "panel",
+      "Speaker notes": "notes",
+      Timeline: "timeline",
+    };
+    const toggled: string[] = [];
+    for (const [label, name] of Object.entries(panels)) {
+      await press("panels-menu");
+      await pressText('[role="menuitemcheckbox"]', new RegExp(`^${label}`));
+      if (await page<boolean>(region(name))) throw new Error(`design: hiding ${label} left it on screen`);
+      await press("panels-menu");
+      await pressText('[role="menuitemcheckbox"]', new RegExp(`^${label}`));
+      await need(`showing ${label} again did not bring it back`, region(name), 5_000);
+      toggled.push(name);
+    }
+    record.panelsToggled = toggled;
+    await trustedClick(window, "[data-editor-canvas]");
+    await key(".", ["control"]);
+    await need("focus mode left a side panel on screen", `!${region("tools")} && !${region("slides")} && !${region("panel")}`, 5_000);
+    record.focusModeCanvasOnly = true;
+    await key(".", ["control"]);
+    await need("leaving focus mode did not bring the panels back", `${region("tools")} && ${region("slides")} && ${region("panel")}`, 5_000);
+
+    // ---- a gradient background on the slide
+    await key("Escape");
+    await openSection(/^Slide background/i);
+    await pressText('[role="radiogroup"][aria-label="Background type"] [role="radio"]', "Colour");
+    await pressText('[data-testid="background-paint"] [role="radio"]', "Gradient");
+    await settle();
+    let deck = await stored(created);
+    const paint = deck.slides[0]!.background?.paint;
+    if (paint?.type !== "linearGradient" && paint?.type !== "radialGradient") {
+      throw new Error(`design: the stored background is ${JSON.stringify(deck.slides[0]!.background)}, not a gradient`);
+    }
+    record.background = paint.type;
+
+    // ---- the Glassmorphism preset, with a card to restyle, applied and undone
+    await press("tool-rect");
+    await settle();
+    const themeBefore = JSON.stringify((await stored(created)).theme);
+    await key("Escape");
+    await openSection(/^Theme/);
+    await press("preset-glassmorphism");
+    await page(`(() => { const box = document.querySelector('[data-testid="theme-restyle"]'); if (box && !box.checked) box.click(); })()`);
+    await press("theme-apply-preset");
+    await settle();
+    deck = await stored(created);
+    const card = deck.slides[0]!.elements.find((element: any) => element.type === "shape");
+    record.glassApplied = { theme: deck.theme.name, cardBlur: card?.style?.backdropFilters?.[0]?.radius ?? null };
+    if (!/glass/i.test(String(deck.theme.name))) throw new Error(`design: the theme is ${deck.theme.name} after applying Glassmorphism`);
+    if (!card?.style?.backdropFilters?.length) throw new Error("design: the card was not restyled with a glass blur");
+    await press("undo");
+    await settle();
+    if (JSON.stringify((await stored(created)).theme) !== themeBefore) throw new Error("design: one Undo did not put the previous theme back");
+    record.glassUndone = true;
+
+    // ---- a font, uploaded and used on a title
+    await press("tool-text");
+    await key("Enter");
+    await need("Enter did not open the new text box", `document.querySelector('[aria-label="Edit text"]')`);
+    await window.webContents.insertText("Designed by hand");
+    await key("Enter", ["control"]);
+    const fontsDir = app.isPackaged ? join(process.resourcesPath, "worker", "fonts") : join(import.meta.dirname, "..", "worker", "fonts");
+    const fontBytes = await readFile(join(fontsDir, "@fontsource", "archivo-black", "files", "archivo-black-latin-400-normal.woff2"));
+    await press("font-family");
+    await need("the font picker did not open", `document.querySelector('[data-testid="font-upload-input"]')`, 5_000);
+    await page(`(() => {
+      const bytes = Uint8Array.from(atob(${JSON.stringify(fontBytes.toString("base64"))}), (c) => c.charCodeAt(0));
+      const file = new File([bytes], "Smoke-Display-Regular.woff2", { type: "font/woff2" });
+      const input = document.querySelector('[data-testid="font-upload-input"]');
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await need("the font upload never finished", `/^Using /.test(document.querySelector('[data-testid="font-upload-status"]')?.textContent || "")`, 30_000);
+    await settle();
+    deck = await stored(created);
+    const face = deck.assets.find((asset: any) => asset.type === "font");
+    const title = deck.slides[0]!.elements.find((element: any) => element.type === "text");
+    if (!face?.fontFamily) throw new Error("design: the deck does not declare the uploaded font");
+    if (title?.typography?.fontFamily !== face.fontFamily) {
+      throw new Error(`design: the title uses ${title?.typography?.fontFamily}, not ${face.fontFamily}`);
+    }
+    record.uploadedFont = face.fontFamily;
+    // Drawn in it on the canvas, not only named: the face actually loaded.
+    await need(
+      "the uploaded face never loaded in the editor",
+      `[...document.fonts].some((f) => f.family.replace(/"/g, "") === ${JSON.stringify(face.fontFamily)} && f.status === "loaded")`,
+      15_000,
+    );
+
+    // ---- an equation, from the rail, retyped in the inspector
+    await key("Escape");
+    await press("tool-equation");
+    await need("the equation section did not open", `document.querySelector('[data-testid="equation-latex"]')`, 5_000);
+    await trustedClick(window, '[data-testid="equation-latex"]');
+    await key("A", ["control"]);
+    await window.webContents.insertText("e^{i\\pi} + 1 = 0");
+    await key("Enter", ["control"]);
+    await settle();
+    deck = await stored(created);
+    const equation = deck.slides[0]!.elements.find((element: any) => element.type === "equation");
+    if (equation?.latex !== "e^{i\\pi} + 1 = 0") throw new Error(`design: the stored equation is ${JSON.stringify(equation?.latex)}`);
+    await need("the equation is not typeset on the canvas", `document.querySelector('[data-editor-canvas] .deckastra-equation .katex')`, 5_000);
+    record.equation = equation.latex;
+    await capture(window, join(dir, "design.png"));
+
+    // ---- both exports, kept for readers that are not us
+    for (const kind of ["pdf", "pptx"] as const) {
+      const started = await page<{ id?: string }>(
+        `fetch("/__api/v1/presentations/${created}/exports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "${kind}" }) }).then((r) => r.json())`,
+      );
+      if (!started.id) throw new Error(`design: the ${kind} export was refused: ${JSON.stringify(started)}`);
+      let status = "";
+      for (let i = 0; i < 360 && !["completed", "failed", "cancelled"].includes(status); i += 1) {
+        await sleep(500);
+        status = (await page<{ status: string }>(`fetch("/__api/v1/exports/${started.id}").then((r) => r.json())`)).status;
+      }
+      if (status !== "completed") throw new Error(`design: the ${kind} export ended ${status || "never"}`);
+      const base64 = await page<string>(
+        `fetch("/__api/v1/exports/${started.id}/download").then((r) => r.arrayBuffer()).then((b) => { let s = ""; const u = new Uint8Array(b); for (let i = 0; i < u.length; i += 1) s += String.fromCharCode(u[i]); return btoa(s); })`,
+      );
+      const bytes = Buffer.from(base64, "base64");
+      await writeFile(join(dir, `design.${kind}`), bytes);
+      record[`${kind}Bytes`] = bytes.length;
+    }
+  } finally {
     await page(`fetch("/__api/v1/presentations/${created}", { method: "DELETE" }).then((r) => r.status)`).catch(() => undefined);
     await page(`window.deckastra.openPresentation({ presentationId: ${JSON.stringify(original)} })`).catch(() => undefined);
   }
