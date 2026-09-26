@@ -3003,3 +3003,32 @@
 .dk-inspector__title--rule {
   margin-top: var(--dk-space-3);
 }
+
+/* --- Object styles (design review, 2026-09-27) ------------------------------- */
+
+.dk-styles__current,
+.dk-styles__actions,
+.dk-styles__row,
+.dk-styles__rename {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-styles__current {
+  font-size: var(--dk-text-xs);
+}
+.dk-styles__save {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-styles__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--dk-text-sm);
+  font-weight: 600;
+}
+.dk-styles__rename {
+  flex: 1;
+}

@@ -70,7 +70,7 @@ export function MultiSection({
 
   return (
     <>
-      <Section title="Style" meta={`${n} objects`} defaultOpen>
+      <Section title="Appearance" meta={`${n} objects`} defaultOpen>
         {fillable.length ? (
           <>
             <ColorField

@@ -309,7 +309,51 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "cornerRadius": 8
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 8
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -631,7 +675,69 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "cornerRadius": 24,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 12,
+                  "offsetY": 12,
+                  "blur": 24,
+                  "spread": 0,
+                  "color": "#A3B1C699"
+                },
+                {
+                  "type": "drop",
+                  "offsetX": -12,
+                  "offsetY": -12,
+                  "blur": 24,
+                  "spread": 0,
+                  "color": "#FFFFFFE6"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 24
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -970,7 +1076,74 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "#FFFFFF1F"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "#FFFFFF4D"
+                },
+                "width": 1
+              },
+              "cornerRadius": 20,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 16,
+                  "blur": 40,
+                  "spread": -8,
+                  "color": "#0000004D"
+                }
+              ],
+              "backdropFilters": [
+                {
+                  "type": "blur",
+                  "radius": 18
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 20
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -1333,7 +1506,68 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "#0A0A0A"
+                },
+                "width": 4
+              },
+              "cornerRadius": 0,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 8,
+                  "offsetY": 8,
+                  "blur": 0,
+                  "spread": 0,
+                  "color": "#0A0A0A"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 0
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -1671,7 +1905,68 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 24,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 4,
+                  "blur": 16,
+                  "spread": 0,
+                  "color": "#1C19170F"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 24
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -2009,7 +2304,86 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "linearGradient",
+                "angle": 180,
+                "stops": [
+                  {
+                    "offset": 0,
+                    "color": "#FFFDF8"
+                  },
+                  {
+                    "offset": 1,
+                    "color": "#EFE6D4"
+                  }
+                ]
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 10,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 6,
+                  "blur": 14,
+                  "spread": 0,
+                  "color": "#5C46312E"
+                },
+                {
+                  "type": "inner",
+                  "offsetX": 0,
+                  "offsetY": 1,
+                  "blur": 0,
+                  "spread": 0,
+                  "color": "#FFFFFFCC"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 10
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -2366,7 +2740,58 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 12
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 12
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -2695,7 +3120,58 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 2
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 2
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -3024,7 +3500,58 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 6
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 6
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -3353,7 +3880,68 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 16,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 18,
+                  "blur": 40,
+                  "spread": -8,
+                  "color": "#00000080"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 16
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -3691,7 +4279,58 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 0
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 0
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {
@@ -4020,7 +4659,61 @@
             "scope": "layout",
             "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
           }
-        ]
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "cornerRadius": 28,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 10,
+                  "blur": 24,
+                  "spread": 0,
+                  "color": "#F472B633"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 28
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
       },
       "kit": {
         "card": {

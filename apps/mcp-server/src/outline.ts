@@ -57,6 +57,12 @@ export interface DocumentOutline {
    * rather than copying a hex that stops following the name.
    */
   namedColors?: Record<string, string>;
+  /**
+   * The deck's object style names (`theme.objectStyles`), with how many
+   * objects follow each. An element follows one by carrying its values and
+   * naming it in `styleRef`.
+   */
+  objectStyles?: Record<string, number>;
   slides: SlideOutline[];
   /**
    * What the Critic could not resolve, if a generation run left any.
@@ -144,6 +150,19 @@ export function outlineDocument(
   if (raw.theme?.id) outline.themeId = String(raw.theme.id);
   const custom = raw.theme?.colors?.custom;
   if (custom && typeof custom === "object" && Object.keys(custom).length) outline.namedColors = { ...custom };
+  const styles = raw.theme?.objectStyles;
+  if (styles && typeof styles === "object" && Object.keys(styles).length) {
+    const uses: Record<string, number> = Object.fromEntries(Object.keys(styles).map((name) => [name, 0]));
+    const count = (elements: unknown): void => {
+      if (!Array.isArray(elements)) return;
+      for (const element of elements as Array<{ styleRef?: unknown; children?: unknown }>) {
+        if (typeof element.styleRef === "string" && element.styleRef in uses) uses[element.styleRef]! += 1;
+        count(element.children);
+      }
+    };
+    for (const slide of raw.slides ?? []) count((slide as { elements?: unknown }).elements);
+    outline.objectStyles = uses;
+  }
 
   const issues = raw.extensions?.["deckastra.unresolvedIssues"];
   if (issues) outline.unresolvedIssues = issues;

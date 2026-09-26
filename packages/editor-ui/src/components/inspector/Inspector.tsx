@@ -44,6 +44,7 @@ import { TextSection } from "./TextSection";
 import { EquationSection } from "./EquationSection";
 import { IconPicker, ShapePicker } from "./pickers";
 import { MultiSection } from "./MultiSection";
+import { StylesSection, ThemeStylesSection } from "./StylesSection";
 import { selectedElements } from "../../lib/multi-edit";
 import { useColorStudio } from "../../lib/color-studio";
 import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
@@ -120,6 +121,15 @@ export function Inspector({
         </p>
       )}
 
+      {hasSelection ? (
+        <StylesSection
+          document={doc}
+          elements={selectedElements(doc, selection.selectedIds)}
+          edit={(operations, label) => {
+            if (operations.length) editor.apply(operations, { label });
+          }}
+        />
+      ) : null}
       {selected && !many ? <ElementSections editor={editor} element={selected} /> : null}
       {many ? (
         <MultiSection
@@ -137,6 +147,12 @@ export function Inspector({
         <ThemePanel key={presentationId} editor={editor} presentationId={presentationId} />
       </Section>
       <ColorsSection editor={editor} defaultOpen />
+      <ThemeStylesSection
+        document={doc}
+        edit={(operations, label) => {
+          if (operations.length) editor.apply(operations, { label });
+        }}
+      />
       {/* Open when nothing is selected: clicking the empty slide is how people
           reach for the slide itself. */}
       <BackgroundSection key={`bg-${slide?.id}`} editor={editor} defaultOpen={!hasSelection} />

@@ -66,6 +66,11 @@ well.
   a reference follows the colour when they change it. A new named colour is an
   `add` at `/theme/colors/custom/<Name>` (or of the whole `custom` object when
   there is none yet).
+- Named object styles are `/theme/objectStyles` (name to `{style, typography,
+  opacity}`). An element that follows one names it in `styleRef`, and carries
+  the style's values in its own `style`/`typography` too: to "make it a Card",
+  copy the style's values onto the element and set `styleRef` to the name.
+  Values alone are drawn; `styleRef` alone changes nothing on screen.
 - A slide's background is `/slides/id:<slide>/background`.
 - A slide transition is `/slides/id:<slide>/transition`, e.g.
   `{"type": "morph", "durationMs": 700, "easing": "standard",

@@ -24,6 +24,7 @@
 import type {
   BackgroundDefinition,
   CommonStyle,
+  ObjectStyle,
   ThemeDefinition,
 } from "./index";
 
@@ -310,7 +311,36 @@ function build(index: number, spec: Spec): ThemePreset {
     ],
   };
 
+  theme.objectStyles = recommendedStyles(spec.kit);
   return { key: spec.key, name: spec.name, summary: spec.summary, category: spec.category, theme, kit: spec.kit };
+}
+
+/**
+ * The styles a preset starts a deck with (design review, 2026-09-27): its own
+ * card, plus a callout, a big number and a caption, all in the theme's own
+ * tokens so they follow its colours and faces. Only the gallery's presets carry
+ * them; the fixtures' theme is left as it was, so no fixture changes.
+ */
+function recommendedStyles(kit: StyleKit): NonNullable<ThemeDefinition["objectStyles"]> {
+  const card = Object.fromEntries(
+    Object.entries(kit.card as Record<string, unknown>).filter(([, value]) => !(value === undefined || (Array.isArray(value) && value.length === 0))),
+  );
+  return {
+    Card: { appliesTo: "shape", style: card as ObjectStyle["style"] },
+    Callout: {
+      appliesTo: "shape",
+      style: { fill: solid("token:colors.accent"), cornerRadius: (card.cornerRadius as number | undefined) ?? 12 },
+      typography: { color: "token:colors.accentForeground", fontWeight: 600 },
+    },
+    "Big number": {
+      appliesTo: "text",
+      typography: { fontFamily: "token:typography.metric.fontFamily", fontSize: 72, fontWeight: 700, color: "token:colors.foreground", letterSpacing: -1 },
+    },
+    Caption: {
+      appliesTo: "text",
+      typography: { fontFamily: "token:typography.caption.fontFamily", fontSize: 18, color: "token:colors.foregroundMuted" },
+    },
+  };
 }
 
 const solid = (color: string) => ({ type: "solid" as const, color });
@@ -318,21 +348,23 @@ const line = (color: string, width: number) => ({ paint: solid(color), width });
 
 // ----------------------------------------------------------------- presets
 
+const NEO_TECHNICAL_KIT: StyleKit = {
+  card: {
+    fill: solid("token:colors.surface"),
+    stroke: line("token:colors.border", 1),
+    cornerRadius: 12,
+    shadow: [],
+    backdropFilters: [],
+  },
+};
+
 const NEO_TECHNICAL: ThemePreset = {
   key: "neo-technical",
   name: "Neo Technical",
   summary: "Dark editorial layout with luminous technical accents.",
   category: "Classic",
-  theme: technicalTheme(presetId(0)),
-  kit: {
-    card: {
-      fill: solid("token:colors.surface"),
-      stroke: line("token:colors.border", 1),
-      cornerRadius: 12,
-      shadow: [],
-      backdropFilters: [],
-    },
-  },
+  theme: { ...technicalTheme(presetId(0)), objectStyles: recommendedStyles(NEO_TECHNICAL_KIT) },
+  kit: NEO_TECHNICAL_KIT,
 };
 
 export const THEME_PRESETS: readonly ThemePreset[] = [

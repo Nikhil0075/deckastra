@@ -129,6 +129,13 @@ const baseElementShape = {
   constraints: z.array(LayoutConstraintSchema).optional(),
   bindings: z.array(DataBindingSchema).optional(),
   metadata: ElementMetadataSchema.optional(),
+  /**
+   * The name of the theme object style this element follows
+   * (`theme.objectStyles`). The style's values are copied onto the element when
+   * applied, so this names a relationship rather than supplying values; a name
+   * that is not in the theme is ignored.
+   */
+  styleRef: z.string().min(1).max(60).optional(),
   /** Preserved verbatim across round-trips (doc 02 §0.8). */
   extensions: z.record(z.string(), z.unknown()).optional(),
 } as const;
@@ -702,6 +709,7 @@ export type BaseElement = {
   constraints?: z.infer<typeof LayoutConstraintSchema>[];
   bindings?: z.infer<typeof DataBindingSchema>[];
   metadata?: ElementMetadata;
+  styleRef?: string;
   extensions?: Record<string, unknown>;
   [key: string]: unknown;
 };

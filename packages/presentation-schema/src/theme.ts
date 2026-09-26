@@ -257,6 +257,28 @@ export const MOTION_PERSONALITY_DEFAULTS = {
   playful: { defaultDurationMs: 500, defaultEasing: "spring(180,12,1)", staggerMs: 90 },
 } as const;
 
+/**
+ * A named, reusable look for an object: "Metric card", "Callout", "Caption"
+ * (design review, 2026-09-27). The name is the key in `theme.objectStyles`,
+ * and an element that uses one says so with `styleRef`.
+ *
+ * A style is applied by **copying** its values onto the element, not by
+ * reference at render time. The element keeps its own `style`, `typography`
+ * and `opacity`, so a deck is still complete without the definition, every
+ * renderer and exporter reads what it already reads, and the inspector shows
+ * real values. `styleRef` is what lets the editor update every user of a style
+ * at once, and say which objects have drifted from it.
+ */
+export const ObjectStyleSchema = z.looseObject({
+  /** What kind of object the style was made from, so it is offered where it fits. */
+  appliesTo: z.enum(["shape", "text", "icon", "group", "any"]).optional(),
+  style: CommonStyleSchema.partial().optional(),
+  typography: TypographyStyleSchema.partial().optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  description: z.string().max(280).optional(),
+});
+export type ObjectStyle = z.infer<typeof ObjectStyleSchema>;
+
 export const ThemeDefinitionSchema = z.looseObject({
   id: prefixedId("thm"),
   name: z.string().min(1),
@@ -275,6 +297,8 @@ export const ThemeDefinitionSchema = z.looseObject({
   contrastPairs: z.array(ContrastPairSchema).optional(),
   brandRules: z.array(BrandRuleSchema).optional(),
   logoAssetIds: z.array(IdSchema).optional(),
+  /** Named object styles, keyed by name (no dots). See `ObjectStyleSchema`. */
+  objectStyles: z.record(z.string().min(1).max(60).regex(/^[^.]+$/), ObjectStyleSchema).optional(),
   /** Inherit from a workspace theme. */
   extends: IdSchema.optional(),
 });

@@ -45,7 +45,7 @@ export function applyThemeOperations(
   theme: ThemeDefinition,
   options: ApplyThemeOptions = {},
 ): PatchOperation[] {
-  const operations: PatchOperation[] = [{ op: "replace", path: "/theme", value: structuredClone(theme) }];
+  const operations: PatchOperation[] = [{ op: "replace", path: "/theme", value: carryDeckOwn(document.theme, theme) }];
 
   // A deck that was following a workspace theme no longer is: re-applying the
   // workspace brand later must not silently undo a look someone chose here.
@@ -78,6 +78,27 @@ export function applyThemeOperations(
   }
 
   return operations;
+}
+
+/**
+ * The incoming theme, keeping what belongs to this deck rather than to a
+ * theme: its named colours and its object styles. Replacing `/theme` whole
+ * used to drop both, so every `token:colors.custom.*` on the slides pointed at
+ * nothing and every saved style vanished with a gallery click. Where the new
+ * theme defines a name too, the new theme's wins.
+ */
+function carryDeckOwn(current: ThemeDefinition, incoming: ThemeDefinition): ThemeDefinition {
+  const next = structuredClone(incoming) as ThemeDefinition & { objectStyles?: Record<string, unknown> };
+  const ownColors = (current.colors as { custom?: Record<string, string> }).custom;
+  if (ownColors && Object.keys(ownColors).length) {
+    const colors = next.colors as { custom?: Record<string, string> };
+    colors.custom = { ...structuredClone(ownColors), ...(colors.custom ?? {}) };
+  }
+  const ownStyles = current.objectStyles;
+  if (ownStyles && Object.keys(ownStyles).length) {
+    next.objectStyles = { ...structuredClone(ownStyles), ...(next.objectStyles ?? {}) } as ThemeDefinition["objectStyles"];
+  }
+  return next;
 }
 
 /** The card's style with the kit's look, keeping what the kit does not speak to (a blend mode, filters). */
