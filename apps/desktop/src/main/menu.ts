@@ -107,6 +107,23 @@ export function menuTemplate(
           ],
         },
         { type: "separator" },
+        {
+          label: "Panels",
+          submenu: [
+            // The page binds these keys (lib/panels.ts), so the menu shows them
+            // without registering them: a registered accelerator would take the
+            // key before a text field or the editor saw it.
+            pageOwned("Insert tools", "panel-tools", "CmdOrCtrl+Alt+1"),
+            pageOwned("Slides", "panel-slides", "CmdOrCtrl+Alt+2"),
+            pageOwned("Side panel", "panel-inspector", "CmdOrCtrl+Alt+3"),
+            pageOwned("Speaker notes", "panel-notes", "CmdOrCtrl+Alt+4"),
+            pageOwned("Timeline", "panel-dock", "CmdOrCtrl+Alt+5"),
+            { type: "separator" },
+            pageOwned("Focus on the slide", "panels-focus", "CmdOrCtrl+."),
+            item("Show everything", "panels-all"),
+          ],
+        },
+        { type: "separator" },
         item("Intelligence…", "open-intelligence"),
         { type: "separator" },
         { role: "togglefullscreen" },

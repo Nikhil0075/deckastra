@@ -78,7 +78,14 @@ export type HostCommand =
   | "theme-system"
   | "theme-light"
   | "theme-dark"
-  | "open-intelligence";
+  | "open-intelligence"
+  | "panel-tools"
+  | "panel-slides"
+  | "panel-inspector"
+  | "panel-notes"
+  | "panel-dock"
+  | "panels-focus"
+  | "panels-all";
 
 /** Subscribe to host commands; returns the unsubscribe function. */
 export type SubscribeHostCommands = (listener: (command: HostCommand) => void) => () => void;

@@ -26,6 +26,13 @@ export interface MenuItem {
    * says which is chosen instead of reading three identical buttons.
    */
   checked?: boolean;
+  /**
+   * `checkbox` for an on/off item that is not one of a set (a panel shown or
+   * hidden). Defaults to `radio`, which is what `checked` meant before.
+   */
+  kind?: "radio" | "checkbox";
+  /** A key shown at the end of the row. Display only; the shortcut is handled elsewhere. */
+  shortcut?: string;
   onSelect: () => void;
 }
 
@@ -143,7 +150,7 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
                 itemRefs.current[index] = element;
               }}
               type="button"
-              role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+              role={item.checked === undefined ? "menuitem" : item.kind === "checkbox" ? "menuitemcheckbox" : "menuitemradio"}
               aria-checked={item.checked}
               tabIndex={index === active ? 0 : -1}
               aria-disabled={item.disabled || undefined}
@@ -155,6 +162,7 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
             >
               {item.icon && <Icon name={item.icon} size={14} />}
               <span>{item.label}</span>
+              {item.shortcut ? <kbd className="dk-menu__shortcut">{item.shortcut}</kbd> : null}
               {item.checked ? <Icon name="check" size={14} className="dk-icon dk-menu__check" /> : null}
             </button>
           ))}

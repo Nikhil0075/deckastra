@@ -4,6 +4,8 @@ import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
 import { Button, IconButton, Popover, Segmented } from "../../ui";
 import { ThemeMenu } from "./ThemeMenu";
+import { PanelsMenu } from "./PanelsMenu";
+import type { PanelVisibility } from "../../lib/panels";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
 import { SaveIndicator } from "./SaveIndicator";
@@ -17,6 +19,8 @@ export interface AppBarProps {
   onExit?: () => void;
   /** Host-owned controls placed before Share (the desktop's agent-access switch). */
   extras?: ReactNode;
+  /** Which panels are on screen, and how to change that (lib/panels.ts). */
+  panels?: { visibility: PanelVisibility; onChange: (next: PanelVisibility) => void };
 }
 
 /**
@@ -25,7 +29,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -83,6 +87,7 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
 
       <div className="dk-appbar__end">
         {extras}
+        {panels ? <PanelsMenu visibility={panels.visibility} onChange={panels.onChange} /> : null}
         <ThemeMenu />
         <Popover
           label="Share"

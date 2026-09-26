@@ -64,6 +64,7 @@ import { MotionModePanel } from "./shell/MotionModePanel";
 import { SlideStrip } from "./shell/SlideStrip";
 import { SpeakerNotes } from "./shell/SpeakerNotes";
 import { ToolRail } from "./shell/ToolRail";
+import { loadPanels, panelsForCommand, panelsForKey, savePanels, type PanelVisibility } from "../lib/panels";
 
 import type { OpenPresenterWindow } from "@deckastra/workspace-contracts";
 
@@ -206,6 +207,16 @@ export function EditorShell(props: EditorShellProps) {
   // rather than torn down on every render, while the handler still sees the
   // current editor. Present mode has its own keys; a menu choice made while
   // presenting is ignored rather than editing a deck nobody is looking at.
+  // Which panels are on screen (lib/panels.ts): editor state, remembered per
+  // browser profile, never written to the deck.
+  const [panels, setPanelsState] = useState<PanelVisibility>(() => loadPanels());
+  const setPanels = useCallback((next: PanelVisibility) => {
+    setPanelsState(next);
+    savePanels(next);
+  }, []);
+  const panelsRef = useRef(panels);
+  panelsRef.current = panels;
+
   const onCommand = useRef<(command: HostCommand) => void>(() => {});
   onCommand.current = (command) => {
     const theme = themeForCommand(command);
@@ -214,6 +225,11 @@ export function EditorShell(props: EditorShellProps) {
       return;
     }
     if (presenting) return;
+    const nextPanels = panelsForCommand(command, panelsRef.current);
+    if (nextPanels) {
+      setPanels(nextPanels);
+      return;
+    }
     const nextMode = modeForCommand(command);
     if (nextMode) {
       setMode(nextMode);
@@ -575,6 +591,15 @@ export function EditorShell(props: EditorShellProps) {
         return;
       }
 
+      // Panel shortcuts work anywhere, typing included: hiding the side panel
+      // while writing a note is exactly when someone wants the room.
+      const nextPanels = panelsForKey(event, panelsRef.current);
+      if (nextPanels) {
+        event.preventDefault();
+        setPanels(nextPanels);
+        return;
+      }
+
       const resolved = resolveCommand(event);
       if (!resolved) return;
 
@@ -779,6 +804,7 @@ export function EditorShell(props: EditorShellProps) {
         onPresent={() => setPresenting(true)}
         onExit={exit ? () => exit() : undefined}
         extras={props.barExtras}
+        panels={{ visibility: panels, onChange: setPanels }}
       />
 
       <ConflictRecovery editor={editor} />
@@ -835,7 +861,8 @@ export function EditorShell(props: EditorShellProps) {
       ) : null}
 
       <div className="dk-shell__body">
-        <ToolRail onAdd={addStarter} onAddImage={addImage} />
+        {panels.tools ? <ToolRail onAdd={addStarter} onAddImage={addImage} /> : null}
+        {panels.slides ? (
         <SlideStrip
           editor={editor}
           scene={scene}
@@ -847,6 +874,7 @@ export function EditorShell(props: EditorShellProps) {
             setMode("motion");
           }}
         />
+        ) : null}
 
         <main className="dk-shell__center" aria-label="Slide editor">
           {scrubbing ? (
@@ -877,12 +905,12 @@ export function EditorShell(props: EditorShellProps) {
 
           {/* Under the slide they belong to, as in the Figma frame: notes are
               written while looking at the slide, not in a side panel. */}
-          <SpeakerNotes editor={editor} />
+          {panels.notes ? <SpeakerNotes editor={editor} /> : null}
 
           {/* Under the canvas, not in the side panel: a timeline is horizontal
               and an author needs to see the slide while scrubbing it. Taller in
               Motion mode, where it is the work. */}
-          {slideScene ? (
+          {slideScene && panels.dock ? (
             <section className="dk-dock" aria-label="Motion timeline" data-region="timeline" style={{ height: dockHeightFor(mode) }}>
               <MotionPanel
                 document={doc}
@@ -911,9 +939,11 @@ export function EditorShell(props: EditorShellProps) {
           onClose={() => setHistoryOpen(false)}
         />
 
-        <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
-          {rightPanel}
-        </aside>
+        {panels.inspector ? (
+          <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
+            {rightPanel}
+          </aside>
+        ) : null}
       </div>
     </div>
   );

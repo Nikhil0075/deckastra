@@ -152,6 +152,13 @@ export const MENU_COMMANDS = [
   "theme-light",
   "theme-dark",
   "open-intelligence",
+  "panel-tools",
+  "panel-slides",
+  "panel-inspector",
+  "panel-notes",
+  "panel-dock",
+  "panels-focus",
+  "panels-all",
 ] as const satisfies readonly HostCommand[];
 
 export type MenuCommand = (typeof MENU_COMMANDS)[number];

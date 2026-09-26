@@ -729,6 +729,18 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
   margin-left: auto;
 }
 
+.dk-menu__shortcut {
+  margin-left: auto;
+  padding-left: var(--dk-space-3);
+  font: inherit;
+  font-size: 11px;
+  color: var(--dk-ink-muted);
+}
+
+.dk-menu__shortcut + .dk-menu__check {
+  margin-left: var(--dk-space-2);
+}
+
 /* ------------------------------------------------ in-place text formatting */
 
 /* Above the text being edited. Its buttons never take focus (the component
