@@ -215,3 +215,12 @@ describe("the render pass", () => {
     for (const issue of issues) expect(["W103", "W104"]).toContain(issue.code);
   });
 });
+
+describe("the theme gallery's contrast", () => {
+  it("every preset meets every contrast pair it declares", async () => {
+    const { THEME_PRESETS } = await import("@deckastra/presentation-schema");
+    for (const preset of THEME_PRESETS) {
+      expect(checkContrastPairs(resolveTheme(preset.theme)), preset.key).toEqual([]);
+    }
+  });
+});

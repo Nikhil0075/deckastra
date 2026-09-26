@@ -1,12 +1,111 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PatchOperationSchema } from "@deckastra/presentation-schema";
+import { newId, PatchOperationSchema, ThemeDefinitionSchema } from "@deckastra/presentation-schema";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { SavedTheme } from "@deckastra/workspace-contracts";
 import type { EditorApi } from "../lib/useEditor";
+import { applyThemeOperations } from "../lib/theme-apply";
+import { Button, Tabs } from "../ui";
+import { ThemeGallery } from "./ThemeGallery";
 
+type ThemeTab = "gallery" | "workspace" | "file";
+
+/**
+ * Themes (Design tab review, 2026-09-26): the built-in gallery, the
+ * workspace's saved themes, and themes as files. Each applies through the
+ * editor's own `apply`, so it is one change with one undo.
+ */
 export function ThemePanel({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
+  const [tab, setTab] = useState<ThemeTab>("gallery");
+  return (
+    <Tabs
+      label="Theme source"
+      value={tab}
+      onChange={setTab}
+      className="dk-theme-tabs"
+      items={[
+        { value: "gallery", label: "Gallery", panel: <ThemeGallery editor={editor} /> },
+        { value: "workspace", label: "Workspace", panel: <WorkspaceThemes editor={editor} presentationId={presentationId} /> },
+        { value: "file", label: "File", panel: <ThemeFile editor={editor} /> },
+      ]}
+    />
+  );
+}
+
+/**
+ * A theme as a file: download this deck's, or read one someone sent.
+ *
+ * The file is checked against the schema before anything is applied, and a
+ * refusal names what was wrong. An imported theme gets a fresh id, so two decks
+ * that imported the same file are not mistaken for the same saved theme.
+ */
+function ThemeFile({ editor }: { editor: EditorApi }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<string | undefined>();
+
+  const download = () => {
+    const theme = editor.document.theme;
+    const blob = new Blob([JSON.stringify({ kind: "deckastra.theme", version: 1, theme }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${(theme.name || "theme").replace(/[^\w.-]+/g, "-")}.theme.json`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const read = async (file: File) => {
+    setMessage(undefined);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await readText(file));
+    } catch {
+      setMessage("That file is not JSON, so it cannot be a theme.");
+      return;
+    }
+    // A bare ThemeDefinition, or the envelope this panel writes.
+    const candidate = (parsed as { kind?: string; theme?: unknown })?.kind === "deckastra.theme" ? (parsed as { theme: unknown }).theme : parsed;
+    const result = ThemeDefinitionSchema.safeParse({ ...(candidate as object), id: newId("thm") });
+    if (!result.success) {
+      const first = result.error.issues[0];
+      setMessage(`That file is not a theme this app can use: ${first ? `${first.path.join(".") || "the file"} ${first.message}` : "it does not match"}.`);
+      return;
+    }
+    editor.apply(applyThemeOperations(editor.document, result.data), { label: `Import the ${result.data.name} theme` });
+    setMessage(`Imported ${result.data.name}. Undo puts the previous theme back.`);
+  };
+
+  return (
+    <div className="dk-themes">
+      <Button size="sm" variant="ghost" icon="download" onClick={download} data-testid="theme-download">
+        Download this theme
+      </Button>
+      <Button size="sm" variant="ghost" icon="upload" onClick={() => input.current?.click()} data-testid="theme-import">
+        Import a theme file…
+      </Button>
+      <input
+        ref={input}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        data-testid="theme-import-input"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void read(file);
+        }}
+      />
+      {message ? (
+        <p role="status" className="dk-muted">
+          {message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
   const client = useWorkspaceClient();
   const [themes, setThemes] = useState<SavedTheme[]>([]);
   const [selected, setSelected] = useState("");
@@ -87,4 +186,15 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
     {busy ? <p role="status" className="dk-muted">Updating theme…</p> : null}
     {message ? <p role="status" className="dk-muted">{message}</p> : null}
   </section>;
+}
+
+/** A file's text. `Blob.text()` where it exists, a FileReader where it does not. */
+function readText(file: Blob): Promise<string> {
+  if (typeof file.text === "function") return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("The file could not be read."));
+    reader.readAsText(file);
+  });
 }

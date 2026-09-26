@@ -34,3 +34,4 @@ export * from "./document";
 export * from "./patch";
 export * from "./serialize";
 export * from "./validate";
+export * from "./theme-presets";

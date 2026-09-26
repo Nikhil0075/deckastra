@@ -18,6 +18,8 @@ it("saves the current portable theme as the workspace default when selected", as
     return <ThemePanel editor={editor} presentationId={document.id} />;
   }
   render(<Harness />, { wrapper: withWorkspaceClient() });
+  // Saved workspace themes sit behind their own tab since the gallery arrived.
+  fireEvent.click(screen.getByRole("tab", { name: "Workspace" }));
   fireEvent.change(screen.getByLabelText("Save current theme as"), { target: { value: "Our brand" } });
   fireEvent.click(screen.getByLabelText("Use as default for new decks"));
   fireEvent.click(screen.getByRole("button", { name: "Save theme" }));
@@ -43,6 +45,8 @@ it("applies a fetched theme to the current local document and undoes only that c
     return <ThemePanel editor={editor} presentationId={document.id} />;
   }
   render(<Harness />, { wrapper: withWorkspaceClient() });
+  // Saved workspace themes sit behind their own tab since the gallery arrived.
+  fireEvent.click(screen.getByRole("tab", { name: "Workspace" }));
   await screen.findByRole("option", { name: "Brand" });
   await waitFor(() => expect(editor.recoveryReady).toBe(true));
   fireEvent.change(screen.getByLabelText("Saved theme"), { target: { value: "thm_saved" } });

@@ -22,6 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
+import { THEME_PRESETS } from "../src/theme-presets";
 import {
   PatchOperationSchema,
   PatchSchema,
@@ -112,6 +113,33 @@ function main(): void {
 
     writeFileSync(path, next, "utf8");
     console.log(`  wrote  ${file} (${(next.length / 1024).toFixed(1)} KB)`);
+  }
+
+  // The theme gallery, as data for Python (agents, tests). Same rule as the
+  // schemas: generated from the TypeScript, committed, and checked for drift.
+  const presets =
+    JSON.stringify(
+      {
+        description:
+          "Generated from @deckastra/presentation-schema src/theme-presets.ts. Do not edit by hand: " +
+          'run "npm run schema:emit" instead.',
+        presets: THEME_PRESETS,
+      },
+      null,
+      2,
+    ) + "\n";
+  const presetsPath = join(OUT_DIR, "theme-presets.json");
+  if (check) {
+    const current = existsSync(presetsPath) ? readFileSync(presetsPath, "utf8") : "";
+    if (current !== presets) {
+      stale = true;
+      console.error("  DRIFT  theme-presets.json is out of date");
+    } else {
+      console.log("  ok     theme-presets.json");
+    }
+  } else {
+    writeFileSync(presetsPath, presets, "utf8");
+    console.log(`  wrote  theme-presets.json (${(presets.length / 1024).toFixed(1)} KB)`);
   }
 
   if (stale) {

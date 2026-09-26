@@ -409,3 +409,17 @@ describe("a shape's label", () => {
     expect(styled.labelVerticalAlign).toBe("top");
   });
 });
+
+describe("a label on a see-through card", () => {
+  it("is judged against what shows through, not as if the card were opaque", () => {
+    const doc = structuredClone(animation) as PresentationDocument;
+    const card = doc.slides
+      .flatMap((slide) => slide.elements)
+      .find((element) => element.type === "shape" && (element as { text?: unknown }).text) as Record<string, unknown>;
+    // 12% white on the fixture's near-black theme: it looks dark, so the label is light.
+    card.style = { ...(card.style as object), fill: { type: "solid", color: "#FFFFFF1F" } };
+    const scene = buildDocumentScene(doc);
+    const node = scene.slides.flatMap((slide) => slide.nodes).find((candidate) => candidate.id === card.id)!;
+    expect(node.renderPayload.kind === "shape" && node.renderPayload.labelTypography?.color).toBe(doc.theme.colors.foreground);
+  });
+});

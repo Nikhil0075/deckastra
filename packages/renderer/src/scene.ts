@@ -470,11 +470,21 @@ function labelTypography(
 
   const foreground = String(resolveValue(theme, "token:colors.foreground", "#111111"));
   const background = String(resolveValue(theme, "token:colors.background", "#FFFFFF"));
-  const behind = parseColor(fill ? (/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i.exec(fill)?.[0] ?? fill) : undefined);
-  if (!behind) return { ...style, color: foreground };
   const light = parseColor(foreground);
   const dark = parseColor(background);
   if (!light || !dark) return { ...style, color: foreground };
+  const first = fill ? (/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)/i.exec(fill)?.[0] ?? fill) : undefined;
+  const solid = parseColor(first);
+  if (!solid) return { ...style, color: foreground };
+  // A see-through fill (a glass card) is judged as it looks: blended over the
+  // theme's background, which is what shows through it. Judged as opaque, a
+  // 12% white card on a dark slide read as white and got dark text.
+  const alpha = colorAlpha(first);
+  const behind = {
+    r: solid.r * alpha + dark.r * (1 - alpha),
+    g: solid.g * alpha + dark.g * (1 - alpha),
+    b: solid.b * alpha + dark.b * (1 - alpha),
+  };
   return {
     ...style,
     color: contrastRatio(light, behind) >= contrastRatio(dark, behind) ? foreground : background,
@@ -1228,4 +1238,15 @@ export function flattenScene(scene: SlideScene): SceneNode[] {
   };
   walk(scene.nodes);
   return out;
+}
+
+/** A colour's alpha, 0 to 1: the last two digits of an 8-digit hex, or an rgba's fourth part. Opaque otherwise. */
+function colorAlpha(value: string | undefined): number {
+  if (!value) return 1;
+  const text = value.trim();
+  if (/^#[0-9a-f]{8}$/i.test(text)) return parseInt(text.slice(7, 9), 16) / 255;
+  if (/^#[0-9a-f]{4}$/i.test(text)) return parseInt(text[4]! + text[4]!, 16) / 255;
+  const rgba = /^rgba\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+[\s,/]+([\d.]+)(%?)\s*\)$/i.exec(text);
+  if (rgba) return rgba[2] ? Number(rgba[1]) / 100 : Number(rgba[1]);
+  return 1;
 }
