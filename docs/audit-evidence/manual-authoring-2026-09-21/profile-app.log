@@ -1,0 +1,6 @@
+2026-09-20T19:12:43.774Z service.status state="starting" attempt="0"
+2026-09-20T19:15:08.706Z service.status state="failed" kind="crashed" attempt="0" detail="The workspace service did not start within a minute."
+2026-09-20T19:19:21.548Z service.status state="failed" attempt="0" detail="Stopped by the acceptance harness."
+2026-09-20T19:21:43.959Z service.status state="starting" attempt="0"
+2026-09-20T19:21:57.836Z service.status state="failed" kind="crashed" attempt="0" detail="The workspace service exited before it was ready (code 1)."
+2026-09-20T19:22:33.353Z service.status state="failed" attempt="0" detail="Stopped by the acceptance harness."

@@ -1,0 +1,375 @@
+
+> deckastra@0.0.0 test
+> npm run test --workspaces --if-present
+
+
+> @deckastra/animation-engine@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/animation-engine
+
+ ✓ tests/presets.test.ts (28 tests) 24ms
+ ✓ tests/compile.test.ts (23 tests) 34ms
+ ✓ tests/playback.test.ts (23 tests) 286ms
+ ✓ tests/timeline.test.ts (12 tests) 15ms
+ ✓ tests/transition-compile.test.ts (16 tests) 24ms
+ ✓ tests/timeline-authoring.test.ts (20 tests) 23ms
+ ✓ tests/timeline-applies.test.ts (5 tests) 164ms
+ ✓ tests/transition-fixture.test.ts (4 tests) 47ms
+ ✓ tests/fixture.test.ts (16 tests) 50ms
+ ✓ tests/deck-acceptance.test.ts (7 tests) 32ms
+ ✓ tests/timeline-conflicts.test.ts (10 tests) 17ms
+ ✓ tests/transition-pairing.test.ts (10 tests) 17ms
+
+ Test Files  12 passed (12)
+      Tests  174 passed (174)
+   Start at  23:49:22
+   Duration  3.41s (transform 3.67s, setup 0ms, collect 10.18s, tests 733ms, environment 6ms, prepare 3.76s)
+
+
+> @deckastra/editor@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor
+
+ ✓ tests/spacing.test.ts (4 tests) 12ms
+ ✓ tests/rebuild-by-hand.test.ts (5 tests) 15ms
+ ✓ tests/editor.test.ts (80 tests) 79ms
+ ✓ tests/text-editing.test.ts (24 tests) 84ms
+
+ Test Files  4 passed (4)
+      Tests  113 passed (113)
+   Start at  23:49:26
+   Duration  2.96s (transform 1.22s, setup 0ms, collect 2.84s, tests 191ms, environment 1.48s, prepare 977ms)
+
+
+> @deckastra/editor-ui@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ✓ tests/deck-list-race.test.tsx (5 tests) 1291ms
+   ✓ switching projects > does not let a late answer for A replace B's cards  565ms
+   ✓ switching projects > does not let a refresh after deleting in A fill B's view  300ms
+ ✓ tests/deck-list.test.tsx (9 tests) 1302ms
+   ✓ DeckList > lists the first project's decks as cards, with counts and the pending badge  316ms
+   ✓ DeckList > opens a deck by handing its id to the shell  384ms
+ ✓ tests/export-save-barrier.test.tsx (7 tests) 1603ms
+   ✓ exporting from the editor > PDF includes an edit whose autosave had not run yet, pinned to its version  592ms
+ ✓ tests/external-change.test.ts (9 tests) 2172ms
+   ✓ a change made outside the editor > reaches an idle editor, and says so  326ms
+   ✓ a change made outside the editor > never replaces a document with unsaved work in it  337ms
+   ✓ a change made outside the editor > does not poll from a window nobody is looking at  347ms
+ ✓ tests/canvas-gesture.test.tsx (12 tests) 2309ms
+   ✓ commits the final queued movement before any animation frame and undoes it once  396ms
+   ✓ cancels resize (painted=true) without committing or undoing previous edits  303ms
+ ✓ tests/motion-panel.test.tsx (5 tests) 2217ms
+   ✓ edits stored timing independently of the previous track, rejects negative offsets and undoes  533ms
+   ✓ reorders a whole track in both directions, preserves its contents and undoes the order  438ms
+   ✓ duplicates custom keyframes and future fields without changing timing, then edits and undoes independently  305ms
+   ✓ edits and duplicates a stagger child through its source clip  648ms
+ ✓ tests/useEditor.test.ts (23 tests) 5621ms
+   ✓ autosave > restores its journal during StrictMode's effect replay  303ms
+   ✓ autosave > a late acknowledgement after unmount only clears the old owner's journal  302ms
+   ✓ autosave > recovers an offline edit after unmount and persists it against its original version  337ms
+   ✓ autosave > retains recovery without replay when the server version changed  341ms
+   ✓ autosave > journals the active batch on unload without a competing request  303ms
+   ✓ autosave > saves a reviewed merge against the reviewed server version  401ms
+ ✓ tests/ui-primitives.test.tsx (22 tests) 1702ms
+ ✓ tests/motion-mode-panel.test.tsx (7 tests) 1334ms
+   ✓ planning by roles > refuses to apply a plan to a slide that changed since  310ms
+ ✓ tests/proposals-panel.test.tsx (5 tests) 1792ms
+   ✓ shows a proposal made over MCP and approving it saves first, then adopts the server's document  797ms
+   ✓ draws the change as Before and After, from the deck on screen  324ms
+   ✓ says when a change no longer applies, and still lets it be rejected  450ms
+ ✓ tests/presenter.test.tsx (13 tests) 1769ms
+   ✓ PresenterView > advances rather than jumps, and jumps from the numbered squares  410ms
+   ✓ PresenterView > blacks the screen out, and says so on the preview  317ms
+   ✓ PresenterView > counts down only once a target is set, and says 'over' past it  544ms
+ ✓ tests/speaker-notes.test.tsx (9 tests) 2170ms
+   ✓ the speaker notes field > commits what was typed on blur, as one undoable, valid patch keyed to this slide  394ms
+ ✓ tests/recovery-copies.test.tsx (8 tests) 1954ms
+   ✓ the notice > is one line until someone asks to review  458ms
+   ✓ the notice > opens grouped by deck, keeping the old accessible names  1037ms
+ ✓ tests/reconcile.test.ts (5 tests) 767ms
+ ✓ tests/generate-deck.test.tsx (5 tests) 2968ms
+   ✓ generating with the outline first > stops at the outline, revises with the note, then builds and opens the deck  891ms
+   ✓ generating with the outline first > discarding makes nothing and says so  858ms
+   ✓ generating with the outline first > picks up an outline that was left waiting  473ms
+   ✓ generating with the outline first > where a run cannot pause, the option is absent and the deck is generated directly  473ms
+ ✓ tests/theme-panel.test.tsx (2 tests) 1927ms
+   ✓ saves the current portable theme as the workspace default when selected  1265ms
+   ✓ applies a fetched theme to the current local document and undoes only that change  660ms
+ ✓ tests/share-panel.test.tsx (4 tests) 1307ms
+   ✓ says sharing is unavailable rather than showing a failed request  371ms
+   ✓ offers sharing where the deployment supports it  774ms
+ ✓ tests/notes-rich.test.ts (10 tests) 1165ms
+   ✓ committing notes > adds plain notes as a string  506ms
+ ✓ tests/timeline-lanes.test.tsx (10 tests) 2018ms
+   ✓ dragging a clip > commits once, on pointer-up, with a rounded value  509ms
+   ✓ dragging a clip > coalesces many moves into one frame  668ms
+ ✓ tests/version-history.test.tsx (8 tests) 1618ms
+   ✓ restoring a version from the editor > tells the server what was on screen, adopts the result and clears local undo  1227ms
+ ✓ tests/present-navigation.test.tsx (6 tests) 644ms
+ ✓ tests/presenter-window.test.tsx (4 tests) 759ms
+   ✓ opens the presenter view through the injected host, not through window.open  524ms
+ ✓ tests/sync-reconcile.test.ts (5 tests) 469ms
+ ✓ tests/editor-recovery.test.ts (7 tests) 1216ms
+   ✓ recovery journal ownership > isolates a duplicate tab with a copied session pointer and cannot take its live journal  538ms
+   ✓ recovery journal ownership > recovers a closed tab's copy into the current journal without touching other copies  332ms
+ ✓ tests/account-picker.test.tsx (1 test) 348ms
+   ✓ selects and creates projects in the explicitly named workspace  344ms
+ ✓ tests/slide-actions.test.ts (13 tests) 156ms
+ ✓ tests/transition-editing.test.ts (13 tests) 340ms
+ ✓ tests/code-panel.test.tsx (3 tests) 475ms
+ ✓ tests/chrome-theme.test.tsx (4 tests) 616ms
+   ✓ the chrome theme > follows the system until someone chooses, then keeps their choice  389ms
+ ✓ tests/accessibility-panel.test.tsx (1 test) 351ms
+   ✓ shows actionable issues and navigates to the affected object  349ms
+ ✓ tests/asset-urls.test.tsx (5 tests) 253ms
+ ✓ tests/critic-issues.test.tsx (2 tests) 218ms
+ ✓ tests/resize-operations.test.ts (2 tests) 211ms
+ ✓ tests/slide-transition.test.tsx (5 tests) 221ms
+ ✓ tests/font-cache.test.ts (1 test) 152ms
+ ✓ tests/regions.test.ts (3 tests) 85ms
+ ✓ tests/insert-image.test.tsx (5 tests) 894ms
+   ✓ adds the manifest entry and the element as one patch  657ms
+ ✓ tests/font-rebuild.test.tsx (1 test) 1311ms
+   ✓ rebuilds cached scenes on font readiness, load and failure, sharing one underlying measurer  1296ms
+ ✓ tests/ui-tokens.test.ts (57 tests) 42ms
+ ✓ tests/presentSync.test.ts (11 tests) 17ms
+ ✓ tests/measurer.test.ts (5 tests) 609ms
+   ✓ the measured text path > uses the measurer the caller supplied  413ms
+ ✓ tests/proposal-preview.test.ts (5 tests) 279ms
+ ✓ tests/ui-keys.test.ts (11 tests) 23ms
+ ✓ tests/display-fit.test.ts (6 tests) 16ms
+ ✓ tests/accessibility.test.ts (3 tests) 77ms
+ ✓ tests/editor-layout.test.ts (7 tests) 10ms
+ ✓ tests/host-commands.test.ts (2 tests) 6ms
+
+ Test Files  47 passed (47)
+      Tests  366 passed (366)
+   Start at  23:49:31
+   Duration  41.65s (transform 13.82s, setup 0ms, collect 83.92s, tests 48.81s, environment 101.06s, prepare 16.76s)
+
+
+> @deckastra/export-core@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/export-core
+
+ ✓ tests/metrics.test.ts (2 tests) 18ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:50:14
+   Duration  2.71s (transform 1.32s, setup 0ms, collect 1.75s, tests 18ms, environment 0ms, prepare 181ms)
+
+
+> @deckastra/export-pdf@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/export-pdf
+
+ ✓ tests/metrics.test.ts (2 tests) 25ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  23:50:18
+   Duration  2.10s (transform 789ms, setup 0ms, collect 1.19s, tests 25ms, environment 0ms, prepare 222ms)
+
+
+> @deckastra/export-pptx@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/export-pptx
+
+ ✓ tests/pptx.test.ts (53 tests) 96ms
+
+ Test Files  1 passed (1)
+      Tests  53 passed (53)
+   Start at  23:50:21
+   Duration  2.33s (transform 1.05s, setup 0ms, collect 1.50s, tests 96ms, environment 1ms, prepare 319ms)
+
+
+> @deckastra/layout-engine@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/layout-engine
+
+ ✓ tests/layout.test.ts (46 tests) 23ms
+
+ Test Files  1 passed (1)
+      Tests  46 passed (46)
+   Start at  23:50:24
+   Duration  937ms (transform 230ms, setup 0ms, collect 251ms, tests 23ms, environment 0ms, prepare 184ms)
+
+
+> @deckastra/presentation-core@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/presentation-core
+
+ ✓ tests/slide-deletion.test.ts (8 tests) 83ms
+ ✓ tests/operations.test.ts (49 tests) 318ms
+
+ Test Files  2 passed (2)
+      Tests  57 passed (57)
+   Start at  23:50:26
+   Duration  1.92s (transform 665ms, setup 0ms, collect 1.85s, tests 401ms, environment 1ms, prepare 435ms)
+
+
+> @deckastra/presentation-schema@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/presentation-schema
+
+ ✓ tests/patch-and-serialize.test.ts (22 tests) 60ms
+ ✓ tests/fixtures.test.ts (26 tests) 230ms
+ ✓ tests/forward-compat.test.ts (7 tests) 306ms
+ ✓ tests/known-element-validation.test.ts (23 tests) 341ms
+ ✓ tests/validation.test.ts (22 tests) 430ms
+
+ Test Files  5 passed (5)
+      Tests  100 passed (100)
+   Start at  23:50:28
+   Duration  2.48s (transform 1.24s, setup 0ms, collect 5.63s, tests 1.37s, environment 2ms, prepare 2.08s)
+
+
+> @deckastra/renderer@0.0.0 test
+> vitest run --exclude tests/pixels.test.ts
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/renderer
+
+stdout | tests/perf.test.ts > scene build budget > builds a 120-object slide well inside the typical-paint budget
+[perf] Typical slide (≤120 objects) first paint: 10.36ms / 250ms ok (scene build only)
+
+ ✓ tests/accessibility.test.ts (13 tests) 137ms
+ ✓ tests/container.test.ts (7 tests) 194ms
+ ✓ tests/scene.test.ts (34 tests) 41ms
+ ✓ tests/baseline.test.ts (4 tests) 149ms
+ ✓ tests/visuals.test.ts (32 tests) 149ms
+stdout | tests/perf.test.ts > scene build budget > stays roughly linear from 120 to 480 objects
+[perf] 120 objects 6.1ms, 480 objects 28.7ms (4.7x for 4x the objects)
+
+stdout | tests/perf.test.ts > scene build budget > builds a 300-object slide inside the heavy-paint budget
+[perf] Heavy slide (300 objects) first paint: 15.75ms / 700ms ok (scene build only)
+
+ ✓ tests/perf.test.ts (16 tests) 326ms
+ ✓ tests/charts.test.ts (21 tests) 51ms
+ ↓ tests/preview.test.tsx (1 test | 1 skipped)
+ ✓ tests/semantic.test.ts (15 tests) 43ms
+ ✓ tests/render.test.tsx (17 tests) 1039ms
+   ✓ determinism > renders byte-identical markup twice  393ms
+
+ Test Files  9 passed | 1 skipped (10)
+      Tests  159 passed | 1 skipped (160)
+   Start at  23:50:33
+   Duration  4.66s (transform 3.00s, setup 0ms, collect 13.25s, tests 2.13s, environment 4ms, prepare 4.55s)
+
+
+> @deckastra/transactions@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/transactions
+
+ ✓ tests/lifecycle.test.ts (31 tests) 108ms
+ ✓ tests/apply.test.ts (30 tests) 1160ms
+   ✓ property: every patch inverts exactly > holds over 400 generated patches  602ms
+   ✓ property: every patch inverts exactly > leaves the document valid after apply and after undo  481ms
+
+ Test Files  2 passed (2)
+      Tests  61 passed (61)
+   Start at  23:50:39
+   Duration  2.87s (transform 723ms, setup 0ms, collect 1.75s, tests 1.27s, environment 1ms, prepare 513ms)
+
+
+> @deckastra/workspace-client@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/workspace-client
+
+ ✓ tests/http.test.ts (12 tests) 16ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  23:50:43
+   Duration  962ms (transform 239ms, setup 0ms, collect 289ms, tests 16ms, environment 0ms, prepare 264ms)
+
+
+> @deckastra/mcp-server@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/apps/mcp-server
+
+ ✓ tests/attach.test.ts (7 tests) 40ms
+ ✓ tests/tools.test.ts (14 tests) 103ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  23:50:45
+   Duration  1.87s (transform 542ms, setup 0ms, collect 1.44s, tests 143ms, environment 1ms, prepare 512ms)
+
+
+> @deckastra/desktop@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/apps/desktop
+
+ ✓ tests/host.test.ts (5 tests) 23ms
+ ✓ tests/menu.test.ts (4 tests) 26ms
+ ✓ tests/agent-access.test.ts (6 tests) 171ms
+ ✓ tests/client.test.ts (6 tests) 38ms
+ ✓ tests/attachment.test.ts (4 tests) 717ms
+
+ Test Files  5 passed (5)
+      Tests  25 passed (25)
+   Start at  23:50:47
+   Duration  3.77s (transform 1.42s, setup 0ms, collect 1.71s, tests 975ms, environment 8.46s, prepare 2.03s)
+
+
+> @deckastra/web@0.0.0 test
+> vitest run --exclude "tests/**/*.e2e.test.ts"
+
+
+ RUN  v3.2.7 D:/Presentation_app/apps/web
+
+ ✓ tests/blank-creation.test.tsx (3 tests) 670ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  23:50:53
+   Duration  6.81s (transform 2.55s, setup 0ms, collect 3.95s, tests 670ms, environment 1.16s, prepare 209ms)
+
+
+> @deckastra/worker@0.0.0 test
+> vitest run --exclude "tests/*.browser.test.ts"
+
+
+ RUN  v3.2.7 D:/Presentation_app/apps/worker
+
+ ✓ tests/electron-backend.test.ts (10 tests) 35ms
+ ✓ tests/critic-report.test.ts (3 tests) 74ms
+ ✓ tests/text-measurement.test.ts (3 tests) 38ms
+ ✓ tests/assets.test.ts (9 tests) 254ms
+ ✓ tests/render-pool.test.ts (3 tests) 46ms
+
+ Test Files  5 passed (5)
+      Tests  28 passed (28)
+   Start at  23:51:01
+   Duration  2.87s (transform 2.45s, setup 0ms, collect 6.78s, tests 447ms, environment 2ms, prepare 1.68s)
+

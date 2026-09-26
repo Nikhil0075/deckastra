@@ -15,7 +15,7 @@ import { easingAt, round } from "../easing";
 import type { CompiledTransition, TransitionKeyframe } from "./types";
 
 export interface TransitionStyles {
-  /** Keyed by `slide:out`, `slide:in`, or a paired element id. */
+  /** Keyed by `slide:out`, `slide:in`, `pair:in:<id>` or `pair:out:<id>`. */
   [targetId: string]: Record<string, string | number>;
 }
 
@@ -92,7 +92,10 @@ export function sampleTransition(transition: CompiledTransition, t: number): Tra
       const to = after.properties[name] ?? before.properties[name]!;
       properties[name] = interpolate(from, to, eased);
     }
-    styles[track.targetId] = properties;
+    // Merged, not replaced: a morph gives one copy a movement track and a
+    // crossfade track with different timing, and the second must not erase
+    // the first.
+    styles[track.targetId] = { ...styles[track.targetId], ...properties };
   }
 
   return styles;

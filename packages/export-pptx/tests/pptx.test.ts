@@ -714,6 +714,28 @@ describe("a picture the exporter was given", () => {
     expect(ext[1]).toBe(ext[2]);
   });
 
+  it("crops a repositioned picture where the editor shows it, not centred again (MA-22)", () => {
+    // The renderer draws `focalPoint` as CSS object-position; the window starts
+    // that fraction of the way along the overflow. A picture pushed to its left
+    // edge in the editor must lose only its right side in PowerPoint.
+    const covered = structuredClone(TECHNICAL);
+    const element = covered.slides
+      .flatMap((slide) => slide.elements as { type: string; fit?: string; focalPoint?: unknown; transform: Record<string, number> }[])
+      .find((one) => one.type === "image")!;
+    element.fit = "cover";
+    element.focalPoint = { x: 0, y: 0.5 };
+    element.transform = { ...element.transform, width: 400, height: 400 };
+
+    const { bytes } = buildPptx({
+      ...inputFor(covered),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]),
+    });
+    const drawn = [...unzip(bytes).values()].find((body) => body.includes("<p:pic>"))!;
+    const crop = drawn.match(/<a:srcRect l="(\d+)" t="(\d+)" r="(\d+)" b="(\d+)"\/>/)!;
+    expect(Number(crop[1])).toBe(0);
+    expect(Number(crop[3])).toBeGreaterThan(0);
+  });
+
   it("refuses a format PowerPoint will not open, and says which", () => {
     // Embedding a webp because it is "an image" produces a file that opens with
     // a broken picture in it, which is worse than a labelled box: the recipient
@@ -784,5 +806,58 @@ describe("a slide background picture", () => {
     const warning = result.report.warnings.find((one) => one.feature === "background image")!;
     expect(warning.action).toBe("dropped");
     expect(warning.message).toMatch(/bytes were not available/);
+  });
+});
+
+describe("charts, tables and diagrams are in the file (manual-authoring MA-17 to MA-19)", () => {
+  function withChart(chartType: string) {
+    const document = structuredClone(TECHNICAL);
+    const slide = document.slides[0]!;
+    (slide.elements as unknown[]).push({
+      id: "el_01JCHARTCHARTCHARTCHARTCHA",
+      type: "chart",
+      chartType,
+      transform: { x: 100, y: 100, width: 800, height: 500 },
+      data: { type: "inline", rows: [{ q: "Q1", v: 10 }, { q: "Q2", v: 25 }, { q: "Q3", v: 15 }] },
+      encoding: { category: "q", value: "v" },
+      chartStyle: { showDataLabels: true },
+      altText: "Quarterly values",
+    });
+    return document;
+  }
+
+  it.each(["column", "line", "pie", "donut"])("draws a %s chart as shapes with its labels as text, and says it approximated", (kind) => {
+    const { bytes, result } = buildPptx(inputFor(withChart(kind)));
+    const report = result.report;
+    const slide = [...unzip(bytes).entries()].find(([path]) => path === "ppt/slides/slide1.xml")![1];
+    expect(slide).toContain('name="deckastra-el_01JCHARTCHARTCHARTCHARTCHA"');
+    expect(slide).toMatch(/<p:grpSp>/);
+    // Every label the slide shows is text in the file: tick labels, data
+    // labels, the legend — whatever this kind of chart draws.
+    const node = [...buildDocumentScene(withChart(kind)).slides[0]!.nodes].find((candidate) => candidate.id === "el_01JCHARTCHARTCHARTCHARTCHA")!;
+    const payload = node.renderPayload as { texts: { text: string }[]; legend: { label: string }[] };
+    const shown = [...payload.texts.map((text) => text.text), ...payload.legend.map((item) => item.label)];
+    expect(shown.length).toBeGreaterThan(0);
+    for (const label of shown) expect(slide).toContain(`<a:t>${label.replace(/&/g, "&amp;")}</a:t>`);
+    const chart = report.warnings.filter((warning) => warning.feature === "chart");
+    expect(chart.map((warning) => warning.action)).toEqual(["approximated"]);
+  });
+});
+
+describe("SVG paths as DrawingML", () => {
+  it("flattens an arc to its end point and keeps curves as curves", async () => {
+    const { parsePath } = await import("../src/drawn");
+    const arc = parsePath("M 100 50 A 50 50 0 0 1 50 100 L 50 50 Z");
+    const lines = arc.filter((segment) => segment.op === "L");
+    const last = lines.at(-2) as { to: { x: number; y: number } };
+    expect(last.to.x).toBeCloseTo(50, 5);
+    expect(last.to.y).toBeCloseTo(100, 5);
+    // A quarter circle of radius 50 about (50, 50): every point on it is 50 away.
+    for (const segment of lines.slice(0, -1)) {
+      const { x, y } = (segment as { to: { x: number; y: number } }).to;
+      expect(Math.hypot(x - 50, y - 50)).toBeCloseTo(50, 3);
+    }
+    expect(parsePath("M0 0 C 1 1 2 2 3 3 s 4 4 5 5").map((segment) => segment.op)).toEqual(["M", "C", "C"]);
+    expect(parsePath("m 10 10 h 5 v 5 z").map((segment) => segment.op)).toEqual(["M", "L", "L", "Z"]);
   });
 });

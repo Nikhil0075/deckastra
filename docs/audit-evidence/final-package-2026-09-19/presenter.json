@@ -1,0 +1,39 @@
+{
+  "step": "presenter",
+  "startedAt": "2026-09-19T18:27:16.449Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3988,
+  "console": [],
+  "cspViolations": [],
+  "enteredPresent": true,
+  "before": {
+    "index": "1",
+    "step": 0,
+    "steps": 2
+  },
+  "presenterStepBefore": "Step 1 of 3",
+  "audienceAfterNext": {
+    "index": "1",
+    "step": 1
+  },
+  "presenterStepAfter": "Step 2 of 3",
+  "blackoutRoundTrip": true,
+  "ok": true,
+  "memory": {
+    "processes": 5,
+    "totalMb": 534.6,
+    "byTypeMb": {
+      "Browser": 119.3,
+      "GPU": 169.6,
+      "Utility": 49.3,
+      "Tab": 196.5
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:27:26.227Z"
+}

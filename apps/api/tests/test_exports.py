@@ -366,3 +366,26 @@ def test_a_finished_export_is_stored_where_the_setting_says(client, auth, deck, 
 
     assert stored.parent == tmp_path / "deckastra-exports"
     assert stored.is_file() and stored.stat().st_size == job["bytes"]
+
+
+def test_an_export_of_a_version_that_is_no_longer_the_head_is_refused(client, auth, deck, monkeypatch):
+    """The editor names the version it just saved. If the deck moved after that —
+    an agent's change landing between the save and the click — the export is
+    refused, rather than handing over a file the person never looked at."""
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE")
+    head = client.get(f"/v1/presentations/{deck}", headers=auth).json()["version_id"]
+
+    matching = client.post(
+        f"/v1/presentations/{deck}/exports",
+        headers=auth,
+        json={"kind": "pdf", "expected_version_id": head},
+    )
+    assert matching.status_code == 202, matching.text
+
+    stale = client.post(
+        f"/v1/presentations/{deck}/exports",
+        headers=auth,
+        json={"kind": "pdf", "expected_version_id": "ver_not_the_head"},
+    )
+    assert stale.status_code == 409
+    assert "changed" in stale.json()["detail"]

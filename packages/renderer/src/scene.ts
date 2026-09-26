@@ -7,6 +7,7 @@ import {
   type PresentationDocument,
   type PresentationElement,
   type Rect,
+  type RichTextDocument,
   type Slide,
   type TypographyStyle,
 } from "@deckastra/presentation-schema";
@@ -219,6 +220,15 @@ export interface SlideScene {
     }[];
   };
   speakerNotes?: string;
+  /**
+   * The notes as authored, when they are rich text; absent for plain notes.
+   *
+   * `speakerNotes` stays the flattened text, which is what a PDF's notes page
+   * and anything reading words need. This carries the structure beside it so a
+   * presenter sees the bullets and emphasis the author wrote rather than one
+   * run-on paragraph. Pass-through like `transition`: nothing here renders it.
+   */
+  speakerNotesRich?: RichTextDocument;
   /**
    * The slide's animation tracks, passed through unresolved.
    *
@@ -1078,6 +1088,7 @@ export function buildSlideScene(
         : slide.speakerNotes
           ? textContent(slide.speakerNotes)
           : undefined,
+    speakerNotesRich: slide.speakerNotes && typeof slide.speakerNotes !== "string" ? slide.speakerNotes : undefined,
     animations: slide.animations,
     fonts: describeFontUsage([...ctx.fontFamilies], availability),
   };

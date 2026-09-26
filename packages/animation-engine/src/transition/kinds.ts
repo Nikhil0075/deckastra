@@ -167,10 +167,16 @@ const zoom: TransitionKindDefinition = {
  * if the object does not also fade, and reads "the slide changed" from
  * everything that does.
  *
- * With no pairs it is a crossfade **and says so**. Drawing nothing would look
- * like a broken deck, and drawing a morph of nothing is not a thing; the author
- * asked for a relationship the slides do not currently express, and the honest
- * answer names that rather than quietly substituting a fade.
+ * So a pair is drawn as **two copies above both slides**, not as the element
+ * inside the arriving slide: that slide is fading in from nothing, and anything
+ * inside it fades with it, which is how the first version showed a ghost
+ * sliding in over a copy that never moved. The leaving copy (`pair:out:`) and
+ * the arriving one (`pair:in:`) follow one path from the source's geometry to
+ * the destination's, and cross over while they do. Where the two look the same,
+ * the cross is invisible and the object simply moves and resizes; where they
+ * differ — new words, a new colour — it becomes the other on the way.
+ *
+ * With no pairs it is a crossfade **and says so**.
  */
 const morph: TransitionKindDefinition = {
   name: "morph",
@@ -187,39 +193,109 @@ const morph: TransitionKindDefinition = {
       };
     }
 
-    const paired: TransitionTrack[] = deltas.map((delta) => ({
-      targetId: delta.destinationId,
-      kind: "paired" as const,
-      easing,
-      keyframes: [
-        {
-          offset: 0,
-          properties: {
-            translateX: `${delta.dx}px`,
-            translateY: `${delta.dy}px`,
-            scaleX: delta.scaleX,
-            scaleY: delta.scaleY,
-            rotate: `${delta.rotate}deg`,
-            opacity: delta.fadeFrom,
-          },
-        },
-        {
-          offset: 1,
-          properties: {
-            translateX: "0px",
-            translateY: "0px",
-            scaleX: 1,
-            scaleY: 1,
-            rotate: "0deg",
-            opacity: delta.fadeTo,
-          },
-        },
-      ],
-    }));
+    const tracks: TransitionTrack[] = [...base];
+    for (const delta of deltas) {
+      const arriving = `pair:in:${delta.destinationId}`;
+      const leaving = `pair:out:${delta.sourceId}`;
 
-    return { tracks: [...base, ...paired] };
+      // The arriving copy starts drawn over the source and settles where it
+      // lives. The leaving copy starts where it was and ends drawn over the
+      // destination — the inverse mapping, so both are on one path at every
+      // instant rather than two objects near each other.
+      tracks.push({
+        targetId: arriving,
+        kind: "paired",
+        easing,
+        keyframes: [
+          { offset: 0, properties: placement(delta.from, delta.to, delta.scaleX, delta.scaleY, delta.rotate) },
+          { offset: 1, properties: placement(delta.to, delta.to, 1, 1, 0) },
+        ],
+      });
+      tracks.push({
+        targetId: leaving,
+        kind: "paired",
+        easing,
+        keyframes: [
+          { offset: 0, properties: placement(delta.from, delta.from, 1, 1, 0) },
+          {
+            offset: 1,
+            properties: placement(delta.to, delta.from, inverse(delta.scaleX), inverse(delta.scaleY), -delta.rotate),
+          },
+        ],
+      });
+
+      // The cross, on its own linear clock. Separate from the movement because
+      // a track's easing applies within each pair of keyframes: a third
+      // keyframe in the movement track would make the object brake to a stop
+      // halfway and set off again. The arriving copy is fully there by the
+      // midpoint while the leaving one is still whole beneath it, so nothing
+      // ever dips to half-transparent — two identical copies at half opacity
+      // each read as a flicker.
+      tracks.push({
+        targetId: arriving,
+        kind: "paired",
+        easing: "linear",
+        keyframes: [
+          { offset: 0, properties: { opacity: 0 } },
+          { offset: 0.5, properties: { opacity: 1 } },
+          { offset: 1, properties: { opacity: 1 } },
+        ],
+      });
+      tracks.push({
+        targetId: leaving,
+        kind: "paired",
+        easing: "linear",
+        keyframes: [
+          { offset: 0, properties: { opacity: 1 } },
+          { offset: 0.5, properties: { opacity: 1 } },
+          { offset: 1, properties: { opacity: 0 } },
+        ],
+      });
+    }
+
+    return { tracks };
   },
 };
+
+function inverse(scale: number): number {
+  return scale === 0 ? 1 : Math.round((1 / scale) * 1000) / 1000;
+}
+
+/**
+ * The longhands that draw an element whose matching point is `own` so that it
+ * lands on `target`, scaled and rotated about that point.
+ *
+ * The renderer places every element with `transform-origin` at the slide's own
+ * origin (its world matrix is emitted once, from 0,0), and CSS applies
+ * `translate`, `rotate` and `scale` about that same origin. Scaling by `s` there
+ * also moves the element: something at x = 1000 scaled by 0.5 lands at x = 500.
+ * The first morph ignored that, so a resizing pair started in the wrong place
+ * and swooped. Solving `target = t + R·S·own` for `t` puts it where it belongs,
+ * and because `t` is then linear in the scale, interpolating the two ends
+ * keeps the point on a straight line for the whole transition.
+ */
+function placement(
+  target: { x: number; y: number },
+  own: { x: number; y: number },
+  scaleX: number,
+  scaleY: number,
+  rotate: number,
+): Record<string, string | number> {
+  const radians = (rotate * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const sx = own.x * scaleX;
+  const sy = own.y * scaleY;
+  const tx = target.x - (cos * sx - sin * sy);
+  const ty = target.y - (sin * sx + cos * sy);
+  return {
+    translateX: `${Math.round(tx * 1000) / 1000}px`,
+    translateY: `${Math.round(ty * 1000) / 1000}px`,
+    scaleX,
+    scaleY,
+    rotate: `${rotate}deg`,
+  };
+}
 
 /** Every transition this build can draw, by name. */
 export const TRANSITION_KINDS: Record<string, TransitionKindDefinition> = {

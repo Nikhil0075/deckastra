@@ -1,6 +1,6 @@
 {
   "name": "@deckastra/desktop",
-  "version": "0.0.0",
+  "version": "0.9.0-beta.1",
   "productName": "Deckastra",
   "private": true,
   "type": "module",
@@ -10,11 +10,16 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "package": "npm run build && npm run build:sidecar && electron-builder --publish never",
+    "package": "npm run build && npm run build:sidecar && npm run sbom && npm run notices && npm run manifest && electron-builder --publish never",
+    "manifest": "node scripts/manifest.mjs",
+    "sbom": "node scripts/sbom.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build:sidecar": "node scripts/build-sidecar.mjs",
-    "verify:signing": "node scripts/check-signing.mjs"
+    "verify:signing": "node scripts/check-signing.mjs",
+    "release:win": "node scripts/release.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "notices": "node scripts/notices.mjs"
   },
   "dependencies": {
     "@deckastra/animation-engine": "*",
@@ -31,8 +36,9 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "axe-core": "^4.13.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "jsdom": "^25.0.1",
     "vite": "^6.0.7",

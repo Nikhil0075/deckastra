@@ -1,0 +1,53 @@
+
+> deckastra@0.0.0 test
+> npm run test --workspaces --if-present
+
+
+> @deckastra/animation-engine@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/animation-engine
+
+ ✓ tests/presets.test.ts (28 tests) 22ms
+ ✓ tests/compile.test.ts (23 tests) 27ms
+ ✓ tests/playback.test.ts (23 tests) 214ms
+ ✓ tests/timeline.test.ts (12 tests) 16ms
+ ✓ tests/timeline-authoring.test.ts (20 tests) 24ms
+ ✓ tests/transition-compile.test.ts (16 tests) 19ms
+ ✓ tests/timeline-applies.test.ts (5 tests) 393ms
+ ✓ tests/transition-pairing.test.ts (10 tests) 18ms
+ ✓ tests/timeline-conflicts.test.ts (10 tests) 15ms
+ ✓ tests/transition-fixture.test.ts (4 tests) 34ms
+ ✓ tests/deck-acceptance.test.ts (7 tests) 33ms
+ ✓ tests/fixture.test.ts (16 tests) 44ms
+
+ Test Files  12 passed (12)
+      Tests  174 passed (174)
+   Start at  00:42:27
+   Duration  9.42s (transform 9.11s, setup 0ms, collect 22.50s, tests 857ms, environment 5ms, prepare 19.06s)
+
+
+> @deckastra/editor@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor
+
+ ✓ tests/spacing.test.ts (4 tests) 9ms
+ ✓ tests/rebuild-by-hand.test.ts (5 tests) 15ms
+ ✓ tests/editor.test.ts (80 tests) 70ms
+ ✓ tests/text-editing.test.ts (24 tests) 66ms
+
+ Test Files  4 passed (4)
+      Tests  113 passed (113)
+   Start at  00:42:40
+   Duration  336.98s (transform 10.00s, setup 0ms, collect 12.92s, tests 160ms, environment 330.70s, prepare 1.37s)
+
+
+> @deckastra/editor-ui@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+

@@ -1,0 +1,4 @@
+s                                                                        [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] apps\api\tests\test_launch.py:632: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+1 skipped in 1.24s

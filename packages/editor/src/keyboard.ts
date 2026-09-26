@@ -138,9 +138,32 @@ export function describeBinding(binding: KeyBinding, platform: "mac" | "other" =
  * Without this, typing "d" in a text box duplicates the element and typing a
  * space scrolls the slide — the classic way an editor feels broken the first time
  * someone writes a sentence in it.
+ *
+ * Undo, redo and the clipboard belong to the field too (audit follow-up,
+ * 2026-09-19). They used to be allowed here, so Ctrl+Z in the speaker notes or
+ * an inspector field undid the *deck's* last change — something on the canvas
+ * the person was not looking at — and the handler's preventDefault stopped the
+ * field's own undo from running. Once a field commits, its edit is a deck step
+ * and the deck's undo reaches it like any other.
  */
-const SAFE_WHILE_TYPING = new Set<EditorCommand>(["escape", "undo", "redo", "copy", "cut", "paste"]);
+const SAFE_WHILE_TYPING = new Set<EditorCommand>(["escape"]);
 
 export function isAllowedWhileTyping(command: EditorCommand): boolean {
   return SAFE_WHILE_TYPING.has(command);
 }
+
+/**
+ * Where a shortcut applies (editor Phase 8).
+ *
+ * `canvas` commands act on the canvas selection — cycle, nudge, delete, group,
+ * the clipboard — and apply only while the canvas has focus. The shell used to
+ * catch them on the whole window, so Tab on any button selected the next object
+ * instead of moving focus, and a keyboard user could not Tab out of anything
+ * (WCAG 2.1.1, 2.1.2). `global` commands mean the same wherever focus is.
+ */
+const GLOBAL_COMMANDS = new Set<EditorCommand>(["undo", "redo", "undoLastAgentChange", "present"]);
+
+export function commandScope(command: EditorCommand): "global" | "canvas" {
+  return GLOBAL_COMMANDS.has(command) ? "global" : "canvas";
+}
+

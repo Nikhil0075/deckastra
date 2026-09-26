@@ -306,3 +306,38 @@ def test_a_running_job_is_cancelled_by_a_request_on_another_connection(tmp_path,
         assert not finished.artifact_path
         assert finished.bytes == 0
     assert document_version
+
+
+def test_the_exporter_is_spoken_to_in_utf8_both_ways(tmp_path, monkeypatch):
+    """The exporter reads and writes UTF-8, whatever the machine's code page.
+
+    Read with the locale's encoding (cp1252 on Windows), every em dash in a
+    degradation message reached the export panel as "â€”" — found by the desktop
+    `handoff` acceptance step — and a non-ASCII output path reached the exporter
+    garbled. The fake exporter here reads and writes raw UTF-8 bytes, as the real
+    one does, so it fails under the old decoding on Windows.
+    """
+    script = tmp_path / "utf8.py"
+    script.write_text(
+        textwrap.dedent(
+            """
+            import json, sys
+            request = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+            open(request["output"], "wb").write(b"bytes")
+            answer = {"ok": True, "bytes": 5, "filename": "a.pdf", "contentType": "application/pdf",
+                      "report": {"message": "replaced in this build — the content is not in the file"},
+                      "echo": request["output"]}
+            sys.stdout.buffer.write(json.dumps(answer, ensure_ascii=False).encode("utf-8"))
+            """
+        ).strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DECKASTRA_WORKER_CMD", str(script))
+    monkeypatch.setenv("DECKASTRA_WORKER_NODE", sys.executable)
+    folder = tmp_path / "Übersicht – décks"
+    folder.mkdir()
+
+    answer = export_service._invoke_worker("pdf", {"slides": []}, folder / "out.pdf", {}, should_cancel=lambda: False)
+    assert answer["report"]["message"] == "replaced in this build — the content is not in the file"
+    assert answer["echo"] == str(folder / "out.pdf")
+    assert (folder / "out.pdf").read_bytes() == b"bytes"

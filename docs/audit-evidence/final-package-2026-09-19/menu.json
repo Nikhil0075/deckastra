@@ -1,0 +1,35 @@
+{
+  "step": "menu",
+  "startedAt": "2026-09-19T18:29:01.600Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3419,
+  "console": [],
+  "cspViolations": [],
+  "created": "doc_01M2XEVMDVC5XY5RC6FY5RE21W",
+  "deleted": 200,
+  "checks": [
+    "modes",
+    "theme",
+    "history",
+    "all decks",
+    "new deck"
+  ],
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 380.5,
+    "byTypeMb": {
+      "Browser": 103.1,
+      "GPU": 123.4,
+      "Utility": 46.9,
+      "Tab": 107.2
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:29:03.854Z"
+}

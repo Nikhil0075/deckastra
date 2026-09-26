@@ -1,0 +1,240 @@
+/*
+ * The deck list per project (Figma: "the deck list per project"). Projects on
+ * the left, cards on a cream ground, black rules. Same discipline as the other
+ * stylesheets: `--dk-*` tokens only, square corners, checked by
+ * `tests/ui-tokens.test.ts`.
+ */
+
+.dk-decks {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.dk-decks__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  height: var(--dk-bar-height);
+  padding: 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  flex: none;
+}
+.dk-decks__bar .dk-appbar__title {
+  flex: none;
+  max-width: 320px;
+}
+.dk-decks__search {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 320px;
+  margin-left: var(--dk-space-3);
+  color: var(--dk-ink-muted);
+}
+.dk-decks__search .dk-field {
+  flex: 1;
+}
+.dk-decks__bar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  margin-left: auto;
+}
+
+.dk-decks__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.dk-decks__projects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-4);
+  width: 224px;
+  padding: var(--dk-space-4) var(--dk-space-3);
+  border-right: var(--dk-line) solid var(--dk-rule);
+  overflow-y: auto;
+  flex: none;
+}
+.dk-decks__workspace .dk-label {
+  margin-bottom: var(--dk-space-2);
+}
+.dk-decks__project-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-decks__project {
+  width: 100%;
+  height: var(--dk-control-md);
+  padding: 0 var(--dk-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-decks__project:hover {
+  background: var(--dk-sunk);
+}
+.dk-decks__project--current,
+.dk-decks__project--current:hover {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-decks__new-project {
+  display: grid;
+  gap: var(--dk-space-2);
+}
+.dk-decks__new-project-actions {
+  display: flex;
+  gap: var(--dk-space-2);
+}
+
+.dk-decks__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.dk-decks__heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--dk-space-4);
+  padding: var(--dk-space-5) var(--dk-space-5) var(--dk-space-4);
+}
+.dk-decks__heading .dk-select {
+  width: 180px;
+}
+.dk-decks__title {
+  margin: 0 0 var(--dk-space-1);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+  font-weight: 500;
+}
+.dk-decks__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  margin: 0 var(--dk-space-5) var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-decks__banner > span {
+  flex: 1;
+}
+.dk-decks__error {
+  margin: 0 var(--dk-space-5) var(--dk-space-3);
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+.dk-decks__scroll {
+  flex: 1;
+  padding: 0 var(--dk-space-5) var(--dk-space-5);
+}
+.dk-decks__empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-6) 0;
+}
+.dk-decks__empty p {
+  margin: 0;
+  font-size: var(--dk-text-lg);
+}
+
+.dk-decks__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: var(--dk-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* --- Card ----------------------------------------------------------------- */
+
+.dk-card {
+  position: relative;
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) var(--dk-space-2) var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+}
+.dk-card:hover,
+.dk-card:focus-within {
+  border-color: var(--dk-rule);
+}
+.dk-card--open {
+  border-color: var(--dk-blue);
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+}
+.dk-card__thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: var(--dk-backdrop);
+  line-height: 0;
+  cursor: pointer;
+}
+.dk-card__frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.dk-card__placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--dk-backdrop);
+}
+.dk-card__menu {
+  position: absolute;
+  top: var(--dk-space-3);
+  right: var(--dk-space-3);
+  opacity: 0;
+}
+.dk-card:hover .dk-card__menu,
+.dk-card:focus-within .dk-card__menu,
+.dk-card__menu:has([aria-expanded="true"]) {
+  opacity: 1;
+}
+.dk-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
+}
+.dk-card__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--dk-text-md);
+  font-weight: 600;
+}
+.dk-card__summary {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+
+.dk-decks__move {
+  display: grid;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-4);
+}

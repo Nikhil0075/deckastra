@@ -152,7 +152,15 @@ export function readEditable(root: Node): RichTextDocument {
     const tag = element.tagName;
 
     if (tag === "BR") {
-      // A <br> ends the line rather than emitting a character.
+      // A <br> that is the last thing in its parent draws no line: it is the
+      // placeholder that keeps an empty line open (`<div><br></div>`), which
+      // browsers insert and the editors seed. Read as a break, every blank line
+      // came back as two, and grew by one on every edit.
+      if (!element.nextSibling) {
+        if (!current) startBlock();
+        return;
+      }
+      // Otherwise a <br> ends the line rather than emitting a character.
       startBlock(current?.type ?? "paragraph", current?.indentLevel ?? 0);
       return;
     }
@@ -183,7 +191,11 @@ export function readEditable(root: Node): RichTextDocument {
     }
 
     if (blockType && depth > 0) {
-      startBlock(blockType, tag === "LI" ? Math.max(0, depth - 2) : 0);
+      // An item's list decides its kind: `<ol>` numbers, everything else is a
+      // bullet. Reading every <li> as a bullet turned a numbered list into
+      // bullets on the first edit, in notes and on the canvas alike.
+      const type = tag === "LI" && element.parentElement?.tagName === "OL" ? "numbered" : blockType;
+      startBlock(type, tag === "LI" ? Math.max(0, depth - 2) : 0);
     }
 
     for (const child of Array.from(element.childNodes)) walk(child, nextMarks, depth + 1);
@@ -309,4 +321,105 @@ export function preserveBlockStyles(
       return { ...block, ...carried };
     }),
   };
+}
+
+// ------------------------------------------------------ plain edits of rich
+
+/**
+ * Apply an edit made in a plain-text field to a rich document, touching only
+ * what changed (manual-authoring review MA-08).
+ *
+ * The inspector's content field is a textarea, which can only show words. It
+ * used to write `plainText(value)` on every keystroke — so correcting one typo
+ * in a formatted body replaced it with a single unformatted paragraph: every
+ * bold run, every bullet, every block id and paragraph style gone, silently.
+ *
+ * Instead the edit is located, and spliced in:
+ *
+ * - Lines the edit did not reach keep their block exactly — id, type, style,
+ *   spans. A line is compared by its text, from both ends, so an edit in the
+ *   middle of a long list leaves the lines around it alone.
+ * - Within a changed line, the common prefix and suffix keep their spans and
+ *   marks; the inserted characters take the marks of the run they were typed
+ *   into (the run ending at the caret, which is what typing at the end of a bold
+ *   word does in every editor).
+ * - A new line (Enter in the field) becomes a block of the same kind as the line
+ *   it was split from, with a fresh id; a removed line removes its block.
+ */
+export function applyPlainTextEdit(before: RichTextDocument, text: string): RichTextDocument {
+  const oldLines = before.blocks.map((block) => block.spans.map((span) => span.text).join(""));
+  const newLines = text.replace(/\r\n/g, "\n").split("\n");
+
+  let prefix = 0;
+  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix += 1;
+  let suffix = 0;
+  while (
+    suffix < oldLines.length - prefix &&
+    suffix < newLines.length - prefix &&
+    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  const oldMiddle = before.blocks.slice(prefix, before.blocks.length - suffix);
+  const newMiddle = newLines.slice(prefix, newLines.length - suffix);
+
+  const middle: TextBlock[] = newMiddle.map((line, index) => {
+    const source = oldMiddle[index];
+    if (source) return { ...source, spans: spliceSpans(source.spans, line) };
+    // A line the field gained: shaped like the line it came from.
+    const template = oldMiddle.at(-1) ?? before.blocks[prefix - 1] ?? before.blocks[0];
+    const marks = template ? marksOf(template.spans.at(-1)) : {};
+    const block: TextBlock = { id: newId("blk"), type: template?.type ?? "paragraph", spans: [{ ...marks, text: line }] };
+    if (template?.indentLevel) block.indentLevel = template.indentLevel;
+    if (template?.style) block.style = template.style;
+    if (template?.listMarker) block.listMarker = template.listMarker;
+    return block;
+  });
+
+  const blocks = [...before.blocks.slice(0, prefix), ...middle, ...before.blocks.slice(before.blocks.length - suffix)];
+  return { ...before, blocks: blocks.length > 0 ? blocks : [emptyBlock()] };
+}
+
+/** A span's formatting without its words. */
+function marksOf(span: TextSpan | undefined): Omit<TextSpan, "text"> {
+  if (!span) return {};
+  const { text: _text, ...marks } = span;
+  return marks;
+}
+
+/** Replace `spans`' text with `next`, keeping the runs around the change. */
+function spliceSpans(spans: readonly TextSpan[], next: string): TextSpan[] {
+  const old = spans.map((span) => span.text).join("");
+  if (old === next) return spans.map((span) => ({ ...span }));
+
+  let start = 0;
+  while (start < old.length && start < next.length && old[start] === next[start]) start += 1;
+  let tail = 0;
+  while (tail < old.length - start && tail < next.length - start && old[old.length - 1 - tail] === next[next.length - 1 - tail]) {
+    tail += 1;
+  }
+  const removeEnd = old.length - tail;
+  const inserted = next.slice(start, next.length - tail);
+
+  const out: TextSpan[] = [];
+  let offset = 0;
+  let placed = false;
+  for (const span of spans) {
+    const from = offset;
+    const to = offset + span.text.length;
+    offset = to;
+    // Characters before the change, and after it, that fall in this run.
+    const head = span.text.slice(0, Math.max(0, Math.min(to, start) - from));
+    const rest = span.text.slice(Math.max(0, Math.max(from, removeEnd) - from));
+    // The run the caret sits in, or ends at, takes the typed characters; at the
+    // very start of the line that is the first run.
+    const takesInsert = !placed && ((start > from && start <= to) || (start === 0 && from === 0));
+    if (takesInsert) placed = true;
+    out.push({ ...span, text: head + (takesInsert ? inserted : "") + rest });
+  }
+  if (!placed) out.push({ ...marksOf(spans.at(-1)), text: inserted });
+
+  const merged = mergeSpans(out);
+  return merged.length > 0 ? merged : [{ ...marksOf(spans[0]), text: "" }];
 }

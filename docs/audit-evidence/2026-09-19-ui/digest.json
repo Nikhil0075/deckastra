@@ -1,0 +1,41 @@
+{
+  "step": "digest",
+  "startedAt": "2026-09-19T13:30:31.942Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5757,
+  "console": [],
+  "cspViolations": [],
+  "baselines": {
+    "technical": {
+      "matched": true,
+      "lines": 43
+    },
+    "repository": {
+      "matched": true,
+      "lines": 14
+    },
+    "animation": {
+      "matched": true,
+      "lines": 29
+    }
+  },
+  "allBaselinesMatched": true,
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 305.6,
+    "byTypeMb": {
+      "Browser": 100.3,
+      "GPU": 79,
+      "Utility": 44.1,
+      "Tab": 82.2
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T13:30:32.125Z"
+}

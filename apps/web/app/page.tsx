@@ -54,7 +54,7 @@ export default function Home() {
   const [slideCount, setSlideCount] = useState(5);
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [presenting, setPresenting] = useState(false);
-  const [generationMode, setGenerationMode] = useState<"model" | "stub" | null>(null);
+  const [generationMode, setGenerationMode] = useState<"model" | "stub" | "unavailable" | null>(null);
   const [presentationId, setPresentationId] = useState<string | null>(null);
   const [repositoryIds, setRepositoryIds] = useState<string[]>([]);
   const [target, setTarget] = useState<{ workspaceId: string; projectId: string } | null>(null);
@@ -162,6 +162,13 @@ export default function Home() {
           <strong>No API key configured.</strong> Decks will be composed by the
           deterministic stub planner with placeholder copy. Set{" "}
           <code>ANTHROPIC_API_KEY</code> and restart the API for real generation.
+        </div>
+      ) : null}
+
+      {generationMode === "unavailable" ? (
+        <div style={noticeStyle}>
+          <strong>Generation is not available.</strong> This API cannot reach a
+          model — see its <code>/health</code> for the reason.
         </div>
       ) : null}
 

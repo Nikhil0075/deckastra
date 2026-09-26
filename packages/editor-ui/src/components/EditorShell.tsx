@@ -1,40 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CSSProperties } from "react";
-import {
-  newId,
-  plainText,
-  isGroup,
-  textContent,
-  walkElements,
-  type PresentationElement,
-} from "@deckastra/presentation-schema";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isGroup, type PresentationElement } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { useAssetUrls } from "../lib/asset-urls";
 import { uploadAndInsertImage } from "../lib/insert-image";
-import { ScaledSlide } from "@deckastra/renderer/react";
 import {
   addElement,
-  cloneSlide,
   createSlide,
   groupElements,
   makeStarterElement,
   type StarterElementKind,
   moveElement,
   removeElement,
-  removeSlide,
   resolveElementById,
   setProperty,
   cleanupOperationsForDeletion,
+  ungroupElements,
 } from "@deckastra/presentation-core";
 import {
   buildIndex,
   copy as copyElements,
   duplicate as duplicateElements,
   escape as escapeSelection,
+  commandScope,
+  cycleLeavesScope,
   cycleSelection,
+  enterGroup,
   isAllowedWhileTyping,
   nudgeDistance,
   paste as pasteElements,
@@ -44,37 +37,68 @@ import {
 } from "@deckastra/editor";
 
 import { useBrowserMeasurer } from "../lib/measurer";
-import { altTextFor, altTextProperty, needsAltText } from "../lib/accessibility";
-import { ThemePanel } from "./ThemePanel";
-import { checkFrameBudget } from "@deckastra/renderer";
+import { containerPlacements } from "../lib/group-placements";
+import { classifyTransfer, pastedTextOperations, writeClipboard, type Transfer } from "../lib/external-clipboard";
+import { textEditRefusal } from "../lib/text-targets";
+import { commitFocusedDraft } from "../lib/drafts";
+import { focusNextRegion } from "../lib/regions";
+import { setThemePreference } from "../lib/chrome-theme";
+import {
+  isDeckListCommand,
+  modeForCommand,
+  themeForCommand,
+  type DeckListCommand,
+  type HostCommand,
+  type SubscribeHostCommands,
+} from "../lib/host-commands";
+import { dockHeightFor, type EditorMode, type Zoom } from "../lib/editor-layout";
 
-import { AskPanel } from "./AskPanel";
-import { ProposalsPanel } from "./ProposalsPanel";
-import { AccessibilityPanel } from "./AccessibilityPanel";
-import { CriticIssues } from "./CriticIssues";
 import { ConflictRecovery } from "./ConflictRecovery";
-import { ExportPanel } from "./ExportPanel";
-import { SharePanel } from "./SharePanel";
 import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
+import { Inspector, type ReorderDirection } from "./inspector/Inspector";
+import { AppBar } from "./shell/AppBar";
+import { CanvasStage } from "./shell/CanvasStage";
+import { AiPanel, CodePanel } from "./shell/ModePanels";
+import { MotionModePanel } from "./shell/MotionModePanel";
+import { SlideStrip } from "./shell/SlideStrip";
+import { SpeakerNotes } from "./shell/SpeakerNotes";
+import { ToolRail } from "./shell/ToolRail";
 
 import type { OpenPresenterWindow } from "@deckastra/workspace-contracts";
 
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
-import { EditorCanvas } from "./EditorCanvas";
 import { PresentMode } from "./PresentMode";
+import { VersionHistory } from "./VersionHistory";
+import { Button } from "../ui";
 
 /**
- * The editor shell: canvas, slide strip, layers, inspector and toolbar.
+ * The editor shell (Figma: MAIN SCREEN): top bar, insert rail, slide strip,
+ * canvas, a mode-dependent right panel, and the motion dock under the canvas.
  *
  * Journey D (doc 01 §7.4) is the goal — a complete deck buildable without AI.
  * That is not a nice-to-have: an editor that only works as an AI output viewer
  * makes the product fragile, because every gap in the model becomes a thing the
  * user simply cannot do.
+ *
+ * This file owns the editor's *actions* and its keyboard; the layout pieces
+ * under `shell/` and `inspector/` only gesture. Mode, zoom and the playhead are
+ * editor state and never reach the document (doc 02 §4.1).
  */
 
 export interface EditorShellProps extends UseEditorInput {
-  onExit?: () => void;
+  /**
+   * Leave the deck for the deck list. `next` is what the list should do on
+   * arrival (New deck and Generate chosen from the menu inside the editor); it is
+   * passed only after the save queue drained, so a refusal to leave never starts
+   * a new deck behind the person's back.
+   */
+  onExit?: (next?: DeckListCommand) => void;
+  /**
+   * The host's own commands — the desktop application menu. The editor keeps
+   * every keyboard shortcut it has; this is the other way to reach them.
+   */
+  commands?: SubscribeHostCommands;
   /**
    * How the presenter view gets its own window, forwarded to `PresentMode`.
    *
@@ -84,6 +108,18 @@ export interface EditorShellProps extends UseEditorInput {
    * presenter view on a second display.
    */
   openPresenter?: OpenPresenterWindow;
+  /**
+   * Host-owned controls for the top bar, placed before Share — the desktop's
+   * agent-access switch. A slot rather than a feature flag: the editor has no
+   * business knowing which shell it is in.
+   */
+  barExtras?: ReactNode;
+  /**
+   * Host-owned banners shown under the top bar (the desktop's "reconnecting to
+   * the workspace service"). Inside the shell's own layout, so a banner never
+   * pushes the editor past the bottom of the window.
+   */
+  notices?: ReactNode;
 }
 
 export function EditorShell(props: EditorShellProps) {
@@ -94,11 +130,10 @@ export function EditorShell(props: EditorShellProps) {
   const [presenting, setPresenting] = useState(false);
   const [clipboard, setClipboard] = useState<ClipboardPayload | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
-  // Last drag's frame times. Shown rather than logged: doc 04 §31.5 is explicit
-  // that an untracked budget regresses quietly, and this is the smallest thing
-  // that makes the drag budget observable while telemetry is Phase 9.
-  const [frames, setFrames] = useState<{ summary: string; over: boolean }>();
-  const [canvasWidth, setCanvasWidth] = useState(880);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
+  const [mode, setMode] = useState<EditorMode>("design");
+  const [zoom, setZoom] = useState<Zoom>("fit");
   // The motion playhead. Editor state, not document state — where the author has
   // scrubbed to is exactly the kind of thing doc 02 §4.1 keeps out of the file.
   const [playheadMs, setPlayheadMs] = useState(0);
@@ -124,10 +159,90 @@ export function EditorShell(props: EditorShellProps) {
     setPlayheadMs(0);
   }, [slideIndex]);
 
+  // So does leaving Motion mode, or starting to type into a text box (MA-26).
+  // A slide scrubbed to the first frame of a fade has invisible objects that
+  // can still be clicked, and moved ones whose selection box sits where the
+  // object is not; editing it in that pose is editing something you cannot see.
+  const stopPreview = useCallback(() => {
+    setScrubbing(false);
+    setPlaying(0);
+  }, []);
+  useEffect(() => {
+    if (mode !== "motion") stopPreview();
+  }, [mode, stopPreview]);
+  useEffect(() => {
+    if (selection.editingTextId) stopPreview();
+  }, [selection.editingTextId, stopPreview]);
+
   const flash = useCallback((message: string) => {
     setNotice(message);
     setTimeout(() => setNotice(undefined), 4000);
   }, []);
+
+  // Leaving the deck (to the deck list) lets the shell unmount the editor, and
+  // with it the autosave queue. So it waits for the queue to empty, and stays
+  // if it cannot: work that has not reached the service would otherwise be
+  // left in a recovery journal the person does not know to look for.
+  const { onExit } = props;
+  const exit = useMemo(
+    () =>
+      onExit
+        ? (next?: DeckListCommand) => {
+            // A field holding a draft (the speaker notes) commits on blur. A
+            // click on "All decks" blurs it; a menu shortcut pressed while
+            // typing does not, and the draft would unmount with the editor
+            // after the save it should have been part of.
+            commitFocusedDraft();
+            void editor.saveNow().then((drained) => {
+              if (drained) onExit(next);
+              else flash("Your latest changes have not saved yet, so the deck stays open. Try again in a moment.");
+            });
+          }
+        : undefined,
+    [editor, flash, onExit],
+  );
+
+  // The host's menu. Held in a ref so the subscription is made once per host
+  // rather than torn down on every render, while the handler still sees the
+  // current editor. Present mode has its own keys; a menu choice made while
+  // presenting is ignored rather than editing a deck nobody is looking at.
+  const onCommand = useRef<(command: HostCommand) => void>(() => {});
+  onCommand.current = (command) => {
+    const theme = themeForCommand(command);
+    if (theme) {
+      setThemePreference(theme);
+      return;
+    }
+    if (presenting) return;
+    const nextMode = modeForCommand(command);
+    if (nextMode) {
+      setMode(nextMode);
+      return;
+    }
+    if (isDeckListCommand(command)) {
+      exit?.(command);
+      return;
+    }
+    switch (command) {
+      case "all-decks":
+        exit?.();
+        break;
+      case "undo":
+        editor.undo();
+        break;
+      case "redo":
+        editor.redo();
+        break;
+      case "present":
+        setPresenting(true);
+        break;
+      case "version-history":
+        setHistoryOpen(true);
+        break;
+    }
+  };
+  const { commands } = props;
+  useEffect(() => commands?.((command) => onCommand.current(command)), [commands]);
 
   // ------------------------------------------------------------------ actions
 
@@ -154,6 +269,9 @@ export function EditorShell(props: EditorShellProps) {
         label: `Add ${shape ?? kind}`,
         selectionAfter: [element.id],
       });
+      // The new object is selected; the canvas takes focus so its shortcuts —
+      // arrows, Delete — act on it, as they would after clicking it.
+      document.querySelector<HTMLElement>("[data-editor-canvas]")?.focus({ preventScroll: true });
     },
     [apply, doc, slide],
   );
@@ -180,9 +298,7 @@ export function EditorShell(props: EditorShellProps) {
         // Said rather than swallowed. The most likely refusal is the storage
         // quota, which is charged when the upload is registered — and a picture
         // that silently does not appear reads as the editor being broken.
-        setUploadError(
-          caught instanceof Error ? caught.message : "That image could not be added.",
-        );
+        setUploadError(caught instanceof Error ? caught.message : "That image could not be added.");
       }
     },
     [apply, client, doc, slide],
@@ -198,8 +314,64 @@ export function EditorShell(props: EditorShellProps) {
     }
   }, [apply, doc, flash, selection.selectedIds]);
 
+  /**
+   * Dissolve the selected group (MA-06). The children stay where they are drawn
+   * and stay selected, so the next thing a person does — move one of them —
+   * needs no further clicks. One patch, so one Undo regroups exactly.
+   */
+  const ungroup = useCallback(() => {
+    const id = selection.primaryId ?? selection.selectedIds[0];
+    const found = id ? resolveElementById(doc, id) : undefined;
+    if (!id || !found || !isGroup(found.element)) {
+      flash("Select a group to ungroup it.");
+      return;
+    }
+    try {
+      const placements = containerPlacements(found.element, slideScene);
+      const { operations, elementIds, approximated } = ungroupElements(doc, id, { placements });
+      apply(operations, { label: "Ungroup", selectionAfter: elementIds });
+      if (approximated.length > 0) {
+        flash(
+          "This group was stretched unevenly, which a rotated object cannot keep on its own. " +
+            "Its rotated objects were placed as closely as they can be; Undo puts the group back.",
+        );
+      }
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Could not ungroup that.");
+    }
+  }, [apply, doc, flash, selection.primaryId, selection.selectedIds, slideScene]);
+
+  /**
+   * Enter on the canvas (MA-05): edit the selected text in place, step into a
+   * selected group, or say why neither applies. It is bound in the keyboard map
+   * and used to do nothing at all.
+   */
+  const enterSelection = useCallback((): boolean => {
+    if (selection.selectedIds.length !== 1) {
+      if (selection.selectedIds.length > 1) flash("Select one object to edit its text.");
+      return selection.selectedIds.length > 1;
+    }
+    const id = selection.selectedIds[0]!;
+    const element = resolveElementById(doc, id)?.element;
+    if (element && isGroup(element) && element.locked !== true) {
+      const first = element.children[0]?.id;
+      setSelection((current) => ({
+        ...enterGroup(current, id),
+        ...(first ? { selectedIds: [first], primaryId: first } : {}),
+      }));
+      return true;
+    }
+    const refusal = textEditRefusal(element);
+    if (refusal) {
+      flash(refusal);
+      return true;
+    }
+    setSelection((current) => ({ ...current, selectedIds: [id], primaryId: id, editingTextId: id }));
+    return true;
+  }, [doc, flash, selection.selectedIds, setSelection]);
+
   const reorder = useCallback(
-    (direction: "forward" | "backward" | "front" | "back") => {
+    (direction: ReorderDirection) => {
       const id = selection.primaryId ?? selection.selectedIds[0];
       if (!id || !slide) return;
 
@@ -253,30 +425,169 @@ export function EditorShell(props: EditorShellProps) {
       const operations = selection.selectedIds.flatMap((id) => {
         const found = resolveElementById(doc, id);
         if (!found) return [];
-        const current =
-          flag === "locked" ? found.element.locked === true : found.element.visible !== false;
-        return setProperty(doc, id, flag, flag === "locked" ? !current : !current);
+        const current = flag === "locked" ? found.element.locked === true : found.element.visible !== false;
+        return setProperty(doc, id, flag, !current);
       });
       apply(operations, { label: flag === "locked" ? "Lock" : "Hide" });
     },
     [apply, doc, selection.selectedIds],
   );
 
+  // --------------------------------------------------------- clipboard, drop
+
+  /**
+   * Put a clipboard or drop payload on the current slide (MA-23). Each thing
+   * inserted is one patch: pasted objects together, each picture on its own
+   * (it is uploaded on its own), text as one box.
+   */
+  const insertTransfer = useCallback(
+    async (transfer: Transfer, at?: { x: number; y: number }) => {
+      if (!slide) return;
+      switch (transfer.kind) {
+        case "objects": {
+          const { operations, elementIds } = pasteElements(doc, transfer.payload, {
+            targetSlideId: slide.id,
+            ...(at ? { at } : {}),
+          });
+          apply(operations, { label: "Paste", selectionAfter: elementIds });
+          return;
+        }
+        case "text": {
+          const { operations, elementId } = pastedTextOperations(doc, slide.id, transfer.content, at);
+          apply(operations, { label: "Paste text", selectionAfter: [elementId] });
+          return;
+        }
+        case "images": {
+          if (transfer.refused.length > 0) {
+            flash(`${transfer.refused.join(", ")} could not be added: only pictures go on a slide.`);
+          }
+          setUploadError(null);
+          // Each picture's patch is an append to the manifest and to the slide,
+          // addressed by id, so the document the first was computed against is
+          // as good as any for the next.
+          for (const file of transfer.files) {
+            try {
+              const { operations, elementId } = await uploadAndInsertImage(client, {
+                document: doc,
+                slideId: slide.id,
+                file,
+                ...(at ? { at } : {}),
+              });
+              apply(operations, { label: "Add image", selectionAfter: [elementId] });
+            } catch (caught) {
+              setUploadError(caught instanceof Error ? caught.message : `${file.name || "That picture"} could not be added.`);
+            }
+          }
+          return;
+        }
+        case "refused":
+          flash(transfer.message);
+          return;
+        case "empty":
+          // Nothing the system clipboard offered; the in-window copy still works
+          // where a browser withholds clipboard data.
+          if (clipboard) {
+            const { operations, elementIds } = pasteElements(doc, clipboard, { targetSlideId: slide.id });
+            apply(operations, { label: "Paste", selectionAfter: elementIds });
+          } else {
+            flash("There is nothing on the clipboard that can go on a slide.");
+          }
+          return;
+      }
+    },
+    [apply, client, clipboard, doc, flash, slide],
+  );
+
+  useEffect(() => {
+    if (presenting) return;
+    const onCanvas = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && (active.isContentEditable || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+        return false;
+      }
+      return !(active instanceof Element) || active === document.body || active.closest("[data-editor-canvas]") !== null;
+    };
+    const onCopy = (event: ClipboardEvent) => {
+      if (!onCanvas()) return;
+      const payload = copyElements(doc, selection.selectedIds);
+      if (!payload) return;
+      setClipboard(payload);
+      if (event.clipboardData) {
+        writeClipboard(event.clipboardData, payload);
+        event.preventDefault();
+      }
+      if (event.type === "cut") deleteSelection();
+    };
+    const onPaste = (event: ClipboardEvent) => {
+      if (!onCanvas()) return;
+      event.preventDefault();
+      const transfer = classifyTransfer(event.clipboardData, parseDetached);
+      void insertTransfer(transfer);
+    };
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCopy);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCopy);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, [deleteSelection, doc, insertTransfer, presenting, selection.selectedIds]);
+
+  /** A file dropped on the canvas lands where it was dropped. */
+  const onDropFiles = useCallback(
+    (event: React.DragEvent) => {
+      if (!Array.from(event.dataTransfer.types).includes("Files")) return;
+      event.preventDefault();
+      const canvas = document.querySelector<HTMLElement>("[data-editor-canvas]");
+      const rect = canvas?.getBoundingClientRect();
+      const at =
+        rect && rect.width > 0
+          ? {
+              x: ((event.clientX - rect.left) / rect.width) * doc.viewport.width,
+              y: ((event.clientY - rect.top) / rect.height) * doc.viewport.height,
+            }
+          : undefined;
+      void insertTransfer(classifyTransfer(event.dataTransfer, parseDetached), at);
+    },
+    [doc.viewport.height, doc.viewport.width, insertTransfer],
+  );
+
   // ----------------------------------------------------------------- keyboard
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // A widget already handled this key — an arrow moving the mode switch, a
+      // menu, a select. Without this, ArrowRight on the mode switch would also
+      // nudge the selected object: the widget's handler runs first (React
+      // listens at the root) and marks the event, and this listener is on the
+      // window, after it.
+      if (event.defaultPrevented) return;
+
       const target = event.target as HTMLElement | null;
       const typing =
-        target?.isContentEditable ||
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA";
+        target?.isContentEditable || target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+
+      // F6 / Shift+F6: the next part of the window (lib/regions.ts). Works while
+      // typing too, because it is how a keyboard user gets out of a field.
+      if (event.key === "F6" && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (focusNextRegion(document, event.shiftKey)) event.preventDefault();
+        return;
+      }
 
       const resolved = resolveCommand(event);
       if (!resolved) return;
 
       // Otherwise typing "d" in a text box duplicates the element.
       if (typing && !isAllowedWhileTyping(resolved.command)) return;
+
+      // Canvas commands act on the canvas selection, so they apply only while
+      // the canvas has focus (or nothing does). Caught on the whole window, Tab
+      // on any button selected the next object instead of moving focus, and a
+      // keyboard user could not Tab out of anything.
+      const onCanvas =
+        !(target instanceof Element) || target === document.body || target.closest("[data-editor-canvas]") !== null;
+      if (commandScope(resolved.command) === "canvas" && !onCanvas) return;
 
       const { command, shift } = resolved;
       let handled = true;
@@ -291,23 +602,26 @@ export function EditorShell(props: EditorShellProps) {
           break;
         }
         case "copy":
-          setClipboard(copyElements(doc, selection.selectedIds));
-          break;
         case "cut":
-          setClipboard(copyElements(doc, selection.selectedIds));
-          deleteSelection();
+        case "paste":
+          // Left to the browser, which turns the keys into `copy`, `cut` and
+          // `paste` events carrying the system clipboard (handled below). A
+          // keydown handler that did the work itself had to prevent the
+          // default, and with it the only access to what other programs — and
+          // other decks — had copied (MA-23).
+          handled = false;
           break;
-        case "paste": {
-          if (!clipboard || !slide) break;
-          const { operations, elementIds } = pasteElements(doc, clipboard, { targetSlideId: slide.id });
-          apply(operations, { label: "Paste", selectionAfter: elementIds });
-          break;
-        }
         case "selectAll":
           setSelection((current) => selectAllElements(current, index, order));
           break;
         case "group":
           group();
+          break;
+        case "ungroup":
+          ungroup();
+          break;
+        case "enterTextEdit":
+          handled = enterSelection();
           break;
         case "undo":
           editor.undo();
@@ -336,11 +650,17 @@ export function EditorShell(props: EditorShellProps) {
           setSelection((current) => escapeSelection(current, index));
           break;
         case "cycleNext":
-          setSelection((current) => cycleSelection(current, index, order, 1));
+        case "cyclePrevious": {
+          const direction = command === "cycleNext" ? 1 : -1;
+          // Past the last object (or before the first), Tab moves focus on
+          // rather than wrapping: a cycle with no exit is a keyboard trap.
+          if (cycleLeavesScope(selection, index, order, direction)) {
+            handled = false;
+            break;
+          }
+          setSelection((current) => cycleSelection(current, index, order, direction));
           break;
-        case "cyclePrevious":
-          setSelection((current) => cycleSelection(current, index, order, -1));
-          break;
+        }
         case "nudgeUp":
           nudge(0, -1, shift);
           break;
@@ -377,16 +697,19 @@ export function EditorShell(props: EditorShellProps) {
     deleteSelection,
     doc,
     editor,
+    enterSelection,
     flash,
     group,
     index,
     nudge,
     order,
     reorder,
+    selection,
     selection.selectedIds,
     setSelection,
     slide,
     toggleFlag,
+    ungroup,
   ]);
 
   if (presenting) {
@@ -407,45 +730,90 @@ export function EditorShell(props: EditorShellProps) {
     );
   }
 
-  if (!editor.recoveryReady) return <p role="status">Loading saved edits…</p>;
-  if (!slide) return <><ConflictRecovery editor={editor} /><div style={{ padding: 40 }}>This deck has no slides.</div></>;
+  if (!editor.recoveryReady) {
+    return (
+      <div className="dk-root dk-shell dk-shell--message">
+        <p role="status">Loading saved edits…</p>
+      </div>
+    );
+  }
+  if (!slide) {
+    return (
+      <div className="dk-root dk-shell dk-shell--message">
+        <ConflictRecovery editor={editor} />
+        <p>This deck has no slides.</p>
+      </div>
+    );
+  }
 
   const selected = selection.primaryId ? resolveElementById(doc, selection.primaryId) : undefined;
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
-      <Toolbar
+  const rightPanel =
+    mode === "ai" ? (
+      <AiPanel editor={editor} presentationId={props.presentationId} />
+    ) : mode === "code" ? (
+      <CodePanel editor={editor} />
+    ) : mode === "motion" ? (
+      <MotionModePanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />
+    ) : (
+      <Inspector
         editor={editor}
-        onAdd={addStarter}
-        onDelete={deleteSelection}
+        presentationId={props.presentationId}
+        selected={selected?.element}
+        onReorder={reorder}
+        onToggle={toggleFlag}
         onGroup={group}
+        onUngroup={ungroup}
+        onDelete={deleteSelection}
+        onOpenHistory={() => setHistoryOpen(true)}
+      />
+    );
+
+  return (
+    <div className="dk-root dk-shell" data-editor-mode={mode}>
+      <AppBar
+        editor={editor}
+        presentationId={props.presentationId}
+        mode={mode}
+        onMode={setMode}
         onPresent={() => setPresenting(true)}
-        onExit={props.onExit}
-        onAddImage={addImage}
-        uploadError={uploadError}
+        onExit={exit ? () => exit() : undefined}
+        extras={props.barExtras}
       />
 
       <ConflictRecovery editor={editor} />
 
+      {props.notices}
       {notice ? (
-        <div style={{ padding: "10px 20px", background: "rgba(242,193,78,0.14)", fontSize: 14 }}>
+        <div className="dk-banner dk-banner--notice" role="status">
           {notice}
         </div>
       ) : null}
-
-      {frames ? (
-        <div
-          style={{
-            padding: "4px 20px",
-            fontSize: 12,
-            color: frames.over ? "var(--warning)" : "var(--fg-subtle)",
-            borderBottom: "1px solid var(--border)",
-            fontVariantNumeric: "tabular-nums",
-          }}
-          title="Frame timing during the last drag. The budget (doc 04 §31.1) is met when the work fits inside frames the compositor was going to paint anyway."
-        >
-          Last drag: {frames.summary}
-          {frames.over ? " — dropping frames" : ""}
+      {editor.restoredVersion ? (
+        // Kept until dismissed or undone: a restore replaces the whole deck, and
+        // the toolbar's undo cannot reach past it (its history was cleared,
+        // because its inverses described a document no longer on screen).
+        <div className="dk-banner dk-banner--notice dk-banner--actions" role="status" data-testid="restore-banner">
+          <span>Restored an earlier version. Your previous version is still in the history.</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            data-testid="undo-restore"
+            onClick={() => {
+              setRestoreRefusal(null);
+              void editor.undoRestore().then((answer) => {
+                if (!answer.ok) setRestoreRefusal(answer.message ?? "The restore could not be undone.");
+              });
+            }}
+          >
+            Undo restore
+          </Button>
+          {restoreRefusal ? <span>{restoreRefusal}</span> : null}
+        </div>
+      ) : null}
+      {uploadError ? (
+        <div className="dk-banner dk-banner--danger" role="alert">
+          {uploadError}
         </div>
       ) : null}
 
@@ -454,7 +822,7 @@ export function EditorShell(props: EditorShellProps) {
 
           Unmounted while presenting: present mode drives the same elements from
           its own adapter, and two adapters writing the same styles is a race. */}
-      {slideScene && !presenting ? (
+      {slideScene ? (
         <MotionPreview
           document={doc}
           scene={slideScene}
@@ -466,731 +834,94 @@ export function EditorShell(props: EditorShellProps) {
         />
       ) : null}
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <SlideStrip editor={editor} scene={scene} onAdd={() =>
-          apply(createSlide(doc).operations, { label: "Add slide" })
-        } />
+      <div className="dk-shell__body">
+        <ToolRail onAdd={addStarter} onAddImage={addImage} />
+        <SlideStrip
+          editor={editor}
+          scene={scene}
+          resolveAssetUrl={resolveAssetUrl}
+          onAdd={() => apply(createSlide(doc).operations, { label: "Add slide" })}
+          onNotice={flash}
+          onTransition={(target) => {
+            editor.setSlideIndex(target);
+            setMode("motion");
+          }}
+        />
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <main className="dk-shell__center" aria-label="Slide editor">
+          {scrubbing ? (
+            // Said, with a way out: the canvas is showing the slide part-way
+            // through its motion, which is not the slide being edited.
+            <div className="dk-banner dk-banner--notice dk-banner--actions" role="status" data-testid="motion-preview-banner">
+              <span>Showing the slide part-way through its motion. Some objects may be hidden or moved.</span>
+              <Button size="sm" variant="ghost" onClick={stopPreview} data-testid="stop-motion-preview">
+                Back to editing
+              </Button>
+            </div>
+          ) : null}
+          {/* A press on the canvas is the start of an edit, and ends the preview
+              first, so the gesture lands on the slide as it really is. */}
           <div
-            style={{
-              flex: 1,
-              display: "grid",
-              placeItems: "center",
-              background: "#07080b",
-              overflow: "auto",
-              padding: 24,
-            }}
-            ref={(node) => {
-              if (node) {
-                const available = node.clientWidth - 48;
-                if (available > 200 && Math.abs(available - canvasWidth) > 12) {
-                  setCanvasWidth(Math.min(available, 1280));
-                }
+            className="dk-shell__canvas-wrap"
+            onPointerDownCapture={scrubbing ? stopPreview : undefined}
+            onDragOver={(event) => {
+              if (Array.from(event.dataTransfer.types).includes("Files")) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "copy";
               }
             }}
+            onDrop={onDropFiles}
           >
-            <EditorCanvas
-              editor={editor}
-              width={canvasWidth}
-              onFrameStats={(stats) => {
-                const verdict = checkFrameBudget(stats);
-                setFrames({ summary: verdict.summary, over: !verdict.withinBudget });
-              }}
-            />
+            <CanvasStage editor={editor} zoom={zoom} onZoom={setZoom} />
           </div>
+
+          {/* Under the slide they belong to, as in the Figma frame: notes are
+              written while looking at the slide, not in a side panel. */}
+          <SpeakerNotes editor={editor} />
 
           {/* Under the canvas, not in the side panel: a timeline is horizontal
-              and an author needs to see the slide while scrubbing it. */}
+              and an author needs to see the slide while scrubbing it. Taller in
+              Motion mode, where it is the work. */}
           {slideScene ? (
-            <MotionPanel
-              document={doc}
-              scene={slideScene}
-              slideIndex={slideIndex}
-              selectedIds={selection.selectedIds}
-              apply={(operations, label) =>
-                apply(operations as never, { label })
-              }
-              playheadMs={playheadMs}
-              onScrub={(at) => {
-                setScrubbing(true);
-                setPlayheadMs(at);
-              }}
-              onPlay={() => {
-                setScrubbing(true);
-                setPlaying((count) => count + 1);
-              }}
-            />
+            <section className="dk-dock" aria-label="Motion timeline" data-region="timeline" style={{ height: dockHeightFor(mode) }}>
+              <MotionPanel
+                document={doc}
+                scene={slideScene}
+                slideIndex={slideIndex}
+                selectedIds={selection.selectedIds}
+                apply={(operations, label) => apply(operations as never, { label })}
+                playheadMs={playheadMs}
+                onScrub={(at) => {
+                  setScrubbing(true);
+                  setPlayheadMs(at);
+                }}
+                onPlay={() => {
+                  setScrubbing(true);
+                  setPlaying((count) => count + 1);
+                }}
+              />
+            </section>
           ) : null}
-        </div>
+        </main>
 
-        <SidePanel
+        <VersionHistory
           editor={editor}
-          selectedElement={selected?.element}
-          onReorder={reorder}
-          onToggle={toggleFlag}
           presentationId={props.presentationId}
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
         />
+
+        <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
+          {rightPanel}
+        </aside>
       </div>
     </div>
   );
 }
 
-// ------------------------------------------------------------------- toolbar
-
-function Toolbar({
-  editor,
-  onAdd,
-  onDelete,
-  onGroup,
-  onPresent,
-  onExit,
-  onAddImage,
-  uploadError,
-}: {
-  editor: ReturnType<typeof useEditor>;
-  onAdd: (kind: StarterElementKind, shape?: "rectangle" | "ellipse") => void;
-  onAddImage: (file: File) => void | Promise<void>;
-  uploadError?: string | null;
-  onDelete: () => void;
-  onGroup: () => void;
-  onPresent: () => void;
-  onExit?: () => void;
-}) {
-  const { save, selection } = editor;
-
-  return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "10px 16px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--surface)",
-        flexWrap: "wrap",
-      }}
-    >
-      <strong style={{ fontSize: 14, marginRight: 8 }}>{editor.document.metadata.title}</strong>
-
-      <button style={toolButton} onClick={() => onAdd("text")}>Text</button>
-      <button style={toolButton} onClick={() => onAdd("shape", "rectangle")}>Rect</button>
-      <button style={toolButton} onClick={() => onAdd("shape", "ellipse")}>Ellipse</button>
-      {uploadError ? (
-        <span role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>
-          {uploadError}
-        </span>
-      ) : null}
-      <label style={toolButton}>
-        Image
-        <input
-          type="file"
-          // The kinds the renderer can draw. A wider filter would let someone
-          // pick a PDF and meet a refusal after the upload rather than before it.
-          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-          aria-label="Add image"
-          style={{ display: "none" }}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            // Reset first: picking the same file twice in a row fires no change
-            // event otherwise, which reads as the button having stopped working.
-            event.target.value = "";
-            if (file) void onAddImage(file);
-          }}
-        />
-      </label>
-      <select
-        aria-label="Insert object"
-        defaultValue=""
-        onChange={(event) => {
-          const kind = event.target.value as StarterElementKind;
-          if (kind) onAdd(kind);
-          event.target.value = "";
-        }}
-        style={{ ...toolButton, paddingRight: 26 }}
-      >
-        <option value="" disabled>More…</option>
-        <option value="line">Line</option>
-        <option value="icon">Icon</option>
-        <option value="chart">Chart</option>
-        <option value="diagram">Diagram</option>
-        <option value="table">Table</option>
-        <option value="code">Code</option>
-      </select>
-
-      <Divider />
-
-      <button style={toolButton} onClick={editor.undo} disabled={!editor.canUndo} title="Undo (Cmd+Z)">
-        Undo
-      </button>
-      <button style={toolButton} onClick={editor.redo} disabled={!editor.canRedo} title="Redo (Cmd+Shift+Z)">
-        Redo
-      </button>
-
-      <Divider />
-
-      <button style={toolButton} onClick={onGroup} disabled={selection.selectedIds.length < 2}>
-        Group
-      </button>
-      <button style={toolButton} onClick={onDelete} disabled={selection.selectedIds.length === 0}>
-        Delete
-      </button>
-
-      <div style={{ flex: 1 }} />
-
-      <SaveIndicator
-        save={save}
-        onRetry={() => void editor.saveNow()}
-        undoExternal={editor.externalChange ? editor.undoExternalChange : undefined}
-      />
-      <button style={primaryButton} onClick={onPresent}>Present</button>
-      {onExit ? (
-        <button style={toolButton} onClick={onExit}>Close</button>
-      ) : null}
-    </header>
-  );
+/** Parse pasted markup detached: never connected, so nothing in it can load, run or observe anything. */
+function parseDetached(markup: string): Node {
+  const scratch = document.createElement("div");
+  scratch.innerHTML = markup;
+  return scratch;
 }
-
-function SaveIndicator({
-  save,
-  onRetry,
-  undoExternal,
-}: {
-  save: ReturnType<typeof useEditor>["save"];
-  onRetry: () => void;
-  /** Present only while there is an adopted outside change to undo. */
-  undoExternal?: () => Promise<{ ok: boolean; message?: string }>;
-}) {
-  const base: CSSProperties = { fontSize: 13, color: "var(--fg-subtle)", marginRight: 8 };
-  // Held here rather than threaded through the shell: the only thing that reads
-  // it is the sentence beside this button, and a refusal has to appear where the
-  // user pressed.
-  const [refusal, setRefusal] = useState<string | null>(null);
-  const onUndoExternal = undoExternal
-    ? () => {
-        setRefusal(null);
-        void undoExternal().then((answer) => {
-          if (!answer.ok) setRefusal(answer.message ?? "That change could not be undone.");
-        });
-      }
-    : undefined;
-
-  switch (save.status) {
-    case "saving":
-      return <span style={base}>Saving…</span>;
-    case "pending":
-      return <button style={{ ...toolButton, ...base }} onClick={onRetry}>Save changes</button>;
-    case "saved":
-      return <span style={base}>Saved</span>;
-    case "updated":
-      // Said once, plainly, *and* offered a way back. Announcing the change and
-      // clearing local history left the user with a deck that moved under them
-      // and nothing to press: the toolbar's undo only knows about edits made
-      // here, and this one was made somewhere else.
-      return (
-        <span style={{ ...base, color: "var(--accent, var(--fg-muted))" }} role="status">
-          Updated elsewhere
-          {onUndoExternal ? (
-            <button
-              style={{ ...toolButton, marginLeft: 6 }}
-              onClick={onUndoExternal}
-              title="Undo the change that arrived from elsewhere. Refused if your own later edits would be disturbed."
-            >
-              Undo that change
-            </button>
-          ) : null}
-          {refusal ? (
-            <span style={{ marginLeft: 6, color: "var(--warning)" }} role="status">
-              {refusal}
-            </span>
-          ) : null}
-        </span>
-      );
-    case "conflict":
-      return (
-        <span style={{ ...base, color: "var(--warning)" }} title={save.message}>
-          Local work retained — review conflict
-        </span>
-      );
-    case "error":
-      return (
-        <button style={{ ...toolButton, color: "var(--danger)" }} onClick={onRetry} title={save.message}>
-          Save failed — retry
-        </button>
-      );
-    default:
-      return null;
-  }
-}
-
-// --------------------------------------------------------------- slide strip
-
-function SlideStrip({
-  editor,
-  scene,
-  onAdd,
-}: {
-  editor: ReturnType<typeof useEditor>;
-  scene: ReturnType<typeof buildDocumentScene>;
-  onAdd: () => void;
-}) {
-  return (
-    <nav
-      style={{
-        width: 176,
-        borderRight: "1px solid var(--border)",
-        background: "var(--surface)",
-        overflowY: "auto",
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      {scene.slides.map((slideScene, i) => (
-        <button
-          key={slideScene.slideId}
-          onClick={() => editor.setSlideIndex(i)}
-          title={slideScene.keyMessage}
-          style={{
-            padding: 0,
-            border: `2px solid ${i === editor.slideIndex ? "var(--accent)" : "var(--border)"}`,
-            borderRadius: 6,
-            overflow: "hidden",
-            background: "#000",
-            lineHeight: 0,
-            position: "relative",
-          }}
-        >
-          <ScaledSlide scene={slideScene} width={148} mode="present" />
-          <span
-            style={{
-              position: "absolute",
-              left: 4,
-              top: 4,
-              fontSize: 10,
-              background: "rgba(0,0,0,0.6)",
-              padding: "1px 5px",
-              borderRadius: 4,
-              color: "#fff",
-              lineHeight: 1.6,
-            }}
-          >
-            {i + 1}
-          </span>
-        </button>
-      ))}
-
-      <button style={{ ...toolButton, justifyContent: "center" }} onClick={onAdd}>
-        + Slide
-      </button>
-    </nav>
-  );
-}
-
-// ---------------------------------------------------------------- side panel
-
-function SidePanel({
-  editor,
-  selectedElement,
-  onReorder,
-  onToggle,
-  presentationId,
-}: {
-  editor: ReturnType<typeof useEditor>;
-  selectedElement?: PresentationElement;
-  onReorder: (direction: "forward" | "backward" | "front" | "back") => void;
-  onToggle: (flag: "locked" | "visible") => void;
-  presentationId: string;
-}) {
-  const { document: doc, slideIndex, selection, setSelection } = editor;
-  const slide = doc.slides[slideIndex];
-
-  return (
-    <aside
-      style={{
-        width: 260,
-        borderLeft: "1px solid var(--border)",
-        background: "var(--surface)",
-        overflowY: "auto",
-        padding: 16,
-        fontSize: 13,
-      }}
-    >
-      <ThemePanel key={presentationId} editor={editor} presentationId={presentationId} />
-      <h3 style={panelHeading}>Layers</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 24 }}>
-        {slide
-          ? [...walkElements(slide.elements)].map(({ element, depth }) => {
-              const isSelected = selection.selectedIds.includes(element.id);
-              return (
-                <button
-                  key={element.id}
-                  onClick={(event) =>
-                    setSelection((current) => ({
-                      ...current,
-                      selectedIds: event.shiftKey
-                        ? [...new Set([...current.selectedIds, element.id])]
-                        : [element.id],
-                      primaryId: element.id,
-                    }))
-                  }
-                  style={{
-                    textAlign: "left",
-                    padding: "5px 8px",
-                    paddingLeft: 8 + depth * 14,
-                    border: "none",
-                    borderRadius: 5,
-                    background: isSelected ? "rgba(76,194,255,0.16)" : "transparent",
-                    color: element.visible === false ? "var(--fg-subtle)" : "var(--fg-muted)",
-                    fontSize: 12,
-                    display: "flex",
-                    gap: 6,
-                    alignItems: "center",
-                  }}
-                >
-                  <span style={{ opacity: 0.5, minWidth: 52 }}>{element.type}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {labelFor(element)}
-                  </span>
-                  {element.locked ? <span title="Locked">🔒</span> : null}
-                </button>
-              );
-            })
-          : null}
-      </div>
-
-      {selectedElement ? (
-        <>
-          <h3 style={panelHeading}>Object</h3>
-          <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", margin: "0 0 16px" }}>
-            <dt style={dtStyle}>Type</dt>
-            <dd style={ddStyle}>{selectedElement.type}</dd>
-            <dt style={dtStyle}>Role</dt>
-            <dd style={ddStyle}>{selectedElement.semanticRole ?? "—"}</dd>
-            <dt style={dtStyle}>X</dt>
-            <dd style={ddStyle}>{Math.round(selectedElement.transform.x)}</dd>
-            <dt style={dtStyle}>Y</dt>
-            <dd style={ddStyle}>{Math.round(selectedElement.transform.y)}</dd>
-            <dt style={dtStyle}>W</dt>
-            <dd style={ddStyle}>{Math.round(selectedElement.transform.width)}</dd>
-            <dt style={dtStyle}>H</dt>
-            <dd style={ddStyle}>{Math.round(selectedElement.transform.height)}</dd>
-          </dl>
-
-          <InspectorFields editor={editor} element={selectedElement} />
-
-          {isGroup(selectedElement) ? (
-            <label style={{ display: "grid", gap: 6, marginBottom: 16 }}>
-              Resize behavior
-              <select
-                disabled={selectedElement.locked === true}
-                value={selectedElement.resizeMode ?? (selectedElement.containerLayout ? "resizeContainer" : "scaleChildren")}
-                onChange={(event) => editor.apply(
-                  setProperty(editor.document, selectedElement.id, "resizeMode", event.target.value),
-                  { label: "Change group resize behavior" },
-                )}
-              >
-                <option value="scaleChildren">Scale objects and text</option>
-                <option value="resizeContainer">Resize container only</option>
-              </select>
-            </label>
-          ) : null}
-
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
-            <button style={toolButton} onClick={() => onReorder("front")}>Front</button>
-            <button style={toolButton} onClick={() => onReorder("forward")}>Fwd</button>
-            <button style={toolButton} onClick={() => onReorder("backward")}>Back</button>
-            <button style={toolButton} onClick={() => onReorder("back")}>Bottom</button>
-            <button style={toolButton} onClick={() => onToggle("locked")}>
-              {selectedElement.locked ? "Unlock" : "Lock"}
-            </button>
-            <button style={toolButton} onClick={() => onToggle("visible")}>
-              {selectedElement.visible === false ? "Show" : "Hide"}
-            </button>
-          </div>
-        </>
-      ) : null}
-
-      <h3 style={panelHeading}>History</h3>
-      <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
-        {editor.historyEntries.slice(0, 12).map((entry) => (
-          <li
-            key={entry.id}
-            style={{ fontSize: 12, color: "var(--fg-subtle)", display: "flex", gap: 6 }}
-          >
-            <span style={{ opacity: 0.6 }}>{entry.source === "agent" ? "AI" : "You"}</span>
-            <span>{entry.label}</span>
-          </li>
-        ))}
-        {editor.historyEntries.length === 0 ? (
-          <li style={{ fontSize: 12, color: "var(--fg-subtle)" }}>No changes yet.</li>
-        ) : null}
-      </ol>
-
-      <CriticIssues value={editor.document.extensions?.["deckastra.unresolvedIssues"]} slideId={slide?.id} />
-
-      <div style={{ margin: "16px -16px 0" }}>
-        <AccessibilityPanel
-          document={doc}
-          slideId={slide?.id}
-          onSelect={(targetSlideId, elementId) => {
-            const targetIndex = doc.slides.findIndex((candidate) => candidate.id === targetSlideId);
-            if (targetIndex < 0) return;
-            editor.setSlideIndex(targetIndex);
-            if (elementId) {
-              setSelection((current) => ({ ...current, selectedIds: [elementId], primaryId: elementId }));
-            }
-          }}
-        />
-      </div>
-
-      {/* Above Ask rather than in a menu: an export is a thing people look for,
-          and its report is something they should read rather than dismiss. */}
-      <div style={{ margin: "16px -16px 0" }}>
-        <SharePanel presentationId={presentationId} />
-        <ExportPanel presentationId={presentationId} />
-      </div>
-
-      {/* Journey C. Placed at the bottom of the panel the user is already
-          looking at while they have something selected, rather than in a modal
-          that hides the thing they are asking about. */}
-      <div style={{ margin: "16px -16px -16px" }}>
-        <ProposalsPanel
-          presentationId={presentationId}
-          onApplied={editor.adoptDocument}
-          saveNow={editor.saveNow}
-          currentVersionId={editor.currentVersionId}
-        />
-        <AskPanel
-          presentationId={presentationId}
-          selectedIds={selection.selectedIds}
-          slideId={slide?.id}
-          onApplied={editor.adoptDocument}
-          saveNow={editor.saveNow}
-          currentVersionId={editor.currentVersionId}
-        />
-      </div>
-    </aside>
-  );
-}
-
-function InspectorFields({
-  editor,
-  element,
-}: {
-  editor: ReturnType<typeof useEditor>;
-  element: PresentationElement;
-}) {
-  const disabled = element.locked === true;
-  const change = (property: string, value: unknown, label = "Edit object") => {
-    editor.apply(setProperty(editor.document, element.id, property, value), {
-      label,
-      coalesceKey: `inspector:${element.id}:${property}`,
-    });
-  };
-  const number = (property: string, value: number, label: string, min?: number, max?: number) => (
-    <input
-      type="number"
-      value={Number.isFinite(value) ? value : 0}
-      min={min}
-      max={max}
-      step={property === "opacity" ? 0.05 : 1}
-      disabled={disabled}
-      onChange={(event) => {
-        const next = event.currentTarget.valueAsNumber;
-        if (Number.isFinite(next)) {
-          change(property, Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, next)), label);
-        }
-      }}
-      style={inspectorInput}
-    />
-  );
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr)", gap: "8px 10px", marginBottom: 18 }}>
-      <label htmlFor="object-name" style={inspectorLabel}>Name</label>
-      <input
-        id="object-name"
-        value={element.name ?? ""}
-        placeholder="Optional"
-        disabled={disabled}
-        onChange={(event) => change("name", event.target.value, "Rename object")}
-        style={inspectorInput}
-      />
-      <span style={inspectorLabel}>Position</span>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        {number("transform.x", element.transform.x, "Move object")}
-        {number("transform.y", element.transform.y, "Move object")}
-      </div>
-      <span style={inspectorLabel}>Size</span>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        {number("transform.width", element.transform.width, "Resize object", 1)}
-        {number("transform.height", element.transform.height, "Resize object", 1)}
-      </div>
-      <label htmlFor="object-rotation" style={inspectorLabel}>Rotation</label>
-      {number("transform.rotation", element.transform.rotation ?? 0, "Rotate object")}
-      <label htmlFor="object-opacity" style={inspectorLabel}>Opacity</label>
-      {number("opacity", element.opacity ?? 1, "Change opacity", 0, 1)}
-
-      {element.type === "text" ? (
-        <>
-          <label htmlFor="text-content" style={inspectorLabel}>Text</label>
-          <textarea
-            id="text-content"
-            value={textContent((element as unknown as { content: Parameters<typeof textContent>[0] }).content)}
-            disabled={disabled}
-            rows={4}
-            onChange={(event) => change("content", plainText(event.target.value, newId("blk")), "Edit text")}
-            style={inspectorInput}
-          />
-          <label htmlFor="text-size" style={inspectorLabel}>Font size</label>
-          {number("typography.fontSize", (element as unknown as { typography: { fontSize?: number } }).typography.fontSize ?? 26, "Change font size", 1)}
-        </>
-      ) : null}
-
-      {element.type === "shape" ? (
-        <>
-          <label htmlFor="shape-kind" style={inspectorLabel}>Shape</label>
-          <select id="shape-kind" value={String((element as unknown as { shape: unknown }).shape)} disabled={disabled} onChange={(event) => change("shape", event.target.value, "Change shape")} style={inspectorInput}>
-            {(["rectangle", "ellipse", "triangle", "diamond", "pill", "star", "arrow", "chevron", "parallelogram", "speechBubble"] as const).map((kind) => <option key={kind}>{kind}</option>)}
-          </select>
-        </>
-      ) : null}
-
-      {element.type === "line" ? (
-        <>
-          <label htmlFor="line-routing" style={inspectorLabel}>Routing</label>
-          <select id="line-routing" value={String((element as unknown as { routing?: unknown }).routing ?? "straight")} disabled={disabled} onChange={(event) => change("routing", event.target.value, "Change line routing")} style={inspectorInput}>
-            <option value="straight">Straight</option><option value="orthogonal">Orthogonal</option><option value="curved">Curved</option>
-          </select>
-          <label htmlFor="line-marker" style={inspectorLabel}>End</label>
-          <select id="line-marker" value={String((element as unknown as { endMarker?: unknown }).endMarker ?? "none")} disabled={disabled} onChange={(event) => change("endMarker", event.target.value, "Change line marker")} style={inspectorInput}>
-            {(["none", "arrow", "openArrow", "dot", "square", "diamond"] as const).map((marker) => <option key={marker}>{marker}</option>)}
-          </select>
-        </>
-      ) : null}
-
-      {element.type === "icon" ? (
-        <>
-          <label htmlFor="icon-name" style={inspectorLabel}>Icon</label>
-          <input id="icon-name" value={String((element as unknown as { icon: { name: unknown } }).icon.name)} disabled={disabled} onChange={(event) => change("icon.name", event.target.value, "Change icon")} style={inspectorInput} />
-        </>
-      ) : null}
-
-      {element.type === "chart" ? (
-        <>
-          <label htmlFor="chart-kind" style={inspectorLabel}>Chart</label>
-          <select id="chart-kind" value={String((element as unknown as { chartType: unknown }).chartType)} disabled={disabled} onChange={(event) => change("chartType", event.target.value, "Change chart type")} style={inspectorInput}>
-            {(["bar", "column", "line", "area", "pie", "donut", "scatter", "stackedBar", "stackedColumn", "combo"] as const).map((kind) => <option key={kind}>{kind}</option>)}
-          </select>
-        </>
-      ) : null}
-
-      {element.type === "code" ? (
-        <>
-          <label htmlFor="code-language" style={inspectorLabel}>Language</label>
-          <input id="code-language" value={String((element as unknown as { language: unknown }).language)} disabled={disabled} onChange={(event) => change("language", event.target.value, "Change code language")} style={inspectorInput} />
-          <label htmlFor="code-content" style={inspectorLabel}>Code</label>
-          <textarea id="code-content" value={String((element as unknown as { code: unknown }).code)} disabled={disabled} rows={8} onChange={(event) => change("code", event.target.value, "Edit code")} style={{ ...inspectorInput, fontFamily: "ui-monospace, monospace" }} />
-        </>
-      ) : null}
-
-      {element.type === "image" ? (
-        <>
-          <label htmlFor="image-fit" style={inspectorLabel}>Fit</label>
-          <select id="image-fit" value={String((element as unknown as { fit?: unknown }).fit ?? "cover")} disabled={disabled} onChange={(event) => change("fit", event.target.value, "Change image fit")} style={inspectorInput}>
-            <option value="cover">Cover</option><option value="contain">Contain</option><option value="fill">Fill</option><option value="none">None</option>
-          </select>
-        </>
-      ) : null}
-
-      {needsAltText(element) ? (
-        <>
-          <label htmlFor="object-alt-text" style={inspectorLabel}>Alt text</label>
-          <textarea
-            id="object-alt-text"
-            value={altTextFor(element)}
-            placeholder="Describe the visual's meaning"
-            disabled={disabled}
-            rows={3}
-            onChange={(event) => {
-              const property = altTextProperty(element);
-              if (property === "metadata.altText" && !element.metadata) {
-                change("metadata", { altText: event.target.value }, "Edit alternative text");
-              } else {
-                change(property, event.target.value, "Edit alternative text");
-              }
-            }}
-            style={inspectorInput}
-          />
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-function labelFor(element: PresentationElement): string {
-  if (element.name) return element.name;
-  if (element.type === "text") {
-    const content = (element as { content?: unknown }).content;
-    const text = content ? textContent(content as never) : "";
-    return text.slice(0, 24) || "Empty text";
-  }
-  return element.id.slice(3, 11);
-}
-
-function Divider() {
-  return <span style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />;
-}
-
-const toolButton: CSSProperties = {
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  color: "var(--fg-muted)",
-  borderRadius: 7,
-  padding: "6px 11px",
-  fontSize: 13,
-  display: "flex",
-  alignItems: "center",
-  gap: 5,
-};
-
-const inspectorLabel: CSSProperties = {
-  color: "var(--fg-subtle)",
-  fontSize: 11,
-  alignSelf: "center",
-};
-
-const inspectorInput: CSSProperties = {
-  boxSizing: "border-box",
-  width: "100%",
-  minWidth: 0,
-  padding: "5px 7px",
-  borderRadius: 5,
-  border: "1px solid var(--border)",
-  background: "var(--surface-alt)",
-  color: "var(--fg-muted)",
-  fontSize: 12,
-};
-
-const primaryButton: CSSProperties = {
-  background: "var(--accent)",
-  color: "var(--accent-fg)",
-  border: "none",
-  borderRadius: 7,
-  padding: "7px 16px",
-  fontSize: 13,
-  fontWeight: 600,
-};
-
-const panelHeading: CSSProperties = {
-  fontSize: 11,
-  letterSpacing: 1.4,
-  textTransform: "uppercase",
-  color: "var(--fg-subtle)",
-  margin: "0 0 10px",
-};
-
-const dtStyle: CSSProperties = { color: "var(--fg-subtle)", fontSize: 12 };
-const ddStyle: CSSProperties = { margin: 0, fontSize: 12, fontVariantNumeric: "tabular-nums" };

@@ -32,9 +32,13 @@ vi.mock("@deckastra/renderer/react", () => ({
   ),
 }));
 
+const LIVE_MOTION = '[data-slide-motion="[data-present-stage]"]';
+
 vi.mock("../src/components/SlideMotion", () => ({
-  SlideMotion: ({ autoPlay }: { autoPlay?: boolean }) => (
-    <div data-slide-motion data-autoplay={String(autoPlay ?? true)} />
+  // The root says which motion this is: present mode's own, on the live stage,
+  // or a transition's final frame of the slide being left.
+  SlideMotion: ({ autoPlay, rootSelector }: { autoPlay?: boolean; rootSelector?: string }) => (
+    <div data-slide-motion={rootSelector ?? ""} data-autoplay={String(autoPlay ?? true)} />
   ),
 }));
 
@@ -126,7 +130,7 @@ it("shows a slide's final state rather than replaying its build", () => {
   fireEvent.keyDown(window, { key: "ArrowRight" });
   fireEvent.keyDown(window, { key: "ArrowLeft" });
 
-  const motion = container.querySelector("[data-slide-motion]");
+  const motion = container.querySelector(LIVE_MOTION);
   expect(motion?.getAttribute("data-autoplay")).toBe("false");
 });
 
@@ -138,7 +142,7 @@ it("starts playing again as soon as the presenter goes forward", () => {
   fireEvent.keyDown(window, { key: "ArrowLeft" });
   fireEvent.keyDown(window, { key: "ArrowRight" });
 
-  expect(container.querySelector("[data-slide-motion]")?.getAttribute("data-autoplay")).toBe(
+  expect(container.querySelector(LIVE_MOTION)?.getAttribute("data-autoplay")).toBe(
     "true",
   );
   expect(stages(container)).toBe(2);
@@ -150,4 +154,23 @@ it("does not step back past the first slide", () => {
   fireEvent.keyDown(window, { key: "ArrowLeft" });
 
   expect(screen.getByText(/^\s*1 \/ \d+\s*$/)).toBeTruthy();
+});
+
+it("mounts the slide's motion only once the stage it animates exists", () => {
+  // SlideMotion looks up the elements it animates under `[data-present-stage]`
+  // when it mounts, and never again. Mounted in the first render — before the
+  // container was measured and the stage drawn — it found nothing, so the slide
+  // a talk started on never played its entrances or its click reveals. The
+  // desktop presenter check found it: Next on the laptop changed slide instead
+  // of revealing a bullet, because the projector's motion did not exist.
+  const scene = buildDocumentScene(loadFixture("animation"));
+  const { container } = render(<PresentMode scene={scene} onExit={() => {}} channelName="mount-test" />);
+
+  expect(container.querySelector("[data-slide-stage]")).toBeNull();
+  expect(container.querySelector(LIVE_MOTION)).toBeNull();
+
+  measure();
+
+  expect(container.querySelector("[data-slide-stage]")).not.toBeNull();
+  expect(container.querySelector(LIVE_MOTION)).not.toBeNull();
 });

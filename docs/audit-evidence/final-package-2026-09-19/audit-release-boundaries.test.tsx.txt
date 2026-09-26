@@ -1,0 +1,53 @@
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
+import { GenerateDeck } from "../src/components/GenerateDeck";
+import { SpeakerNotes } from "../src/components/shell/SpeakerNotes";
+import { useEditor, type EditorApi } from "../src/lib/useEditor";
+import { recoveryLocks } from "./helpers/recovery-locks";
+
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); localStorage.clear(); sessionStorage.clear(); });
+const outline = { title: "Project A private outline", narrative_arc: "A", slides: [{ headline: "Only for A", key_message: "A", layout: "statement" }], warnings: [] };
+const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+const props = { open: true, projectId: "prj_a", reviewAvailable: true, onClose: () => {}, onGenerated: () => {} };
+
+it("a project switch must not expose the old project's pending outline", async () => {
+  localStorage.setItem("deckastra.pending-outline:prj_a", "run_a");
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => reply(String(url).endsWith("/checkpoint") ? { run_id: "run_a", status: "awaiting_story", outline } : { repositories: [] })));
+  const view = render(<GenerateDeck {...props} />, { wrapper: withWorkspaceClient() });
+  await screen.findByText("Only for A");
+  view.rerender(<GenerateDeck {...props} open={false} />);
+  view.rerender(<GenerateDeck {...props} projectId="prj_b" open />);
+  expect(screen.queryByText("Only for A")).toBeNull();
+});
+
+it("a temporary checkpoint failure must retain the resume pointer", async () => {
+  localStorage.setItem("deckastra.pending-outline:prj_a", "run_a");
+  let called = false;
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (String(url).endsWith("/checkpoint")) { called = true; return reply({ detail: "temporarily unavailable" }, 503); }
+    return reply({ repositories: [] });
+  }));
+  render(<GenerateDeck {...props} />, { wrapper: withWorkspaceClient() });
+  await waitFor(() => expect(called).toBe(true));
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+  expect(localStorage.getItem("deckastra.pending-outline:prj_a")).toBe("run_a");
+});
+
+it("beforeunload must capture a note still inside its 700ms draft interval", async () => {
+  Object.defineProperty(navigator, "locks", { configurable: true, value: recoveryLocks() });
+  vi.stubGlobal("fetch", vi.fn(async () => reply({ version_id: "v1" })));
+  let editor!: EditorApi;
+  function Harness() {
+    editor = useEditor({ initialDocument: loadFixture("technical"), presentationId: "prs_exit_audit", initialVersionId: "v0" });
+    return <SpeakerNotes editor={editor} />;
+  }
+  render(<Harness />, { wrapper: withWorkspaceClient() });
+  await waitFor(() => expect(editor.recoveryReady).toBe(true));
+  const field = screen.getByTestId("speaker-notes");
+  field.focus(); field.innerHTML = "<div>Last words before quit</div>";
+  fireEvent.input(field);
+  act(() => { window.dispatchEvent(new Event("beforeunload", { cancelable: true })); });
+  expect(editor.document.slides[0]?.speakerNotes).toBe("Last words before quit");
+});

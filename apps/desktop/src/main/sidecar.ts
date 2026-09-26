@@ -3,6 +3,10 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { app } from "electron";
+import type { ServiceFailureKind } from "../shared/ipc";
+import { logEvent, logRaw } from "./logs";
+import { buildManifest, mismatchedMigrations } from "./build-manifest";
+import { readCloudKey } from "./cloud-key";
 
 /**
  * The workspace service, supervised (milestone D1).
@@ -20,10 +24,10 @@ import { app } from "electron";
  *   reaches the service through a proxy on its own origin (`protocol.ts`), so the
  *   page never learns the port or the token. A compromised page cannot talk to
  *   the service directly, and nothing else on the machine can talk to it at all.
- * - **The ready line is the handshake.** The service prints one JSON object and
- *   then falls silent; anything else on stdout after that is log output. A
- *   chattier protocol means parsing a stream, which is where a partial line
- *   becomes a hang.
+ * - **The ready line is the handshake.** Before it, the service may emit bounded
+ *   JSON progress records for slow migrations. The parser buffers complete
+ *   lines and accepts no other stdout, so a partial line cannot become a false
+ *   ready signal.
  * - **A crash is visible.** The supervisor restarts with backoff and reports the
  *   state, because a blank window with no explanation is the worst thing a
  *   packaged app can do.
@@ -44,7 +48,7 @@ export interface Sidecar {
 }
 
 /** How long the service gets to migrate, seed and bind before we give up on it. */
-const READY_TIMEOUT_MS = 60_000;
+const READY_TIMEOUT_MS = 180_000;
 
 /** Backoff between restarts, capped. A tight restart loop is a busy machine. */
 const BACKOFF_MS = [500, 1_000, 2_000, 5_000, 10_000];
@@ -96,7 +100,26 @@ function exporterEnvironment(): NodeJS.ProcessEnv {
   };
 }
 
-function command(dataDir: string): { file: string; args: string[]; cwd: string; env: NodeJS.ProcessEnv } {
+export interface ServiceCommand {
+  file: string;
+  args: string[];
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+}
+
+/**
+ * How to run the service, with `extra` appended.
+ *
+ * Exported because a restore runs the *same* binary as a one-shot
+ * (`--restore-from`, item 14), and resolving the binary a second time somewhere
+ * else is how a packaged app comes to restore through a developer's Python.
+ */
+export function serviceCommand(dataDir: string, extra: string[] = []): ServiceCommand {
+  const base = command(dataDir);
+  return { ...base, args: [...base.args, ...extra] };
+}
+
+function command(dataDir: string): ServiceCommand {
   const override = process.env.DECKASTRA_SIDECAR;
   const packaged = join(process.resourcesPath ?? "", "sidecar", process.platform === "win32" ? "deckastra-service.exe" : "deckastra-service");
 
@@ -149,11 +172,31 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
 
   async function launch(): Promise<number> {
     const { file, args, cwd, env } = command(options.dataDir);
+    // The user's own key, decrypted here and handed to the service as its
+    // environment (item 23). Choosing the cloud *is* storing a key: without one
+    // the installed product has no cloud route, and an `ANTHROPIC_API_KEY` that
+    // happened to be in the environment is not a choice anyone made, so a
+    // packaged app starts its service without it.
+    const cloudKey = await readCloudKey();
+    const intelligence: NodeJS.ProcessEnv = cloudKey
+      ? { ANTHROPIC_API_KEY: cloudKey, DECKASTRA_INTELLIGENCE: "cloud" }
+      : app.isPackaged
+        ? { ANTHROPIC_API_KEY: undefined, DECKASTRA_INTELLIGENCE: undefined }
+        : {};
     options.onStatus({ state: attempt === 0 ? "starting" : "restarting", attempt });
 
     const spawned = spawn(file, args, {
       cwd,
-      env: { ...env, DECKASTRA_LOCAL_SECRET: secret },
+      env: {
+        ...env,
+        ...intelligence,
+        DECKASTRA_LOCAL_SECRET: secret,
+        // The installed product never generates with the stub, and never treats
+        // an inherited API key as a choice to use the cloud (item 20). A checkout
+        // leaves this unset, so development and the smoke steps keep the stub;
+        // setting it by hand simulates an install.
+        ...(app.isPackaged ? { DECKASTRA_DISTRIBUTION: "1" } : {}),
+      },
       stdio: ["ignore", "pipe", "pipe"],
       // Never a shell. The arguments include a path from the environment, and a
       // shell would give that path a chance to be a command.
@@ -162,12 +205,17 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
     child = spawned;
 
     spawned.stderr?.on("data", (chunk: Buffer) => {
+      // Also to the profile's log, so an installed launch leaves something
+      // behind: a packaged app has no terminal to print to (item 18).
+      logRaw("service", chunk.toString("utf8"));
       // The service's own logs. Kept on our stderr so a packaged run still has
       // somewhere to look when something fails.
       process.stderr.write(chunk);
     });
 
-    const ready = await readReadyLine(spawned);
+    const ready = await readReadyLine(spawned, (detail) => {
+      options.onStatus({ state: attempt === 0 ? "starting" : "restarting", detail, attempt });
+    });
     // The socket is listening by the time the line is printed, so a request now
     // queues rather than being refused — but "listening" is not "serving", and a
     // window that renders before the first route answers shows a failure the app
@@ -196,6 +244,7 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
     });
 
     port = ready;
+    logEvent("service.ready", { attempt, port: ready });
     options.onStatus({ state: "ready", attempt });
     return ready;
   }
@@ -230,27 +279,119 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
   };
 }
 
-/** Poll `/health` until the service answers, or give up and say which it was. */
+/**
+ * Poll `/health` until the service answers, or give up and say which it was.
+ *
+ * And when it answers, check it is *this build's* service (item 07): the
+ * migrations it is running must be the ones this app was built with. A window
+ * paired with a stale service is the failure a renderer's own version cannot
+ * see, and letting it run risks a database migrated in a direction this app
+ * does not expect.
+ */
+/**
+ * What kind of failure this was (item 17).
+ *
+ * The window shows a different sentence for each, because the useful answer
+ * differs: a missing binary is a broken install, a permission problem is
+ * something on this machine, and a migration that failed is the one case where
+ * the data matters more than starting — so nothing here ever suggests clearing
+ * the workspace to make the app run.
+ */
+export function classifyFailure(error: unknown): ServiceFailureKind {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).toLowerCase();
+  if (message.includes("different migrations")) return "mismatch";
+  if (message.includes("no packaged service") || message.includes("enoent") || message.includes("not found")) {
+    return "missing";
+  }
+  if (
+    message.includes("eacces") ||
+    message.includes("eperm") ||
+    message.includes("access is denied") ||
+    message.includes("permission denied")
+  ) {
+    return "permission";
+  }
+  if (
+    message.includes("alembic") ||
+    message.includes("migration") ||
+    message.includes("upgrade head") ||
+    // An older build meeting a database a newer one wrote (item 15). It belongs
+    // in this bucket because the advice is the same and it is the advice that
+    // matters: the data is fine, and nothing must offer to clear it.
+    message.includes("schemafromthefuture") ||
+    message.includes("newer version of deckastra")
+  ) {
+    return "migration";
+  }
+  if (message.includes("exited") || message.includes("never answered") || message.includes("did not start")) {
+    return "crashed";
+  }
+  return "unknown";
+}
+
 async function waitForHealth(port: number, secret: string): Promise<void> {
   const deadline = Date.now() + 30_000;
   let lastError = "no response";
+  let mismatched: { expected: string; found: string } | null = null;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://127.0.0.1:${port}/health`, {
         headers: { authorization: `Bearer ${secret}` },
       });
-      if (response.ok) return;
+      if (response.ok) {
+        const report = (await response.json().catch(() => ({}))) as { migrations?: unknown };
+        const mismatch = mismatchedMigrations(await buildManifest(), report.migrations);
+        if (mismatch) {
+          // Not retried: a mismatch is a fact about two builds, and polling it
+          // for thirty seconds would report "never answered" about a service
+          // that answered immediately and correctly.
+          mismatched = mismatch;
+          break;
+        }
+        return;
+      }
       lastError = `HTTP ${response.status}`;
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
     await new Promise((done) => setTimeout(done, 150));
   }
+  if (mismatched) {
+    throw new Error(
+      "This app and its workspace service were built from different migrations " +
+        `(app ${mismatched.expected.slice(0, 12)}, service ${mismatched.found.slice(0, 12)}). ` +
+        "Reinstall Deckastra rather than running them together.",
+    );
+  }
   throw new Error(`The workspace service bound a port but never answered (${lastError}).`);
 }
 
-/** Read stdout until the service announces its port, then stop consuming it. */
-function readReadyLine(spawned: ChildProcess): Promise<number> {
+export type ServiceAnnouncement =
+  | { kind: "ready"; port: number }
+  | { kind: "progress"; detail: string };
+
+/** Parse one complete service stdout line. Unknown output is a startup failure. */
+export function parseServiceAnnouncement(line: string): ServiceAnnouncement {
+  const announced = JSON.parse(line) as {
+    ready?: unknown;
+    port?: unknown;
+    progress?: unknown;
+    message?: unknown;
+  };
+  if (announced.ready === true && typeof announced.port === "number") {
+    return { kind: "ready", port: announced.port };
+  }
+  if (typeof announced.progress === "string") {
+    return {
+      kind: "progress",
+      detail: typeof announced.message === "string" ? announced.message : announced.progress,
+    };
+  }
+  throw new Error("no ready or progress record");
+}
+
+/** Read stdout until the service announces its port, reporting earlier progress. */
+function readReadyLine(spawned: ChildProcess, onProgress: (detail: string) => void): Promise<number> {
   return new Promise((resolveReady, rejectReady) => {
     let buffer = "";
     let settled = false;
@@ -273,18 +414,24 @@ function readReadyLine(spawned: ChildProcess): Promise<number> {
 
     const onData = (chunk: Buffer) => {
       buffer += chunk.toString("utf8");
-      const newline = buffer.indexOf("\n");
-      if (newline < 0) return;
-
-      const line = buffer.slice(0, newline).trim();
-      try {
-        const announced = JSON.parse(line) as { ready?: boolean; port?: number };
-        if (!announced.ready || typeof announced.port !== "number") {
-          throw new Error("no port");
+      while (true) {
+        const newline = buffer.indexOf("\n");
+        if (newline < 0) return;
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (!line) continue;
+        try {
+          const announced = parseServiceAnnouncement(line);
+          if (announced.kind === "progress") {
+            onProgress(announced.detail);
+            continue;
+          }
+          finish(null, announced.port);
+          return;
+        } catch {
+          finish(new Error(`The workspace service announced something unreadable: ${line.slice(0, 200)}`));
+          return;
         }
-        finish(null, announced.port);
-      } catch {
-        finish(new Error(`The workspace service announced something unreadable: ${line.slice(0, 200)}`));
       }
     };
 

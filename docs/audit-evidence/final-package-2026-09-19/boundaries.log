@@ -1,0 +1,80 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/audit-release-boundaries.test.tsx (3 tests | 3 failed) 384ms
+   × a project switch must not expose the old project's pending outline 172ms
+     → expected <span …(1)></span> to be null
+   × a temporary checkpoint failure must retain the resume pointer 76ms
+     → expected null to be 'run_a' // Object.is equality
+   × beforeunload must capture a note still inside its 700ms draft interval 133ms
+     → expected undefined to be 'Last words before quit' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-release-boundaries.test.tsx > a project switch must not expose the old project's pending outline
+AssertionError: expected <span …(1)></span> to be null
+
+- Expected: 
+null
+
++ Received: 
+<span
+  class="dk-checkpoint__headline"
+>
+  Only for A
+</span>
+
+ ❯ tests/audit-release-boundaries.test.tsx:22:44
+     20|   view.rerender(<GenerateDeck {...props} open={false} />);
+     21|   view.rerender(<GenerateDeck {...props} projectId="prj_b" open />);
+     22|   expect(screen.queryByText("Only for A")).toBeNull();
+       |                                            ^
+     23| });
+     24| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/audit-release-boundaries.test.tsx > a temporary checkpoint failure must retain the resume pointer
+AssertionError: expected null to be 'run_a' // Object.is equality
+
+- Expected: 
+"run_a"
+
++ Received: 
+null
+
+ ❯ tests/audit-release-boundaries.test.tsx:35:67
+     33|   await waitFor(() => expect(called).toBe(true));
+     34|   await act(async () => { await new Promise(resolve => setTimeout(reso…
+     35|   expect(localStorage.getItem("deckastra.pending-outline:prj_a")).toBe…
+       |                                                                   ^
+     36| });
+     37| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/audit-release-boundaries.test.tsx > beforeunload must capture a note still inside its 700ms draft interval
+AssertionError: expected undefined to be 'Last words before quit' // Object.is equality
+
+- Expected: 
+"Last words before quit"
+
++ Received: 
+undefined
+
+ ❯ tests/audit-release-boundaries.test.tsx:52:51
+     50|   fireEvent.input(field);
+     51|   act(() => { window.dispatchEvent(new Event("beforeunload", { cancela…
+     52|   expect(editor.document.slides[0]?.speakerNotes).toBe("Last words bef…
+       |                                                   ^
+     53| });
+     54| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  23:53:30
+   Duration  15.24s (transform 1.58s, setup 0ms, collect 3.93s, tests 384ms, environment 9.94s, prepare 477ms)
+

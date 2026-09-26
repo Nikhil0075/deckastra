@@ -216,6 +216,36 @@ version now travels into `create_proposal` and is compared there, before any
 transaction or version row exists. The product's own edit agent is not exempt —
 it passes the version it composed against.
 
+### The Ask panel writes operations, like an external agent (2026-09-26)
+
+With a real model configured, `agent/edit` runs `nodes/author.py` rather than the
+four-verb `edit.py`. A person with a cloud key asked it to "add images and change
+the theme to something light" and was refused: text, role, delete and reorder on
+selected elements cannot add anything or touch a theme, however good the model.
+An MCP client had no such ceiling, because it writes the patch and the product
+holds it to account at the boundary. The built-in agent now does the same.
+
+This is a deliberate exception to "nothing an agent emits carries geometry" for
+**edits**, not for generation: a new deck is still planned in intent and
+composed by code. What keeps an edit safe is everything after the node, which is
+unchanged: `author_service.check` applies the operations to a copy and validates
+the schema, a refusal goes back to the agent with the reason (three attempts in
+all), and only a change that applies becomes a proposal, with risk computed from
+the operations and a large change held for the person.
+
+- **New ids are placeholders** (`el_new1`), minted by `author_service.materialise`
+  the same way everywhere they appear. A model writing ULIDs gets the alphabet
+  wrong.
+- **Values travel as `value_json` text**: structured output cannot constrain a
+  value that may be any JSON at all, so the server parses it.
+- **Pictures come from the workspace**, listed to the agent by id and name, and
+  their manifest entries are added server-side from the asset rows. The agent
+  cannot download or make an image, and says so rather than drawing a frame.
+- **Nothing selected is a request about the slide on screen**, or the deck when
+  it says so. The panel no longer refuses to send one.
+- The stub keeps the four verbs, because that is the path it exists to exercise
+  without a key.
+
 ### The autosave queue is emptied by an acknowledgement, never by an attempt
 
 `packages/editor-ui/src/lib/useEditor.ts`. It used to clear `pending.current` before the
@@ -611,7 +641,8 @@ ever be SQLite and a local directory.
 `local_server.py` is the entry point: it configures the process, migrates on
 every launch (a desktop app has no operator to run migrations), seeds the
 account, and prints one JSON line — the same narrow contract the export worker
-uses. Everything lives under one directory, so a backup is a directory copy.
+uses. Everything lives under one directory — which says where the bytes are and
+**not** that copying them while the app runs is a backup (item 14, below).
 Assets go to `DECKASTRA_ASSET_DIR` through `object_storage.py`'s local backend,
 where a "presigned" URL is an ordinary authenticated API path: there is nothing
 to sign, and a second signing scheme would be a second thing to get wrong. The
@@ -668,7 +699,27 @@ DECKASTRA_SMOKE_FIXTURES=packages/presentation-schema/fixtures DECKASTRA_SMOKE_B
 # default, allowed produces a working credential, stopped kills one already
 # issued. Delete userData/agent-access.json first to start where a user does.
 DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=consent npx electron .
+
+# Item 14: back up with a note still in its field, change the deck, restore, and
+# find the earlier deck, the note and the recovery journal all back.
+DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=backup npx electron .
+
+# Any step, on a profile of its own. Use this for every run on a machine where
+# someone keeps real decks.
+DECKASTRA_SMOKE_PROFILE=<empty dir> DECKASTRA_SMOKE_DIR=<dir> DECKASTRA_SMOKE_STEP=open npx electron .
 ```
+
+**Give a smoke run its own profile (`DECKASTRA_SMOKE_PROFILE`).** Several steps
+change the deck they find and leave the change there on purpose (`edit` adds a
+shape for `verify` to find), so a run against someone's own profile edits their
+work. That happened on 2026-09-19. The dev profile had been renamed aside to get
+a "fresh" one, and `%APPDATA%\Deckastra` then resolved to the user's real data
+instead: a session running inside a packaged host sees a private view of
+`AppData` layered over the real one. The run added a rectangle to a real deck.
+It was put back with a restore, which is itself a version, so the history shows
+it. Renaming folders is not isolation. The variable sets `userData`, and with it
+the service's data directory and the single-instance lock, before anything else
+runs. It is honoured only when `DECKASTRA_SMOKE_DIR` is set.
 
 **D0 measured, on Windows 11 x64, from the installed app (2026-09-08):**
 
@@ -851,6 +902,493 @@ passing Windows run says nothing about it. Pixel parity inside Electron's Chromi
 is also still open — the digest gate covers the scene, not the paint.
 
 
+
+**A named profile is the profile, and the gate on it was the bug** (item 25,
+`main/profile.ts`). `DECKASTRA_SMOKE_PROFILE` was honoured only when
+`DECKASTRA_SMOKE_DIR` was set too. That reads as defence in depth and is the
+opposite: a process holding the profile and not the directory fell back to
+Electron's own `userData`, which on Windows is `%APPDATA%\Deckastra` — a real
+user's work. It is exactly the shape of the second instance this item has to
+launch (the harness switched off, the profile kept), and on 2026-09-20 it duly
+started a whole application against the real profile. Nothing was written,
+because no step ran, and the real database's newest version was still the
+previous day's; the point is that losing the override was **silent**, and it
+pointed at the one directory the variable exists to keep runs away from. It is
+one line in a file of its own now, with a test, because the failure mode is not
+an error — the app starts, opens a deck, and the only sign it opened the wrong
+person's deck is that it is the wrong deck.
+
+**A backup is one moment, not one directory copy** (item 14, `backup.py`).
+`local_server` has always said that everything lives under one directory, "so a
+backup is a directory copy". That is true of where the bytes are and false of
+*when* they agree. A live SQLite file copied by hand is whatever happened to be
+flushed; the database, the checkpoints and the assets walked separately are
+three different moments, and the seams between them are where a restored deck
+comes to cite an image the backup does not carry.
+
+The review's correction was to **define the boundary**, and each part of it is
+one decision:
+
+- The application database is taken with SQLite's **online backup API** — a
+  consistent read of a database other connections are still writing — so nobody
+  has to stop working to be backed up.
+- The checkpoints database is taken **after** it. A run parked between the two
+  leaves a checkpoint with no run row, which nothing reads; the other order
+  leaves a run with no checkpoint, which is the paused outline someone was in
+  the middle of, now unresumable.
+- The assets copied are the ones the **snapshot** names, never the live
+  database, so the rows and the files are one moment.
+- Deleting asset bytes is **held** for the duration (`deletions_held`, taken by
+  the sweeper), so a file the snapshot references cannot be swept out from under
+  it. New uploads are not held: the snapshot does not name them.
+
+**The two halves run in different processes, and that is the design.** The
+*service* takes the backup, because it owns the writers. A *restore* cannot: it
+replaces the database the service has open, so the app stops the service, runs
+the service binary once (`--restore-from`), and starts it again. What the main
+process contributes is the dialogs and the **recovery journals** — those live in
+browser storage inside a renderer, outside the directory the service knows
+about, so a backup taken by the service alone would carry every saved deck and
+none of the work someone had typed and not saved. They are carried verbatim: the
+format belongs to `editor-recovery.ts`, and a backup that parsed it would be a
+second definition to drift.
+
+**The renderer still names no path.** This is the feature that most wanted to
+break that rule. The menu item is main's, the dialog is main's, and the one
+place a path crosses a boundary is main to the service — where the route needs
+`administer`, which no grant carries, so an agent cannot ask for every deck to be
+written to a folder it chose.
+
+A manifest records the counts and a SHA-256 of every file, and **names assets
+whose bytes were already missing** rather than leaving them out: "40 assets" and
+"40 assets, one of which was already gone" are different facts, and a missing
+entry cannot tell them apart. `verify` refuses a damaged, incomplete,
+wrong-format or merely-not-a-database backup **before** a restore touches
+anything, and what a restore replaces is moved aside rather than deleted — a
+restore is what someone reaches for when something has already gone wrong, which
+is the worst moment to make the previous state unrecoverable.
+
+**The acceptance step records which half of a backup holds the unsaved work,
+and does not assert it.** Settling a window's drafts takes a note into the
+document and the recovery journal; whether the *save* has also been acknowledged
+by the time the snapshot is asked for is a race, and `journalled` is a
+legitimate answer — it is the answer item 01's barrier exists to make honest.
+The step's first version asserted the note was in the backed-up **database**,
+which passed standalone and failed in the full sweep; the note was in the
+backup the whole time, in the journal. What it asserts now is that the note is
+in one of the two, because being in neither is the only outcome that would be
+wrong. `noteCarriedBy` is in the record, so the run says which it was — on
+2026-09-20, `journal`.
+
+Two harness lessons, both already learned elsewhere in this file and both
+re-learned here. A step that drives a UI has to be able to say **where it
+arrived**: the first failure was indistinguishable from the typing never
+landing, until the step read the field back (it had landed). And a step that
+passes standalone and fails in a sweep is usually asserting a timing, not a
+behaviour.
+
+**Writing the documentation found a real gap**, which is the argument for
+writing it. `docs/UPGRADING.md` says a restore "checks the whole backup before
+it replaces anything", and checking that sentence showed it was true of the
+files and not of the *schema*: a backup written by a newer build verified
+cleanly, the data was replaced, and only the migration afterwards refused —
+leaving the person's own decks in `replaced-…` and an install that would not
+open. Nothing was lost, because nothing is deleted, but it is a recovery nobody
+should be put through for a refusal that could have come first. `restore` now
+runs the same check on the backup's own database before touching anything, and
+the regression test re-hashes the manifest so the refusal has to come from the
+schema rather than from a checksum that happens to disagree.
+
+**Exports are not in a backup**, said in `docs/UPGRADING.md` rather than
+discovered: an export is a derived file whose row records an absolute path, so
+carrying the bytes to another profile would restore rows pointing where the file
+is not.
+
+**An older build refuses a database a newer one wrote** (item 15,
+`check_schema_supported`). Manual upgrades make this real — someone reinstalls
+the version they still have the installer for. Alembic already refused it by
+accident, unable to find the recorded revision, but the message was about
+revision identifiers and the person needs to be told which of the two things to
+do: install the newer version again, or restore a backup. It is a **refusal, not
+a repair**; there is no downgrade path, and running this build's migrations
+against that file would be guessing with someone's decks. It classifies as a
+`migration` failure, so item 17's rule holds over it — nothing offers to clear
+the workspace to make the app start.
+
+**A migration failure is fatal on purpose**, which is the other half of item 15:
+a half-migrated database must not go on to `seed()`, because seeding an install
+whose tables are in an unknown state is exactly how a partial upgrade comes to
+open as an empty workspace while the decks are still on the disk.
+
+**The rehearsal runs against a profile with work in it.** Every migration here
+had only ever run against an empty file, where "the upgrade succeeded" and "the
+upgrade kept anything" are the same sentence.
+`apps/api/tests/test_migration_rehearsal.py` builds a profile at an older
+revision — writing its rows by **introspecting the schema as it was**, because a
+fixed INSERT would have to be edited every time the columns move, which is how a
+rehearsal quietly stops rehearsing — and asserts the deck *and its version
+chain* survive the upgrade.
+
+**Measured in the app, 2026-09-20.** A real profile was created by the app,
+rewound three revisions with Alembic, and relaunched: it migrated to head and
+`open`, `edit` and `verify` were green with the deck intact. The same profile
+marked as written by a later build is refused with the written message, and the
+deck is still there afterwards — it does not open as an empty workspace, which
+is the failure the item names.
+
+**Upgrades are manual, and written down** (item 16, `docs/UPGRADING.md`). There
+is no updater, and that is a decision: an updater that can replace the
+application is a channel that has to be signed, signing is not done in
+0.9.0-beta.1, and an unsigned update channel is worse than none. The policy is
+only worth having if what survives the swap is stated and checked, so the
+document says what is kept (decks, history, images, paused outlines, the cloud
+key, the open deck) and what is not — **agent consent, on every version change,
+including a downgrade**. Consent was given to a particular build to let
+something else on the machine reach these decks; a permission that survives
+every upgrade is one nobody revisits. `tests/upgrade.test.ts` drives one profile
+across a version change and holds all of it, including that the *same* version is
+not an upgrade — otherwise every launch would revoke the last one's consent.
+
+Running the two real installers end to end is **item 26 and the user's run**. It
+is not claimed here on development-build evidence.
+
+**What a published credential may do, checked on the build that ships** (item
+25, the `grants` acceptance step). The `consent` step covers the *decision* —
+off until asked, on when asked, withdrawn and revoked when stopped. This covers
+what the credential **is** once published, and every case in it is one a
+development consent test cannot reach.
+
+Measured against `release/win-unpacked` on 2026-09-20, `packaged: true`, with
+nothing from this repository on the path:
+
+| | |
+| --- | --- |
+| Published | attachment v2, scopes `read, write, export`, 12 hours |
+| Read the account | 200 |
+| Approve, share, delete a deck, back up, revoke grants | **403** each |
+| Attachment permissions | one ACL entry: this account, full control |
+| A real second instance | exits 0 in 3.6s; the first instance's grant still works |
+| After a service restart | the old grant 401, the republished one 200 |
+
+Those five refusals are the point, and they come from the **service's** scope
+table rather than from which tools an adapter registered — the distinction the
+D2 closure audit was about. Expiry is checked as the *published window* rather
+than by sleeping twelve hours; the arithmetic is unit-tested and
+`local_mode.scopes_for` refusing a lapsed claim is a Python test.
+
+**A second instance cannot be checked from inside the first**, which is why
+this one is spawned for real. The lock used to sit at the bottom of `index.ts`,
+quitting the second instance correctly and then letting its startup run anyway
+— withdrawing the first instance's attachment on the way out, so an attached
+agent lost access because somebody double-clicked the icon.
+
+**And the shipped MCP server drove the whole journey on a credential nobody
+forged.** Consent was given through the packaged window in one run and left
+there; an ordinary launch of the same build — no harness — honoured it and
+republished the attachment, which is the product's own path rather than a file
+a test wrote. `apps/mcp-server/scripts/acceptance.mjs`, pointed at
+`resources/mcp/cli.mjs` inside the package and run by the app's own binary
+under `ELECTRON_RUN_AS_NODE`, then passed **16/16**: attach, refuse to offer
+approval or sharing at all, create a deck of its own, apply a low-risk change,
+be refused a stale one, plan motion in roles, pair elements across slides,
+refuse to carry them on a push, render a preview, leave a destructive change
+pending as `mcp:acceptance`, cancel a running export, and finish one. Closing
+the app withdrew the attachment and left no process behind.
+
+**Open, and it is the user's run:** the installer asks for elevation (exit 1223
+twice, unattended), so the candidate has not been driven from
+`%LOCALAPPDATA%\Programs\Deckastra`. A packaged payload is the same files an
+installer lays down, and running it is strong evidence — it is not evidence
+about the installer, which is item 26.
+
+**The candidate, with none of the things a developer has** (item 26). The run
+that matters is the packaged payload copied **outside the checkout**, driven
+with `python`, `node`, `npm`, `npx` and `tsx` removed from `PATH` and
+`PLAYWRIGHT_BROWSERS_PATH` emptied — and the script proves the scrub before it
+trusts anything the run reports, because a packaged app that quietly reached
+back into a developer's machine would pass every run on that machine and fail
+on the first real one.
+
+Measured 2026-09-20, 947 files and 729MB copied to a directory of its own:
+**20 acceptance steps green**, `packaged: true`, zero CSP violations — open,
+edit, verify, slides, history, export, motion, presenter, decks, present,
+timeline, morph, consent, menu, intelligence, windows, resilience, backup,
+grants, with `a11y` **skipped by name** because axe-core is a development
+dependency this build deliberately does not ship.
+
+**A step that cannot apply must say so rather than go red.** Two reported
+failures on the first clean run and both were the product working as designed:
+axe-core absent, and generation refusing the stub because a distributed build
+does (items 19 and 20). A packaged run failing on those is how everyone learns
+to ignore a red step, so each now records why it did not apply. The second one
+took three goes, and each failure is the same lesson: a skip must rest on
+something that does not depend on rendering. The first keyed on a
+`[role="alert"]`, which the drawer does not use; the second on the route
+panel's words, which the step only reaches *after* asserting the Generate
+button is enabled — and on a packaged build that button is **disabled**, which
+is item 19 working. It asks `/v1/account` for `capabilities.generation` now,
+before touching the deck list at all.
+
+**The artifacts were read by things that are not us**, which is the gate's
+point: `pypdf` 6.17 and `python-pptx` 1.0.2 are independent implementations of
+the same specifications, and a package they refuse is one PowerPoint refuses.
+The PDF came back as 4 pages at 1440×810pt with extractable text and a byte
+count matching the export row exactly, stored inside the profile. The PPTX came
+back as 4 slides at 13.33×7.5in with real text boxes and shapes — and its
+speaker notes read back as the exact sentence the harness had typed into the
+editor's notes field a moment before exporting.
+
+**Which is how a real bug surfaced.** `python-pptx` did not disagree about the
+notes; it **raised**. The part is `ppt/notesSlides/notesSlide1.xml` and the
+element inside it is `<p:notes>`, not `<p:notesSlide>` — two different names for
+one thing, and this wrote the wrong one. So every speaker note this product had
+ever exported to PowerPoint sat in an element no conforming reader looks for.
+Nothing failed while the only thing reading these files was the code that wrote
+them.
+
+The test that should have caught it could not: `test_speaker_notes_survive`
+asserted the fixture's slides had **no** notes, which is true of a correct
+exporter and equally true of a broken one. It injects a two-line note and reads
+it back now, and the control fails with the old element restored. That is the
+same shape as the four tests D4.4 found asserting nothing — a test that checks
+an absence proves nothing about the presence.
+
+**A failed save must not destroy the file it was replacing** (`main/save-file.ts`).
+`writeFile(target, bytes)` truncates the target *before* it writes, so a disk
+that filled, a network drive that went away or a permission revoked between the
+dialog and the write left the person with **neither** the new export nor the one
+they were overwriting. The bytes go to a sibling and are renamed over the target
+only once they are all on disk — a sibling rather than the system temp
+directory, because a rename is atomic only within a volume.
+
+Two things about testing that are worth keeping. The first suite **passed
+against the broken code**: it stood in for a full disk with an impossible path,
+which fails *before* the target is touched. And **mocking `node:fs/promises`
+does not work in this runner at all**, established with a throwaway diagnostic
+rather than assumed — without checking, the failure path would have been
+asserted by nothing while the suite stayed green. The operations are injected
+now, the way `assets.sweep` takes its `remove`, and what is asserted is the
+property that makes the damage impossible: **the target is never opened for
+writing**. A genuinely full volume is not reproduced and is on the checklist.
+
+**Open, and it is the user's run:** the installer wants elevation (`/S` exits
+1223 twice, unattended), so nothing here was driven from
+`%LOCALAPPDATA%\Programs\Deckastra`; a clean account or Windows Sandbox is a
+machine rather than a command; images are not in this evidence, because the deck
+an install opens carries none (the picture path is covered by
+`test_pptx_opens.py` against `technical-deck`); and a real disk-full and a
+denied destination are the user's to provoke.
+
+**Sixty slides, not five** (item 30, the `performance` acceptance step). Every
+performance number this project had recorded came from a five-slide fixture
+that fits in a cache, and the register says why that is not enough: "a small
+fixture's working-set sample is not a memory qualification". The deck is built
+by repeating both seed fixtures' slides with fresh ids — known-valid content
+rather than sixty slides of whatever a generator's author thought of — and
+renumbered **a block at a time**, because a morph names elements on the slide
+before it and renumbering slides in isolation breaks exactly the cross-slide
+references this deck exists to exercise, silently, since the result still
+validates as a deck with an unpaired morph.
+
+The pictures are real, uploaded through the product's own begin/PUT/complete
+path, and there is one on **every** slide: repeating the fixtures gives seven
+across sixty, because only one fixture slide in ten carries an image, and seven
+decodes measure almost none of the cost this deck is for.
+
+**The budgets are judged by the product's own code** — `checkBudget` and
+`checkFrameBudget` from `@deckastra/renderer/perf`, with the page collecting raw
+frame intervals and the main process judging them. A harness with its own copy
+of the thresholds is a second place for them to be wrong, and the frame budget
+is exactly the kind that drifts: a drag is within budget when the work fits in
+frames the compositor was going to paint anyway, which can only be judged
+against the display's own cadence.
+
+**Measured 2026-09-20**, Intel i5-9300H (8 threads), 12,140MB RAM with 1,376MB
+free, development build. 60 slides, 323 elements, 41 groups, 67 images, 13
+animated slides, 60 transitions:
+
+| | | |
+| --- | --- | --- |
+| Cold open to an editable deck | 487ms | — |
+| Thumbnail strip, 60 slides | 523ms | 1000ms |
+| Slide switch, warm | 15ms median | 120ms |
+| Drag | 0% dropped, 16.8ms p95 at ~60Hz | ≤5% dropped |
+| Export, cold then warm | 30.8s then 12.7s, 1.87MB PDF | — |
+
+**Memory across repeated navigation settles.** Six rounds of twenty slide
+switches: 492MB after opening, then +38.0, +14.4, +16.6, +11.7, +5.8, +2.4MB —
+a curve that flattens, which is a cache filling rather than a leak. Three rounds
+could not have said so; the first three increments alone are a straight line,
+and a leak and a cache look identical there. After two exports it falls to
+412MB, below where it started, so the growth is reclaimed as well as bounded.
+
+**The run found a real bug, and the retry had been hiding it.** `withPage`
+wraps the *whole* export — the lease, the browser starting, every slide's text
+measurement and the render — under `RENDER_TIMEOUT_MS`, a flat 20 seconds.
+Ample for five slides; not enough for sixty with photographs. The first
+measured export died on that deadline and succeeded only because
+`export_service` retried it into a warm browser, leaving a row marked
+`completed` carrying the failed attempt's error text — which reads like a
+transient blip rather than a limit nobody had scaled since the fixtures were
+written. The deadline exists to stop a **wedged** render holding the sole page
+lease forever, and that purpose is served by a bound that grows with the work:
+`renderDeadlineFor` is 20s plus 1.5s a slide. After it, both exports completed
+with `attempts: 1` and no error.
+
+**And three bugs in the harness, each of which reported something false.**
+Importing `@deckastra/renderer` into the **main** process dragged in the schema
+and its `ulid` dependency, whose PRNG detection throws at import time there —
+an unhandled rejection that took the whole app down before it opened a window,
+for every step, with the symptom "the step is taking a long time". The export
+poll read `started.export_id` where the route returns `id`, so it asked for
+`/exports/undefined` for five minutes and called that a timeout while both
+exports had finished in under one. And the thumbnail strip read 13ms against a
+1000ms budget, which is not sixty thumbnails rendering but sixty thumbnails
+already being there, because the timer started after the canvas appeared.
+
+All three are the same failure: a check that cannot tell "the product is slow"
+from "I asked the wrong question". The poll now fails loudly on a bad response,
+the strip is timed from the navigation and records how many thumbnails existed
+when the canvas did, and the harness records the **machine** — total and free
+memory, CPU, load — because the first attempt ran with 701MB free and took 65
+seconds to open a four-slide deck. That number describes the machine, and a
+number with no machine beside it is how such a figure gets quoted later as a
+budget.
+
+**Not measured:** a packaged build (these are development-build numbers), a
+sustained session of hours rather than minutes, and the advertised minimum RAM —
+this machine has 12GB and the run never went near a limit.
+
+**A privileged request must come from a window this app opened** (item 34,
+`main/ipc-guard.ts`). Every privileged operation arrives on a channel the
+preload exposes — open a deck, write a file, store an API key, allow agents,
+restart the service — and the handlers used to answer whoever asked and take
+whatever arrived. Nothing was observed exploiting that; it is the structural gap
+the review named. Now a request is answered only for the **main frame** of a
+**window this app created**, on **its own origin**: a sub-frame is refused even
+on our origin, because a frame is where embedded content would be, and an origin
+that merely starts the same (`deckastra://app.evil.example`) is not our origin.
+
+Payloads are checked at that boundary rather than in each handler: an id must be
+one this product minted, a file name must be a name and not a path, bytes are
+bounded because they are held in memory to write them, and a permission must be
+a boolean. An invoke is **refused** with a message rather than ignored — the
+caller is waiting, and "nothing happened" is indistinguishable from a bug — while
+a fire-and-forget message is dropped.
+
+**An installed launch leaves something behind** (item 18, `main/logs.ts`).
+Two small rotating files in the profile — what the app did, and what its service
+printed — because a packaged app has no terminal, and until now a failed start
+left nothing to read. Help > Export diagnostics writes one JSON report: the
+build manifest, the runtime, where the data is, why the service is not running,
+which generation route is configured, whether a key is set, whether agents are
+allowed, and the tail of both logs.
+
+**What is written is chosen, not filtered.** The review's correction, and it is
+the whole design: a pass that tries to recognise arbitrary document text in
+arbitrary output cannot be relied on, so nothing here logs prompts, briefs,
+slide text or deck titles in the first place. The app's own entries are an event
+name and named fields; the one stream that is not ours — the service's stderr —
+goes through `redact`, which removes the credentials whose *shape* is known: API
+keys, bearer tokens, the launch secret, an agent grant. That is a narrow claim
+and it is the only one made. The report says a key is *set*, never what it is.
+Checked in the running app by the `menu` step, which writes a real report and
+looks for the live secret in it.
+
+**A service that will not start is something to act on** (item 17). It used to
+show the reason and nothing else, which leaves a person with a sentence and the
+task manager. `classifyFailure` tells the cases apart — a missing binary, a
+permission refusal, a migration that could not run, a build mismatch, a crash —
+and each gets its own advice, because the useful answer differs. **None of them
+offers to clear the workspace**: a migration that failed is exactly the case
+where the data matters more than the app starting, and a test asserts no advice
+ever instructs anyone to delete anything. A retry is offered only where one
+could work (not for a missing install or a mismatched pair), it is one attempt
+per press, and it says "it still could not start" rather than appearing to do
+nothing. The same control sits in the outage banner, so the editor stays mounted
+and the person can bring the service back from where they are — which is what
+the `resilience` step now does instead of reaching for the harness's own switch.
+
+**CI builds the desktop app on Windows** (item 10). Until this job existed,
+nothing in CI built the product at all: the suites run on Linux, and a broken
+preload, a missing PyInstaller import or a failing acceptance step could not
+turn the build red. The job runs on `windows-latest` — the platform the release
+ships for, which is the only place those failures happen — and does the whole
+sequence: bundles, the frozen service from the hashed lock, the SBOM, the
+manifest, then the acceptance steps that need no second display. An unsigned
+installer only on demand, because it costs minutes and 250MB. **It has not yet
+run on a runner**; every command in it was run locally on this machine.
+
+**The service is built from a lock, into a clean environment** (item 09).
+`apps/desktop/sidecar-requirements.lock` pins 97 packages with hashes,
+compiled from `sidecar-requirements.in` (the API's requirements plus
+PyInstaller, which decides how the binary is laid out). `build-sidecar.mjs`
+makes a virtual environment, installs with `--require-hashes` and freezes from
+that — so the binary is built from bytes that are written down rather than from
+whatever a developer's global site-packages holds, and a tampered package fails
+the install rather than shipping. The environment is reused while a stamp says
+it was made from this lock, because a venv built from an older one is the
+silent mismatch this exists to prevent. `DECKASTRA_SIDECAR_PYTHON=system` skips
+it for a quick development build and says the artifact is not reproducible.
+
+The lock resolves for the platform it is compiled on: Windows x64 / CPython
+3.13, which is this release. `scripts/sbom.mjs` writes CycloneDX from that same
+lock — names, versions and the hashes pip verified — plus the npm packages the
+bundles were built from, and both the lock and the SBOM are hashed into the
+build manifest. It is an inventory, not a licence audit; what may be
+redistributed is item 33.
+
+**Everything the frozen service reads by path is required** (item 08). The
+bundled data used to be filtered with `existsSync`, so a path that moved or a
+checkout that had never run `schema:emit` produced a binary quietly missing its
+migrations, its schema or the agent prompts — and the failure arrived on a
+user's machine with nothing naming the cause. `scripts/sidecar-data.mjs` is the
+list and the check; an empty directory counts as missing, because it ships
+nothing.
+
+**A build says what it is** (item 07, `apps/desktop/scripts/manifest.mjs`).
+`dist/build-manifest.json` records the commit, a hash over every changed *and
+untracked* source file (this tree is never clean, so the commit alone is not
+identity), the build time, the runtime versions, and a hash of each payload:
+the app bundle, the exporter, the MCP server and the frozen service.
+
+**It is written after the payloads, never before.** `build.mjs` runs before the
+sidecar is frozen, so a manifest written there would name a sidecar that did not
+exist — the review's correction. It is its own step between `build:sidecar` and
+`electron-builder`, and it records `complete: false` when something it expects
+to hash is missing, which a release build refuses.
+
+**And it is what catches a stale service beside a new window.** The manifest
+hashes the migrations it bundled; `/health` reports the hash of the migrations
+the service is actually running (`paths.tree_digest`); the app compares them
+before it calls the service ready, and refuses a mismatched pair rather than
+letting it migrate a database in a direction this build does not expect. Silence
+on either side is not a mismatch — a checkout has no manifest and an older
+service reports nothing — because refusing on silence would refuse every
+development run. Two implementations of one definition, held to one answer by
+`apps/api/tests/test_build_identity.py`, which runs both: the same rule as the
+patch appliers.
+
+**The runtime is Electron 44** (item 05, 2026-09-20). Electron 33 left support
+on 29 April 2025 — the policy is the latest three majors — so a product about to
+be distributed was running eleven majors behind on a runtime nobody patches.
+44.4.3 brings Chromium 152 and Node 24. Two things changed with it, and both
+are the kind that fail quietly:
+
+- **`printToPDF` dropped `marginType`.** Explicit zero margins are what "none"
+  meant, and this path has always printed edge to edge — the slide is the page.
+  A type error caught it; a JavaScript codebase would have shipped default
+  margins into every exported PDF.
+- **`console-message` passes an event object**, not positional arguments. The
+  harness reads the console to fail on CSP violations, and positional arguments
+  still worked while printing a deprecation warning — so the check would have
+  gone on passing right up until the arguments were removed.
+
+The gate that matters for a runtime change is parity: the `digest` step rebuilds
+all three fixtures' scene digests **inside Electron's own Chromium** and
+compares them byte for byte with the committed Node baselines. They match on
+152 as they did on 130. `electron-builder` moved to 26.15.3 with it, since it is
+what has to understand the new runtime when the installer is built.
 
 Two environment notes that cost an hour each if unknown:
 
@@ -2450,6 +2988,728 @@ gets. The shared harness is `@deckastra/workspace-client/testing`, which builds 
 exist to check what reached the server, and a fake would let a changed request
 body pass every one of them.
 
+### The editor chrome is Bauhaus, and the palette is enforced (UI rewrite, Phase 0)
+
+The rewrite to the "DeckOS — Editor UI (Minimal)" Figma is phased; the plan and
+`docs/FRONTEND_REQUIREMENTS.md` say what each phase delivers and which
+behavioural rules it must not break. Phase 0 is the foundation, in
+`packages/editor-ui`: tokens in `src/styles/tokens.css` (`--dk-*`), primitive
+styles in `src/styles/components.css` (`.dk-*`), and the primitives themselves
+in `src/ui` (Button, IconButton, NumberField, Menu, Select, Segmented, Tabs,
+Section, StatusChip, Popover, Drawer, …). Their keyboard and number rules are
+pure functions in `src/lib/ui-keys.ts`.
+
+Each primary colour has one meaning: **blue** is the action, **yellow** is
+"waiting on a human", **red** is danger or a finding. That only holds if screens
+cannot choose colours, so status colour is reachable only through `StatusChip`
+and `components.css` may not contain a colour literal. `tests/ui-tokens.test.ts`
+reads the CSS files and fails on a literal, an undefined or legacy token, a
+rounded corner (except the status dot), or any text/background pair below AA.
+It was checked by restoring the first-draft red (#d52b1e, 4.36:1 on cream).
+Yellow is never a text colour: it fails on cream.
+
+Two editing rules the inspector will depend on. `NumberField` commits once per
+intent (Enter, blur, arrow step), never per keystroke, and refuses invalid or
+out-of-range text rather than clamping it. `Select` applies only the option
+chosen, not every one arrowed past. Either mistake fills the undo history with
+edits nobody made.
+
+The fonts are Inter (UI) and Jost (geometric display), both OFL-1.1, bundled
+from `@fontsource-variable` as local woff2. The desktop CSP allows no remote
+fonts, and a CDN face would fall back to the system font offline. Both shells'
+bundlers (Vite, Next) resolve the `@import`s in `styles.css`. The legacy
+`--bg`/`--fg` tokens stay until the last pre-rewrite component is replaced;
+the dark set from the Figma's Page 1 will be `[data-dk-theme="dark"]`. Slide
+rendering is untouched: none of this reaches `SlideView` in export mode.
+
+**Phase 1: the shell is the Figma main screen.** `EditorShell` now owns only
+actions and the keyboard. The layout is in `components/shell/` (AppBar,
+ToolRail, SlideStrip, CanvasStage, ModePanels) and `components/inspector/`.
+Mode (Design/AI/Motion/Code) and zoom are editor state (`lib/editor-layout.ts`)
+and never reach the document. Code mode is read-only canonical JSON, because an
+editable view would be a second mutation path. Rules that are easy to undo:
+
+- **The desktop harness finds controls by `data-testid`, not text.** The rail
+  is icons, so exact-text lookups for "Rect", "Undo" or "+ Slide" find nothing.
+  The ids are `tool-*`, `undo`, `redo`, `add-slide`, `slide-thumb` (one per
+  slide, used for counts), `present`, `open-export`, `export-popover`,
+  `agent-access-open`, `agent-access-toggle` and `save-status` (with
+  `data-save-status`). Renaming one breaks `apps/desktop/src/main/smoke.ts`:
+  change both in the same commit.
+- **Save-status text stays sentence case.** The harness reads "Saved" and
+  "Save changes" from `innerText`, which applies `text-transform`. An
+  uppercased `Button` label would read "SAVE CHANGES", and the unwind step's
+  refusal check would silently never match.
+- **The global shortcut handler skips `defaultPrevented` events.** The mode
+  switch, menus and selects handle arrows first. Without the skip, ArrowRight
+  on the mode switch would also nudge the selected object.
+- **`.dk-legacy-bridge` remaps the old `--bg`/`--fg` tokens onto the palette**
+  inside the shell, so panels not yet rewritten (motion, share, export, AI,
+  theme, accessibility) render light rather than as dark islands. Their own
+  `h3` is hidden inside a `Section`, whose title already says it. Both rules go
+  as each panel is rewritten.
+- **Export's popover is `keepMounted`**: the panel polls a running job, and
+  closing the popover must not forget it. `.dk-popover[hidden]` is forced to
+  `display: none` so no panel class can show a closed popover. The agent-access
+  popover did exactly that before the rule existed.
+- Hosts put controls in the bar through `EditorShell`'s `barExtras` (the
+  desktop's agent-access chip) and banners through `notices` (the service
+  outage banner), drawn with the primitives from `@deckastra/editor-ui/ui`.
+  An outage banner is still a banner inside the mounted editor, never a
+  replacement.
+
+Verified in the desktop app on a fresh profile (2026-09-19): `open`, `edit`,
+`verify`, `present`, `export`, `timeline`, `morph` and `consent` all pass with
+no CSP violations.
+
+**Phase 2: slides are managed from the strip, and notes are written under the
+canvas.** The logic is in `lib/slide-actions.ts` and the gestures in
+`shell/SlideStrip.tsx` and `shell/SpeakerNotes.tsx`. Reorder has three routes,
+because a drag is not available to everyone: drag the handle, press Alt+↑/↓ on
+a focused thumbnail, or use Move up/down in the slide menu. Four rules:
+
+- **A slide is deleted with everything that pointed into it, in one patch**
+  (`deleteSlideOperations` in `presentation-core/references.ts`). `removeSlide`
+  alone leaves the next slide's morph pairs (E104), jump-to-slide links (E105)
+  and cross-slide animations (E101) dangling, and each is a validation error.
+  The tests show the old path failing first. Morph mappings have no id, so a
+  slide losing a pair's half gets its whole `sharedElements` array replaced by
+  the survivors. That shape now has a case in `test_patch_conformance.py`. The
+  last slide cannot be deleted.
+- **A reorder that separates a morph is reported, not refused.** Both elements
+  still exist, so nothing breaks a reference. The transition engine would drop
+  the pair silently at playback. `misplacedMorphPairs` is compared before and
+  after, and the editor names the separated pairs when the move happens.
+- **Notes edit a draft and commit on blur or after 700ms idle**, never during
+  an IME composition. A pending draft is committed to the slide it was written
+  on before the slide changes, and it is one undo step per session (coalesce
+  key). Plain notes stay a string. Rich notes stay rich text, one paragraph per
+  line, reusing block ids. Clearing the field removes the property.
+- **Deleting a slide other than the current one keeps the same slide on
+  screen.** The index follows it rather than the position.
+
+The `slides` smoke step drives all of this through the strip. It checks each
+result against the stored document, read back through the page's own proxy
+(`/__api`), then deletes its slides through the menu and asserts the deck ends
+in its original order.
+
+**Phase 3: present mode and the presenter view.** The audience view is black
+with a bottom-left control cluster and reveal squares. The presenter view is
+cream: display-face timer, Current and Next, "Step X of Y", notes, time
+remaining against a session target, End and Black screen. The rules are in
+`lib/presenter.ts` and the protocol in `lib/presentSync.ts`.
+
+- **The audience window is the authority on the talk.** It alone plays the
+  slide's motion, so it alone knows which reveal is showing. It broadcasts
+  `state` (`{index, step, blacked}`) after every change. A presenter window
+  sends `command`s (`advance` ±1, `black`) instead of moving itself, so Next on
+  the laptop reveals the next bullet on the projector rather than skipping
+  past it. Only those two commands are accepted, and anything else is ignored.
+- **The audience acknowledges a command before acting on it.** The presenter
+  window moves the slide itself if nothing answers within 500ms, so a closed
+  projector window cannot strand a presenter. The real answer waits for an
+  animation frame that a minimised window may throttle. Without the immediate
+  acknowledgement, the laptop would skip the reveal it asked for.
+- **Step counts come from the same compiled timeline the audience plays**
+  (`clickSteps`, `SlideMotionHandle.step()`), so the two windows cannot
+  disagree. A slide with no reveals has no step line: "Step 1 of 1" tells a
+  presenter nothing.
+- **The target length is session state and is never guessed.** Remaining time
+  appears only once a presenter sets a target. Past it, the number reads as
+  time *over*, in red and in words.
+- **The blackout warning renders outside the preview's size gate.** Whether the
+  room sees a black screen matters more than the preview, so it shows even
+  before the preview has been measured.
+
+**Fixed: the slide a talk started on never played its motion.** `SlideMotion`
+looks up its elements under `[data-present-stage]` once, in its mount effect.
+It used to mount in present mode's first render, before the container was
+measured and the stage drawn, so it found nothing and never looked again. The
+opening slide's entrances and click reveals did nothing. On a slide whose
+elements rest invisible (the animation fixture's first slide), the room saw a
+blank slide. The `morph` step never caught it, because it walks away from the
+opening slide before looking. The new `presenter` step caught it: Next on the
+laptop changed slide instead of revealing a bullet. SlideMotion now mounts only
+once the stage exists. `present-navigation.test.tsx` has the regression test,
+which was checked against the old behaviour.
+
+The `presenter` smoke step drives two real windows over the real
+BroadcastChannel. Next on the laptop must advance the projector's step without
+changing its slide, and the laptop must follow ("Step 2 of 3"). Black screen on
+the laptop must black out the projector, and the laptop must say so. Each claim
+is read from the window it is about. The harness hit the text-transform trap
+again here: an uppercase label reads uppercase through `innerText`, so it checks
+`textContent`.
+
+**Phase 4: the deck list.** `DeckList` (editor-ui) shows projects on the left
+and cards on the right: a thumbnail, the name, "12 slides · edited 2h ago", a
+yellow pending badge, and Open / Duplicate / Move to project… / Export /
+Delete. It has no routing; the shell decides what opening means. The desktop
+still opens the last deck on launch, and "All decks" in the editor's bar goes
+to the list. Six rules:
+
+- **The main process owns "which deck is open"**
+  (`IPC.openPresentation`, `workspace-state.rememberPresentation`). The
+  presenter window loads that deck, and the agent attachment names it, so a
+  list that switched decks only in the renderer would leave both pointing at
+  the old one. The id is shape-checked and confirmed through the service
+  before it is remembered. If the remembered deck is gone on launch, the most
+  recent remaining deck opens. The sample is seeded only when there are no
+  decks at all.
+- **Leaving a deck waits for its save queue** (`EditorShell`'s exit awaits
+  `saveNow()`, and stays and says so on `false`). The editor unmounts on
+  leaving, and with it the queue.
+- **Delete is soft** (`presentations.deleted_at`, shown in the UI with Undo).
+  `resolve_presentation_access` treats a deleted deck as missing everywhere.
+  So does `sharing.resolve`: a deleted deck's share link stops working, and
+  comes back on `restore`. The trash is `GET …/presentations?deleted=true`.
+- **Duplicate mints fresh ids for everything the deck defines and rewrites
+  every reference** (`deck_copy.duplicate_document`), including cross-slide
+  morph pairs and the Critic's slide-keyed issues. Asset and theme ids are kept
+  deliberately, because they name stored rows. The copy starts its own history.
+- **Neither delete nor duplicate touches a deck in a synced workspace (409).**
+  There is no sync for either yet, and a local-only act on a shared deck is the
+  kind of quiet divergence D5 exists to prevent.
+- **`presentations.slide_count` is maintained by every commit**, like `title`,
+  so the list never replays a deck to count it. Rows from before the column
+  existed are counted once, on first listing. The pending-changes badge is one
+  grouped count.
+
+**Thumbnails show the final frame** (`FinalFrameSlide`), in the deck list and
+the slide strip. Drawing the resting document gave a black card for any slide
+whose content fades in. The thumbnail uses the motion engine's own
+`enterAtEnd`, scoped to itself, and is mounted after the slide so the
+Phase 3 mount-order bug cannot recur. This closes the deferred Phase 2 item.
+
+The local account's workspace is now "Your workspace", not "You's workspace"
+(`auth.personal_workspace_name`). Existing installs are repaired only when the
+name is exactly the old generated string.
+
+The `decks` smoke step leaves the editor for the list and duplicates a deck from
+its card. It opens the copy and asserts the **main process** now names the copy
+as open. It then deletes the copy, checks that Undo restores it, deletes it
+again, and reopens the original.
+
+(Resolved in Phase 4: a slide whose elements rest at `opacity: 0` and fade in
+used to show a blank thumbnail. Thumbnails now show the final frame; see
+`FinalFrameSlide` above.)
+
+**Phase 5: version history.** The inspector's "Version history" row
+(`open-history`) opens a modal drawer (`VersionHistory.tsx`). Rows come from
+`GET …/versions`, which now names each version's producing transaction:
+`transaction_id`, `intent`, `agent_id`, `change_source`. They are joined in one
+query on `result_version_id`. Rows show a black square for a person and a
+yellow one for an agent. Picking a row reads that version (`readAt`) and
+previews it read-only. "Compare with current" marks slides by **id**
+(`lib/version-history.ts`) as differs, not in current deck, or added since. It
+also says when the slide order or anything deck-wide (theme, metadata) differs,
+because slide marks alone would hide a theme change. Rules:
+
+- **A restore is an ordinary change, not a rewind**
+  (`POST …/versions/{id}/restore`, `version_restore.py`). It commits top-level
+  add, replace and remove operations that take the head to the chosen version,
+  through the same applier, validation and concurrency check as any edit. The
+  chain keeps every version, and the restore undoes like anything else. The
+  operations are top-level on purpose: a structural diff would emit
+  index-addressed operations whose correctness depends on every move being
+  right, while replacing `/slides` whole is obviously correct. They are standard
+  operations, so patch conformance is unaffected.
+- **`expected_version_id` is required.** It is the head the person had open.
+  Anything that arrived since is a 409 telling them to look again, never a
+  restore over work they did not see. A version from another deck answers 404.
+  So does `GET ?at_version=` for one: it used to escape as a 500.
+- **`useEditor.restoreVersion` drains the save queue first and stops on
+  `false`**, like every path that lets the server replace the document. On
+  success it clears local undo, because those inverses describe a document no
+  longer on screen. It keeps the restore's transaction so the banner's "Undo
+  restore" can revert it through the server, where `disturbs()` refuses if a
+  later edit would be touched.
+- **Deleting, restoring and moving a deck, and restoring a version, need the
+  `manage` scope, which no agent grant carries.** Before this, a grant with
+  `write` could delete, move or rewind a deck. That is the same class of
+  decision as approving a proposal, and it belongs to the person.
+- **Server timestamps without a zone are UTC** (`parseServerTime`). SQLite
+  returns a timezone-aware column without its zone, and `Date.parse` read that
+  as local time, putting every desktop timestamp hours off. The deck list had
+  the same bug.
+
+The `history` smoke step edits the first slide's notes, then opens the drawer
+and compares the earlier version: only slide 1 may be marked. It restores that
+version and checks the **store**: the old content is back, it is a new version,
+and the edit's version is still listed. It then undoes the restore, and finally
+restores again, which leaves the deck as it found it. A screenshot is taken with
+the drawer open (`history-drawer.png`).
+
+**Phase 6: AI mode, and the story checkpoint.**
+
+*The story checkpoint belongs to new-deck generation.* The graph could always
+pause before the story stage; nothing asked it to, and no route resumed a run.
+The desktop could not generate a deck at all. The editor's Ask runs one edit
+node and never reaches a story. So the checkpoint lives with a deck that does not
+exist yet: **Generate** in the deck list (`GenerateDeck.tsx`) writes the outline,
+and the person Approves, Revises with a note, or Discards (`StoryCheckpoint.tsx`).
+Approving builds the deck and the editor opens on it.
+
+The routes (`main.py`):
+
+- `POST /v1/generate/review` starts the run.
+- `GET /v1/runs/{id}/checkpoint` reads the outline back from the checkpoint.
+- `POST /v1/runs/{id}/resume` decides it.
+
+Reviewing is its own route, not a flag on `/v1/generate`, because the answer is
+a different thing. `generate` was split into `_prepare_generation`, `_run_graph`,
+`_graph_deck` and `_store_generated`, so a resumed run stores its deck through
+exactly the same code. Rules:
+
+- **Revise sends the note back through the story stage and pauses again.**
+  - `_after_checkpoint` routes `revise` to `STORY`. The story node puts the note
+    and the previous outline in the user's turn, each enveloped, and clears the
+    decision. Left set, a graph compiled without the interrupt would loop.
+  - `resume_generation` compiles with the interrupt. A revised outline is one
+    nobody has approved either.
+  - It now refuses an id that is not parked: resuming one would start a fresh run
+    from an empty state.
+  - A revision needs a note (422). One with nothing said asks the model to guess.
+- **A resume takes the request and the theme from the checkpoint, never from
+  the caller** (`paused_run`, `resume_deck_generation`). A caller cannot swap the
+  brief between the outline being approved and the deck being built.
+- **One outline, one decision.** The claim is a conditional
+  `awaiting_approval -> running` update, committed before any model runs. Two
+  Approves, or Approve and Revise from two windows, would otherwise both resume
+  one checkpoint and pay twice. A failed resume puts the run back at its
+  checkpoint when the checkpoint still holds it. A discarded outline is recorded
+  as `cancelled`, because the table has no separate word for it.
+- **A run is its starter's.** A run id is not a capability. A stranger gets a
+  404, and the starter must still be an editor where the deck would go.
+  Answering the checkpoint needs `approve`, which no agent grant carries. It is
+  the same act as approving a proposal.
+- **Quotas:** tokens are charged at every pause (`quotas.record_tokens`), and a
+  generation is counted once, when a deck exists. Revising checks only the token
+  allowance (`check_tokens`); approving checks the generation limit.
+- **`capabilities.checkpoints`** says whether a run can pause, from configuration
+  and installed savers without opening anything. Where it cannot, the option is
+  absent and `/generate/review` answers 409 rather than building a deck nobody
+  approved.
+- **The savers had been closed from the start.** `from_conn_string` is a
+  generator context manager. `_open_checkpointer` entered it and dropped the
+  manager, so the generator was collected and the connection closed. The first
+  real use answered "Cannot operate on a closed database". Nothing had ever paused
+  a run, so nothing noticed. The managers are kept now, and savers are cached per
+  URL instead of one leaked connection per call.
+
+An outline outlives the drawer. The server holds the run, and the drawer
+remembers its id per project in `localStorage`. The server stays the authority:
+an id it no longer knows is forgotten, not shown.
+
+*AI mode's panel* (`ModePanels.AiPanel`) shows, in order:
+
+- Pending changes, with a yellow "N waiting" chip.
+- Ask, restyled.
+- Critic issues.
+- This slide's Sources.
+
+Repositories moved into the Generate drawer. Choosing repositories grounds a
+*new* deck, and in the editor the checkboxes would do nothing.
+
+**A proposal card shows Before and After, drawn by the editor**
+(`ProposalsPanel.tsx`, `lib/proposal-preview.ts`).
+`GET .../proposals/{id}` returns one pending proposal with its operations and base
+version. The editor applies those operations to a copy of the deck *on screen*,
+through the ordinary applier, and renders both sides with `FinalFrameSlide`.
+Three reasons for doing it there rather than through the server's preview route:
+
+- "After" means this deck plus this change, which is what Apply means.
+- It needs no browser render per slide.
+- It works offline.
+
+The preview route stays for agents, which have no renderer.
+
+- The changed slides come from comparing the two decks by slide id, not from
+  parsing paths, so a whole-array replace or a theme change is seen too.
+- A change that no longer applies says so. Reject stays available.
+- A change written against an earlier version says the pictures show it applied
+  to the deck as it is now.
+- The thumbnails are sized from the card's measured width, not a constant. Two
+  136px frames overflowed the panel in the first desktop run.
+- "Grounded in ..." lists only the provenance records the change itself adds. A
+  run's whole research set would claim sources the change does not cite.
+
+The `ai` smoke step runs two journeys:
+
+- It creates a real pending proposal through the page's proxy. The card must
+  appear with both pictures, and Reject must clear it in the store while leaving
+  the deck's version unchanged.
+- It generates through the checkpoint. Revise must be disabled until a note is
+  written, and the run must come back to an outline. Approve must open a new
+  deck that the main process names as open.
+
+It then deletes that deck and reopens the original.
+
+**Phase 7: Motion mode.** The right panel in Motion mode is
+`shell/MotionModePanel.tsx`. It has two sections; the timeline stays in the dock
+under the canvas.
+
+*Transition into this slide* (`lib/transition-editing.ts`) edits kind (Cut,
+Fade, Slide, Zoom, Morph), duration, easing and direction. Each edit is one
+ordinary patch through `editor.apply`, with ordinary undo. Rules:
+
+- **Cut is the absence of a transition.** Choosing it removes the property.
+- **A kind the panel does not offer is shown, not dropped.** A `push`, or a type
+  from a newer build, is named as it is. Choosing a kind replaces it.
+- **Leaving a morph removes its pairs and says so.** Only a morph draws them,
+  and a fade with hidden pairs would be a document saying more than the slide
+  does. Undo brings them back.
+- **Pairs are explicit in the document or not there at all.** Manual rows are the
+  document's `sharedElements`. Auto rows are the engine's scored suggestions
+  (`resolvePairing` with `auto: true`), shown with a yellow chip and their reason.
+  One is written only when the person presses Keep. Two unrelated objects are
+  never silently morphed (doc 02 §26). An object is in one pair at most on each
+  side. Mappings have no id, so Break replaces the whole array, as slide delete
+  does.
+- The first slide cannot morph: there is nothing to come from.
+- An unnamed object is called by its role ("decoration (shape)"). Two shapes
+  named by their type and id prefix could not be told apart.
+
+*Plan by roles* uses the product's own motion planner, the one agents reach over
+MCP. It is asked for a **dry run**: `dry_run: true` on `POST .../motion` and
+`.../transition`. A dry run returns the operations and the version they were
+planned against, and writes nothing: no version, and no proposal.
+
+That is the point. The routes file every write as a proposal labelled
+`mcp:<client>`. A person planning in the editor would otherwise have seen their
+own deterministic plan attributed to an agent "via MCP". Nothing here involves a
+model: the planner computes durations from a pacing word. The person reviews the
+plan and applies it as their own edit. Rules:
+
+- **The total is measured, not quoted** (`lib/motion-plan.ts`). The plan is
+  applied to a copy and compiled by `compileTimeline`, and the card reads back
+  `budget.entranceMs` against the theme's limit, as present mode will play it:
+  "Total 0.6s — within the 2.5s budget".
+- **Unsaved edits are saved before asking.** The planner reads the stored deck
+  and names element ids from it. If saving fails, nothing is asked.
+- **A plan is for the slide it was planned against.** `planFingerprint` covers
+  the slide without the property the plan replaces, plus the slide before for a
+  transition, because a morph pairs with it. If anything changed before Apply,
+  the plan is refused and the person is asked to plan again.
+- The transition planner starts from the slide's own kind. Carry offers only
+  roles present on both slides.
+
+The dock's timeline and `MotionPanel` kept the pre-rewrite styling in this
+phase. Phase 8 restyled them.
+
+The `motion` smoke step runs two checks on the animation fixture:
+
+- On the morph slide, the pairs are listed as manual. Fade removes them in the
+  **store**, and Undo restores the morph exactly.
+- On the first slide, a plan by roles comes back with a budget line. Apply
+  changes the stored tracks, and Undo takes it back.
+
+The step ends by asserting the stored deck is byte-for-byte the one it started
+with, excluding `updatedAt`.
+
+**Phase 8: dark theme, keyboard, Code mode, the application menu.**
+
+*Dark theme.* The dark token set is `:root[data-dk-theme="dark"]` in
+`tokens.css`, derived from the Figma's Page 1. `lib/chrome-theme.ts` resolves it:
+follow the OS by default, or a stored override ("deckastra.chrome-theme", absent
+for "system") chosen from `ThemeMenu` in the app bar and the deck list. It is
+editor state and never reaches a document. `ui-tokens.test.ts` checks every
+text/background pair in **both** sets against AA. Present mode's audience text
+uses `--dk-on-backdrop`, white in both themes, because the backdrop is black in
+both.
+
+*Keyboard.* Three rules in `EditorShell`'s handler, each found by a person
+trying to use the editor without a mouse:
+
+- **Canvas commands act only when the canvas has focus** (`commandScope` in
+  `packages/editor/src/keyboard.ts`). Caught on the whole window, Tab on any
+  button selected the next object and focus could never leave anything. Undo,
+  redo, AI undo and present stay global.
+- **Tab leaves the canvas after the last object** (`cycleLeavesScope`). A cycle
+  with no exit is a keyboard trap (WCAG 2.1.2).
+- **F6 / Shift+F6 moves between regions** (`lib/regions.ts`): app bar, tools,
+  slides, canvas, notes, timeline, panel. Order is the DOM's, from `data-region`
+  on each region's root. It works while typing, because it is how a keyboard
+  user gets out of a field.
+
+The canvas is a focus target (`tabIndex=0`, `role="application"`, labelled with
+its keys) and takes focus when clicked or when a tool inserts an object, so
+Delete and the arrows act on what was just made.
+
+*Focus rings.* The legacy rule in `styles.css` painted a cyan outline on every
+focused control, and it beat the palette's blue because both are `:where()` and
+it came later. It now excludes anything inside a `dk-` element, and the
+palette's rule covers unclassed descendants too (a native checkbox in a panel).
+
+*Code mode* (`ModePanels.CodePanel`) shows the canonical JSON of the selection
+or, with Show: Slide, the whole slide. Still read-only: an editable JSON view
+would be a second mutation path. Copy writes exactly what is shown and says
+"Could not copy" when the clipboard refuses, rather than looking like it worked.
+
+*The application menu* (`apps/desktop/src/main/menu.ts`): File (New deck,
+Generate, All decks), Edit (Undo, Redo, Version history), View (modes, Theme,
+full screen), Slide (Present). Rules:
+
+- **An item sends a name, never a payload.** `IPC.menuCommand` carries one of
+  `MENU_COMMANDS`; the preload drops anything else. The page decides whether it
+  applies (Undo on the deck list is nothing). The names are `HostCommand` in
+  `workspace-contracts`, so the editor compiles against the same list.
+- **Keys the editor already owns stay the editor's.** Undo, Redo and Present
+  have page shortcuts, and in a text field Ctrl+Z is the field's own undo
+  (Phase 9 made that true; see below). A registered menu accelerator would take
+  Ctrl+Z before the page saw it. Those items show their key with
+  `registerAccelerator: false` (Windows and Linux). macOS always registers menu
+  accelerators, so there they carry none until a Mac build can be measured.
+  A test asserts the menu registers no key the editor binds.
+- **Commands go to the editor window, never a presenter window.**
+- **New deck from inside a deck leaves first.** The editor drains its save
+  queue and passes the command to `onExit`; the shell hands it to `DeckList` as
+  `startWith`, which runs it once the project has loaded. A refusal to leave
+  never starts a deck behind the person's back.
+
+The legacy panels (motion dock and timeline, export, share, sources,
+accessibility, theme, critic, repositories, conflict recovery) are restyled onto
+the primitives, and `.dk-legacy-bridge` is gone. Only the web app's
+`AccountPicker` and `EmptyState` still use the old tokens.
+
+The `a11y` smoke step loads axe-core 4.13 (a dev dependency, read from
+`node_modules` and never bundled) into the real window. It first drives the
+keyboard with real key events: Tab from a button moves focus and selects
+nothing, the F6 walk visits every region in order, and Tab on the canvas
+selects and then leaves. It then audits eight views (design, a selection, AI,
+Motion, Code, history, deck list, generate) in light and then dark against WCAG
+2.1 A/AA, excluding slide content, which is the deck's accessibility and not the
+editor's. It fails on any violation and leaves the theme as it found it.
+
+The `menu` step presses the real menu items by id (`getMenuItemById`, the id is
+the command): the modes, both theme overrides, Version history, All decks, and
+New deck from inside a deck, where the main process must end up naming the new
+deck. It deletes that deck and reopens the original.
+
+**Phase 9: the acceptance audit's gaps**
+(`docs/DESKTOP_UI_PHASE_0_TO_6_ACCEPTANCE_AUDIT_2026_09_19.md`). Two P1 defects
+and one reduced requirement, each fixed with the audit's reproducer promoted into
+the normal suite, and each regression test checked by breaking the fix.
+
+*UI-01: an export is of the deck on screen, or of nothing.* The editor saves on
+a 900ms debounce and the service exported whatever it had stored, so PDF
+pressed right after an edit rendered the version before it and reported
+success. Now:
+
+- **`ExportPanel` takes the editor as a save barrier** (`editor` prop, passed by
+  `AppBar`). It commits a draft still in a focused field (`lib/drafts.ts`), drains
+  the save queue, and exports **the version the drain was acknowledged at**.
+- **The service checks that version.** `expected_version_id` on
+  `POST …/exports` is optional (an agent exporting "the deck as it stands" means
+  the head) and a mismatch is a 409, before any job exists: an agent's change
+  landing between the save and the click would otherwise be in a file nobody
+  looked at.
+- **A save that cannot drain starts nothing.** A failed save or a conflict under
+  review says the latest changes would be missing, and offers **Export the last
+  saved version** as an explicit, separately labelled choice.
+- **Retry says "Retry this version"**, because a retry re-renders the version the
+  job pinned, which may be older than the deck now.
+- The deck list's export has no editor and exports what is stored, which there
+  is the deck.
+
+*UI-02: a project's cards are only ever that project's.* `DeckList` wrote any
+list answer that arrived, so a slow answer for project A replaced B's cards
+while B stayed selected. So did a slow error, and a refresh after a duplicate,
+delete, undo or move that finished after the person switched. The undo button's
+closure even captured the old project's loader. Every load now reads the
+project selected **now**, takes a ticket (`lib/latest-request.ts`), and writes
+only if it is still the newest request *and* still for the selected project.
+The second half is not implied by the first: a refresh can be the newest
+request and still be for a project the person has left. A project switch starts
+from "loading", never from the last project's cards or error.
+
+*Speaker notes are rich text* (the plan's contract, not the textarea's warning).
+The field is a contenteditable on the canvas text editor's model
+(`lib/notes-rich.ts`, `shell/SpeakerNotes.tsx`):
+
+- **Rendering and reading are inverses.** `renderNotes` builds exactly the
+  elements `readEditable` reads back, so opening a note and leaving it changes
+  nothing. Text goes in as text nodes. A link survives only with a permitted
+  scheme.
+- **Plain stays plain.** Notes without formatting are still a string. Bold or a
+  list makes them rich. Rich notes keep surviving block ids and paragraph
+  styles, and an empty field removes the property.
+- **Paste is the allowlist** (`sanitizePastedHtml`), and it now keeps marks.
+  The canvas editor's paste still flattens to text.
+- **IME defers the commit; one undo step per session; a draft commits to the
+  slide it was written on.** It also commits when the panel is **collapsed**:
+  the draft is kept as a read taken on every edit, because the element is gone
+  by the time a collapse's cleanup runs.
+- **The field does not rebuild itself after its own commit.** Its commit
+  changes the stored notes, and re-seeding then would throw the caret to the
+  start every 700ms. It re-seeds only when what is stored differs from what it
+  shows.
+- The toolbar (Bold, Italic, Underline, bullets, numbers) uses the browser's
+  editing commands. Whatever markup they produce is read back through
+  `readEditable`, never stored. Formatting the field cannot show (a colour,
+  superscript) is still warned about, now for exactly those cases.
+- **The presenter sees the structure.** The scene carries `speakerNotesRich`
+  beside the flattened `speakerNotes` (the digest does not include either), and
+  `RichNotes` draws it as React elements. A link is underlined text, never an
+  anchor: a click during a talk must not leave the presenter view.
+
+Two model bugs came out of that, both shared with the canvas editor:
+
+- **Every blank line read back as two.** An empty line is `<div><br></div>`, and
+  that `<br>` only holds the line open. `readEditable` treated it as a break. A
+  `<br>` that is its parent's last child now draws no line, which is the HTML
+  rule.
+- **Every `<li>` read back as a bullet**, so a numbered list became bullets on
+  the first edit. An item in an `<ol>` is `numbered`.
+
+*Ctrl+Z in a text field is the field's.* `SAFE_WHILE_TYPING` allowed undo, redo
+and the clipboard while typing. So Ctrl+Z in the notes or an inspector field
+undid the deck's last change, somewhere the person was not looking, and the
+handler's `preventDefault` stopped the field's own undo. Only Escape is global
+while typing now. Once a field commits, its edit is an ordinary deck step.
+
+Leaving a deck (`EditorShell`'s exit) commits a focused field's draft first. A
+menu shortcut pressed while typing does not blur the field, and the draft would
+otherwise unmount after the save it should have been part of.
+
+The smoke steps type into the notes with the browser's editing engine
+(`execCommand("insertText")`). `slides` also presses Bold and Numbered list in
+the real window and checks the store holds rich text with both. `export` types
+a note, leaves it in the focused field, presses PDF from script (which moves no
+focus) and checks the file's version (`data-export-version`) is the head holding
+the note. UI-02 has no real-app step: it is a timing race, and the component
+tests control the timing where a real service cannot.
+
+**The final package fix register** (`docs/DESKTOP_FINAL_PACKAGE_FIX_REGISTER.md`)
+is delivered one item at a time. Its "Delivery status" table is the running
+record. Release scope agreed 2026-09-20: Windows x64, local-only, generation by
+MCP agent or cloud API key, 0.9.0-beta.1, manual upgrades.
+
+*Closing waits for the words on screen (item 01).* A note typed a moment before
+the window closed was lost on both the window's close and the app's quit,
+measured with the new `close` / `close-verify` smoke steps. The note had not
+reached the save queue, `beforeunload` looked only at the queue, and
+`before-quit` stopped the service without asking the window anything. Now:
+
+- **Drafts register with the editor** (`useEditor.registerDraft`). `saveNow`
+  and `beforeunload` run them first, so "save" and "close" mean the words on
+  screen. The debounced autosave does not run them, so a timer never commits a
+  half-typed sentence. During an IME composition a close commits the text from
+  before it began, never half a character.
+- **Every desktop window holds its close until its page answers**
+  (`main/close-guard.ts`, `lib/close-barrier.ts`, IPC `prepareToClose` /
+  `closeReady`). The page saves, or at least journals, and says which. Quit asks
+  every window first and stops the service after. The wait is bounded: a page
+  that never answers is closed anyway, because its journal was written before it
+  tried the network.
+- **Electron cancels a close whose `beforeunload` objects, with no dialog.** So
+  once the close is prepared, `closeApproved()` stops the handler objecting. A
+  browser still gets its prompt.
+- **On the desktop the journal pointer survives a restart**
+  (`recoveryPointer="local"`). Without it, a journal left by a close that could
+  not save came back only as an anonymous copy in a collapsed list. Same-base
+  recovered work now **autosaves**. It used to sit "pending" until the next edit.
+- OS shutdown and sign-out get a best-effort `session-end` ask only, and are on
+  the manual checklist.
+
+*Closing is approved only when the work is somewhere (recheck of item 01).*
+Readiness is three-valued. `journalled` is claimed only when the journal took
+the work: with storage full **and** the save failing, the queue is in memory and
+nowhere else, and the first version of this reported "journalled" and closed the
+window. A participant that throws or never answers is `blocked` too — a promise
+that did not answer is not evidence anything was written — and so is a draft a
+field could not hand over. A blocked window is not closed behind the person's
+back: they are told what is at risk and choose (try again, close and lose it,
+keep the window). A quit stops if anyone keeps their work.
+
+*One project's run never shows under another (items 02, 03).* In
+`GenerateDeck`, the phase records its project, and every async path captures
+where it started. A late answer updates that project's remembered run and nothing
+on screen: it never shows A's outline under B and never opens A's deck from B.
+**And only the newest request may write that pointer** (recheck of item 02): the
+sequence lives outside the component, because closing and reopening the drawer
+remounts it, and an older generation answering last used to overwrite the
+remembered run with its own — handing back an abandoned outline and losing the
+way to the newer one.
+Only a 404, the server's "no such run", forgets a paused run, and only the run
+asked about. A 401, a 5xx or being offline keeps it and offers Try again.
+
+*A mistyped intelligence mode is refused (item 04).* An unknown
+`DECKASTRA_INTELLIGENCE` used to read as unset, which means "the cloud if a key
+exists". So `locla`, written by someone who wanted nothing to leave the machine,
+selected the cloud — the probe showed the selection, and the next generation is
+what would have sent the brief. `intelligence()` now raises
+`IntelligenceMisconfigured`, `/health` reports it, and the API warns at startup
+without refusing to start: decks need no model. An app-wide handler makes every
+`ModelUnavailable` a 503. Before it, Ask answered a missing model pack with a 500.
+
+*The installed product does not generate with the stub (item 20).* Unset means
+the stub in a checkout, which is what keeps the vertical slice runnable with no
+key and no money — and the stub writes a template deck that reads like a model
+wrote it badly. On an installed product that is a deck someone believes was
+generated, so `DECKASTRA_DISTRIBUTION=1` (set by `sidecar.ts` from
+`app.isPackaged`) answers `PROVIDER_NONE` instead, and the refusal names what to
+do. It also **will not take an inherited `ANTHROPIC_API_KEY` as consent**: the
+cloud is a choice someone makes, not an environment variable they happened to
+have. Local models are not in this release and say so by name. Development, CI
+and the smoke steps are unchanged, which is what the flag is for.
+
+*Where decks are written is visible before anyone writes a brief (item 19).*
+`router.generation_status()` answers `/health` and `/v1/account`'s
+`capabilities.generation` — provider, whether it can work, and why not.
+`lib/generation-route.ts` turns that into the words a person reads, and every
+route says what leaves the machine: the cloud one names Anthropic, the local one
+says nothing is sent, the stub says it is a template. The Generate drawer shows
+it, disables Generate when it cannot work, and offers the host's set-up screen.
+The desktop's is the **Intelligence** drawer (bar button, View menu), which is
+also where agent access lives, and it names what this release does not include.
+An older server reports nothing, and then the drawer claims nothing rather than
+guessing.
+
+*A cloud key is the user's, and the operating system keeps it (item 23).*
+`main/cloud-key.ts` encrypts it with Electron's `safeStorage` (DPAPI on
+Windows) in `userData`, with the ownership the agent attachment uses. **It never
+goes back to the renderer** — the page asks whether a key is set and when, and
+nothing else, because a window that could read it is a window that could send
+it. Where `safeStorage` is unavailable the answer is "this machine cannot keep
+it safely", never a plaintext file. A key is checked before it becomes a child
+process's environment: no spaces, no newlines, no nulls, a plausible length.
+Saving or removing one **restarts the service**, because the service reads it
+from its environment at startup; the editor stays mounted through that, as it
+does through any outage. Consent sits beside the field rather than in a document
+nobody opens. And Anthropic refusing a key is now `ModelUnavailable` with its own
+sentence — it used to read "Claude API error 401", which is the same message a
+network problem got, and retrying neither helps.
+
+*What the release is not, said once* (`FirstRunNotice`,
+`docs/RELEASE_NOTES_0.9.0-beta.1.md`): local-only, no cloud workspace, no
+sharing, no sync, no `.mydeck` files, no local models, Windows only. On first
+launch, because the alternative is someone spending an afternoon looking for a
+share button. The acceptance harness dismisses it the way a person does and
+records that it appeared — a step that did not meet it on a fresh profile is a
+step whose profile was not fresh.
+
+### Manual authoring (gap plan MA-01 to MA-35, 2026-09-25)
+
+Status per item is in `docs/MANUAL_AUTHORING_AND_PRE_RELEASE_GAP_PLAN_2026_09_21.md`. Rules that are easy to undo:
+
+- **Both contenteditables render rich text with `lib/rich-dom.ts`**, the exact inverse of `readEditable`. The canvas editor used to seed every block as a `<div>`, so a bulleted list became paragraphs on the first edit. Paste goes through `insertRichText` (`insertHTML` first, for native Undo).
+- **Canvas text is a draft and registers with `registerDraft`.** Blur mid-composition waits for `compositionend`; save, close and unmount commit the pre-composition text. The unmount commit fires only on a real change, because React's development double-mount runs it with nothing typed.
+- **A click is not a drag.** A move gesture under the 4px threshold commits nothing, or selecting an object dirties the deck.
+- **Inspector text edits splice** (`applyPlainTextEdit`), never `plainText(value)`. **Inspector W/H use `resizeOperations`**, like the canvas handles.
+- **Nested optional properties are written with `setPropertyDeep`** (presentation-core): it adds the outermost missing object, and `undefined` removes.
+- **Uploads measure the picture first** (`imageSize`). The upload records a size only when told one; without it every picture got the 16:9 fallback box and PPTX stretched what it could not fit. Only the `authoring` acceptance step caught this, because unit tests supplied sizes by hand.
+- **Copy, cut and paste are the browser's native events**, not keydown handlers. Handling the keys meant preventing the default, which cut the editor off from the system clipboard. The payload (`CLIPBOARD_MIME`) carries the asset entries its pictures cite.
+- **The transition preview is present mode's code**: `compileTransition` plus `SlideTransition` with its controlled `timeMs`. Do not approximate it with entrance clips.
+- **PPTX cover crops follow `focalPoint`** (`fitPicture`), the same split CSS `object-position` makes.
+- **The `authoring` acceptance step is trusted input end to end**: the no-AI journey, a real double-click, a real image drag, and a system-clipboard paste. Harness helpers scroll a control into view before the hit-test, then still refuse one under a modal.
+- **A release is `npm run release:win`, and nothing else.** It refuses without a certificate and a publisher name, empties `release/`, builds, and runs `scripts/verify-release.mjs` strictly on that output. The gate measures "current" against `dist` and the source tree *now* — `dist/build-manifest.json` is only rewritten by the manifest step, so comparing against it let a stale release pass after a plain rebuild. Payload files are hashed exactly as shipped (no skip list: the service folder ships `__pycache__`).
+- **Notices come from what the bundlers read** (`dist/bundled-packages.json`), not `npm ls`, and the SBOM uses the same list. A dependency with no licence text needs a recorded decision in `notices-review.json` or a release build fails.
+- **PowerPoint: tables are native `a:tbl`; charts and diagrams are drawn** from the scene's resolved geometry as shapes with editable text (`export-pptx/src/drawn.ts`), reported `approximated`. SVG paths become `custGeom`; arcs are flattened.
+- **Subprocess pipes are UTF-8 by declaration.** `text=True` alone is the locale code page on Windows (cp1252), which turned every em dash from the exporter into "â€”".
+- **Windows that are not editors** (the notices window) are excluded by `isAuxiliaryWindow` from menu-command targets and the close barrier.
+- **Test isolation:** several test files install a fake `navigator.locks` that outlives them in a single-process run. A test that depends on lock behaviour must declare it.
+
 ### Validation is a product surface
 
 `RULES` in `src/validate.ts` is the catalog (doc 02 §42). Codes are stable because the editor, agents, exporters and the MCP surface all reference the same rule. Messages must be actionable and name the offending id.
@@ -2739,6 +3999,43 @@ found a shape kind that does not exist, a headline that overflowed, and a
 `animation/2` rehashes and `animation/3` is new — and `linux-x64.json` needed
 re-recording, which happened on 2026-09-17 (see "Recording a Linux pixel baseline
 on a Windows machine").
+
+**The first morph was wrong in three ways that each looked right in the
+engine's own tests** (fixed 2026-09-26, after a person used it and called it
+"very buggy"):
+
+- **Every element is drawn from the slide origin.** `positionStyle` emits the
+  whole world matrix with `transform-origin: 0 0`, so the `scale` longhand
+  scales about the slide's corner and also *moves* the element. A pair that
+  resized started in the wrong place and swooped in. `kinds.ts` `placement()`
+  solves `target = t + R·S·own` for `t`; because `t` is then linear in the
+  scale, the matching point travels in a straight line. The tests measure where
+  the box lands, composed as CSS composes it, not the numbers the kind emits —
+  those were right, and the origin they assumed was not.
+- **The travelling element was inside the slide that was fading in**, so it
+  faded in from nothing, while its original on the outgoing slide sat still at
+  full opacity: a ghost sliding over a copy. A pair is now two copies above both
+  slides (`pair:out:` and `pair:in:`), on one path, crossing on a linear clock
+  so one is always fully drawn — two identical copies at half opacity each read
+  as a flicker. The originals are hidden by an attribute and a `!important`
+  rule, so the motion adapter's inline styles on them are never touched.
+- **Text was scaled by its box.** A text box made wider with the same type drew
+  every glyph stretched. Text scales uniformly by `appliedFontSize` and pivots on
+  its alignment edge, which is what stays put when a box is resized around words.
+
+Because every element carries its full world transform, one translate and scale
+on a wrapper moves a group and all its descendants rigidly; a pair nested inside
+a paired group is dropped with a warning, or it would be drawn twice. The slide
+being left is shown at its **final frame** (`SlideMotion` with `autoPlay` off on
+the outgoing stage and on the leaving copies): at rest, an element authored to
+fade in is invisible, and it vanished the instant the transition began.
+
+Measured in real present mode at 1920 wide: the fixture's headline travels
+(120,440) → (200,120) and its badge (1500,180) → (201,759), both copies on one
+path every frame, `max(opacity) = 1` throughout, originals hidden for exactly the
+flight. Rotation in `full` match mode is exact only at the two ends — the
+midpoint can arc slightly, because a rotation about the slide origin is not
+linear in the angle.
 
 ### The Motion Agent names roles; code computes milliseconds
 
@@ -3146,9 +4443,10 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
   safe, and a filter would block a legitimate deck about prompt injection.
   Registration now rejects an untrusted tool without field declarations and
   rejects blank field names. This is a configuration error before any tool call.
-- Durable checkpoints need PostgreSQL. LangGraph has no SQLite saver, so a run on
-  the local database cannot pause — `agent_service._checkpointer` returns None
-  and says so, rather than letting a checkpoint silently do nothing.
+- Durable checkpoints are PostgreSQL's saver on a server and SQLite's on the
+  desktop, in a file beside the database (`<db>.checkpoints`). An in-memory
+  SQLite cannot hold one across connections, so `agent_service._checkpointer`
+  returns None there and `checkpoints_available()` answers no.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
 - The schema is **not** dialect-neutral: `JsonColumn` is JSONB on PostgreSQL and
   JSON everywhere else. `test_postgres.py` compiles the DDL for both dialects

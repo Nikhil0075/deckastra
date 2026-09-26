@@ -350,6 +350,17 @@ export function notesMasterRelationships(): string {
   );
 }
 
+/**
+ * One slide's speaker notes.
+ *
+ * The part is `notesSlides/notesSlide1.xml` and the **element inside it is
+ * `<p:notes>`** (ECMA-376), which is not the same word. This wrote
+ * `<p:notesSlide>` until 2026-09-20, when `python-pptx` could not map the root
+ * to its notes class at all — so every note this product had ever exported sat
+ * in an element no conforming reader looks for. Nothing failed while the only
+ * thing reading these files was the code that wrote them, which is the argument
+ * for reading an export with something that is not us (item 26).
+ */
 export function notesSlide(notes: string): string {
   const paragraphs = notes
     .split(/\r?\n/)
@@ -358,7 +369,7 @@ export function notesSlide(notes: string): string {
 
   return (
     XML_DECLARATION +
-    `<p:notesSlide ${NS_PRESENTATION}><p:cSld><p:spTree>` +
+    `<p:notes ${NS_PRESENTATION}><p:cSld><p:spTree>` +
     '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>' +
     '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>' +
     '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>' +
@@ -368,7 +379,7 @@ export function notesSlide(notes: string): string {
     '<p:spPr><a:xfrm><a:off x="685800" y="4343400"/><a:ext cx="5486400" cy="4114800"/></a:xfrm>' +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>' +
     `<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${paragraphs || "<a:p/>"}</p:txBody></p:sp>` +
-    "</p:spTree></p:cSld></p:notesSlide>"
+    "</p:spTree></p:cSld></p:notes>"
   );
 }
 

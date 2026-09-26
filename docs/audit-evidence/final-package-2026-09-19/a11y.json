@@ -1,0 +1,66 @@
+{
+  "step": "a11y",
+  "startedAt": "2026-09-19T18:26:00.172Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3763,
+  "console": [],
+  "cspViolations": [],
+  "keyboard": {
+    "tabFromButton": {
+      "moved": true,
+      "selectedNothing": true
+    },
+    "walk": [
+      "app bar",
+      "tools",
+      "slides",
+      "canvas",
+      "notes",
+      "timeline",
+      "panel",
+      "app bar"
+    ],
+    "canvasTab": {
+      "selectedOnCanvas": true,
+      "leftAfter": 6,
+      "leftTo": "notes"
+    }
+  },
+  "findings": {
+    "light/design": [],
+    "light/selected": [],
+    "light/ai": [],
+    "light/motion": [],
+    "light/code": [],
+    "light/history": [],
+    "light/decks": [],
+    "light/generate": [],
+    "dark/design": [],
+    "dark/selected": [],
+    "dark/ai": [],
+    "dark/motion": [],
+    "dark/code": [],
+    "dark/history": [],
+    "dark/decks": [],
+    "dark/generate": []
+  },
+  "failing": [],
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 488.1,
+    "byTypeMb": {
+      "Browser": 122.1,
+      "GPU": 154.6,
+      "Utility": 45.9,
+      "Tab": 165.5
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:26:34.652Z"
+}

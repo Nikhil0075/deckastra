@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/layout-engine
+
+ ✓ tests/layout.test.ts (46 tests) 49ms
+
+ Test Files  1 passed (1)
+      Tests  46 passed (46)
+   Start at  00:58:32
+   Duration  1.11s (transform 481ms, setup 0ms, collect 522ms, tests 49ms, environment 0ms, prepare 199ms)
+

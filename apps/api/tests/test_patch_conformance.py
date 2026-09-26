@@ -138,6 +138,26 @@ def cases(document: dict) -> list[tuple[str, list[dict]]]:
             "escaped key",
             [{"op": "add", "path": "/theme/colors/custom", "value": {"brand/primary~alt": "#fff"}}],
         ),
+        (
+            # The shape `deleteSlideOperations` emits (editor Phase 2): morph pairs
+            # carry no id, so a slide losing a pair's half has its whole
+            # `sharedElements` array replaced by the survivors, id-addressed,
+            # before the slide itself is removed in the same patch.
+            "replace an id-addressed array, then remove a slide",
+            [
+                {
+                    "op": "add",
+                    "path": f"/slides/id:{slide}/transition",
+                    "value": {
+                        "type": "morph",
+                        "durationMs": 400,
+                        "sharedElements": [{"sourceElementId": element, "destinationElementId": element}],
+                    },
+                },
+                {"op": "replace", "path": f"/slides/id:{slide}/transition/sharedElements", "value": []},
+                {"op": "remove", "path": f"/slides/id:{other}"},
+            ],
+        ),
     ]
 
 

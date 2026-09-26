@@ -159,6 +159,8 @@ def resume_generation(
     run: AgentRun,
     run_id: str,
     decision: dict[str, Any],
+    *,
+    pause_at_story: bool = True,
 ) -> RunResult:
     """Continue a run that stopped for story approval.
 
@@ -175,9 +177,22 @@ def resume_generation(
     events, collect = collector()
     run.emit = collect
 
-    graph = build_graph(run.context(), run.compose, checkpointer=run.checkpointer)
+    # Compiled with the same interrupt the run paused at: a "revise" decision
+    # sends the run back through the story stage, and the revised outline has to
+    # stop at the checkpoint again rather than run on to a deck nobody approved.
+    graph = build_graph(
+        run.context(),
+        run.compose,
+        checkpointer=run.checkpointer,
+        checkpoint_before_story_approval=pause_at_story,
+    )
     config = _thread(run_id)
     config["recursion_limit"] = 12 + 7 * (max(0, run.budget.max_revisions_per_run) + 1)
+
+    if not _is_paused(graph, config):
+        # Nothing is parked under this id: resuming would start a fresh run from
+        # an empty state, which looks exactly like the checkpoint never happened.
+        raise ValueError("This run is not paused at a checkpoint, so there is nothing to resume.")
 
     graph.update_state(config, {"human_decision": decision, "awaiting": None})
 
@@ -193,15 +208,35 @@ def resume_generation(
             budget=run.budget.report(),
         )
 
+    paused = _is_paused(graph, config)
     return RunResult(
         run_id=run_id,
-        status=_status(final),
+        status="awaiting_approval" if paused else _status(final),
         state=dict(final),
         events=events,
         warnings=list(final.get("warnings") or []) + run.budget.warnings,
         errors=list(final.get("errors") or []),
         budget=run.budget.report(),
     )
+
+
+def paused_state(checkpointer: Any, run_id: str) -> dict[str, Any] | None:
+    """The state a run is parked with, or None when it is not parked.
+
+    For showing the outline a checkpoint is waiting on — after a reload, or in a
+    different process from the one that started the run. Reading needs a
+    compiled graph over the same checkpointer; nothing in it runs, so the
+    context it is built with is never called.
+    """
+    from .graph import build_graph
+    from .tools.registry import ToolRegistry
+
+    ctx = NodeContext(client=None, budget=RunBudget(), emit=lambda event: None, registry=ToolRegistry())  # type: ignore[arg-type]
+    graph = build_graph(ctx, lambda *_: [], checkpointer=checkpointer, checkpoint_before_story_approval=True)
+    config = _thread(run_id)
+    if not _is_paused(graph, config):
+        return None
+    return dict(graph.get_state(config).values)
 
 
 def _is_paused(graph: Any, config: dict[str, Any]) -> bool:

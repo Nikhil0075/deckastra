@@ -186,7 +186,11 @@ def resolve_share(session: Session, token: str, *, record_view: bool = False) ->
         raise ShareError("This link is not valid.")
 
     presentation = session.get(Presentation, candidate.presentation_id)
-    if presentation is None:
+    # A deleted deck's links stop working, with the same refusal as every other
+    # invalid link: a share link is the one unauthenticated read in the product,
+    # and it must not keep serving a deck its owner deleted. Restoring the deck
+    # brings its links back — they key on the deck, which never changed.
+    if presentation is None or presentation.deleted_at is not None:
         raise ShareError("This link is not valid.")
 
     if record_view:

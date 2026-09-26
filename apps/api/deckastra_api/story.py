@@ -21,7 +21,7 @@ import os
 import time
 from typing import Any
 
-from deckastra_agents.router import PROVIDER_LOCAL, ModelUnavailable, selected_provider
+from deckastra_agents.router import NOT_SET_UP, PROVIDER_LOCAL, PROVIDER_NONE, ModelUnavailable, api_schema, selected_provider
 from pydantic import ValidationError
 
 from .models import GenerationDiagnostics, GenerateRequest, StoryPlan
@@ -150,7 +150,11 @@ def generate_story_plan(
     # honest answer to someone who selected local intelligence: the alternative
     # is a stub deck that looks like a model wrote it badly, on the one path
     # where they asked for nothing to leave the machine.
-    if selected_provider() == PROVIDER_LOCAL:
+    provider = selected_provider()
+    # An installed product with nothing set up: refused, never the stub (item 20).
+    if provider == PROVIDER_NONE:
+        raise ModelUnavailable(NOT_SET_UP)
+    if provider == PROVIDER_LOCAL:
         raise ModelUnavailable(
             "Local intelligence is selected, and the single-shot planner can only "
             "reach a cloud model. Use the agent graph (use_graph), or choose cloud "
@@ -200,7 +204,7 @@ def generate_story_plan(
                 system=SYSTEM_PROMPT,
                 messages=messages,
                 output_config={
-                    "format": {"type": "json_schema", "schema": _plan_schema()}
+                    "format": {"type": "json_schema", "schema": api_schema(_plan_schema())}
                 },
                 # A policy decline would otherwise end the request with no deck and
                 # no explanation; routing by category keeps the flow alive.
@@ -223,6 +227,13 @@ def generate_story_plan(
             category = getattr(detail, "category", None) or "unspecified"
             raise StoryGenerationError(
                 f"The request was declined ({category}). Try rephrasing the brief."
+            )
+
+        # Cut off: half a plan, which a repair at the same limit would reproduce.
+        if response.stop_reason == "max_tokens":
+            raise StoryGenerationError(
+                f"The plan was cut off at the {MAX_TOKENS:,}-token limit before it was "
+                "complete. Try fewer slides or a shorter brief."
             )
 
         text = next((b.text for b in response.content if b.type == "text"), "")

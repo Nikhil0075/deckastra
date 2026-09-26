@@ -296,3 +296,101 @@ export function cleanupOperationsForDeletion(
 
   return operations;
 }
+
+/**
+ * Delete a slide together with everything elsewhere in the deck that pointed
+ * into it, as one patch.
+ *
+ * `removeSlide` alone leaves three kinds of dangling reference, each a
+ * validation *error* (so the transaction is refused, or worse, an old document
+ * validated differently keeps it):
+ *
+ * - E104 — the next slide's morph pairs name elements that were on this one.
+ * - E105 — an interaction on another slide jumps to this slide.
+ * - E101 — an animation on another slide targets one of this slide's elements.
+ *
+ * Deleting in several steps would leave a window where the document is invalid,
+ * and an undo of only the last step is worse than either — the same argument as
+ * `cleanupOperationsForDeletion`, applied one level up. The slide's *own*
+ * animations and interactions go with it and are not removed separately.
+ *
+ * Morph mappings carry no id, so a slide whose pairs lose a half gets its whole
+ * `sharedElements` array replaced by the survivors: one operation with one
+ * inverse, rather than index-addressed removes that must be ordered correctly.
+ */
+export function deleteSlideOperations(
+  document: PresentationDocument,
+  slideId: string,
+): Array<{ op: "remove"; path: string } | { op: "replace"; path: string; value: unknown }> {
+  const target = document.slides.find((slide) => slide.id === slideId);
+  if (!target) throw new Error(`No slide "${slideId}" in this document.`);
+
+  const own = `/slides/id:${slideId}`;
+  const doomed = new Set<string>();
+  for (const { element } of walkElements(target.elements)) doomed.add(element.id);
+
+  const operations: Array<{ op: "remove"; path: string } | { op: "replace"; path: string; value: unknown }> = [];
+  const seen = new Set<string>();
+  const push = (operation: (typeof operations)[number]) => {
+    if (seen.has(operation.path)) return;
+    seen.add(operation.path);
+    operations.push(operation);
+  };
+
+  for (const operation of cleanupOperationsForDeletion(document, [...doomed])) {
+    if (operation.path.startsWith(`${own}/`)) continue;
+    push(operation);
+  }
+
+  for (const slide of document.slides) {
+    if (slide.id === slideId) continue;
+    const base = `/slides/id:${slide.id}`;
+
+    for (const interaction of slide.interactions ?? []) {
+      if (interaction.action.type === "goToSlide" && interaction.action.slideId === slideId) {
+        push({ op: "remove", path: `${base}/interactions/id:${interaction.id}` });
+      }
+    }
+
+    const mappings = slide.transition?.sharedElements;
+    if (mappings?.some((m) => doomed.has(m.sourceElementId) || doomed.has(m.destinationElementId))) {
+      push({
+        op: "replace",
+        path: `${base}/transition/sharedElements`,
+        value: mappings.filter((m) => !doomed.has(m.sourceElementId) && !doomed.has(m.destinationElementId)),
+      });
+    }
+  }
+
+  push({ op: "remove", path: own });
+  return operations;
+}
+
+/**
+ * Morph pairs whose two halves are not on adjacent slides in the right order.
+ *
+ * A morph pairs an element on the *previous* slide with one on this slide
+ * (`resolvePairing`: `from` is the slide before). Reordering slides can separate
+ * them without breaking any reference — both elements still exist — so nothing
+ * refuses the move, and the transition engine drops the pair with a warning
+ * only when the deck is played. This is how the editor can say so at the moment
+ * of the move instead.
+ */
+export function misplacedMorphPairs(
+  document: PresentationDocument,
+): Array<{ slideId: string; sourceElementId: string; destinationElementId: string }> {
+  const found: Array<{ slideId: string; sourceElementId: string; destinationElementId: string }> = [];
+  document.slides.forEach((slide, index) => {
+    const mappings = slide.transition?.sharedElements ?? [];
+    if (mappings.length === 0) return;
+    const previous = document.slides[index - 1];
+    const before = new Set(previous ? [...walkElements(previous.elements)].map(({ element }) => element.id) : []);
+    const here = new Set([...walkElements(slide.elements)].map(({ element }) => element.id));
+    for (const mapping of mappings) {
+      if (!before.has(mapping.sourceElementId) || !here.has(mapping.destinationElementId)) {
+        found.push({ slideId: slide.id, ...mapping });
+      }
+    }
+  });
+  return found;
+}

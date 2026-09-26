@@ -1,3 +1,4 @@
+import type { StatusTone } from "../ui";
 import type { StalenessState } from "@deckastra/workspace-contracts";
 
 /**
@@ -7,22 +8,23 @@ import type { StalenessState } from "@deckastra/workspace-contracts";
  * workspace client; what is left here is the one thing that is genuinely this
  * app's — how a state looks.
  */
-export function stalenessTone(state: StalenessState): { colour: string; label: string } {
+export function stalenessTone(state: StalenessState): { tone: StatusTone; label: string } {
   switch (state) {
     case "fresh":
-      return { colour: "var(--accent)", label: "Up to date" };
+      return { tone: "action", label: "Up to date" };
     case "stale":
-      return { colour: "var(--warning)", label: "Out of date" };
+      // Waiting on a human: someone should re-index before trusting it.
+      return { tone: "waiting", label: "Out of date" };
     case "indexing":
     case "pending":
-      return { colour: "var(--fg-subtle)", label: "Indexing" };
+      return { tone: "neutral", label: "Indexing" };
     case "failed":
-      return { colour: "var(--danger)", label: "Failed" };
+      return { tone: "danger", label: "Failed" };
     case "revoked":
-      return { colour: "var(--danger)", label: "Access withdrawn" };
+      return { tone: "danger", label: "Access withdrawn" };
     default:
       // Deliberately not styled as success. "We cannot tell" is closer to stale
       // than to fresh, and showing it as fine is how a deck drifts unnoticed.
-      return { colour: "var(--fg-subtle)", label: "Unknown" };
+      return { tone: "waiting", label: "Unknown" };
   }
 }

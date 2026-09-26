@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 
 import type { PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
 import { newId, walkElements } from "@deckastra/presentation-schema";
@@ -351,21 +350,22 @@ export function MotionPanel({
   }
 
   return (
-    <div style={{ borderTop: "1px solid var(--border)", background: "var(--surface)" }}>
-      <div style={header}>
-        <strong style={{ fontSize: 13 }}>Motion</strong>
+    <div className="dk-dock-motion">
+      <div className="dk-dock-motion__head">
+        <strong className="dk-dock-motion__title">Motion</strong>
 
-        <button style={smallButton} onClick={onPlay} disabled={view.durationMs === 0}>
+        <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={onPlay} disabled={view.durationMs === 0}>
           Preview
         </button>
 
         <BudgetBar budget={view.budget} />
 
-        <div style={{ flex: 1 }} />
+        <div className="dk-dock-motion__spacer" />
 
         {selectedIds.length > 0 ? (
           <select
-            style={{ ...smallButton, padding: "5px 8px" }}
+            className="dk-input dk-input--sm"
+            aria-label="Add animation to the selection"
             value=""
             onChange={(event) => {
               if (event.target.value) addAnimation(event.target.value);
@@ -380,19 +380,19 @@ export function MotionPanel({
             ))}
           </select>
         ) : (
-          <span style={{ fontSize: 12, color: "var(--fg-subtle)" }}>
+          <span className="dk-muted">
             Select something to animate it
           </span>
         )}
       </div>
 
       {view.lanes.length === 0 ? (
-        <p style={{ ...muted, padding: "0 14px 14px" }}>
+        <p className="dk-muted dk-dock-motion__empty">
           Nothing on this slide moves. That is the right default for most slides —
           motion reads as emphasis.
         </p>
       ) : (
-        <div style={{ padding: "0 14px 12px" }}>
+        <div className="dk-dock-motion__body">
           <Ruler ticks={view.ticks} durationMs={view.durationMs} segments={view.segments} />
 
           <TimelineLanes
@@ -420,32 +420,32 @@ export function MotionPanel({
             value={Math.min(playheadMs, view.durationMs)}
             onChange={(event) => onScrub?.(Number(event.target.value))}
             aria-label="Scrub the slide timeline"
-            style={{ width: "100%", marginTop: 10 }}
+            className="dk-dock-motion__scrub"
           />
 
           {clip ? (
             <>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-                <span style={muted}>Track {trackIndex + 1} of {slide.animations?.length ?? 0}</span>
-                <button style={smallButton} disabled={trackIndex <= 0} onClick={() => reorderTrack(-1)}>
+              <div className="dk-dock-motion__row">
+                <span className="dk-muted">Track {trackIndex + 1} of {slide.animations?.length ?? 0}</span>
+                <button className="dk-btn dk-btn--secondary dk-btn--sm" disabled={trackIndex <= 0} onClick={() => reorderTrack(-1)}>
                   Move track earlier
                 </button>
-                <button style={smallButton} disabled={trackIndex < 0 || trackIndex >= (slide.animations?.length ?? 0) - 1} onClick={() => reorderTrack(1)}>
+                <button className="dk-btn dk-btn--secondary dk-btn--sm" disabled={trackIndex < 0 || trackIndex >= (slide.animations?.length ?? 0) - 1} onClick={() => reorderTrack(1)}>
                   Move track later
                 </button>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
-                <button style={smallButton} onClick={splitAtPlayhead}>
+              <div className="dk-dock-motion__row">
+                <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={splitAtPlayhead}>
                   Split at playhead
                 </button>
                 {sourceClip?.propertyTracks?.length ? (
-                  <span style={muted}>
+                  <span className="dk-muted">
                     {sourceClip.propertyTracks.length} property track(s) open
                     {sourceClip.preset ? ` · from ${sourceClip.preset}` : ""}
                   </span>
                 ) : (
-                  <button style={smallButton} onClick={openKeyframes} disabled={!sourceClip?.preset}>
+                  <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={openKeyframes} disabled={!sourceClip?.preset}>
                     Open keyframes
                   </button>
                 )}
@@ -461,7 +461,7 @@ export function MotionPanel({
               ) : null}
 
               {notice ? (
-                <p style={{ ...muted, color: "var(--warning)", marginTop: 8 }} role="status">
+                <p className="dk-dock-motion__warning" role="status">
                   {notice}
                 </p>
               ) : null}
@@ -470,28 +470,23 @@ export function MotionPanel({
           ) : null}
 
           {conflicts.length > 0 ? (
-            <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none" }}>
+            <ul className="dk-dock-motion__list">
               {conflicts.map(({ conflict, properties }) => (
                 <li
                   key={`${conflict.earlierClipId}:${conflict.laterClipId}`}
-                  style={{
-                    border: "1px solid var(--warning)",
-                    borderRadius: 4,
-                    padding: "6px 8px",
-                    marginBottom: 6,
-                  }}
+                  className="dk-dock-motion__conflict"
                 >
-                  <span style={{ ...muted, color: "var(--warning)" }}>
+                  <span className="dk-dock-motion__warning">
                     {properties.length > 1
                       ? `Two clips animate ${properties.join(" and ")} on this object for ` +
                         `${Math.round(conflict.overlapMs)}ms together. The later one wins where they overlap.`
                       : conflict.message}
                   </span>
-                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                  <div className="dk-dock-motion__row">
                     {conflict.fixes.map((fix) => (
                       <button
                         key={fix.label}
-                        style={smallButton}
+                        className="dk-input dk-input--sm"
                         title={fix.caveat}
                         onClick={() => apply(fix.operations, fix.label)}
                       >
@@ -505,14 +500,14 @@ export function MotionPanel({
           ) : null}
 
           {view.warnings.length > 0 ? (
-            <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none" }}>
+            <ul className="dk-dock-motion__list">
               {view.warnings
                 // W136 is the overlap, and the block above says the same thing
                 // with the pair named and a fix attached. Two copies of one
                 // finding teaches an author to skim both.
                 .filter((warning) => warning.code !== "W136")
                 .map((warning) => (
-                <li key={warning.code + warning.message} style={{ ...muted, color: "var(--warning)" }}>
+                <li key={warning.code + warning.message} className="dk-dock-motion__warning">
                   {warning.message}
                 </li>
               ))}
@@ -536,20 +531,15 @@ function BudgetBar({ budget }: { budget: CompiledTimeline["budget"] }) {
           ? `The entrance runs ${Math.round(budget.entranceMs)}ms, past the ${budget.limitMs}ms budget. The presenter will be talking over it.`
           : `Entrance: ${Math.round(budget.entranceMs)}ms of ${budget.limitMs}ms`
       }
-      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11 }}
+      className="dk-budget"
     >
-      <span style={{ width: 70, height: 4, background: "var(--surface-alt)", borderRadius: 2 }}>
+      <span className="dk-budget__track">
         <span
-          style={{
-            display: "block",
-            width: `${fraction * 100}%`,
-            height: "100%",
-            borderRadius: 2,
-            background: budget.exceeded ? "var(--warning)" : "var(--accent)",
-          }}
+          className={budget.exceeded ? "dk-budget__fill dk-budget__fill--over" : "dk-budget__fill"}
+          style={{ width: `${fraction * 100}%` }}
         />
       </span>
-      <span style={{ color: budget.exceeded ? "var(--warning)" : "var(--fg-subtle)" }}>
+      <span className={budget.exceeded ? "dk-budget__label dk-budget__label--over" : "dk-budget__label"}>
         {Math.round(budget.entranceMs)}ms
       </span>
     </span>
@@ -568,18 +558,14 @@ function Ruler({
   const scale = durationMs > 0 ? 100 / durationMs : 0;
 
   return (
-    <div style={{ display: "flex", marginBottom: 6 }}>
-      <span style={{ width: 96 }} />
-      <div style={{ position: "relative", flex: 1, height: 16 }}>
+    <div className="dk-ruler">
+      <span className="dk-ruler__gutter" />
+      <div className="dk-ruler__scale">
         {ticks.map((tick) => (
           <span
             key={tick}
-            style={{
-              position: "absolute",
-              left: `${tick * scale}%`,
-              fontSize: 10,
-              color: "var(--fg-subtle)",
-            }}
+            className="dk-ruler__tick"
+            style={{ left: `${tick * scale}%` }}
           >
             {tick / 1000}s
           </span>
@@ -593,14 +579,8 @@ function Ruler({
             <span
               key={segment.index}
               title="Waits for a click"
-              style={{
-                position: "absolute",
-                left: `${segment.startMs * scale}%`,
-                top: 0,
-                bottom: -4,
-                width: 2,
-                background: "var(--fg-subtle)",
-              }}
+              className="dk-ruler__segment"
+              style={{ left: `${segment.startMs * scale}%` }}
             />
           ))}
       </div>
@@ -624,12 +604,12 @@ function ClipInspector({
   const preset = clip.preset ? PRESETS[clip.preset] : undefined;
 
   return (
-    <div style={inspector}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+    <div className="dk-dock-motion__inspector">
+      <div className="dk-dock-motion__row">
         <select
           value={clip.preset ?? ""}
           onChange={(event) => onEdit("preset", event.target.value)}
-          style={smallButton}
+          className="dk-input dk-input--sm"
           aria-label="Preset"
         >
           {clip.preset && !PRESETS[clip.preset] ? (
@@ -649,17 +629,17 @@ function ClipInspector({
           ["startMs", "Start offset (ms)", startMs],
           ["delayMs", "Delay (ms)", delayMs],
         ] as const).map(([field, label, value]) => (
-          <label key={field} style={{ ...muted, display: "flex", alignItems: "center", gap: 5 }}>
+          <label key={field} className="dk-dock-motion__field">
             <span>{label}</span>
             <input type="number" min={0} step={50} value={value}
               onChange={event => {
                 if (event.target.value !== "") onEdit(field, event.target.valueAsNumber);
               }}
-              style={{ ...smallButton, width: 76 }} />
+              className="dk-input dk-input--sm dk-dock-motion__number" />
           </label>
         ))}
 
-        <label style={{ ...muted, display: "flex", alignItems: "center", gap: 5 }}>
+        <label className="dk-dock-motion__field">
           <span>Duration</span>
           <input
             type="number"
@@ -669,7 +649,7 @@ function ClipInspector({
             onChange={(event) => {
               if (event.target.value !== "") onEdit("trim", event.target.valueAsNumber);
             }}
-            style={{ ...smallButton, width: 76 }}
+            className="dk-input dk-input--sm dk-dock-motion__number"
           />
         </label>
 
@@ -678,7 +658,7 @@ function ClipInspector({
           onChange={(event) => {
             if (event.target.value) onEdit("easing", event.target.value);
           }}
-          style={smallButton}
+          className="dk-input dk-input--sm"
           aria-label="Easing"
         >
           <option value="">Easing…</option>
@@ -694,7 +674,7 @@ function ClipInspector({
           onChange={(event) => {
             if (event.target.value) onEdit("trigger", { type: event.target.value });
           }}
-          style={smallButton}
+          className="dk-input dk-input--sm"
           aria-label="Trigger"
         >
           <option value="">Starts…</option>
@@ -704,17 +684,17 @@ function ClipInspector({
           <option value="click">on click</option>
         </select>
 
-        <button style={smallButton} onClick={() => onEdit("duplicate", null)}>
+        <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={() => onEdit("duplicate", null)}>
           Duplicate clip
         </button>
 
-        <button style={smallButton} onClick={() => onEdit("delete", null)}>
+        <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={() => onEdit("delete", null)}>
           Remove
         </button>
       </div>
 
       {preset ? (
-        <p style={{ ...muted, margin: "8px 0 0" }}>
+        <p className="dk-muted">
           {preset.description} Under reduced motion it becomes{" "}
           {preset.reducedMotion === "instant" ? "its finished state" : preset.reducedMotion}.
         </p>
@@ -746,23 +726,23 @@ function KeyframeList({
   onRemove: (property: string, offset: number) => void;
 }) {
   return (
-    <div style={{ marginTop: 8 }}>
+    <div className="dk-dock-motion__keyframes">
       {tracks.map((track) => (
-        <div key={track.property} style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "var(--fg-subtle)", width: 72 }}>{track.property}</span>
+        <div key={track.property} className="dk-dock-motion__row">
+          <span className="dk-dock-motion__prop">{track.property}</span>
           {[...track.keyframes]
             .sort((a, b) => a.offset - b.offset)
             .map((frame) => (
               <button
                 key={frame.offset}
-                style={keyframeChip}
+                className="dk-dock-motion__chip"
                 title={`${Math.round(frame.offset * durationMs)}ms · ${String(frame.value)} · click to remove`}
                 onClick={() => onRemove(track.property, frame.offset)}
               >
                 {Math.round(frame.offset * durationMs)}ms
               </button>
             ))}
-          <button style={smallButton} onClick={() => onAdd(track.property)}>
+          <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={() => onAdd(track.property)}>
             + at playhead
           </button>
         </div>
@@ -804,82 +784,3 @@ function labelFor(element: PresentationElement): string {
   return element.id.slice(3, 11);
 }
 
-// ------------------------------------------------------------------ styles
-
-const header: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  padding: "10px 14px",
-};
-
-const laneRow: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  height: 26,
-};
-
-const laneLabel: CSSProperties = {
-  width: 96,
-  fontSize: 11,
-  color: "var(--fg-muted)",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const laneTrack: CSSProperties = {
-  position: "relative",
-  flex: 1,
-  height: 18,
-  background: "var(--surface-alt)",
-  borderRadius: 4,
-};
-
-const clipBar: CSSProperties = {
-  position: "absolute",
-  top: 0,
-  height: 18,
-  borderRadius: 4,
-  borderWidth: 1,
-  fontSize: 10,
-  padding: "0 6px",
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textAlign: "left",
-};
-
-const inspector: CSSProperties = {
-  marginTop: 12,
-  padding: 10,
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-};
-
-const keyframeChip: CSSProperties = {
-  fontSize: 10,
-  padding: "1px 6px",
-  borderRadius: 999,
-  border: "1px solid var(--border)",
-  background: "var(--surface-alt)",
-  color: "var(--fg-muted)",
-  cursor: "pointer",
-  fontVariantNumeric: "tabular-nums",
-};
-
-const smallButton: CSSProperties = {
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  color: "var(--fg-muted)",
-  borderRadius: 7,
-  padding: "5px 10px",
-  fontSize: 12,
-};
-
-const muted: CSSProperties = {
-  fontSize: 12,
-  color: "var(--fg-subtle)",
-  margin: 0,
-};

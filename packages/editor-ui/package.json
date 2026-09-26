@@ -3,11 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The editor, present mode and their panels \u2014 React, no routing, no transport. Mounted by the web app today and by the desktop shell next.",
+  "description": "The editor, present mode and their panels — React, no routing, no transport. Mounted by the web app today and by the desktop shell next.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./ui": "./src/ui/index.ts",
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
@@ -22,7 +23,9 @@
     "@deckastra/renderer": "*",
     "@deckastra/transactions": "*",
     "@deckastra/workspace-client": "*",
-    "@deckastra/workspace-contracts": "*"
+    "@deckastra/workspace-contracts": "*",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jost": "^5.3.0"
   },
   "peerDependencies": {
     "react": ">=18",

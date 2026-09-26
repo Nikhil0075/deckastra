@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/export-pptx
+
+ ✓ tests/pptx.test.ts (53 tests) 180ms
+
+ Test Files  1 passed (1)
+      Tests  53 passed (53)
+   Start at  00:58:28
+   Duration  2.92s (transform 1.29s, setup 0ms, collect 2.12s, tests 180ms, environment 0ms, prepare 197ms)
+

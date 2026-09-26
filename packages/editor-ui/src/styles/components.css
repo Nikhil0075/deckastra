@@ -1,0 +1,757 @@
+/*
+ * Component styles for the `src/ui` primitives. `dk-` prefixed, reading only
+ * `--dk-*` tokens, so they coexist with the pre-rewrite chrome until Phase 1
+ * replaces it. Every primitive sets its own font and colours: one dropped into
+ * an old dark panel still looks like itself.
+ *
+ * Bauhaus rules applied here: no border-radius anywhere, no shadows except the
+ * flat offset block under floating panels, black rules for structure, blue for
+ * the action, UPPERCASE tracked micro-labels.
+ */
+
+/* --- Surface root ---------------------------------------------------------- */
+
+/* Wherever editor chrome is mounted, the page itself is on the palette too.
+   Drawers, menus and tooltips are portalled to <body>, outside .dk-root; they
+   would otherwise inherit the pre-rewrite body colours the web home page still
+   uses, and a drawer's text would be whatever the old theme said. */
+body:has(.dk-root) {
+  background: var(--dk-ground);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+}
+
+.dk-root {
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-md);
+  line-height: 1.4;
+  color: var(--dk-ink);
+  background: var(--dk-ground);
+  font-feature-settings: "cv11", "ss01";
+}
+
+.dk-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dk-icon {
+  flex: none;
+  display: block;
+}
+
+/* One focus ring for every primitive: a 2px blue frame offset from the edge,
+   visible on cream, white and black alike. */
+/* Anything focusable in the chrome, classed or not (a native checkbox in a
+   panel, a link in a source). Zero specificity from :where, so a component's
+   own focus style (an input's border, a menu item's fill) still wins. */
+:where([class^="dk-"], [class*=" dk-"], [class^="dk-"] *, [class*=" dk-"] *):focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+
+/* --- Micro-label ----------------------------------------------------------- */
+
+.dk-label,
+.dk-section__title,
+.dk-drawer__title,
+.dk-tabs__tab,
+.dk-segmented__item,
+.dk-chip,
+.dk-btn {
+  font-family: var(--dk-font-ui);
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+
+.dk-label {
+  display: block;
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  color: var(--dk-ink-muted);
+  margin-bottom: var(--dk-space-1);
+}
+
+/* --- Buttons --------------------------------------------------------------- */
+
+.dk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dk-space-2);
+  height: var(--dk-control-md);
+  padding: 0 var(--dk-space-4);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  border: var(--dk-line) solid var(--dk-rule);
+  border-radius: 0;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--dk-duration) var(--dk-ease),
+    color var(--dk-duration) var(--dk-ease);
+}
+.dk-btn--sm {
+  height: var(--dk-control-sm);
+  padding: 0 var(--dk-space-3);
+}
+.dk-btn--primary {
+  background: var(--dk-blue);
+  border-color: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-btn--primary:hover:not(:disabled) {
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+.dk-btn--secondary:hover:not(:disabled) {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.dk-btn--ghost:hover:not(:disabled) {
+  background: var(--dk-sunk);
+}
+.dk-btn--danger {
+  background: var(--dk-red);
+  border-color: var(--dk-red);
+  color: var(--dk-on-red);
+}
+.dk-btn--danger:hover:not(:disabled) {
+  background: var(--dk-ink);
+  border-color: var(--dk-ink);
+}
+.dk-btn:disabled,
+.dk-iconbtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.dk-iconbtn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--dk-control-md);
+  height: var(--dk-control-md);
+  padding: 0;
+  border: var(--dk-line) solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  cursor: pointer;
+}
+.dk-iconbtn--sm {
+  width: var(--dk-control-sm);
+  height: var(--dk-control-sm);
+}
+.dk-iconbtn--secondary {
+  border-color: var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-iconbtn--primary {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-iconbtn:hover:not(:disabled) {
+  background: var(--dk-sunk);
+}
+.dk-iconbtn--primary:hover:not(:disabled) {
+  background: var(--dk-ink);
+}
+/* A pressed toggle is a black square with a white glyph — the rail's active tool. */
+.dk-iconbtn[aria-pressed="true"] {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+
+/* --- Tooltip --------------------------------------------------------------- */
+
+.dk-tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.dk-tooltip {
+  position: absolute;
+  z-index: var(--dk-z-tooltip);
+  padding: var(--dk-space-1) var(--dk-space-2);
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.dk-tooltip--bottom {
+  top: calc(100% + var(--dk-space-1));
+  left: 50%;
+  transform: translateX(-50%);
+}
+.dk-tooltip--top {
+  bottom: calc(100% + var(--dk-space-1));
+  left: 50%;
+  transform: translateX(-50%);
+}
+.dk-tooltip--right {
+  left: calc(100% + var(--dk-space-1));
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* --- Fields ---------------------------------------------------------------- */
+
+.dk-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dk-input,
+.dk-select__button {
+  height: var(--dk-control-md);
+  padding: 0 var(--dk-space-2);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink);
+  background: var(--dk-surface);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  border-radius: 0;
+}
+.dk-input:hover,
+.dk-select__button:hover {
+  border-color: var(--dk-rule);
+}
+.dk-input:focus-visible,
+.dk-select__button:focus-visible {
+  outline: none;
+  border-color: var(--dk-blue);
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+}
+.dk-input--invalid {
+  border-color: var(--dk-red);
+}
+.dk-field__hint {
+  margin-top: var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-field__hint--error {
+  color: var(--dk-red);
+}
+
+/* The inspector's compact number field: the label sits inside the box, left. */
+.dk-numfield {
+  display: flex;
+  align-items: center;
+  height: var(--dk-control-md);
+  background: var(--dk-surface);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  min-width: 0;
+}
+.dk-numfield:hover {
+  border-color: var(--dk-rule);
+}
+.dk-numfield:focus-within {
+  border-color: var(--dk-blue);
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+}
+.dk-numfield--disabled {
+  opacity: 0.4;
+}
+.dk-numfield__label {
+  flex: none;
+  padding: 0 var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-numfield__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--dk-space-2) 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.dk-numfield__input:focus {
+  outline: none;
+}
+.dk-numfield__unit {
+  flex: none;
+  padding-right: var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+
+/* --- Select, menus --------------------------------------------------------- */
+
+.dk-popup-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.dk-select .dk-popup-anchor {
+  display: flex;
+}
+.dk-select__button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Floating panels lift with a flat black offset block rather than a blur. */
+.dk-menu,
+.dk-popover {
+  position: absolute;
+  top: calc(100% + var(--dk-space-1));
+  z-index: var(--dk-z-popover);
+  background: var(--dk-surface);
+  border: var(--dk-line) solid var(--dk-rule);
+  box-shadow: 4px 4px 0 var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  color: var(--dk-ink);
+}
+.dk-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 176px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--dk-space-1) 0;
+  list-style: none;
+}
+.dk-menu--start,
+.dk-popover--start {
+  left: 0;
+}
+.dk-menu--end,
+.dk-popover--end {
+  right: 0;
+}
+.dk-menu:focus {
+  outline: none;
+}
+.dk-select__list {
+  min-width: 100%;
+}
+.dk-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  min-height: var(--dk-control-md);
+  padding: 0 var(--dk-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-menu__item > span {
+  flex: 1;
+}
+.dk-menu__item:focus {
+  outline: none;
+}
+/* The keyboard/pointer highlight is solid black, as in the Figma's card menu. */
+.dk-menu__item:focus-visible,
+.dk-menu__item--active,
+button.dk-menu__item:hover:not([aria-disabled="true"]) {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-menu__item--selected {
+  font-weight: 600;
+}
+.dk-menu__item--danger {
+  color: var(--dk-red);
+}
+.dk-menu__item--danger:focus-visible,
+.dk-menu__item--danger:hover {
+  background: var(--dk-red);
+  color: var(--dk-on-red);
+}
+.dk-menu__item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.dk-popover {
+  min-width: 280px;
+  padding: var(--dk-space-4);
+}
+.dk-popover:focus {
+  outline: none;
+}
+/* A kept-mounted popover is closed with `hidden`. Enforced here because any
+   class on the panel that sets `display` (a grid layout, say) would otherwise
+   win over the attribute and show a closed popover. */
+.dk-popover[hidden] {
+  display: none !important;
+}
+
+/* --- Segmented, tabs ------------------------------------------------------- */
+
+.dk-segmented {
+  display: flex;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-segmented__item {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dk-space-1);
+  height: calc(var(--dk-control-md) - 2px);
+  padding: 0 var(--dk-space-3);
+  border: 0;
+  border-left: var(--dk-line) solid var(--dk-rule);
+  background: transparent;
+  color: var(--dk-ink);
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.dk-segmented__item:first-child {
+  border-left: 0;
+}
+.dk-segmented--sm .dk-segmented__item {
+  height: calc(var(--dk-control-sm) - 2px);
+  padding: 0 var(--dk-space-2);
+}
+.dk-segmented__item:hover:not(:disabled):not(.dk-segmented__item--checked) {
+  background: var(--dk-sunk);
+}
+.dk-segmented__item--checked {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-segmented__item:focus-visible {
+  outline-offset: -4px;
+  outline-color: var(--dk-ink);
+}
+.dk-segmented__item--checked:focus-visible {
+  outline-color: var(--dk-ink-inverse);
+}
+
+.dk-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dk-tabs__list {
+  display: flex;
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  height: var(--dk-control-lg);
+  padding: 0 var(--dk-space-4);
+  border: 0;
+  border-bottom: var(--dk-line-strong) solid transparent;
+  margin-bottom: calc(-1 * var(--dk-line));
+  background: transparent;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+.dk-tabs__tab:hover {
+  color: var(--dk-ink);
+}
+.dk-tabs__tab--active {
+  color: var(--dk-ink);
+  border-bottom-color: var(--dk-ink);
+}
+.dk-tabs__panel {
+  min-height: 0;
+  flex: 1;
+}
+.dk-tabs__panel:focus-visible {
+  outline-offset: -2px;
+}
+
+/* --- Section (collapsible) ------------------------------------------------- */
+
+.dk-section {
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  font-family: var(--dk-font-ui);
+}
+.dk-section__heading {
+  margin: 0;
+}
+.dk-section__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  height: var(--dk-control-lg);
+  padding: 0 var(--dk-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  cursor: pointer;
+  text-align: left;
+}
+.dk-section__toggle:hover {
+  background: var(--dk-sunk);
+}
+.dk-section__toggle:focus-visible {
+  outline-offset: -2px;
+}
+.dk-section__title {
+  flex: 1;
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+}
+.dk-section__meta {
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.dk-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: 0 var(--dk-space-3) var(--dk-space-3);
+}
+
+/* --- Chips, dots, tokens, kbd ---------------------------------------------- */
+
+.dk-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  border: var(--dk-line) solid var(--dk-rule);
+  white-space: nowrap;
+}
+.dk-chip--waiting {
+  background: var(--dk-yellow);
+  border-color: var(--dk-yellow);
+  color: var(--dk-on-yellow);
+}
+.dk-chip--danger {
+  background: var(--dk-red);
+  border-color: var(--dk-red);
+  color: var(--dk-on-red);
+}
+.dk-chip--action {
+  background: var(--dk-blue);
+  border-color: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-chip--neutral {
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+}
+
+.dk-dot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%; /* the one circle: a dot is a circle by definition */
+  flex: none;
+}
+.dk-dot--waiting {
+  background: var(--dk-yellow);
+  box-shadow: 0 0 0 1px var(--dk-ink);
+}
+.dk-dot--danger {
+  background: var(--dk-red);
+}
+.dk-dot--action {
+  background: var(--dk-blue);
+}
+.dk-dot--neutral {
+  background: var(--dk-ink);
+}
+
+.dk-token {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  max-width: 100%;
+  height: 20px;
+  padding: 0 var(--dk-space-1);
+  border: var(--dk-line) solid var(--dk-blue);
+  color: var(--dk-blue);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+}
+.dk-token__swatch {
+  width: 10px;
+  height: 10px;
+  border: var(--dk-line) solid var(--dk-rule);
+  flex: none;
+}
+.dk-token__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-kbd {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 var(--dk-space-1);
+  border: var(--dk-line) solid var(--dk-rule);
+  border-bottom-width: var(--dk-line-strong);
+  background: var(--dk-surface);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  text-align: center;
+}
+
+.dk-accent-rule {
+  display: block;
+  width: 32px;
+  height: 4px;
+  background: var(--dk-blue);
+}
+
+/* --- Drawer, scrim, scroll ------------------------------------------------- */
+
+.dk-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--dk-z-drawer);
+  pointer-events: none;
+}
+.dk-drawer-layer--modal {
+  pointer-events: auto;
+}
+.dk-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--dk-scrim);
+}
+.dk-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-width: 100vw;
+  background: var(--dk-ground);
+  border-left: var(--dk-line) solid var(--dk-rule);
+  font-family: var(--dk-font-ui);
+  color: var(--dk-ink);
+  pointer-events: auto;
+}
+.dk-drawer:focus {
+  outline: none;
+}
+.dk-drawer__header {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  height: var(--dk-bar-height);
+  padding: 0 var(--dk-space-2) 0 var(--dk-space-4);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-drawer__title {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  font-weight: 700;
+}
+.dk-drawer__meta {
+  flex: 1;
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-drawer__body {
+  flex: 1;
+}
+.dk-drawer__footer {
+  display: flex;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3) var(--dk-space-4);
+  border-top: var(--dk-line) solid var(--dk-rule);
+}
+.dk-drawer__footer > * {
+  flex: 1;
+}
+
+.dk-scroll {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+.dk-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dk-scroll::-webkit-scrollbar-thumb {
+  background: var(--dk-ink);
+}
+.dk-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The mark on a chosen menu radio (the chrome theme). */
+.dk-menu__check {
+  margin-left: auto;
+}
+
+/* ------------------------------------------------ in-place text formatting */
+
+/* Above the text being edited. Its buttons never take focus (the component
+   prevents pointer-down), so the caret and selection stay in the text. */
+.dk-text-toolbar {
+  display: flex;
+  gap: var(--dk-line);
+  padding: var(--dk-line);
+  background: var(--dk-rule);
+  border: var(--dk-line) solid var(--dk-rule);
+}
+
+.dk-text-toolbar__button {
+  width: var(--dk-control-md);
+  height: var(--dk-control-md);
+  border: 0;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-md);
+  cursor: pointer;
+}
+
+.dk-text-toolbar__button:hover {
+  background: var(--dk-sunk);
+}

@@ -195,6 +195,33 @@ def check_generation(session: Session, workspace_id: str) -> WorkspaceQuota:
     return quota
 
 
+def check_tokens(session: Session, workspace_id: str) -> WorkspaceQuota:
+    """The token half of `check_generation`, for work that spends tokens and
+    makes no deck — revising an outline at the story checkpoint. Asking the
+    generation limit there would refuse a revision because of decks the
+    workspace has already made, which is not what that limit is about."""
+    quota = ensure(session, workspace_id)
+    if quota.monthly_tokens is not None and quota.used_tokens >= quota.monthly_tokens:
+        raise QuotaExceeded(
+            "This workspace has used its token allowance for the current period. "
+            f"It resets on {_readable(_resets_at(quota))}.",
+            limit="tokens",
+            used=quota.used_tokens,
+            allowed=quota.monthly_tokens,
+            resets_at=_resets_at(quota).isoformat(),
+        )
+    return quota
+
+
+def record_tokens(session: Session, workspace_id: str, *, tokens: int) -> WorkspaceQuota:
+    """Charge tokens without counting a generation: an outline that paused for
+    review has spent them whether or not it ever becomes a deck."""
+    quota = ensure(session, workspace_id)
+    quota.used_tokens += max(0, tokens)
+    session.flush()
+    return quota
+
+
 def check_repository(session: Session, workspace_id: str) -> WorkspaceQuota:
     quota = ensure(session, workspace_id)
     if quota.max_repositories is None:

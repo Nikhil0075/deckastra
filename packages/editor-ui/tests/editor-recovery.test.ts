@@ -33,6 +33,39 @@ describe("recovery journal ownership", () => {
     expect(reloaded.read()?.operations).toEqual(record().operations);
   });
 
+  it("after a relaunch, the desktop's pointer finds the journal the last session left", async () => {
+    // Item 01: a close that could not save leaves a journal. A relaunch clears
+    // session storage, so only a pointer that survives the process finds it again.
+    const before = await openRecoveryJournal("prs_test", { pointer: "local" });
+    before.write(record("Unsaved at quit"));
+    before.close();
+    sessionStorage.clear();
+
+    const relaunched = await openRecoveryJournal("prs_test", { pointer: "local" });
+    journals.push(relaunched);
+    expect(relaunched.key).toBe(before.key);
+    expect(relaunched.read()?.document.metadata.title).toBe("Unsaved at quit");
+  });
+
+  it("without it, the same relaunch leaves the journal as an anonymous copy", async () => {
+    const before = await open();
+    before.write(record("Unsaved at quit"));
+    before.close();
+    sessionStorage.clear();
+
+    const relaunched = await open();
+    expect(relaunched.key).not.toBe(before.key);
+    expect((await relaunched.copies()).map((copy) => copy.key)).toEqual([before.key]);
+  });
+
+  it("a second live window still gets a journal of its own under the desktop's pointer", async () => {
+    const first = await openRecoveryJournal("prs_test", { pointer: "local" });
+    journals.push(first);
+    const second = await openRecoveryJournal("prs_test", { pointer: "local" });
+    journals.push(second);
+    expect(second.key).not.toBe(first.key);
+  });
+
   it("recovers a closed tab's copy into the current journal without touching other copies", async () => {
     const first = await open(); first.write(record("Closed"));
     const second = await open(); second.write(record("Still open"));

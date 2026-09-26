@@ -26,7 +26,7 @@ from deckastra_agents.model_packs import MODEL_DIR_ENV  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def clean_environment(monkeypatch):
-    for name in (router.INTELLIGENCE_ENV, MODEL_DIR_ENV, "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+    for name in (router.INTELLIGENCE_ENV, router.DISTRIBUTION_ENV, MODEL_DIR_ENV, "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -132,3 +132,116 @@ def test_a_local_run_is_not_recorded_as_a_stub_run(monkeypatch, tmp_path):
 
     monkeypatch.setenv(router.INTELLIGENCE_ENV, "")
     assert router.selected_provider() == router.PROVIDER_STUB
+
+
+# --------------------------------------------------- a mode this build does not know
+
+
+def test_a_mistyped_mode_is_reported_by_health_and_not_read_as_cloud(client, monkeypatch):
+    """Final package review, item 04: `locla` with a key present used to mean cloud."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-a-real-looking-key")
+    monkeypatch.setenv(router.INTELLIGENCE_ENV, "locla")
+
+    health = client.get("/health")
+    assert health.status_code == 200
+    body = health.json()
+    assert body["intelligence"] == "misconfigured"
+    assert body["generation"] == "unavailable"
+    assert "'locla'" in body["intelligence_error"]
+
+
+def test_a_mistyped_mode_refuses_generation_and_ask_with_a_503(client, monkeypatch):
+    headers = session_headers(client)
+    # Made while the mode is valid, so there is a deck to Ask about.
+    made = client.post("/v1/generate", headers=headers, json={"instruction": "A deck about typos"})
+    assert made.status_code == 200, made.text
+    document = made.json()["document"]
+    slide = document["slides"][0]
+    element = next(el for el in slide["elements"] if el["type"] == "text")
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-a-real-looking-key")
+    monkeypatch.setenv(router.INTELLIGENCE_ENV, "Cloudy")
+
+    for path, body in (
+        ("/v1/generate", {"instruction": "Another deck", "use_graph": True}),
+        ("/v1/generate", {"instruction": "Single shot", "use_graph": False}),
+        (
+            f"/v1/presentations/{made.json()['presentation_id']}/agent/edit",
+            {"instruction": "Shorter", "scope": {"kind": "elements", "slide_ids": [slide["id"]], "element_ids": [element["id"]]}},
+        ),
+    ):
+        answer = client.post(path, headers=headers, json=body)
+        assert answer.status_code == 503, (path, answer.text)
+        assert "'Cloudy'" in answer.json()["detail"]
+
+
+# ------------------------------------------------------ an installed product (item 20)
+
+
+def test_an_installed_product_reports_generation_as_not_set_up(client, monkeypatch):
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    body = client.get("/health").json()
+    assert body["generation"] == "unavailable"
+    assert body["intelligence"] == "none"
+    assert "not set up" in body["intelligence_error"]
+
+
+def test_an_installed_product_refuses_every_generation_path_instead_of_stubbing(client, monkeypatch):
+    headers = session_headers(client)
+    made = client.post("/v1/generate", headers=headers, json={"instruction": "Made in a checkout"})
+    assert made.status_code == 200, made.text
+    slide = made.json()["document"]["slides"][0]
+    element = next(el for el in slide["elements"] if el["type"] == "text")
+
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    for path, body in (
+        ("/v1/generate", {"instruction": "Graph", "use_graph": True}),
+        ("/v1/generate", {"instruction": "Single shot", "use_graph": False}),
+        (
+            f"/v1/presentations/{made.json()['presentation_id']}/agent/edit",
+            {"instruction": "Shorter", "scope": {"kind": "elements", "slide_ids": [slide["id"]], "element_ids": [element["id"]]}},
+        ),
+    ):
+        answer = client.post(path, headers=headers, json=body)
+        assert answer.status_code == 503, (path, answer.text)
+        assert "not set up" in answer.json()["detail"]
+
+
+# ------------------------------------------ what the account says about generation (item 19)
+
+
+def generation_capability(client):
+    answer = client.get("/v1/account", headers=session_headers(client))
+    assert answer.status_code == 200, answer.text
+    return answer.json()["capabilities"]["generation"]
+
+
+def test_the_account_says_which_provider_will_write_a_deck(client, monkeypatch):
+    """Read before anyone writes a brief, so "not set up" is a sentence in the
+    drawer rather than a failure after the work of describing a deck."""
+    assert generation_capability(client) == {"provider": "stub", "available": True, "reason": None}
+
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    unset = generation_capability(client)
+    assert unset["provider"] == "none" and unset["available"] is False
+    assert "not set up" in unset["reason"]
+
+    monkeypatch.setenv(router.INTELLIGENCE_ENV, "cloud")
+    keyless = generation_capability(client)
+    assert keyless["provider"] == "cloud" and keyless["available"] is False
+    assert "no API key" in keyless["reason"]
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-a-real-looking-key")
+    assert generation_capability(client) == {"provider": "cloud", "available": True, "reason": None}
+
+    monkeypatch.setenv(router.INTELLIGENCE_ENV, "locla")
+    mistyped = generation_capability(client)
+    assert mistyped["provider"] == "misconfigured" and mistyped["available"] is False
+
+
+def test_a_release_without_local_models_says_so_rather_than_offering_them(client, monkeypatch):
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    monkeypatch.setenv(router.INTELLIGENCE_ENV, "local")
+    status = generation_capability(client)
+    assert status["provider"] == "unavailable" and status["available"] is False
+    assert "not included in this release" in status["reason"]

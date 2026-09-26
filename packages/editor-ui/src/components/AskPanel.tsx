@@ -6,6 +6,8 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { AgentEditResult } from "@deckastra/workspace-contracts";
 
+import { Button, StatusChip } from "../ui";
+
 /**
  * Journey C, as a panel (doc 01 §7.3, doc 03 §26).
  *
@@ -67,7 +69,10 @@ export function AskPanel({
   const [instruction, setInstruction] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 
-  const disabled = selectedIds.length === 0 || instruction.trim() === "" || phase.kind === "working";
+  // Nothing selected is a request about the slide on screen (or the whole deck,
+  // if it says so), not a request nobody may make: the agent can add, restyle
+  // and retheme, and "make the theme light" has nothing to select.
+  const disabled = instruction.trim() === "" || phase.kind === "working";
 
   function adopt(document: PresentationDocument, versionId: string) {
     if (!onApplied(document, versionId)) {
@@ -93,7 +98,7 @@ export function AskPanel({
       const result = await client.agent.edit(presentationId, {
         instruction,
         scope: {
-          kind: "elements",
+          kind: selectedIds.length > 0 ? "elements" : slideId ? "slide" : "deck",
           slide_ids: slideId ? [slideId] : [],
           element_ids: selectedIds,
           sources: [],
@@ -180,10 +185,10 @@ export function AskPanel({
   }
 
   return (
-    <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px" }}>
-      <div style={labelStyle}>ASK</div>
-
+    <div className="dk-ask">
       <textarea
+        className="dk-notes__input"
+        aria-label="Ask for a change to the selection"
         value={instruction}
         onChange={(event) => setInstruction(event.target.value)}
         onKeyDown={(event) => {
@@ -198,124 +203,74 @@ export function AskPanel({
         rows={2}
         placeholder={
           selectedIds.length === 0
-            ? "Select something first"
+            ? "Ask for a change to this slide or the deck — add, restyle, retheme…"
             : `Change the ${selectedIds.length} selected object(s)…`
         }
-        style={inputStyle}
+        data-testid="ask-input"
       />
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-        <button onClick={() => void ask()} disabled={disabled} style={primaryStyle}>
+      <div className="dk-ask__row">
+        <Button size="sm" variant="primary" onClick={() => void ask()} disabled={disabled} data-testid="ask-submit">
           {phase.kind === "working" ? "Thinking…" : "Ask"}
-        </button>
-        <span style={{ fontSize: 11, color: "var(--fg-subtle)" }}>
-          {selectedIds.length} selected
+        </Button>
+        <span className="dk-muted">
+          {selectedIds.length > 0 ? `${selectedIds.length} selected` : "This slide, or the deck"}
         </span>
       </div>
 
       {phase.kind === "error" ? (
-        <p style={{ ...noteStyle, color: "var(--warning)" }}>{phase.message}</p>
+        <p className="dk-proposals__error" role="alert">
+          {phase.message}
+        </p>
       ) : null}
 
       {phase.kind === "done" ? (
         <>
-          <p style={noteStyle}>{phase.message}</p>
+          <p className="dk-muted" role="status">
+            {phase.message}
+          </p>
           {phase.transactionId ? (
-            <button onClick={() => void undoIt(phase.transactionId!)} style={{ ...secondaryStyle, marginTop: 8 }}>
+            <Button size="sm" variant="secondary" onClick={() => void undoIt(phase.transactionId!)}>
               Undo this change
-            </button>
+            </Button>
           ) : null}
         </>
       ) : null}
 
       {phase.kind === "review" ? (
-        <div style={reviewStyle}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, opacity: 0.6, marginBottom: 6 }}>
-            {phase.result.risk_tier.toUpperCase()} RISK — NEEDS YOUR APPROVAL
-          </div>
-
-          {phase.result.changes.map((change) => (
-            <p key={change.element_id} style={{ margin: "4px 0", fontSize: 13 }}>
+        <div className="dk-proposal">
+          <header className="dk-proposal__head">
+            <StatusChip tone="waiting">Needs your approval</StatusChip>
+            <span className="dk-proposal__who">
+              {phase.result.risk_tier.replace(/^./, (letter) => letter.toUpperCase())} risk
+            </span>
+          </header>
+          {phase.result.changes.map((change, index) => (
+            <p key={`${change.element_id}:${index}`} className="dk-proposal__intent">
               {change.reason}
             </p>
           ))}
-
           {phase.result.reasons.map((reason) => (
-            <p key={reason} style={{ margin: "4px 0", fontSize: 12, opacity: 0.7 }}>
+            <p key={reason} className="dk-proposal__reason">
               {reason}
             </p>
           ))}
-
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => void accept(phase.result)} style={primaryStyle}>
-              Apply
-            </button>
-            <button onClick={() => void decline(phase.result)} style={secondaryStyle}>
+          <div className="dk-proposal__actions">
+            <Button size="sm" variant="secondary" onClick={() => void decline(phase.result)}>
               Discard
-            </button>
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => void accept(phase.result)}>
+              Apply
+            </Button>
           </div>
         </div>
       ) : null}
 
       {phase.kind === "review" || phase.kind === "done" ? (
-        <p style={{ ...noteStyle, opacity: 0.55 }}>
-          It is one transaction in the deck&apos;s history — undoing it leaves every
-          other change in place.
+        <p className="dk-muted">
+          It is one transaction in the deck&apos;s history — undoing it leaves every other change in place.
         </p>
       ) : null}
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  fontSize: 11,
-  letterSpacing: 1.6,
-  color: "var(--fg-subtle)",
-  marginBottom: 8,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  padding: "8px 10px",
-  fontSize: 13,
-  resize: "vertical",
-  color: "var(--fg)",
-};
-
-const primaryStyle: React.CSSProperties = {
-  background: "var(--accent)",
-  color: "var(--accent-fg)",
-  border: "none",
-  borderRadius: 8,
-  padding: "6px 14px",
-  fontSize: 13,
-  fontWeight: 600,
-};
-
-const secondaryStyle: React.CSSProperties = {
-  background: "transparent",
-  color: "var(--fg-muted)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  padding: "6px 14px",
-  fontSize: 13,
-};
-
-const noteStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: "var(--fg-muted)",
-  margin: "8px 0 0",
-  lineHeight: 1.45,
-};
-
-const reviewStyle: React.CSSProperties = {
-  marginTop: 10,
-  padding: 10,
-  border: "1px solid var(--border)",
-  borderLeft: "3px solid var(--warning)",
-  borderRadius: 8,
-  background: "var(--surface)",
-};

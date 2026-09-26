@@ -18,7 +18,7 @@ appId: com.deckastra.desktop
 # Pinned because npm workspaces hoist `electron` to the repo root, where
 # electron-builder does not look — it probes `apps/desktop/node_modules` and
 # concludes nothing is installed. Keep in step with the devDependency.
-electronVersion: 33.4.11
+electronVersion: 44.4.3
 productName: Deckastra
 directories:
   output: release
@@ -33,6 +33,21 @@ asar: true
 # executable cannot be run from within an asar, and `sidecar.ts` looks for it at
 # exactly this path.
 extraResources:
+  # What this build is: commit, dirty-tree hash, payload hashes and the
+  # migrations digest the service is checked against (item 07). Written after
+  # every payload exists, so it can name them.
+  - from: dist/build-manifest.json
+    to: build-manifest.json
+  # What shipped, listed: the service's Python dependencies with the hashes pip
+  # verified, and the npm packages the bundles were built from (item 09).
+  - from: dist/sbom.json
+    to: sbom.json
+  # The licences of everything bundled (item 33), shown by Help > Third-party
+  # notices, with the summary the release gate reconciles against.
+  - from: dist/THIRD_PARTY_NOTICES.txt
+    to: THIRD_PARTY_NOTICES.txt
+  - from: dist/notices.json
+    to: notices.json
   - from: dist/sidecar/deckastra-service
     to: sidecar
   # The exporter, outside the archive as well. `ELECTRON_RUN_AS_NODE` does not

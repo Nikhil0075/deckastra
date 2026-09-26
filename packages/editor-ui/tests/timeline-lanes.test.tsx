@@ -349,3 +349,20 @@ describe("dragging a clip", () => {
     expect(onSelect).toHaveBeenCalledWith("clp_1");
   });
 });
+
+describe("the playhead", () => {
+  it("is positioned with valid arithmetic, a length times a number", () => {
+    // The old expression multiplied a length by a length, which a browser
+    // rejects outright; the playhead then sat at the left edge at every time.
+    const { container } = render(
+      <TimelineLanes view={view} selectedClipId={null} playheadMs={view.durationMs / 2} onSelect={() => {}} onCommit={() => {}} />,
+    );
+    const playhead = container.querySelector<HTMLElement>(".dk-lanes__playhead")!;
+    // A length plus a number times a length: valid for `left`.
+    expect(playhead.style.left).toBe("calc(96px + 0.5 * (100% - 96px))");
+
+    // jsdom does not type-check calc(), so it cannot show the old expression
+    // failing; Chromium does, and the desktop motion step measures where the
+    // playhead actually lands.
+  });
+});

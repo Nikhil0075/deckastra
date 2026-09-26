@@ -6,24 +6,35 @@ import { compileTransition, transitionSlideFromScene } from "@deckastra/animatio
 import type { OpenPresenterWindow, PresenterWindow } from "@deckastra/workspace-contracts";
 
 import { fitToDisplay } from "../lib/display-fit";
-import { PresentChannel } from "../lib/presentSync";
+import { clickSteps } from "../lib/presenter";
+import { PresentChannel, type PresentState } from "../lib/presentSync";
 import { browserPresenterWindow } from "../lib/presenter-window";
+import { Icon, type IconName } from "../ui";
+import { cx } from "../ui/cx";
 import { SlideMotion, type SlideMotionHandle } from "./SlideMotion";
 import { SlideTransition } from "./SlideTransition";
 import { PresenterView } from "./PresenterView";
 
 /**
- * Present mode.
+ * Present mode (Figma: "present mode", "present mode with notes").
  *
  * The audience view is deliberately empty of chrome: one slide, scaled by a
  * single transform on the root (doc 04 §4.2). Fitting each element to the
  * viewport individually is what produces blurry glyphs and geometry that drifts
- * as the window resizes.
+ * as the window resizes. Its controls sit bottom-left and fade out when the
+ * pointer is still; the squares at the bottom centre are the slide's click
+ * reveals, filled as they play.
  *
  * Everything a presenter needs is in the presenter view instead — in this window
  * with `P`, or in a second window over a BroadcastChannel. The second window is
  * the arrangement that matters: a laptop screen and a projector showing
  * different things is the only setup that is any use in a real room.
+ *
+ * **The audience window is the authority on the talk.** It plays the slide's
+ * motion, so it alone knows which reveal is showing; it broadcasts
+ * `{index, step, blacked}` after every change. A presenter window sends
+ * *commands* ("advance", "black") rather than moving itself, so Next on the
+ * laptop reveals the next bullet on the projector instead of jumping past it.
  */
 
 export interface PresentModeProps {
@@ -56,6 +67,14 @@ export interface PresentModeProps {
 
 const IDLE_MS = 2500;
 
+/**
+ * How long a presenter window waits for the audience window to act on a
+ * command before acting itself. With no audience window (it was closed, or
+ * never opened) a Next that did nothing would strand the presenter; moving the
+ * slide locally is the better failure.
+ */
+const COMMAND_FALLBACK_MS = 500;
+
 export function PresentMode({
   scene,
   onExit,
@@ -66,6 +85,7 @@ export function PresentMode({
   openPresenter = browserPresenterWindow,
 }: PresentModeProps) {
   const [index, setIndex] = useState(initialSlide);
+  const [step, setStep] = useState(0);
   const [idle, setIdle] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [presenter, setPresenter] = useState(presenterOnly);
@@ -84,12 +104,15 @@ export function PresentMode({
   // Read by the channel's handlers, which outlive any one render.
   const indexRef = useRef(initialSlide);
   const slideCountRef = useRef(scene.slides.length);
+  const stateRef = useRef<PresentState>({ index: initialSlide, step: 0, blacked: false });
   const popout = useRef<PresenterWindow | null>(null);
   const motion = useRef<SlideMotionHandle>(null);
   const startedAt = useRef(Date.now());
+  const pendingCommand = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const slides = scene.slides;
   const slide = slides[index];
+  const steps = useMemo(() => (slide ? clickSteps(slide, reducedMotion) : 0), [slide, reducedMotion]);
 
   // The slide being left, kept only while its successor is arriving. A morph
   // animates an element from where it was to where it now is, and where it was
@@ -100,6 +123,7 @@ export function PresentMode({
 
   indexRef.current = index;
   slideCountRef.current = scene.slides.length;
+  stateRef.current = { index, step, blacked };
 
   const setIndexSynced = useCallback((next: number | ((current: number) => number)) => {
     setIndex((current) => {
@@ -107,6 +131,11 @@ export function PresentMode({
       channel.current?.post(resolved);
       return resolved;
     });
+  }, []);
+
+  /** Read the reveal the motion is on, once its effect has run. */
+  const readStep = useCallback(() => {
+    requestAnimationFrame(() => setStep(motion.current?.step?.() ?? 0));
   }, []);
 
   const go = useCallback(
@@ -124,14 +153,43 @@ export function PresentMode({
    * "show me the next thing", and whether that thing is the next bullet or the
    * next slide is not something they should have to think about.
    */
-  const advance = useCallback(
+  const advanceHere = useCallback(
     (delta: number) => {
       const stepped = delta > 0 ? motion.current?.next() : motion.current?.previous();
-      if (stepped) return;
+      if (stepped) {
+        readStep();
+        return;
+      }
       go(delta);
     },
-    [go],
+    [go, readStep],
   );
+
+  /**
+   * In a presenter window, an advance is a request to the audience window, which
+   * owns the motion. If nothing answers — the audience window is gone — the
+   * presenter window moves the slide itself rather than doing nothing.
+   */
+  const advance = useCallback(
+    (delta: 1 | -1) => {
+      if (!presenterOnly || !channel.current) {
+        advanceHere(delta);
+        return;
+      }
+      channel.current.command({ action: "advance", delta });
+      if (pendingCommand.current !== null) clearTimeout(pendingCommand.current);
+      pendingCommand.current = setTimeout(() => {
+        pendingCommand.current = null;
+        go(delta);
+      }, COMMAND_FALLBACK_MS);
+    },
+    [advanceHere, go, presenterOnly],
+  );
+
+  const toggleBlack = useCallback(() => {
+    if (presenterOnly && channel.current) channel.current.command({ action: "black" });
+    else setBlacked((value) => !value);
+  }, [presenterOnly]);
 
   // ------------------------------------------------------------ preferences
 
@@ -145,16 +203,45 @@ export function PresentMode({
 
   // ---------------------------------------------------------------- syncing
 
+  // Handlers read through a ref so the channel is opened once for the whole
+  // talk: reopening it on every slide change would drop messages.
+  const commandRef = useRef<(delta: 1 | -1) => void>(advanceHere);
+  commandRef.current = advanceHere;
+
   useEffect(() => {
     if (!channelName) return;
 
-    // Reads position and length through refs so the channel is opened once for
-    // the whole talk: reopening it on every slide change would drop messages.
     const bus = new PresentChannel(channelName, {
       // Applied, never re-broadcast — two windows echoing each other never settle.
       onIndex: setIndex,
       currentIndex: () => indexRef.current,
       slideCount: () => slideCountRef.current,
+      currentState: presenterOnly ? undefined : () => stateRef.current,
+      // Presenter side: the audience window is the authority on step and blackout.
+      onState: presenterOnly
+        ? (state) => {
+            if (pendingCommand.current !== null) {
+              clearTimeout(pendingCommand.current);
+              pendingCommand.current = null;
+            }
+            setIndex(state.index);
+            setStep(state.step);
+            setBlacked(state.blacked);
+          }
+        : undefined,
+      // Audience side: carry out what the presenter asked for.
+      onCommand: presenterOnly
+        ? undefined
+        : (command) => {
+            // Acknowledge at once, before acting. The presenter window falls
+            // back to moving the slide itself if nothing answers, and the real
+            // answer (the state after the change) waits for an animation frame
+            // a minimised projector window may throttle — a late answer there
+            // would make the laptop skip the reveal it asked for.
+            bus.postState(stateRef.current);
+            if (command.action === "advance") commandRef.current(command.delta);
+            else setBlacked((value) => !value);
+          },
     });
 
     bus.open();
@@ -163,8 +250,23 @@ export function PresentMode({
     return () => {
       bus.close();
       channel.current = null;
+      if (pendingCommand.current !== null) clearTimeout(pendingCommand.current);
     };
-  }, [channelName]);
+  }, [channelName, presenterOnly]);
+
+  // The audience window reports its state after every change it makes.
+  useEffect(() => {
+    if (presenterOnly) return;
+    channel.current?.postState({ index, step, blacked });
+  }, [index, step, blacked, presenterOnly]);
+
+  // A new slide starts at its first reveal (or its last, entered backwards);
+  // read it once the motion for that slide has mounted.
+  useEffect(() => {
+    if (presenterOnly) return;
+    setStep(enteredBackwards ? steps : 0);
+    readStep();
+  }, [index, enteredBackwards, steps, presenterOnly, readStep]);
 
   const openPresenterWindow = useCallback(() => {
     if (!channelName) return;
@@ -172,12 +274,18 @@ export function PresentMode({
     // Hand the new window the current position immediately; its own "hello"
     // covers the case where this message arrives before it is listening.
     channel.current?.post(index);
+    channel.current?.postState(stateRef.current);
   }, [channelName, index, openPresenter]);
 
   // --------------------------------------------------------------- keyboard
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // A control inside present mode (the target field in the presenter view)
+      // keeps its own keys.
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+
       switch (event.key) {
         case "ArrowRight":
         case " ":
@@ -203,7 +311,7 @@ export function PresentMode({
         case "b":
         case "B":
           event.preventDefault();
-          setBlacked((value) => !value);
+          toggleBlack();
           break;
         case "Home":
           event.preventDefault();
@@ -223,7 +331,7 @@ export function PresentMode({
           break;
         case "p":
         case "P":
-          setPresenter((v) => !v);
+          if (!presenterOnly) setPresenter((v) => !v);
           break;
         case "f":
         case "F":
@@ -236,7 +344,7 @@ export function PresentMode({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [advance, go, onExit, setIndexSynced, slides.length]);
+  }, [advance, go, onExit, presenterOnly, setIndexSynced, slides.length, toggleBlack]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -278,59 +386,18 @@ export function PresentMode({
   // Kiosk mode: a slide may advance itself (doc 02 §26). Cleared on every slide
   // change so a manual advance does not leave a stale timer running.
   useEffect(() => {
-    const autoAdvanceMs = (slide?.transition as { autoAdvanceMs?: number } | undefined)
-      ?.autoAdvanceMs;
+    if (presenterOnly) return;
+    const autoAdvanceMs = (slide?.transition as { autoAdvanceMs?: number } | undefined)?.autoAdvanceMs;
     if (!autoAdvanceMs || index >= slides.length - 1) return;
 
     const id = setTimeout(() => go(1), autoAdvanceMs);
     return () => clearTimeout(id);
-  }, [go, index, slide, slides.length]);
+  }, [go, index, presenterOnly, slide, slides.length]);
 
   const toggleFullscreen = async () => {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await containerRef.current?.requestFullscreen?.();
   };
-
-  if (!slide) {
-    // Reachable only if the deck is empty. Rendering nothing at all would leave
-    // a presenter staring at a black screen with no way to tell what went wrong.
-    return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "#000",
-          display: "grid",
-          placeItems: "center",
-          color: "rgba(255,255,255,0.6)",
-          font: "500 16px ui-sans-serif, system-ui, sans-serif",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <p>This deck has no slides to present.</p>
-          <button onClick={onExit} style={chipStyle}>
-            Exit (Esc)
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (presenterOnly) {
-    return (
-      <>
-        <PresenterView
-          scene={scene}
-          index={index}
-          resolveAssetUrl={resolveAssetUrl}
-          onGo={go}
-          onJump={setIndexSynced}
-          startedAt={startedAt.current}
-          detached
-        />
-      </>
-    );
-  }
 
   // One factor for both axes: the deck is letterboxed into whatever the room's
   // hardware is, never stretched to fill it.
@@ -340,7 +407,7 @@ export function PresentMode({
   // Recorded during render rather than in an effect: the effect would run after
   // the first painted frame of the new slide, which is one frame of the
   // transition already missed.
-  if (previousIndex.current !== index) {
+  if (!presenterOnly && previousIndex.current !== index) {
     setLeaving(previousIndex.current);
     previousIndex.current = index;
   }
@@ -348,21 +415,54 @@ export function PresentMode({
   // Compiled here rather than inside the stage: this component shows what was
   // degraded, and two compiles of one transition is two answers that can
   // disagree. Backwards is the slide's final state and no transition (§26.3).
+  // Above every early return, so the hooks run in the same order on every render.
   const outgoing = leaving !== null && !enteredBackwards ? slides[leaving] : undefined;
   const transition = useMemo(
     () =>
-      compileTransition(
-        slide.transition,
-        outgoing ? transitionSlideFromScene(outgoing) : undefined,
-        transitionSlideFromScene(slide),
-        { motion: reducedMotion ? "reduced" : "full" },
-      ),
+      slide
+        ? compileTransition(
+            slide.transition,
+            outgoing ? transitionSlideFromScene(outgoing) : undefined,
+            transitionSlideFromScene(slide),
+            { motion: reducedMotion ? "reduced" : "full" },
+          )
+        : null,
     [slide, outgoing, reducedMotion],
   );
 
+  if (!slide) {
+    // Reachable only if the deck is empty. Rendering nothing at all would leave
+    // a presenter staring at a black screen with no way to tell what went wrong.
+    return (
+      <div className="dk-present dk-present--empty">
+        <p>This deck has no slides to present.</p>
+        <button type="button" className="dk-present__chip" onClick={onExit}>
+          Exit (Esc)
+        </button>
+      </div>
+    );
+  }
+
+  const presenterProps = {
+    scene,
+    index,
+    step,
+    steps,
+    blacked,
+    resolveAssetUrl,
+    onAdvance: advance,
+    onJump: setIndexSynced,
+    onBlack: toggleBlack,
+    startedAt: startedAt.current,
+  };
+
+  if (presenterOnly) {
+    return <PresenterView {...presenterProps} detached onExit={onExit} />;
+  }
+
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "#000" }}
+      className="dk-present"
       // Which slide is on screen, readable from outside the React tree. The
       // acceptance harness drives present mode through real key events and had
       // no way to check where it had arrived: two ArrowRights were assumed to
@@ -377,21 +477,13 @@ export function PresentMode({
       // gate is actually about. Without it a harness can only guess which
       // boundary it is standing on.
       data-present-slide-transition={slide.transition?.type ?? "none"}
+      data-present-step={step}
+      data-present-steps={steps}
+      data-present-blacked={blacked ? "true" : "false"}
     >
       <div
         ref={containerRef}
-        className={idle ? "present-idle" : undefined}
-        style={{
-          position: "absolute",
-          inset: 0,
-          // The presenter panel takes the bottom half in-window; the audience
-          // half stays a plain scaled slide so what is projected never changes.
-          bottom: presenter ? "50%" : 0,
-          background: "#000",
-          display: "grid",
-          placeItems: "center",
-          overflow: "hidden",
-        }}
+        className={cx("dk-present__stage", presenter && "dk-present__stage--split", idle && "present-idle")}
         onClick={(event) => {
           // Click-to-advance, left third goes back — the convention every remote
           // and every presenter already expects.
@@ -399,7 +491,7 @@ export function PresentMode({
           advance(x < 0.33 ? -1 : 1);
         }}
       >
-        {scale > 0 ? (
+        {scale > 0 && transition ? (
           <SlideTransition
             // A slide's transition describes how the deck moves INTO it, so
             // re-keying on slideId replays it on every arrival (doc 02 §26.1).
@@ -416,138 +508,107 @@ export function PresentMode({
         ) : null}
 
         {/* Re-keyed on the slide so each arrival compiles and plays its own
-            timeline; the key is what makes leaving a slide tear its motion down. */}
-        <SlideMotion
-          // Distinct from the stage div's key: they are siblings, and React
-          // treats two siblings with the same key as one element.
-          key={`motion-${slide.slideId}`}
-          scene={slide}
-          rootSelector="[data-present-stage]"
-          reducedMotion={reducedMotion}
-          autoPlay={!enteredBackwards}
-          handle={motion}
-        />
+            timeline; the key is what makes leaving a slide tear its motion down.
 
-        {blacked ? (
-          <div
-            aria-label="Screen blacked out"
-            style={{ position: "absolute", inset: 0, background: "#000", zIndex: 20 }}
+            Mounted only once the stage exists (same condition as the stage
+            above). SlideMotion finds the elements it animates under
+            `[data-present-stage]` in its mount effect and does not look again;
+            mounted in the first render — before the container was measured and
+            the stage drawn — it found nothing, so the slide a talk *started* on
+            never played its entrances or its click reveals. On a slide whose
+            elements rest invisible and fade in, the room saw a blank slide. */}
+        {scale > 0 && transition ? (
+          <SlideMotion
+            // Distinct from the stage div's key: they are siblings, and React
+            // treats two siblings with the same key as one element.
+            key={`motion-${slide.slideId}`}
+            scene={slide}
+            rootSelector="[data-present-stage]"
+            reducedMotion={reducedMotion}
+            autoPlay={!enteredBackwards}
+            handle={motion}
           />
         ) : null}
 
+        {blacked ? <div className="dk-present__black" aria-label="Screen blacked out" /> : null}
+
         <div
-          style={{
-            position: "absolute",
-            bottom: 16,
-            left: 0,
-            right: 0,
-            display: "flex",
-            justifyContent: "center",
-            gap: 12,
-            alignItems: "center",
-            opacity: idle ? 0 : 1,
-            transition: "opacity 200ms",
-            pointerEvents: idle ? "none" : "auto",
-            fontSize: 13,
-            color: "rgba(255,255,255,0.65)",
-            flexWrap: "wrap",
-          }}
+          className={cx("dk-present__controls", idle && "dk-present__controls--idle")}
           onClick={(event) => event.stopPropagation()}
         >
-          <button onClick={() => go(-1)} disabled={index === 0} style={chipStyle}>
-            ←
-          </button>
-          <span style={{ minWidth: 64, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
-            {index + 1} / {slides.length}
-          </span>
-          <button onClick={() => go(1)} disabled={index === slides.length - 1} style={chipStyle}>
-            →
-          </button>
-          <button onClick={() => void toggleFullscreen()} style={chipStyle}>
-            Fullscreen (F)
-          </button>
-          <button onClick={() => setPresenter((v) => !v)} style={chipStyle}>
-            Presenter (P)
-          </button>
-          {channelName ? (
-            <button onClick={openPresenterWindow} style={chipStyle}>
-              Second screen
-            </button>
+          <div className="dk-present__cluster" role="toolbar" aria-label="Presentation controls">
+            <ControlButton icon="chevronLeft" label="Previous" onClick={() => advance(-1)} disabled={index === 0 && step === 0} />
+            <ControlButton icon="chevronRight" label="Next" onClick={() => advance(1)} disabled={index === slides.length - 1 && step >= steps} />
+            <span className="dk-present__counter" aria-live="polite">
+              {index + 1} / {slides.length}
+            </span>
+            <ControlButton icon="stop" label={blacked ? "Show slide (B)" : "Black screen (B)"} pressed={blacked} onClick={toggleBlack} />
+            <ControlButton icon="list" label="Notes (N)" pressed={showNotes} onClick={() => setShowNotes((v) => !v)} />
+            <ControlButton icon="present" label="Presenter (P)" pressed={presenter} onClick={() => setPresenter((v) => !v)} />
+            <ControlButton icon="fit" label="Fullscreen (F)" onClick={() => void toggleFullscreen()} />
+            {channelName ? (
+              // Worded, not an icon: it is the one control a presenter looks for
+              // by name when setting up, and the acceptance harness finds it by
+              // this text.
+              <button type="button" className="dk-present__chip" onClick={openPresenterWindow}>
+                Second screen
+              </button>
+            ) : null}
+            <ControlButton icon="close" label="Exit (Esc)" onClick={onExit} />
+          </div>
+
+          {steps > 0 ? (
+            <div className="dk-present__steps" aria-label={`Reveal ${step} of ${steps}`}>
+              {Array.from({ length: steps }, (_, i) => (
+                <span key={i} className={cx("dk-present__step", i < step && "dk-present__step--done")} />
+              ))}
+            </div>
           ) : null}
-          <button onClick={() => setShowNotes((v) => !v)} style={chipStyle}>
-            Notes (N)
-          </button>
-          <button onClick={onExit} style={chipStyle}>
-            Exit (Esc)
-          </button>
         </div>
 
-        {transition.degraded && !idle ? (
-          <div
-            style={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              fontSize: 12,
-              color: "rgba(255,255,255,0.5)",
-              background: "rgba(0,0,0,0.5)",
-              padding: "4px 10px",
-              borderRadius: 6,
-            }}
-          >
-            {transition.degraded}
-          </div>
-        ) : null}
+        {transition?.degraded && !idle ? <div className="dk-present__degraded">{transition.degraded}</div> : null}
 
         {showNotes && slide.speakerNotes ? (
-          <div
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              position: "absolute",
-              left: 24,
-              right: 24,
-              bottom: 64,
-              maxHeight: "28vh",
-              overflowY: "auto",
-              padding: "16px 20px",
-              background: "rgba(10,12,16,0.92)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              borderRadius: 12,
-              fontSize: 16,
-              lineHeight: 1.5,
-              color: "rgba(255,255,255,0.88)",
-            }}
-          >
-            <div style={{ fontSize: 11, letterSpacing: 1.5, opacity: 0.5, marginBottom: 8 }}>
-              SPEAKER NOTES
-            </div>
+          <div className="dk-present__notes" onClick={(event) => event.stopPropagation()}>
+            <div className="dk-present__notes-title">Speaker notes</div>
             {slide.speakerNotes}
           </div>
         ) : null}
       </div>
 
       {presenter ? (
-        <div style={{ position: "absolute", inset: "50% 0 0 0", borderTop: "1px solid #23262e" }}>
-          <PresenterView
-            scene={scene}
-            index={index}
-            resolveAssetUrl={resolveAssetUrl}
-            onGo={go}
-            onJump={setIndexSynced}
-            startedAt={startedAt.current}
-            onExit={onExit}
-          />
+        <div className="dk-present__panel">
+          <PresenterView {...presenterProps} onExit={onExit} />
         </div>
       ) : null}
     </div>
   );
 }
 
-const chipStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.10)",
-  border: "1px solid rgba(255,255,255,0.16)",
-  color: "inherit",
-  borderRadius: 8,
-  padding: "6px 12px",
-  fontSize: 13,
-};
+function ControlButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  pressed,
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="dk-present__control"
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name={icon} size={14} />
+    </button>
+  );
+}

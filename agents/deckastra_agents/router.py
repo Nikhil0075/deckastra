@@ -92,8 +92,84 @@ MODELS: dict[str, str] = {
 }
 
 
+#: The smallest output allowance a cloud request is given (see `complete`).
+#: The SDK refuses a non-streaming request whose `max_tokens` implies more than
+#: ten minutes of output (about 21,000 for these models), so this stays under it.
+CLOUD_MIN_OUTPUT_TOKENS = 16_000
+
+
 def api_key_available() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+
+
+#: JSON Schema keywords Anthropic's structured output rejects (a 400 for the
+#: whole request). Pydantic emits several of them from `Field(ge=, le=,
+#: min_length=, ...)`, and every cloud generation and AI edit failed on the
+#: first one it met — "For 'number' type, properties maximum, minimum are not
+#: supported" — on an installed app with a valid key. Nothing tested it: the
+#: suites run the stub client, which never sends a schema anywhere.
+_UNSUPPORTED_KEYWORDS = frozenset(
+    {
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "maxItems",
+        "uniqueItems",
+        "minProperties",
+        "maxProperties",
+    }
+)
+#: The string formats structured output accepts; any other is dropped.
+_SUPPORTED_FORMATS = frozenset(
+    {"date-time", "time", "date", "duration", "email", "hostname", "uri", "ipv4", "ipv6", "uuid"}
+)
+
+
+def api_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """The subset of a contract's JSON Schema the API will accept.
+
+    The schema is a hint that constrains sampling; **our Pydantic validation is
+    the authority** (`ask_model` validates every answer and asks for a repair),
+    so a bound removed here is still enforced — it is just enforced by us. What
+    is removed: numeric and string bounds, `pattern`, array bounds other than a
+    `minItems` of 0 or 1, unknown string formats. Every object is closed with
+    `additionalProperties: false`, which structured output requires.
+
+    A copy: the caller's schema (often cached) is never modified.
+    """
+
+    def clean(node: Any) -> Any:
+        if isinstance(node, list):
+            return [clean(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        out: dict[str, Any] = {}
+        for key, value in node.items():
+            if key in _UNSUPPORTED_KEYWORDS:
+                continue
+            if key == "minItems" and not (isinstance(value, int) and value in (0, 1)):
+                continue
+            if key == "format" and value not in _SUPPORTED_FORMATS:
+                continue
+            if key in ("properties", "$defs", "definitions") and isinstance(value, dict):
+                out[key] = {name: clean(child) for name, child in value.items()}
+                continue
+            out[key] = clean(value)
+        if out.get("type") == "object" or "properties" in out:
+            if out.get("additionalProperties") not in (None, False):
+                # A map-valued field (`dict[str, X]`) cannot be expressed; the
+                # model returns an empty object and our validation decides.
+                out["additionalProperties"] = False
+            elif "properties" in out:
+                out["additionalProperties"] = False
+        return out
+
+    return clean(schema)
 
 
 class AnthropicClient:
@@ -121,17 +197,23 @@ class AnthropicClient:
 
         kwargs: dict[str, Any] = {
             "model": model,
-            "max_tokens": request.max_tokens,
+            # Thinking is charged against `max_tokens`, so a stage's own figure
+            # (2,000 for the orchestrator, 4,000 for a 20-slide layout) can be
+            # spent before any JSON is written. A floor keeps room for the
+            # answer; it is a ceiling, not a charge, and the run's token budget
+            # is still what bounds cost. Below the SDK's non-streaming limit.
+            "max_tokens": max(request.max_tokens, CLOUD_MIN_OUTPUT_TOKENS),
             "system": system,
             "messages": request.messages,
-            # Adaptive thinking: the agents' work is exactly the kind that
-            # benefits, and the budget ceiling is what bounds the cost rather than
-            # a per-request token guess.
-            "thinking": {"type": "adaptive"},
         }
+        if not model.startswith("claude-haiku-4-5"):
+            # Adaptive thinking: the agents' work is exactly the kind that
+            # benefits, and the budget ceiling is what bounds the cost rather
+            # than a per-request token guess. Haiku 4.5 predates it.
+            kwargs["thinking"] = {"type": "adaptive"}
         if request.response_schema is not None:
             kwargs["output_config"] = {
-                "format": {"type": "json_schema", "schema": request.response_schema}
+                "format": {"type": "json_schema", "schema": api_schema(request.response_schema)}
             }
 
         last_error: Exception | None = None
@@ -150,6 +232,14 @@ class AnthropicClient:
                     last_error = exc
                     time.sleep(min(2**attempt, 8))
                     continue
+                # A rejected key is not a failure of the request, and retrying
+                # it will never help. Said plainly, and as "not available" so the
+                # app offers the place to fix it (item 23).
+                if exc.status_code in (401, 403):
+                    raise ModelUnavailable(
+                        "Anthropic refused this API key. Check the key under Intelligence, "
+                        f"or use an AI agent instead. ({exc.status_code})"
+                    ) from exc
                 raise ModelError(f"Claude API error {exc.status_code}: {exc.message}") from exc
 
             budget.spend_tokens(response.usage.input_tokens, response.usage.output_tokens)
@@ -164,6 +254,15 @@ class AnthropicClient:
                     output_tokens=response.usage.output_tokens,
                     model=model,
                     refusal=str(category),
+                )
+
+            # Cut off: whatever text there is, is half an answer. Said as what
+            # it is, rather than surfacing as a JSON syntax error that a repair
+            # request at the same limit would only reproduce.
+            if response.stop_reason == "max_tokens":
+                raise ModelError(
+                    f"The answer was cut off at the {kwargs['max_tokens']:,}-token limit "
+                    "before it was complete. Try fewer slides or a shorter brief."
                 )
 
             text = next((block.text for block in response.content if block.type == "text"), "")
@@ -233,10 +332,71 @@ INTELLIGENCE_CLOUD = "cloud"
 PROVIDER_LOCAL = "local"
 PROVIDER_CLOUD = "cloud"
 PROVIDER_STUB = "stub"
+#: Nothing is set up to generate. Only a distributed build answers this; see
+#: `distribution()`.
+PROVIDER_NONE = "none"
+
+#: Set by the desktop app when it is the installed product rather than a
+#: checkout (`sidecar.ts`, from `app.isPackaged`).
+DISTRIBUTION_ENV = "DECKASTRA_DISTRIBUTION"
+
+NOT_SET_UP = (
+    "Generation is not set up on this install. Add a cloud API key under "
+    "Intelligence, or connect an AI agent (Claude Code, Codex) to write decks."
+)
+LOCAL_NOT_INCLUDED = (
+    "Local models are not included in this release. Use a cloud API key, or "
+    "connect an AI agent."
+)
+
+
+def distribution() -> bool:
+    """Whether this is an installed product rather than a checkout, a test or CI.
+
+    The difference that matters (final package review, item 20): unset means the
+    stub here — which keeps the vertical slice runnable with no key and no money
+    — and the stub writes a template deck that looks like a model wrote it
+    badly. On an installed product that is a deck someone believes was
+    generated. So an installed product answers "not set up" instead, and also
+    will not treat a key it merely inherited from the environment as consent to
+    send anything to the cloud: that takes choosing cloud explicitly.
+    """
+    return os.environ.get(DISTRIBUTION_ENV, "").strip() == "1"
+
+
+#: Every value `DECKASTRA_INTELLIGENCE` may hold, after trimming and
+#: lower-casing. Empty is "unset": the web app and CI.
+INTELLIGENCE_MODES = frozenset({"", INTELLIGENCE_LOCAL, INTELLIGENCE_CLOUD})
+
+
+class IntelligenceMisconfigured(ModelUnavailable):
+    """`DECKASTRA_INTELLIGENCE` holds a value this build does not know.
+
+    A subclass of `ModelUnavailable` so every route that already answers "not
+    available" with a 503 and the message answers this one the same way: nothing
+    failed and nothing is upstream, the install was told something it cannot do.
+    """
 
 
 def intelligence() -> str:
-    return os.environ.get(INTELLIGENCE_ENV, "").strip().lower()
+    """The configured mode, validated.
+
+    An unknown value is refused rather than read as unset (final package review,
+    item 04). It used to fall through to the unset case, which picks the cloud
+    whenever a key happens to be present — so `locla`, written by someone who
+    meant *nothing leaves this machine*, selected the cloud provider. The probe
+    established that selection, not an observed request; the next generation is
+    what would have sent anything. A typo in the one setting that decides where
+    content goes must stop, not guess.
+    """
+    raw = os.environ.get(INTELLIGENCE_ENV, "")
+    choice = raw.strip().lower()
+    if choice not in INTELLIGENCE_MODES:
+        raise IntelligenceMisconfigured(
+            f"{INTELLIGENCE_ENV} is set to {raw!r}, which this build does not recognise. "
+            f"Use 'local' or 'cloud', or leave it unset. Nothing was sent anywhere."
+        )
+    return choice
 
 
 def selected_provider() -> str:
@@ -252,10 +412,40 @@ def selected_provider() -> str:
     """
     choice = intelligence()
     if choice == INTELLIGENCE_LOCAL:
+        if distribution():
+            raise ModelUnavailable(LOCAL_NOT_INCLUDED)
         return PROVIDER_LOCAL
     if choice == INTELLIGENCE_CLOUD:
         return PROVIDER_CLOUD
+    if distribution():
+        return PROVIDER_NONE
     return PROVIDER_CLOUD if api_key_available() else PROVIDER_STUB
+
+
+def generation_status() -> dict[str, object]:
+    """What generation will do here, for a person to read before they start.
+
+    `provider` is `cloud`, `local`, `stub`, `none` (nothing set up, installed
+    product only), `unavailable` (chosen but not in this release) or
+    `misconfigured` (a mode this build does not know). `available` says whether
+    pressing Generate can work; `reason` says why not, in words someone can act
+    on (final package review, item 19). Builds nothing and sends nothing.
+    """
+    try:
+        provider = selected_provider()
+    except IntelligenceMisconfigured as exc:
+        return {"provider": "misconfigured", "available": False, "reason": str(exc)}
+    except ModelUnavailable as exc:
+        return {"provider": "unavailable", "available": False, "reason": str(exc)}
+    if provider == PROVIDER_NONE:
+        return {"provider": PROVIDER_NONE, "available": False, "reason": NOT_SET_UP}
+    if provider == PROVIDER_CLOUD and not api_key_available():
+        return {
+            "provider": PROVIDER_CLOUD,
+            "available": False,
+            "reason": "Cloud generation is chosen and no API key is set.",
+        }
+    return {"provider": provider, "available": True, "reason": None}
 
 
 def default_client(fallback: "Callable[[], ModelClient] | None" = None) -> ModelClient:
@@ -277,6 +467,12 @@ def default_client(fallback: "Callable[[], ModelClient] | None" = None) -> Model
     building one means registering answers against the request.
     """
     choice = intelligence()
+
+    # An installed product with nothing chosen refuses rather than stubbing
+    # (item 20), and does not ship local models (the 0.9 release scope).
+    provider = selected_provider()
+    if provider == PROVIDER_NONE:
+        raise ModelUnavailable(NOT_SET_UP)
 
     if choice == INTELLIGENCE_LOCAL:
         # Imported here so nothing on the cloud path pays for it, and — more to

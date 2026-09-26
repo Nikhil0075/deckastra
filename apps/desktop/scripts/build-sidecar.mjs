@@ -1,7 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { dataEntries, missingData } from "./sidecar-data.mjs";
 
 /**
  * Package the workspace service as a self-contained binary (milestone D1.4).
@@ -40,15 +43,19 @@ const out = join(desktop, "dist", "sidecar");
 const work = join(desktop, "dist", ".pyinstaller");
 
 const sep = process.platform === "win32" ? ";" : ":";
-const data = [
-  // Migrations and their config: read by path, never imported.
-  [join(root, "infrastructure", "database", "migrations"), "infrastructure/database/migrations"],
-  [join(root, "infrastructure", "database", "alembic.ini"), "infrastructure/database"],
-  // The generated schema artifact the API validates every document against.
-  [join(root, "packages", "presentation-schema", "generated"), "packages/presentation-schema/generated"],
-  // Prompts the agent system loads as files.
-  [join(root, "agents", "deckastra_agents", "prompts"), "deckastra_agents/prompts"],
-];
+const data = dataEntries(root);
+
+// Every one of them is required: a service binary built without one fails on a
+// user's machine rather than here (item 08, `sidecar-data.mjs`).
+const missing = missingData(data);
+if (missing.length > 0) {
+  console.error("The workspace service cannot be packaged without these:");
+  for (const entry of missing) console.error(`  - ${entry}`);
+  console.error(
+    "Each is read by path at runtime. Run `npm run schema:emit` if the generated schema is what is missing.",
+  );
+  process.exit(1);
+}
 
 const hidden = [
   "uvicorn.logging",
@@ -93,6 +100,70 @@ const excluded = [
 
 rmSync(out, { recursive: true, force: true });
 
+/**
+ * The environment the service is frozen from (final package review, item 09).
+ *
+ * A clean virtual environment installed from `sidecar-requirements.lock` with
+ * `--require-hashes`, so the binary is built from bytes that are written down
+ * rather than from whatever a developer's global site-packages happens to hold.
+ * Two builders of the same commit then install the same dependencies, and a
+ * package that was tampered with in transit fails the install rather than
+ * shipping.
+ *
+ * Reused between builds while the lock is unchanged — a stamp beside it records
+ * which lock it was made from, because a venv built from an older lock is
+ * exactly the silent mismatch this exists to prevent.
+ *
+ * `DECKASTRA_SIDECAR_PYTHON=system` skips it for a quick development build. The
+ * artifact is then not reproducible, and the script says so rather than leaving
+ * that to be assumed.
+ */
+function frozenPython() {
+  if (process.env.DECKASTRA_SIDECAR_PYTHON === "system") {
+    console.warn(
+      "building from the system Python: this artifact is not reproducible and must not be released " +
+        "(unset DECKASTRA_SIDECAR_PYTHON to build from the lock)",
+    );
+    return process.env.DECKASTRA_PYTHON || "python";
+  }
+
+  const lock = join(desktop, "sidecar-requirements.lock");
+  if (!existsSync(lock)) {
+    console.error(`No dependency lock at ${lock}. Compile it first:`);
+    console.error("  python -m piptools compile --generate-hashes --strip-extras --allow-unsafe \\");
+    console.error("    --output-file apps/desktop/sidecar-requirements.lock apps/desktop/sidecar-requirements.in");
+    process.exit(1);
+  }
+
+  const venv = join(desktop, "dist", ".venv");
+  const python = join(venv, process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
+  const stamp = join(venv, "lock.sha256");
+  const wanted = createHash("sha256").update(readFileSync(lock)).digest("hex");
+  const current = existsSync(stamp) ? readFileSync(stamp, "utf8").trim() : null;
+
+  if (current !== wanted || !existsSync(python)) {
+    console.log("installing the service's dependencies from the lock…");
+    rmSync(venv, { recursive: true, force: true });
+    run(process.env.DECKASTRA_PYTHON || "python", ["-m", "venv", venv]);
+    // `--require-hashes` is the point: pip refuses anything whose bytes are not
+    // the ones the lock names.
+    run(python, ["-m", "pip", "install", "--quiet", "--upgrade", "pip"]);
+    run(python, ["-m", "pip", "install", "--quiet", "--require-hashes", "--no-deps", "-r", lock]);
+    writeFileSync(stamp, `${wanted}\n`, "utf8");
+  }
+  return python;
+}
+
+function run(file, args) {
+  const done = spawnSync(file, args, { cwd: root, stdio: "inherit" });
+  if (done.status !== 0) {
+    console.error(`${file} ${args.slice(0, 3).join(" ")} … failed (${done.status ?? done.error?.message})`);
+    process.exit(1);
+  }
+}
+
+const python = frozenPython();
+
 const args = [
   "-m", "PyInstaller",
   // A launcher that imports the package, not a module run as `__main__`:
@@ -116,13 +187,13 @@ const args = [
   "--paths", api,
   "--paths", join(root, "agents"),
   "--paths", join(root, "integrations"),
-  ...data.flatMap(([from, to]) => (existsSync(from) ? ["--add-data", `${from}${sep}${to}`] : [])),
+  ...data.flatMap(([from, to]) => ["--add-data", `${from}${sep}${to}`]),
   ...hidden.flatMap((name) => ["--hidden-import", name]),
   ...excluded.flatMap((name) => ["--exclude-module", name]),
 ];
 
 console.log("building the workspace service…");
-const finished = spawnSync(process.env.DECKASTRA_PYTHON || "python", args, {
+const finished = spawnSync(python, args, {
   cwd: root,
   stdio: "inherit",
 });

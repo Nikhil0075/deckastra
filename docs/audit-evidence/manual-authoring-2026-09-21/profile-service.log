@@ -1,0 +1,183 @@
+2026-09-20T19:13:49.410Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+INFO:alembic.runtime.plugins:setup plugin alembic.ext.checkconstraint_byname
+2026-09-20T19:15:20.661Z INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 5f70aef2912e, initial schema
+INFO  [alembic.runtime.migration] Running upgrade 5f70aef2912e -> fcc98f773800, agent runs, memory and proposal expiry
+INFO  [alembic.runtime.migration] Running upgrade fcc98f773800 -> 82df959ba119, github installations, repositories and chunks
+INFO  [alembic.runtime.migration] Running upgrade 82df959ba119 -> e6f9e3ffab16, export jobs
+INFO  [alembic.runtime.migration] Running upgrade e6f9e3ffab16 -> 76226b0ee21d, sharing, quotas, assets and themes
+INFO  [alembic.runtime.migration] Running upgrade 76226b0ee21d -> a8c6f0d91e42, external authentication identities
+INFO  [alembic.runtime.migration] Running upgrade a8c6f0d91e42 -> d49ad72c54f1, durable export jobs
+2026-09-20T19:21:52.825Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+2026-09-20T19:21:53.239Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+INFO:alembic.runtime.plugins:setup plugin alembic.ext.checkconstraint_byname
+2026-09-20T19:21:57.066Z INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+2026-09-20T19:21:57.149Z INFO  [alembic.runtime.migration] Running upgrade a8c6f0d91e42 -> d49ad72c54f1, durable export jobs
+2026-09-20T19:21:57.466Z Traceback (most recent call last):
+2026-09-20T19:21:57.536Z   File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table _alembic_tmp_export_jobs already exists
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Presentation_app\apps\api\deckastra_api\local_server.py", line 339, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "D:\Presentation_app\apps\api\deckastra_api\local_server.py", line 305, in main
+    migrate(arguments.data_dir)
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\local_server.py", line 156, in migrate
+    command.upgrade(_alembic_config(), "head")
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\command.py", line 487, in upgrade
+    script.run_env()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\script\base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\util\pyfiles.py", line 114, in load_python_file
+    module = load_module_py(module_id, path)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\util\pyfiles.py", line 132, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "D:\Presentation_app\infrastructure\database\migrations\env.py", line 67, in <module>
+    run_migrations_online()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Presentation_app\infrastructure\database\migrations\env.py", line 61, in run_migrations_online
+    context.run_migrations()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 8, in run_migrations
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\runtime\environment.py", line 970, in run_migrations
+    self.get_context().run_migrations(**kw)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\runtime\migration.py", line 621, in run_migrations
+    step.migration_fn(**kw)
+    ~~~~~~~~~~~~~~~~~^^^^^^
+  File "D:\Presentation_app\infrastructure\database\migrations\versions\20260908_0515_durable_export_jobs.py", line 22, in upgrade
+    with op.batch_alter_table("export_jobs") as batch:
+         ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\contextlib.py", line 148, in __exit__
+    next(self.gen)
+    ~~~~^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\operations\base.py", line 404, in batch_alter_table
+    impl.flush()
+    ~~~~~~~~~~^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\operations\batch.py", line 160, in flush
+    batch_impl._create(self.impl)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\operations\batch.py", line 436, in _create
+    op_impl.create_table(self.new_table)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\ddl\impl.py", line 434, in create_table
+    self._exec(schema.CreateTable(table, **kw))
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\alembic\ddl\impl.py", line 252, in _exec
+    return conn.execute(construct, params)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\sql\ddl.py", line 188, in _execute_on_connection
+    return connection._execute_ddl(
+           ~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1532, in _execute_ddl
+    ret = self._execute_context(
+        dialect,
+    ...<4 lines>...
+        compiled,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table _alembic_tmp_export_jobs already exists
+[SQL: 
+CREATE TABLE _alembic_tmp_export_jobs (
+	id VARCHAR(64) NOT NULL, 
+	presentation_id VARCHAR(64) NOT NULL, 
+	version_id VARCHAR(64) NOT NULL, 
+	created_by VARCHAR(64) NOT NULL, 
+	kind VARCHAR(8) NOT NULL, 
+	status VARCHAR(16) NOT NULL, 
+	options_json JSON, 
+	progress FLOAT NOT NULL, 
+	stage VARCHAR(24), 
+	message TEXT, 
+	artifact_path TEXT, 
+	filename VARCHAR(255), 
+	content_type VARCHAR(128), 
+	bytes INTEGER NOT NULL, 
+	report_json JSON, 
+	error TEXT, 
+	finished_at DATETIME, 
+	created_at DATETIME DEFAULT (now()) NOT NULL, 
+	idempotency_key VARCHAR(128), 
+	attempts INTEGER DEFAULT '0' NOT NULL, 
+	max_attempts INTEGER DEFAULT '3' NOT NULL, 
+	cancel_requested BOOLEAN DEFAULT 0 NOT NULL, 
+	lease_owner VARCHAR(128), 
+	lease_expires_at DATETIME, 
+	next_attempt_at DATETIME, 
+	started_at DATETIME, 
+	PRIMARY KEY (id), 
+	CONSTRAINT ck_export_kind CHECK (kind IN ('pdf', 'pptx')), 
+	CONSTRAINT ck_export_status CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled')), 
+	CONSTRAINT uq_export_idempotency UNIQUE (presentation_id, created_by, idempotency_key), 
+	FOREIGN KEY(presentation_id) REFERENCES presentations (id) ON DELETE CASCADE
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

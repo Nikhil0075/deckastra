@@ -179,7 +179,10 @@ export function runRenderHost(): void {
         const bytes = await window.webContents.printToPDF({
           printBackground: request.params.printBackground,
           pageSize: { width: request.params.widthIn, height: request.params.heightIn },
-          margins: { marginType: "none" },
+          // Electron 44 dropped `marginType`; explicit zeros are what "none"
+          // meant, and this path has always printed edge to edge — the slide is
+          // the page.
+          margins: { top: 0, bottom: 0, left: 0, right: 0 },
           preferCSSPageSize: request.params.preferCSSPageSize,
         });
         return bytes.toString("base64");

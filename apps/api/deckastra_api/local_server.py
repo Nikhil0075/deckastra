@@ -21,8 +21,11 @@ Three properties this file exists to guarantee:
   else the user is running and, worse, makes the service predictable to anything
   probing localhost.
 - **Everything is derived from one directory.** The database, its checkpoints and
-  the asset bytes all live under `--data-dir`, so a backup is a directory copy and
-  so is a restore.
+  the asset bytes all live under `--data-dir`. That says where the bytes are and
+  **not** that copying them while the app runs is a backup: a live SQLite file
+  copied by hand is whatever was flushed, and three separate walks give three
+  different moments. `backup.py` is the supported answer, and `--restore-from`
+  below is its other half.
 """
 
 from __future__ import annotations
@@ -31,7 +34,9 @@ import argparse
 import json
 import logging
 import os
+import shutil
 import socket
+import sqlite3
 import sys
 import threading
 import time
@@ -73,14 +78,11 @@ def configure_environment(data_dir: Path) -> dict[str, str]:
     return settings
 
 
-def migrate(data_dir: Path) -> None:
-    """Bring the database up to head.
+class SchemaFromTheFuture(RuntimeError):
+    """This data was written by a build that knows migrations this one does not."""
 
-    On launch, every launch. A desktop app has no operator to run migrations, and
-    an install that opens against a stale schema fails in whichever route touches
-    the new column first — which is the least diagnosable place for it to happen.
-    """
-    from alembic import command
+
+def _alembic_config():
     from alembic.config import Config
 
     from .paths import resource_root
@@ -88,7 +90,134 @@ def migrate(data_dir: Path) -> None:
     root = resource_root()
     config = Config(str(root / "infrastructure" / "database" / "alembic.ini"))
     config.set_main_option("script_location", str(root / "infrastructure" / "database" / "migrations"))
-    command.upgrade(config, "head")
+    return config
+
+
+def _recorded_revision(database: Path) -> str | None:
+    """What revision the database says it is at, without opening the app."""
+    import sqlite3
+
+    if not database.is_file():
+        return None
+    connection = sqlite3.connect(str(database))
+    try:
+        row = connection.execute("SELECT version_num FROM alembic_version LIMIT 1").fetchone()
+    except sqlite3.DatabaseError:
+        # No `alembic_version` table: either a fresh file or something that is
+        # not one of ours. `upgrade` decides, and says so if it cannot.
+        return None
+    finally:
+        connection.close()
+    return str(row[0]) if row else None
+
+
+def check_schema_supported(data_dir: Path) -> None:
+    """Refuse data written by a newer build, rather than migrating it downward
+    (final package review, item 15).
+
+    An older binary meeting a newer database is a real case for a product with
+    manual upgrades: someone reinstalls the version they still have the
+    installer for. Alembic's `upgrade head` handles it by accident — it cannot
+    find the recorded revision and raises — but the message is about revision
+    identifiers, and the person needs to be told which of the two things to do:
+    install the newer version again, or restore a backup.
+
+    It is a **refusal, not a repair**. There is no downgrade path here: the
+    older build cannot know what the newer one added, and running its
+    migrations against this file would be guessing with someone's decks.
+    """
+    from alembic.script import ScriptDirectory
+
+    recorded = _recorded_revision(data_dir / "deckastra.db")
+    if recorded is None:
+        return
+    known = {revision.revision for revision in ScriptDirectory.from_config(_alembic_config()).walk_revisions()}
+    if recorded not in known:
+        raise SchemaFromTheFuture(
+            f"This workspace was written by a newer version of Deckastra (database revision {recorded}, "
+            "which this version does not know). Install that version again, or restore a backup taken "
+            "with this one. Your data has not been changed."
+        )
+
+
+def migrate(data_dir: Path) -> None:
+    """Bring the database up to head.
+
+    On launch, every launch. A desktop app has no operator to run migrations, and
+    an install that opens against a stale schema fails in whichever route touches
+    the new column first — which is the least diagnosable place for it to happen.
+
+    A failure here is deliberately fatal, and that is the property item 15 names:
+    a half-migrated database must not go on to `seed()`, because seeding an
+    install whose tables are in an unknown state is how a partial upgrade comes
+    to open as an empty workspace with someone's decks still on the disk.
+    """
+    from alembic import command
+    from alembic.script import ScriptDirectory
+
+    database = data_dir / "deckastra.db"
+    staging = data_dir / "deckastra.db.migrating"
+    previous = data_dir / "deckastra.db.pre-migration"
+    check_schema_supported(data_dir)
+
+    # A killed SQLite batch migration can leave `_alembic_tmp_*` tables behind.
+    # Running against a same-directory staging copy makes the whole upgrade one
+    # atomic file replacement: a failure damages only the disposable stage, and
+    # the next launch starts from exactly the same profile bytes.
+    staging.unlink(missing_ok=True)
+    if database.is_file():
+        source = sqlite3.connect(str(database))
+        target = sqlite3.connect(str(staging))
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+            source.close()
+    else:
+        sqlite3.connect(str(staging)).close()
+
+    original_url = os.environ.get("DATABASE_URL")
+    stage_url = f"sqlite:///{staging.as_posix()}"
+    os.environ["DATABASE_URL"] = stage_url
+    config = _alembic_config()
+    config.set_main_option("sqlalchemy.url", stage_url)
+    try:
+        command.upgrade(config, "head")
+
+        connection = sqlite3.connect(str(staging))
+        try:
+            integrity = connection.execute("PRAGMA integrity_check").fetchone()
+            revision = connection.execute("SELECT version_num FROM alembic_version LIMIT 1").fetchone()
+        finally:
+            connection.close()
+        head = ScriptDirectory.from_config(config).get_current_head()
+        if integrity != ("ok",) or revision != (head,):
+            raise RuntimeError(
+                "The migrated workspace did not pass integrity and revision checks; the original was not changed."
+            )
+
+        # Flush the completed database before making it the profile's primary
+        # file. Keep one pre-migration copy for recovery and diagnostics.
+        # Windows rejects fsync on a read-only CRT descriptor; rb+ opens the
+        # same completed bytes without changing them and gives fsync a valid
+        # descriptor on every supported platform.
+        with staging.open("rb+") as completed:
+            completed.flush()
+            os.fsync(completed.fileno())
+        if database.is_file():
+            shutil.copy2(database, previous)
+        os.replace(staging, database)
+    finally:
+        if original_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = original_url
+        staging.unlink(missing_ok=True)
+
+
+def startup_progress(stage: str, message: str) -> None:
+    """Report startup work without pretending the HTTP service is ready."""
+    print(json.dumps({"progress": stage, "message": message}), flush=True)
 
 
 def start_export_worker() -> threading.Thread:
@@ -153,13 +282,81 @@ def _listening_socket(port: int) -> socket.socket:
     return server
 
 
+def restore_offline(source: Path, data_dir: Path) -> int:
+    """Put a backup back, with the service stopped (item 14).
+
+    A one-shot rather than a route, and the reason is not squeamishness: the
+    database a restore replaces is the one the running service holds open. The
+    app stops the service, runs this, and starts it again — which is also why
+    this prints the same single-JSON-line contract the ready announcement uses,
+    so the supervisor parses one thing rather than two.
+
+    Nothing is replaced until `backup.verify` has passed, and what is replaced is
+    moved aside rather than deleted. A restore happens when something has
+    already gone wrong, which is the worst moment to make the previous state
+    unrecoverable.
+    """
+    from . import backup
+
+    configure_environment(data_dir)
+    try:
+        result = backup.restore(source, data_dir)
+    except backup.BackupError as error:
+        print(json.dumps({"restored": False, "error": str(error)}), flush=True)
+        return 1
+
+    # Migrate afterwards, not before: a backup from an older build carries an
+    # older schema, and bringing it forward is exactly what opening it means.
+    # Left to the next launch it would still happen — but then a failure would
+    # arrive as a service that will not start, rather than as this restore
+    # saying so while the replaced copy is still sitting beside it.
+    try:
+        migrate(data_dir)
+    except Exception as error:  # noqa: BLE001 - reported, never a traceback on stdout
+        print(
+            json.dumps(
+                {
+                    "restored": True,
+                    "migrated": False,
+                    "error": f"The data was restored but could not be brought up to date: {error}",
+                    "replaced": result["replaced"],
+                }
+            ),
+            flush=True,
+        )
+        return 1
+
+    print(
+        json.dumps(
+            {
+                "restored": True,
+                "migrated": True,
+                "replaced": result["replaced"],
+                "counts": result["manifest"].get("counts", {}),
+                "created_at": result["manifest"].get("created_at"),
+                "journals": result["journals"],
+            }
+        ),
+        flush=True,
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Deckastra workspace service locally.")
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--port", type=int, default=0, help="0 asks the operating system.")
+    parser.add_argument(
+        "--restore-from",
+        type=Path,
+        help="Put this backup back and exit, instead of serving. The service must not be running.",
+    )
     arguments = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+
+    if arguments.restore_from is not None:
+        return restore_offline(arguments.restore_from, arguments.data_dir)
 
     settings = configure_environment(arguments.data_dir)
 
@@ -169,8 +366,11 @@ def main(argv: list[str] | None = None) -> int:
     # 401 on every request with no explanation.
     local_mode.launch_secret()
 
+    startup_progress("migration", "Checking and upgrading the local workspace")
     migrate(arguments.data_dir)
+    startup_progress("seed", "Preparing the local account")
     seed(arguments.data_dir)
+    startup_progress("service", "Starting the workspace service")
     start_export_worker()
 
     # Imported before announcing, not after. A failure in here is a real
@@ -183,8 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     server = _listening_socket(arguments.port)
     port = int(server.getsockname()[1])
 
-    # stdout carries exactly one line, and the supervisor stops reading after it.
-    # By now the socket is listening, so "ready" means connectable.
+    # Startup progress and the final ready record share a line-delimited JSON
+    # protocol. By now the socket is listening, so "ready" means connectable.
     print(
         json.dumps(
             {

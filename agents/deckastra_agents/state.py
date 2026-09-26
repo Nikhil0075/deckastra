@@ -125,6 +125,9 @@ class PresentationAgentState(TypedDict, total=False):
 
     #: The contextual-edit path's output. Same reason as `orchestrator_plan`.
     edit_plan: dict[str, Any]
+    #: The built-in agent's written change (`nodes/author.py`): operations, a summary
+    #: for the person, or a refusal.
+    author_plan: dict[str, Any]
     #: Critic issues the run could not resolve, travelling with the proposal so
     #: the editor can show them against the slides they belong to.
     unresolved_issues: list[dict[str, Any]]

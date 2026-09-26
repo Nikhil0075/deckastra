@@ -1,0 +1,33 @@
+......................................................s................. [ 10%]
+............ssss...............................s........................ [ 21%]
+..................................................................s..... [ 31%]
+........................................................................ [ 42%]
+..........ssssss......................................sssss............. [ 52%]
+..................................................................ss.... [ 63%]
+.................................................s.s.................... [ 73%]
+........................................................................ [ 84%]
+........................................................................ [ 95%]
+..................................                                       [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] apps\api\tests\test_asset_concurrency.py:17: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_checkpoint.py:161: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_checkpoint.py:183: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_checkpoint.py:206: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_checkpoint.py:226: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_export_concurrency.py:18: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_launch.py:632: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:70: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:81: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:91: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:99: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:118: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_object_storage.py:126: Start the object store to run this: docker compose -f infrastructure/docker/docker-compose.yml up -d minio
+SKIPPED [1] apps\api\tests\test_postgres.py:105: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_postgres.py:117: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_postgres.py:130: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_postgres.py:143: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [1] apps\api\tests\test_postgres.py:198: Set POSTGRES_TEST_URL to a reachable PostgreSQL server to run this.
+SKIPPED [2] apps\api\tests\test_store_concurrency.py:19: POSTGRES_TEST_URL is not set
+SKIPPED [1] apps\api\tests\test_theme_concurrency.py:33: POSTGRES_TEST_URL is not set
+SKIPPED [1] apps\api\tests\test_theme_concurrency.py:47: POSTGRES_TEST_URL is not set
+660 passed, 22 skipped in 530.87s (0:08:50)

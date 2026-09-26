@@ -1,0 +1,37 @@
+{
+  "step": "slides",
+  "startedAt": "2026-09-19T13:27:10.718Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5453,
+  "console": [],
+  "cspViolations": [],
+  "log": [
+    "start 4",
+    "duplicated",
+    "moved",
+    "notes",
+    "restored"
+  ],
+  "original": 4,
+  "afterDuplicate": 6,
+  "focusedAfterMove": true,
+  "storedNotes": "Open with the cost of an unobserved migration.",
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 379,
+    "byTypeMb": {
+      "Browser": 106.9,
+      "GPU": 138,
+      "Utility": 47.1,
+      "Tab": 87
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T13:27:22.420Z"
+}

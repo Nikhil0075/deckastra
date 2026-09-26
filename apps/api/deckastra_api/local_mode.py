@@ -82,7 +82,7 @@ def launch_secret() -> str:
 #: What a credential may do. Coarse on purpose: a capability nobody can explain
 #: in a sentence is one nobody can decide about, and this list is read by a person
 #: deciding what to hand an agent.
-SCOPES = ("read", "write", "export", "approve", "share", "administer")
+SCOPES = ("read", "write", "export", "approve", "share", "manage", "administer")
 
 #: The app's own secret carries everything. A *grant* carries a subset.
 FULL_SCOPES = frozenset(SCOPES)
@@ -212,5 +212,10 @@ def bootstrap(session: Session) -> tuple[User, Workspace, Project]:
     user, workspace, project = provision_personal_account(
         session, email=LOCAL_EMAIL, name="You"
     )
+    # Installs seeded before `personal_workspace_name` carry the old generated
+    # name. Repaired only when it is exactly that string, so a name someone
+    # chose is never touched.
+    if workspace.name == "You's workspace":
+        workspace.name = "Your workspace"
     quotas.ensure(session, workspace.id, plan=LOCAL_PLAN)
     return user, workspace, project

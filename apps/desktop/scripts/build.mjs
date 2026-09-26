@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { recordBundledPackages } from "./bundled-packages.mjs";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import { build as vite } from "vite";
@@ -47,21 +48,23 @@ const shared = {
   logLevel: "info",
 };
 
-await esbuild({
+const main = await esbuild({
   ...shared,
   entryPoints: [join(root, "src/main/index.ts")],
   outfile: join(out, "main/index.js"),
   format: "esm",
+  metafile: true,
   // The fixture is inlined at build time rather than read from disk at runtime:
   // a path into `node_modules` does not survive packaging.
   loader: { ".json": "json" },
 });
 
-await esbuild({
+const preload = await esbuild({
   ...shared,
   entryPoints: [join(root, "src/preload/index.ts")],
   outfile: join(out, "main/preload.cjs"),
   format: "cjs",
+  metafile: true,
 });
 
 const worker = await esbuild({
@@ -141,7 +144,8 @@ for (const [label, built] of [
 // The DOM measurer, as a script the exporter injects into its render page.
 // Built here because a packaged app has neither the TypeScript source nor
 // esbuild; `DECKASTRA_MEASURER_JS` points the exporter at the result.
-await esbuild({
+const measurer = await esbuild({
+  metafile: true,
   entryPoints: [join(root, "..", "worker", "src", "measurement-browser.ts")],
   outfile: join(out, "worker/measurement-browser.js"),
   bundle: true,
@@ -152,6 +156,17 @@ await esbuild({
   logLevel: "info",
 });
 
-await vite({ root, configFile: join(root, "vite.config.ts") });
+const renderer = await vite({ root, configFile: join(root, "vite.config.ts") });
+
+// Every third-party package that is actually inside a bundle, read from the
+// bundlers' own records — the list the SBOM and the notices are made from, so
+// neither describes what was merely installed (register item 33).
+const bundled = recordBundledPackages({
+  esbuild: { main, preload, exporter: worker, mcp, measurer },
+  vite: renderer,
+  cwd: process.cwd(),
+  out: join(out, "bundled-packages.json"),
+});
+console.log(`desktop: ${bundled.length} third-party packages bundled`);
 
 console.log("desktop: main, preload, worker, MCP server and renderer built");

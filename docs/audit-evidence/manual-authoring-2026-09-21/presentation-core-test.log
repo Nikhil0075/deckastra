@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/presentation-core
+
+ ✓ tests/operations.test.ts (49 tests) 430ms
+ ✓ tests/slide-deletion.test.ts (8 tests) 86ms
+
+ Test Files  2 passed (2)
+      Tests  57 passed (57)
+   Start at  00:58:34
+   Duration  3.70s (transform 1.36s, setup 0ms, collect 2.16s, tests 516ms, environment 1ms, prepare 380ms)
+

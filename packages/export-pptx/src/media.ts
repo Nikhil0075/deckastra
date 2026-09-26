@@ -156,6 +156,14 @@ export function fitPicture(
   box: { x: number; y: number; width: number; height: number },
   fit: string,
   intrinsic: { width: number; height: number } | undefined,
+  /**
+   * Where the visible window sits in an overflowing picture, 0..1 per axis —
+   * the element's `focalPoint`, which the renderer applies as CSS
+   * `object-position`. Centred when absent. A picture the author repositioned
+   * in its box used to export centred again, showing a different part of the
+   * photograph than the editor did (MA-22).
+   */
+  focal: { x: number; y: number } = { x: 0.5, y: 0.5 },
 ): { box: { x: number; y: number; width: number; height: number }; srcRect?: string } {
   if (!intrinsic || intrinsic.width <= 0 || intrinsic.height <= 0 || fit === "fill") {
     return { box };
@@ -165,18 +173,20 @@ export function fitPicture(
   const imageRatio = intrinsic.width / intrinsic.height;
 
   if (fit === "cover") {
-    // Crop the overflowing axis, half from each side — the same centring the
-    // renderer's default `object-position` does.
-    const insets =
-      imageRatio > boxRatio
-        ? { left: (1 - boxRatio / imageRatio) / 2, top: 0 }
-        : { left: 0, top: (1 - imageRatio / boxRatio) / 2 };
-    const l = Math.round(insets.left * 100_000);
-    const t = Math.round(insets.top * 100_000);
-    if (l === 0 && t === 0) return { box };
+    // Crop the overflowing axis, split by the focal point exactly as CSS
+    // `object-position: p%` splits it: the window starts `p` of the way along
+    // the overflow. Centred (p = 0.5) is half from each side.
+    const clamp = (value: number) => Math.min(1, Math.max(0, value));
+    const overflowX = imageRatio > boxRatio ? 1 - boxRatio / imageRatio : 0;
+    const overflowY = imageRatio > boxRatio ? 0 : 1 - imageRatio / boxRatio;
+    const l = Math.round(overflowX * clamp(focal.x) * 100_000);
+    const r = Math.round(overflowX * (1 - clamp(focal.x)) * 100_000);
+    const t = Math.round(overflowY * clamp(focal.y) * 100_000);
+    const b = Math.round(overflowY * (1 - clamp(focal.y)) * 100_000);
+    if (l === 0 && t === 0 && r === 0 && b === 0) return { box };
     return {
       box,
-      srcRect: `<a:srcRect l="${l}" t="${t}" r="${l}" b="${t}"/>`,
+      srcRect: `<a:srcRect l="${l}" t="${t}" r="${r}" b="${b}"/>`,
     };
   }
 

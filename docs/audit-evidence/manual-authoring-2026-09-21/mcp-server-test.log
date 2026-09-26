@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 D:/Presentation_app/apps/mcp-server
+
+ ✓ tests/tools.test.ts (14 tests) 142ms
+ ✓ tests/attach.test.ts (7 tests) 61ms
+
+ Test Files  2 passed (2)
+      Tests  21 passed (21)
+   Start at  01:01:27
+   Duration  3.89s (transform 1.04s, setup 0ms, collect 2.71s, tests 203ms, environment 1ms, prepare 354ms)
+

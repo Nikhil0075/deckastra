@@ -1,0 +1,81 @@
+{
+  "step": "morph",
+  "startedAt": "2026-09-19T18:28:38.976Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3468,
+  "console": [],
+  "cspViolations": [],
+  "enteredPresent": true,
+  "walkedToSlide": {
+    "id": "sld_01JB8Z9K2QW4RN7F3X03003500",
+    "index": 2,
+    "count": 4,
+    "transition": "zoom"
+  },
+  "morphInto": {
+    "id": "sld_01JB8Z9K2QW4RN7F3X03003900",
+    "index": 3,
+    "count": 4,
+    "transition": "morph"
+  },
+  "framesWithMovement": 37,
+  "firstMovement": {
+    "at": 1,
+    "t": 11,
+    "stages": 1,
+    "moving": [
+      {
+        "id": "el_01JB8Z9K2QW4RN7F3X03003700",
+        "translate": "-140px 210px",
+        "scale": "0.921 0.476"
+      },
+      {
+        "id": "el_01JB8Z9K2QW4RN7F3X03003800",
+        "translate": "1300px -580px",
+        "scale": "1"
+      }
+    ]
+  },
+  "lastMovement": {
+    "at": 37,
+    "t": 611,
+    "stages": 1,
+    "moving": [
+      {
+        "id": "el_01JB8Z9K2QW4RN7F3X03003700",
+        "translate": "-0.008px 0.012px",
+        "scale": "1"
+      },
+      {
+        "id": "el_01JB8Z9K2QW4RN7F3X03003800",
+        "translate": "0.076px -0.034px",
+        "scale": "1"
+      }
+    ]
+  },
+  "sampledForMs": 1479,
+  "settledDuringSampling": true,
+  "afterwards": {
+    "stillMoving": 0,
+    "displaced": [],
+    "stages": 1
+  },
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 423.5,
+    "byTypeMb": {
+      "Browser": 109,
+      "GPU": 170.3,
+      "Utility": 46.4,
+      "Tab": 97.8
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:28:45.809Z"
+}

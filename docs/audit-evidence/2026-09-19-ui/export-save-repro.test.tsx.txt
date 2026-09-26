@@ -1,0 +1,35 @@
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
+import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
+import { useEditor } from "../src/lib/useEditor";
+import { ExportPanel } from "../src/components/ExportPanel";
+import { recoveryLocks } from "./helpers/recovery-locks";
+
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+it("audit: export should include an edit whose autosave is pending", async () => {
+  localStorage.clear(); sessionStorage.clear();
+  Object.defineProperty(navigator, "locks", { configurable: true, value: recoveryLocks() });
+  let persisted = "old";
+  let exported: string | undefined;
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).endsWith("/transactions")) {
+      persisted = JSON.parse(String(init?.body)).operations[0].value;
+      return new Response(JSON.stringify({ version_id: "v1" }));
+    }
+    if (String(url).endsWith("/exports")) {
+      exported = persisted;
+      return new Response(JSON.stringify({ id: "export-test", kind: "pdf", status: "failed", error: "Audit stops after observing the captured version" }));
+    }
+    return new Response("{}", { status: 404 });
+  }));
+  const wrapper = withWorkspaceClient();
+  const hook = renderHook(() => useEditor({ initialDocument: loadFixture("technical"), presentationId: "prs_audit", initialVersionId: "v0" }), { wrapper });
+  await waitFor(() => expect(hook.result.current.recoveryReady).toBe(true));
+  render(<ExportPanel presentationId="prs_audit" />, { wrapper });
+  act(() => hook.result.current.apply([{ op: "replace", path: "/metadata/title", value: "latest" }], { label: "Retitle" }));
+  fireEvent.click(screen.getByRole("button", { name: "PDF", exact: true }));
+  await waitFor(() => expect(exported).toBeDefined());
+  expect(hook.result.current.document.metadata.title).toBe("latest");
+  expect(exported).toBe("latest");
+});

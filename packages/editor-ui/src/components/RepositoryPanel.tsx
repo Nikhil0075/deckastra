@@ -6,6 +6,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { Repository, RepositoryList } from "@deckastra/workspace-contracts";
 
 import { stalenessTone } from "../lib/repositories";
+import { Icon, StatusChip } from "../ui";
 
 /**
  * Connect a repository, see how current its index is, and choose which ones
@@ -21,10 +22,13 @@ export function RepositoryPanel({
   selected,
   onSelectionChange,
   workspaceId,
+  embedded = false,
 }: {
   selected: string[];
   onSelectionChange: (ids: string[]) => void;
   workspaceId?: string;
+  /** Inside a Section that already opens and closes it: no toggle of its own. */
+  embedded?: boolean;
 }) {
   const client = useWorkspaceClient();
   const [list, setList] = useState<RepositoryList | null>(null);
@@ -67,108 +71,95 @@ export function RepositoryPanel({
 
   const repositories = list?.repositories ?? [];
 
-  return (
-    <section style={{ ...cardStyle, marginTop: 20 }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "var(--fg)",
-          padding: 0,
-          fontSize: 15,
-          fontWeight: 600,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          width: "100%",
-        }}
-      >
-        <span style={{ color: "var(--fg-subtle)", fontSize: 12 }}>{open ? "▾" : "▸"}</span>
-        Ground this deck in a repository
-        {selected.length > 0 ? (
-          <span style={{ ...pillStyle, borderColor: "var(--accent)", color: "var(--accent)" }}>
-            {selected.length} selected
-          </span>
-        ) : null}
-      </button>
+  const body = (
+    <div className="dk-repos__body">
+      {error ? (
+        <p className="dk-export__error" role="alert">
+          {error}
+        </p>
+      ) : null}
 
-      {open ? (
-        <div style={{ marginTop: 18 }}>
-          {error ? (
-            <p style={{ color: "var(--danger)", fontSize: 14, marginTop: 0 }}>{error}</p>
-          ) : null}
+      {repositories.length === 0 ? (
+        <p className="dk-muted">
+          Nothing connected yet. A grounded deck cites the files it was written from, so every claim on it can be
+          checked.
+        </p>
+      ) : (
+        <ul className="dk-repos__list">
+          {repositories.map((repository) => (
+            <RepositoryRow
+              key={repository.id}
+              repository={repository}
+              checked={selected.includes(repository.id)}
+              busy={busy === repository.id}
+              onToggle={() => toggle(repository.id)}
+              onIndex={() => void run(repository.id, () => client.repositories.index(repository.id, workspaceId))}
+              onDisconnect={() =>
+                void run(repository.id, async () => {
+                  await client.repositories.disconnect(repository.id, workspaceId);
+                  onSelectionChange(selected.filter((id) => id !== repository.id));
+                })
+              }
+            />
+          ))}
+        </ul>
+      )}
 
-          {repositories.length === 0 ? (
-            <p style={{ color: "var(--fg-muted)", fontSize: 14, margin: "0 0 16px" }}>
-              Nothing connected yet. A grounded deck cites the files it was written
-              from, so every claim on it can be checked.
-            </p>
-          ) : (
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 18px" }}>
-              {repositories.map((repository) => (
-                <RepositoryRow
-                  key={repository.id}
-                  repository={repository}
-                  checked={selected.includes(repository.id)}
-                  busy={busy === repository.id}
-                  onToggle={() => toggle(repository.id)}
-                  onIndex={() => void run(repository.id, () => client.repositories.index(repository.id, workspaceId))}
-                  onDisconnect={() =>
-                    void run(repository.id, async () => {
-                      await client.repositories.disconnect(repository.id, workspaceId);
-                      onSelectionChange(selected.filter((id) => id !== repository.id));
-                    })
-                  }
-                />
-              ))}
-            </ul>
-          )}
+      {list?.github.install_url ? (
+        <a href={list.github.install_url} className="dk-btn dk-btn--secondary dk-btn--sm">
+          Connect a GitHub repository
+        </a>
+      ) : (
+        <p className="dk-muted">
+          GitHub is not configured on this server. Set <code>GITHUB_APP_ID</code>, <code>GITHUB_APP_PRIVATE_KEY</code>{" "}
+          and <code>GITHUB_APP_SLUG</code> to enable the installation flow.
+        </p>
+      )}
 
-          {list?.github.install_url ? (
-            <a href={list.github.install_url} style={{ ...secondaryButtonStyle, display: "inline-block" }}>
-              Connect a GitHub repository
-            </a>
-          ) : (
-            <p style={{ color: "var(--fg-subtle)", fontSize: 13, margin: "0 0 14px" }}>
-              GitHub is not configured on this server. Set <code>GITHUB_APP_ID</code>,{" "}
-              <code>GITHUB_APP_PRIVATE_KEY</code> and <code>GITHUB_APP_SLUG</code> to
-              enable the installation flow.
-            </p>
-          )}
-
-          {list?.local_allowed ? (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <div style={{ flex: "1 1 340px" }}>
-                <label style={labelStyle} htmlFor="repo-path">
-                  Or index a directory on this machine
-                </label>
-                <input
-                  id="repo-path"
-                  value={path}
-                  onChange={(event) => setPath(event.target.value)}
-                  placeholder="D:\\code\\my-service"
-                  style={inputStyle}
-                />
-              </div>
-              <button
-                onClick={() =>
-                  void run("local", async () => {
-                    const created = await client.repositories.connectLocal(path, undefined, workspaceId);
-                    setPath("");
-                    await client.repositories.index(created.id, workspaceId);
-                    onSelectionChange([...selected, created.id]);
-                  })
-                }
-                disabled={!path.trim() || busy === "local"}
-                style={secondaryButtonStyle}
-              >
-                {busy === "local" ? "Indexing…" : "Connect and index"}
-              </button>
-            </div>
-          ) : null}
+      {list?.local_allowed ? (
+        <div className="dk-repos__local">
+          <label className="dk-label" htmlFor="repo-path">
+            Or index a directory on this machine
+          </label>
+          <input
+            id="repo-path"
+            className="dk-input"
+            value={path}
+            onChange={(event) => setPath(event.target.value)}
+            placeholder="D:\\code\\my-service"
+          />
+          <button
+            type="button"
+            className="dk-btn dk-btn--secondary dk-btn--sm"
+            onClick={() =>
+              void run("local", async () => {
+                const created = await client.repositories.connectLocal(path, undefined, workspaceId);
+                setPath("");
+                await client.repositories.index(created.id, workspaceId);
+                onSelectionChange([...selected, created.id]);
+              })
+            }
+            disabled={!path.trim() || busy === "local"}
+          >
+            {busy === "local" ? "Indexing…" : "Connect and index"}
+          </button>
         </div>
       ) : null}
+    </div>
+  );
+
+  // Inside a Section (the Generate drawer), the Section is the toggle; a second
+  // one inside it would be two ways to open the same thing.
+  if (embedded) return <div className="dk-repos">{body}</div>;
+
+  return (
+    <section className="dk-repos dk-repos--card">
+      <button type="button" className="dk-repos__toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon name={open ? "chevronDown" : "chevronRight"} size={14} />
+        Ground this deck in a repository
+        {selected.length > 0 ? <StatusChip tone="action">{selected.length} selected</StatusChip> : null}
+      </button>
+      {open ? body : null}
     </section>
   );
 }
@@ -192,16 +183,8 @@ function RepositoryRow({
   const ready = repository.index_status === "ready";
 
   return (
-    <li
-      style={{
-        border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-        borderRadius: 10,
-        padding: "12px 14px",
-        marginBottom: 8,
-        background: "var(--surface-alt)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <li className={checked ? "dk-repos__row dk-repos__row--chosen" : "dk-repos__row"}>
+      <div className="dk-repos__line">
         <input
           type="checkbox"
           checked={checked}
@@ -209,100 +192,39 @@ function RepositoryRow({
           disabled={!ready}
           aria-label={`Use ${repository.full_name} as a source`}
         />
-        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{repository.full_name}</div>
-          <div style={{ color: "var(--fg-subtle)", fontSize: 12, marginTop: 2 }}>
-            {ready
-              ? `${repository.file_count} files · ${repository.chunk_count} chunks`
-              : repository.index_status}
+        <div className="dk-repos__name">
+          <div className="dk-sources__ref">{repository.full_name}</div>
+          <div className="dk-muted">
+            {ready ? `${repository.file_count} files · ${repository.chunk_count} chunks` : repository.index_status}
             {repository.source === "local" ? " · local checkout" : ""}
           </div>
         </div>
-
-        <span style={{ ...pillStyle, borderColor: tone.colour, color: tone.colour }}>
-          {tone.label}
-        </span>
-
-        <button onClick={onIndex} disabled={busy} style={smallButtonStyle}>
+        <StatusChip tone={tone.tone}>{tone.label}</StatusChip>
+      </div>
+      <div className="dk-export__formats">
+        <button type="button" className="dk-btn dk-btn--secondary dk-btn--sm" onClick={onIndex} disabled={busy}>
           {busy ? "Working…" : "Re-index"}
         </button>
-        <button onClick={onDisconnect} disabled={busy} style={smallButtonStyle}>
+        <button type="button" className="dk-btn dk-btn--ghost dk-btn--sm" onClick={onDisconnect} disabled={busy}>
           Disconnect
         </button>
       </div>
 
-      {repository.staleness.state !== "fresh" ? (
-        <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>
-          {repository.staleness.message}
-        </p>
-      ) : null}
+      {repository.staleness.state !== "fresh" ? <p className="dk-muted">{repository.staleness.message}</p> : null}
 
       {/* Which kind of search produced the evidence changes how much the
           citations are worth, so it is stated rather than implied. */}
       {ready && !repository.embedding_semantic ? (
-        <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--warning)" }}>
-          Searched by wording, not meaning. Set <code>VOYAGE_API_KEY</code> on the
-          API for semantic retrieval.
+        <p className="dk-export__note">
+          Searched by wording, not meaning. Set <code>VOYAGE_API_KEY</code> on the API for semantic retrieval.
         </p>
       ) : null}
 
       {repository.warnings.map((warning) => (
-        <p key={warning} style={{ margin: "6px 0 0", fontSize: 12, color: "var(--fg-muted)" }}>
+        <p key={warning} className="dk-muted">
           {warning}
         </p>
       ))}
     </li>
   );
 }
-
-const cardStyle: React.CSSProperties = {
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: 14,
-  padding: 20,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 13,
-  color: "var(--fg-muted)",
-  marginBottom: 8,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 12px",
-  fontSize: 14,
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  background: "var(--surface-alt)",
-  color: "var(--fg)",
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "11px 18px",
-  fontSize: 14,
-  fontWeight: 600,
-  textDecoration: "none",
-};
-
-const smallButtonStyle: React.CSSProperties = {
-  background: "transparent",
-  color: "var(--fg-muted)",
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  padding: "5px 11px",
-  fontSize: 12,
-};
-
-const pillStyle: React.CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 999,
-  padding: "3px 10px",
-  fontSize: 11,
-  letterSpacing: 0.4,
-  textTransform: "uppercase",
-};

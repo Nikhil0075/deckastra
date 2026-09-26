@@ -1,0 +1,35 @@
+{
+  "step": "export",
+  "startedAt": "2026-09-19T18:25:49.264Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5232,
+  "console": [],
+  "cspViolations": [],
+  "openedExport": true,
+  "startedExport": true,
+  "exportFinished": true,
+  "exportSurface": "EXPORT\nPDF\nPOWERPOINT\nInclude speaker notes\nFreeze before animations run\n\n4 slides · 34 KB\n\n2 things changed to fit this format\nFLATTENED\nAnimation is not part of a PDF; this slide is a single frame.\nFLATTENED\nAnimation is not part of a PDF; this slide is a single frame.\nDOWNLOAD ANIMATION-CONFORMANCE-DECK.PDF",
+  "exportedVersion": {
+    "exported": "ver_01M2XENR5QYEEXEADVX11N4VGS",
+    "head": "ver_01M2XENR5QYEEXEADVX11N4VGS",
+    "notes": "[\"Export smoke 1789842350134\",null,null,null]"
+  },
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 395.1,
+    "byTypeMb": {
+      "Browser": 107.9,
+      "GPU": 142.6,
+      "Utility": 47.1,
+      "Tab": 97.6
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:25:56.027Z"
+}

@@ -89,8 +89,18 @@ export async function ensurePresentation(service: Service): Promise<string> {
       await call(service, `/v1/presentations/${encodeURIComponent(state.presentationId)}`);
       return state.presentationId;
     } catch {
-      // Fall through and make a new one.
+      // Fall through: the most recent other deck, or a new one.
     }
+  }
+
+  // The remembered deck is gone — most often because the person deleted it
+  // from the deck list. Open the most recently changed deck they still have,
+  // rather than seeding a fresh sample they never asked for; only an install
+  // with no decks at all gets the sample.
+  const recent = await mostRecentDeck(service).catch(() => null);
+  if (recent) {
+    await write({ presentationId: recent });
+    return recent;
   }
 
   const created = await call(service, "/v1/presentations", {
@@ -102,6 +112,36 @@ export async function ensurePresentation(service: Service): Promise<string> {
   await seedSample(service, presentationId, String(created.version_id));
   await write({ presentationId });
   return presentationId;
+}
+
+/**
+ * Make `presentationId` the deck this install opens (the deck list's Open).
+ *
+ * Asks the service first: the id came from the renderer, and the renderer is
+ * the process this file does not trust. A deck that does not exist, is
+ * deleted, or is in a workspace this install cannot read is refused with the
+ * service's own answer, and the remembered pointer is left alone.
+ */
+export async function rememberPresentation(service: Service, presentationId: string): Promise<string> {
+  if (!/^[a-z][a-z0-9]*_[0-9A-HJKMNP-TV-Z]{26}$/.test(presentationId)) {
+    throw new Error("That is not a deck id.");
+  }
+  await call(service, `/v1/presentations/${encodeURIComponent(presentationId)}`);
+  await write({ presentationId });
+  return presentationId;
+}
+
+/** The most recently changed deck in the first project this install can see. */
+async function mostRecentDeck(service: Service): Promise<string | null> {
+  const account = await call(service, "/v1/account");
+  for (const workspace of account.workspaces ?? []) {
+    for (const project of workspace.projects ?? []) {
+      const listed = await call(service, `/v1/projects/${encodeURIComponent(project.id)}/presentations?limit=1`);
+      const first = listed.presentations?.[0];
+      if (first?.id) return String(first.id);
+    }
+  }
+  return null;
 }
 
 /**

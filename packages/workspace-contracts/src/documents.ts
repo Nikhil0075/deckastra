@@ -44,6 +44,32 @@ export interface PresentationSummary {
   title: string;
   version_id: string | null;
   updated_at: string | null;
+  /**
+   * Slides in the current version. Maintained on every commit, so a deck list
+   * can show it without replaying the deck. Null only for a deck written before
+   * the count existed and not yet listed once.
+   */
+  slide_count?: number | null;
+  /** Proposals waiting for someone to approve or reject them. */
+  pending_proposals?: number;
+  /** Present only in the trash listing: when the deck was deleted. */
+  deleted_at?: string;
+}
+
+export interface DeletePresentationResult {
+  presentation_id: string;
+  deleted_at: string;
+}
+
+export interface RestorePresentationResult {
+  presentation_id: string;
+  restored: boolean;
+}
+
+export interface DuplicatePresentationResult {
+  presentation_id: string;
+  version_id: string;
+  title: string;
 }
 
 /**
@@ -149,11 +175,37 @@ export interface TransactionResult {
   retired?: number | null;
 }
 
+/**
+ * One point in a deck's history, as `GET /presentations/{id}/versions` returns
+ * it, newest first.
+ *
+ * This type used to declare `version_id`, `intent` and `source` while the route
+ * returned `id`, `label`, `created_by` and no intent at all, so nothing typed
+ * against it could have worked; the first reader (the version history drawer,
+ * editor Phase 5) is the reason it now matches.
+ */
 export interface VersionSummary {
-  version_id: string;
-  created_at: string;
-  intent: string | null;
+  id: string;
+  parent_version_id: string | null;
+  /** Who created the version row ("user", "agent", …), set when it was written. */
   source: string;
+  label: string | null;
+  created_by: string;
+  created_at: string;
+  is_snapshot: boolean;
+  /** The change that produced this version. All null for a deck's first version. */
+  transaction_id?: string | null;
+  intent?: string | null;
+  agent_id?: string | null;
+  change_source?: string | null;
+}
+
+/** What restoring a version returns: the new version the restore created. */
+export interface RestoreVersionResult {
+  transaction_id: string;
+  version_id: string;
+  document: PresentationDocument;
+  risk_tier: string;
 }
 
 /**

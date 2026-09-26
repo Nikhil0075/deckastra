@@ -1,0 +1,437 @@
+/*
+ * Present mode and the presenter view (Figma: "present mode", "present mode
+ * with notes"). The audience view is black with white rules — nothing on it
+ * but the slide and, while the pointer moves, a small control cluster. The
+ * presenter view is the editor's cream, because it is read up close on a
+ * laptop, not across a room.
+ *
+ * Same discipline as the other stylesheets: `--dk-*` tokens only, square
+ * corners, checked by `tests/ui-tokens.test.ts`.
+ */
+
+/* --- Audience view -------------------------------------------------------- */
+
+.dk-present {
+  position: fixed;
+  inset: 0;
+  background: var(--dk-backdrop);
+  color: var(--dk-on-backdrop);
+  font-family: var(--dk-font-ui);
+}
+.dk-present--empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--dk-space-3);
+  font-size: var(--dk-text-lg);
+}
+.dk-present__stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--dk-backdrop);
+}
+/* With the in-window presenter panel open, the audience half keeps the top. */
+.dk-present__stage--split {
+  bottom: 50%;
+}
+.dk-present__black {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--dk-backdrop);
+}
+
+.dk-present__controls {
+  position: absolute;
+  left: var(--dk-space-4);
+  right: var(--dk-space-4);
+  bottom: var(--dk-space-4);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  transition: opacity 200ms var(--dk-ease);
+}
+.dk-present__controls > * {
+  pointer-events: auto;
+}
+.dk-present__controls--idle {
+  opacity: 0;
+}
+.dk-present__controls--idle > * {
+  pointer-events: none;
+}
+.dk-present__cluster {
+  display: flex;
+  align-items: stretch;
+  border: var(--dk-line) solid var(--dk-on-backdrop);
+  background: var(--dk-backdrop);
+}
+.dk-present__control,
+.dk-present__chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--dk-control-md);
+  height: var(--dk-control-md);
+  padding: 0 var(--dk-space-2);
+  border: 0;
+  border-right: var(--dk-line) solid var(--dk-on-backdrop);
+  background: transparent;
+  color: var(--dk-on-backdrop);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+  cursor: pointer;
+}
+.dk-present__cluster > :last-child {
+  border-right: 0;
+}
+.dk-present__control:hover:not(:disabled),
+.dk-present__chip:hover {
+  background: var(--dk-on-backdrop);
+  color: var(--dk-backdrop);
+}
+.dk-present__control[aria-pressed="true"] {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-present__control:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.dk-present__control:focus-visible,
+.dk-present__chip:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-yellow);
+  outline-offset: -3px;
+}
+.dk-present__counter {
+  display: inline-grid;
+  place-items: center;
+  min-width: 64px;
+  padding: 0 var(--dk-space-2);
+  border-right: var(--dk-line) solid var(--dk-on-backdrop);
+  font-size: var(--dk-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The slide's click reveals, filled as they play. Centred on the bar. */
+.dk-present__steps {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--dk-space-1);
+}
+.dk-present__step {
+  width: 10px;
+  height: 10px;
+  border: var(--dk-line) solid var(--dk-on-backdrop);
+}
+.dk-present__step--done {
+  background: var(--dk-on-backdrop);
+}
+
+.dk-present__degraded {
+  position: absolute;
+  top: var(--dk-space-4);
+  right: var(--dk-space-4);
+  padding: var(--dk-space-1) var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-on-backdrop);
+  background: var(--dk-backdrop);
+  font-size: var(--dk-text-xs);
+}
+.dk-present__notes {
+  position: absolute;
+  left: var(--dk-space-5);
+  right: var(--dk-space-5);
+  bottom: 72px;
+  z-index: 25;
+  max-height: 28vh;
+  overflow-y: auto;
+  padding: var(--dk-space-4) var(--dk-space-5);
+  border: var(--dk-line) solid var(--dk-on-backdrop);
+  background: var(--dk-backdrop);
+  font-size: var(--dk-text-lg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.dk-present__notes-title {
+  margin-bottom: var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-present__panel {
+  position: absolute;
+  inset: 50% 0 0 0;
+  border-top: var(--dk-line) solid var(--dk-on-backdrop);
+}
+
+/* --- Presenter view ------------------------------------------------------- */
+
+.dk-presenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--dk-ground);
+  color: var(--dk-ink);
+  overflow: hidden;
+}
+.dk-presenter--detached {
+  position: fixed;
+}
+.dk-presenter__bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--dk-space-3);
+  height: 64px;
+  padding: 0 var(--dk-space-5);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-presenter__role {
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-presenter__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-presenter__timer {
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-display);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.dk-presenter__clock {
+  justify-self: end;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.dk-presenter__position {
+  font-size: var(--dk-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-presenter__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+  min-height: 0;
+}
+.dk-presenter__current {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: var(--dk-space-3);
+  min-height: 0;
+  padding: var(--dk-space-5);
+  border-right: var(--dk-line) solid var(--dk-rule);
+}
+.dk-presenter__current .dk-label,
+.dk-presenter__side .dk-label {
+  margin: 0;
+  color: var(--dk-ink);
+}
+.dk-presenter__frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  line-height: 0;
+}
+.dk-presenter__slide {
+  position: relative;
+  display: block;
+  outline: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+}
+.dk-presenter__blacked {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--dk-backdrop);
+  color: var(--dk-on-backdrop);
+  font-size: var(--dk-text-sm);
+  line-height: normal;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+
+.dk-presenter__stepbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-3);
+}
+.dk-presenter__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-presenter__step--none {
+  color: var(--dk-ink-muted);
+  font-weight: 500;
+}
+.dk-presenter__squares {
+  display: inline-flex;
+  gap: var(--dk-space-1);
+}
+.dk-presenter__square {
+  width: 12px;
+  height: 12px;
+  border: var(--dk-line) solid var(--dk-ink);
+}
+.dk-presenter__square--done {
+  background: var(--dk-ink);
+}
+.dk-presenter__nav {
+  display: inline-flex;
+  gap: var(--dk-space-2);
+}
+
+.dk-presenter__jump {
+  display: flex;
+  gap: var(--dk-space-1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+.dk-presenter__jumpto {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dk-presenter__jumpto:hover {
+  border-color: var(--dk-rule);
+}
+.dk-presenter__jumpto--current {
+  border-color: var(--dk-blue);
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+
+.dk-presenter__side {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  min-height: 0;
+}
+.dk-presenter__side > section,
+.dk-presenter__actions {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-4) var(--dk-space-5);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-presenter__frame--next {
+  height: 180px;
+  justify-items: start;
+}
+.dk-presenter__frame--next > div {
+  outline: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+}
+.dk-presenter__end {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+  line-height: normal;
+}
+.dk-presenter__notes {
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+.dk-presenter__notes-text {
+  min-height: 0;
+  overflow-y: auto;
+  font-size: var(--dk-text-lg);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+.dk-richnotes p,
+.dk-richnotes h4,
+.dk-richnotes blockquote {
+  margin: 0;
+}
+.dk-richnotes h4 {
+  font-size: inherit;
+  font-weight: 700;
+}
+.dk-richnotes ul,
+.dk-richnotes ol {
+  margin: 0;
+  padding-left: var(--dk-space-5);
+}
+.dk-richnotes blockquote {
+  padding-left: var(--dk-space-3);
+  border-left: var(--dk-line-strong) solid var(--dk-rule-soft);
+}
+.dk-presenter__notes-text--empty {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-md);
+}
+.dk-presenter__remaining {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+.dk-presenter__target {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--dk-space-2);
+}
+.dk-presenter__target .dk-numfield {
+  width: 150px;
+}
+.dk-presenter__left {
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+/* Over time is red and says so in words — colour is never the only signal. */
+.dk-presenter__left--over {
+  color: var(--dk-red);
+}
+.dk-presenter__over {
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+}
+.dk-presenter__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dk-space-2);
+  border-bottom: 0;
+}

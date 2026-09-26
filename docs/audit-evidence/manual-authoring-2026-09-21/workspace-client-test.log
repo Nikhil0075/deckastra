@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/workspace-client
+
+ ✓ tests/http.test.ts (12 tests) 18ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  00:59:04
+   Duration  826ms (transform 281ms, setup 0ms, collect 364ms, tests 18ms, environment 0ms, prepare 175ms)
+

@@ -246,6 +246,19 @@ class Presentation(Base, TimestampMixin):
     #: to say what its change is based on, and what divergence detection compares.
     remote_version_id: Mapped[str | None] = mapped_column(String(64))
 
+    #: Slides in the head version, kept current by every commit the way `title`
+    #: is. A deck list shows it on every card, and listing a project must not
+    #: cost a replay of every deck in it. Null only for rows written before the
+    #: column existed; the list fills those in once, on first sight.
+    slide_count: Mapped[int | None] = mapped_column(Integer)
+
+    #: Set when a person deletes the deck (editor Phase 4). Soft, like an
+    #: asset's `deleted_at` and a theme's `archived_at`: a deck is someone's
+    #: work, and "Delete" pressed on the wrong card must be undoable. Every read
+    #: through `resolve_presentation_access` treats a deleted deck as missing —
+    #: the same 404 a stranger gets — except `restore`, which asks for it.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     project: Mapped[Project] = relationship(back_populates="presentations")
     versions: Mapped[list[PresentationVersion]] = relationship(
         back_populates="presentation", cascade="all, delete-orphan"

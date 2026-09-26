@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { Share } from "@deckastra/workspace-contracts";
+import { Button, StatusChip } from "../ui";
 
 /**
  * Share links (gap register doc 01 S2).
@@ -116,9 +116,9 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
 
   if (sharing === "no") {
     return (
-      <section style={{ padding: "0 16px 16px" }}>
-        <h3 style={heading}>Share</h3>
-        <p style={muted}>
+      <section className="dk-share">
+        <h3 className="dk-label dk-export__heading">Share</h3>
+        <p className="dk-muted">
           This workspace is local. Online sharing isn&rsquo;t available here. You can
           export a copy to share.
         </p>
@@ -130,9 +130,9 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
     // Deliberately says nothing about what this workspace supports. It could not
     // be asked, which is a different fact from the answer being no.
     return (
-      <section style={{ padding: "0 16px 16px" }}>
-        <h3 style={heading}>Share</h3>
-        <p role="alert" style={{ ...muted, color: "var(--danger)" }}>
+      <section className="dk-share">
+        <h3 className="dk-label dk-export__heading">Share</h3>
+        <p role="alert" className="dk-export__error">
           Sharing could not be checked just now. Try again when you are connected.
         </p>
       </section>
@@ -140,22 +140,23 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
   }
 
   return (
-    <section style={{ padding: "0 16px 16px" }}>
-      <h3 style={heading}>Share</h3>
+    <section className="dk-share">
+      <h3 className="dk-label dk-export__heading">Share</h3>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-        <button
-          style={control}
+      <div className="dk-export__formats">
+        <Button
+          size="sm"
+          variant="primary"
           // Off until the deployment has said it supports this, so the button is
           // never live against a server that will refuse it.
           disabled={sharing !== "yes"}
           onClick={() => void create()}
         >
           Create view link
-        </button>
+        </Button>
       </div>
 
-      <label style={option}>
+      <label className="dk-export__option">
         <input
           type="checkbox"
           checked={expires}
@@ -165,46 +166,47 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
       </label>
 
       {error ? (
-        <p role="alert" style={{ ...muted, color: "var(--danger)" }}>
+        <p role="alert" className="dk-export__error">
           {error}
         </p>
       ) : null}
 
       {fresh?.token ? (
-        <div style={freshBox}>
+        <div className="dk-share__fresh">
           {/* Not a nudge — the server stores only a hash, so this is the last
               time this link exists anywhere but the holder's hands. */}
-          <p style={{ ...muted, color: "var(--fg)", margin: "0 0 6px" }}>
+          <p className="dk-share__warn">
             Copy this now. It cannot be shown again.
           </p>
-          <code style={linkText}>{linkFor(fresh)}</code>
-          <button
-            style={{ ...control, marginTop: 8 }}
+          <code className="dk-share__link">{linkFor(fresh)}</code>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => {
               void navigator.clipboard.writeText(linkFor(fresh));
               setCopied(true);
             }}
           >
             {copied ? "Copied" : "Copy link"}
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {shares === null ? (
-        <p style={muted}>Loading…</p>
+        <p className="dk-muted">Loading…</p>
       ) : shares.length === 0 ? (
-        <p style={muted}>
+        <p className="dk-muted">
           No links yet. A link lets someone open this deck without an account.
         </p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0" }}>
+        <ul className="dk-share__list">
           {shares.map((share) => (
-            <li key={share.id} style={row}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12 }}>
+            <li key={share.id} className="dk-share__row">
+              <div className="dk-share__who">
+                <div>
                   {share.label ?? (share.role === "editor" ? "Can edit" : "Can view")}
                 </div>
-                <div style={{ ...muted, fontSize: 11 }}>
+                <div className="dk-muted">
                   {share.view_count === 0
                     ? "Not opened yet"
                     : `Opened ${share.view_count} time${share.view_count === 1 ? "" : "s"}`}
@@ -212,12 +214,12 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
                 </div>
               </div>
 
-              <span style={{ ...pill, color: colourFor(share.status) }}>{share.status}</span>
+              <StatusChip tone={share.status === "active" ? "action" : "neutral"}>{share.status}</StatusChip>
 
               {share.status === "active" ? (
-                <button style={smallButton} onClick={() => void revoke(share.id)}>
+                <Button size="sm" variant="secondary" onClick={() => void revoke(share.id)}>
                   Revoke
-                </button>
+                </Button>
               ) : null}
             </li>
           ))}
@@ -225,10 +227,6 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
       )}
     </section>
   );
-}
-
-function colourFor(status: Share["status"]): string {
-  return status === "active" ? "var(--accent)" : "var(--fg-subtle)";
 }
 
 function short(iso: string): string {
@@ -239,73 +237,3 @@ function short(iso: string): string {
   return `${date.getUTCDate()} ${months[date.getUTCMonth()]}`;
 }
 
-const heading: CSSProperties = {
-  fontSize: 11,
-  letterSpacing: 1.4,
-  textTransform: "uppercase",
-  color: "var(--fg-subtle)",
-  margin: "0 0 10px",
-};
-
-const control: CSSProperties = {
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  color: "var(--fg)",
-  borderRadius: 8,
-  padding: "6px 12px",
-  fontSize: 12,
-};
-
-const smallButton: CSSProperties = {
-  ...control,
-  color: "var(--fg-muted)",
-  padding: "4px 9px",
-  fontSize: 11,
-};
-
-const option: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-  fontSize: 12,
-  color: "var(--fg-muted)",
-  marginBottom: 6,
-};
-
-const freshBox: CSSProperties = {
-  border: "1px solid var(--accent)",
-  borderRadius: 8,
-  padding: 10,
-  margin: "8px 0",
-  background: "var(--surface-alt)",
-};
-
-const linkText: CSSProperties = {
-  display: "block",
-  fontSize: 11,
-  wordBreak: "break-all",
-  color: "var(--fg-muted)",
-};
-
-const row: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "6px 0",
-  borderTop: "1px solid var(--border)",
-};
-
-const pill: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 999,
-  padding: "1px 7px",
-  fontSize: 10,
-  textTransform: "uppercase",
-  letterSpacing: 0.4,
-};
-
-const muted: CSSProperties = {
-  fontSize: 12,
-  color: "var(--fg-subtle)",
-  margin: 0,
-};

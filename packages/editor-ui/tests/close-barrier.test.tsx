@@ -1,0 +1,209 @@
+// @vitest-environment jsdom
+/**
+ * Closing waits for the words on screen (final package review, item 01).
+ *
+ * The real `useEditor` and the real notes field, over the real client with the
+ * transport controlled. The first case is the review's reproducer: a note still
+ * inside its 700ms draft window when the page unloads.
+ */
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
+import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
+
+import { SpeakerNotes } from "../src/components/shell/SpeakerNotes";
+import {
+  closeApproved,
+  prepareToClose,
+  registerCloseParticipant,
+  resetCloseBarrierForTests,
+} from "../src/lib/close-barrier";
+import { useEditor, type EditorApi } from "../src/lib/useEditor";
+import { recoveryLocks } from "./helpers/recovery-locks";
+
+let saveReply: () => Response | Promise<Response>;
+let saved: unknown[];
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  resetCloseBarrierForTests();
+  Object.defineProperty(navigator, "locks", { configurable: true, value: recoveryLocks() });
+  saved = [];
+  saveReply = () => new Response(JSON.stringify({ version_id: "v1" }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/transactions")) {
+        const reply = await saveReply();
+        if (reply.ok) saved.push(JSON.parse(String(init?.body)));
+        return reply;
+      }
+      return new Response("{}", { status: 404 });
+    }),
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+let editor!: EditorApi;
+function Harness() {
+  editor = useEditor({ initialDocument: loadFixture("technical"), presentationId: "prs_close", initialVersionId: "v0" });
+  return <SpeakerNotes editor={editor} />;
+}
+
+async function typeANote(text: string) {
+  render(<Harness />, { wrapper: withWorkspaceClient() });
+  await waitFor(() => expect(editor.recoveryReady).toBe(true));
+  const field = screen.getByTestId("speaker-notes");
+  field.focus();
+  field.innerHTML = `<div>${text}</div>`;
+  fireEvent.input(field);
+}
+
+const journalHolds = (text: string) =>
+  Object.keys(localStorage).some((key) => (localStorage.getItem(key) ?? "").includes(text));
+
+describe("unloading", () => {
+  it("takes a note still inside its draft interval into the document and the journal", async () => {
+    await typeANote("Last words before quit");
+    act(() => void window.dispatchEvent(new Event("beforeunload", { cancelable: true })));
+    expect(editor.document.slides[0]?.speakerNotes).toBe("Last words before quit");
+    expect(journalHolds("Last words before quit")).toBe(true);
+  });
+
+  it("does not object to a close the shell already prepared", async () => {
+    // Electron cancels a close whose beforeunload objects, silently.
+    saveReply = () => new Response(JSON.stringify({ detail: "down" }), { status: 503 });
+    await typeANote("Unsaved");
+    await act(async () => void (await prepareToClose(2000)));
+    expect(closeApproved()).toBe(true);
+    const event = new Event("beforeunload", { cancelable: true });
+    act(() => void window.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("still objects in a browser, where nothing prepared the close", async () => {
+    saveReply = () => new Promise(() => {});
+    await typeANote("Unsaved");
+    const event = new Event("beforeunload", { cancelable: true });
+    act(() => void window.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+describe("preparing to close", () => {
+  it("saves the draft and answers clean", async () => {
+    await typeANote("Saved on the way out");
+    let answer = "";
+    await act(async () => void (answer = await prepareToClose(2000)));
+    expect(answer).toBe("clean");
+    expect(JSON.stringify(saved)).toContain("Saved on the way out");
+  });
+
+  it("answers journalled when the save fails, with the note in the journal", async () => {
+    saveReply = () => new Response(JSON.stringify({ detail: "down" }), { status: 503 });
+    await typeANote("Kept for next time");
+    let answer = "";
+    await act(async () => void (answer = await prepareToClose(2000)));
+    expect(answer).toBe("journalled");
+    expect(journalHolds("Kept for next time")).toBe(true);
+  });
+
+  it("answers within its bound when the save never returns", async () => {
+    saveReply = () => new Promise(() => {});
+    await typeANote("Stuck");
+    let answer = "";
+    await act(async () => void (answer = await prepareToClose(200)));
+    expect(answer).toBe("journalled");
+    expect(journalHolds("Stuck")).toBe(true);
+  });
+
+  it("saves what a failed close journalled as soon as the deck is opened again, with no new edit", async () => {
+    saveReply = () => new Response(JSON.stringify({ detail: "down" }), { status: 503 });
+    await typeANote("Journalled at quit");
+    await act(async () => void (await prepareToClose(2000)));
+    cleanup();
+    resetCloseBarrierForTests();
+
+    saveReply = () => new Response(JSON.stringify({ version_id: "v1" }));
+    render(<Harness />, { wrapper: withWorkspaceClient() });
+    await waitFor(() => expect(JSON.stringify(saved)).toContain("Journalled at quit"), { timeout: 4000 });
+  });
+
+  it("does not approve a close when the save failed and the journal could not take it", async () => {
+    // The recheck's case (2026-09-20): storage full *and* the service down. The
+    // queue is in memory and nowhere else, so closing would be the loss.
+    saveReply = () => new Response(JSON.stringify({ detail: "offline" }), { status: 503 });
+    await typeANote("Only copy of my final note");
+    const deny = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    try {
+      let answer = "";
+      await act(async () => void (answer = await prepareToClose(1000)));
+      expect(answer).toBe("blocked");
+      expect(journalHolds("Only copy of my final note")).toBe(false);
+      expect(saved).toHaveLength(0);
+      expect(closeApproved()).toBe(false);
+    } finally {
+      deny.mockRestore();
+    }
+  });
+
+  it("does not approve a close when a field could not hand over its draft", async () => {
+    await typeANote("In the field only");
+    // A draft that cannot be applied is in no document and no journal, whatever
+    // the queue then manages to save.
+    const unregister = registerCloseParticipant(async () => {
+      throw new Error("this editor could not prepare");
+    });
+    try {
+      let answer = "";
+      await act(async () => void (answer = await prepareToClose(1000)));
+      expect(answer).toBe("blocked");
+      expect(closeApproved()).toBe(false);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("does not approve a close for a participant that never answers", async () => {
+    const unregister = registerCloseParticipant(() => new Promise<never>(() => {}));
+    try {
+      let answer = "";
+      await act(async () => void (answer = await prepareToClose(300)));
+      expect(answer).toBe("blocked");
+      expect(closeApproved()).toBe(false);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("is blocked when any one of several windows is not safe, however many are", async () => {
+    await typeANote("Window one is fine");
+    const unregister = registerCloseParticipant(async () => "blocked" as const);
+    try {
+      let answer = "";
+      await act(async () => void (answer = await prepareToClose(1000)));
+      expect(answer).toBe("blocked");
+      expect(closeApproved()).toBe(false);
+    } finally {
+      unregister();
+    }
+  });
+
+  it("commits the words from before an IME composition, never the half-composed ones", async () => {
+    await typeANote("Before");
+    const field = screen.getByTestId("speaker-notes");
+    fireEvent.compositionStart(field);
+    field.innerHTML = "<div>Before 日</div>";
+    fireEvent.input(field);
+    await act(async () => void (await prepareToClose(2000)));
+    expect(editor.document.slides[0]?.speakerNotes).toBe("Before");
+  });
+});

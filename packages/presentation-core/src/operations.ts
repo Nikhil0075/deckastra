@@ -401,6 +401,53 @@ export function setProperty(
   return [{ op: target === undefined ? "add" : "replace", path, value }];
 }
 
+/**
+ * Set a nested property, creating whatever parents it needs, or remove it.
+ *
+ * `setProperty` writes one path and assumes its parent exists — right for
+ * `transform.x`, wrong for an optional object nobody has set yet: aligning a
+ * text box whose `paragraph` is absent, or giving a shape its first stroke.
+ * There the narrowest correct patch adds the *outermost missing* object with
+ * the value inside it, so the inverse removes exactly what was added.
+ *
+ * `undefined` removes the property (and nothing else); removing one that is not
+ * there is no operation at all, so "set to the default" never fails.
+ */
+export function setPropertyDeep(
+  document: PresentationDocument,
+  elementId: string,
+  property: string,
+  value: unknown,
+): PatchOperation[] {
+  const found = resolveElementById(document, elementId);
+  if (!found) throw new OperationError(`No element with id "${elementId}".`);
+  const keys = property.split(".");
+  let cursor: unknown = found.element;
+  for (let depth = 0; depth < keys.length; depth += 1) {
+    const key = keys[depth]!;
+    const container = cursor as Record<string, unknown>;
+    const exists = container !== null && typeof container === "object" && key in container && container[key] !== undefined;
+    const path = `${found.path}/${keys.slice(0, depth + 1).join("/")}`;
+    const last = depth === keys.length - 1;
+    if (!exists) {
+      if (value === undefined) return [];
+      // Build the missing tail around the value: { a: { b: value } }.
+      let built: unknown = value;
+      for (let inner = keys.length - 1; inner > depth; inner -= 1) built = { [keys[inner]!]: built };
+      return [{ op: "add", path, value: built }];
+    }
+    if (last) {
+      if (value === undefined) return [{ op: "remove", path }];
+      return [{ op: "replace", path, value }];
+    }
+    cursor = container[key];
+    if (cursor === null || typeof cursor !== "object") {
+      throw new OperationError(`"${keys.slice(0, depth + 1).join(".")}" is not an object on "${elementId}".`);
+    }
+  }
+  return [];
+}
+
 export function setSlideProperty(
   document: PresentationDocument,
   slideId: string,

@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api import local_mode  # noqa: E402
+from deckastra_api import grants, local_mode  # noqa: E402
 from deckastra_api.db import session as db_session  # noqa: E402
 
 SECRET = "a-launch-secret-that-is-long-enough-to-pass"
@@ -243,6 +243,47 @@ def test_an_agent_cannot_revoke(client):
 
     # And the refusal did not quietly revoke anything on the way past.
     assert client.get("/v1/account", headers=bearer(token)).status_code == 200
+
+
+def test_an_agent_cannot_delete_restore_or_move_a_deck(client):
+    """A deck's life is a person's decision (editor Phase 5).
+
+    Deleting, restoring and moving a deck, and restoring an earlier version over
+    the current one, each replace or remove a whole deck at once and apply
+    immediately, outside the proposals that keep an agent's edits in front of a
+    person. An agent's credential carries `write`, and before `manage` existed
+    every one of these routes needed only that.
+    """
+    token = local_mode.mint_grant({"read", "write", "export"}, ttl_seconds=60)
+    for method, path in (
+        ("DELETE", "/v1/presentations/doc_x"),
+        ("POST", "/v1/presentations/doc_x/restore"),
+        ("POST", "/v1/presentations/doc_x/versions/ver_x/restore"),
+        ("POST", "/v1/presentations/doc_x/move"),
+    ):
+        refused = client.request(method, path, headers=bearer(token), json={})
+        assert refused.status_code == 403, (method, path, refused.text)
+        assert refused.json()["detail"]["required_scope"] == "manage", path
+
+    # The control: ordinary editing is still the agent's to do.
+    assert grants.required_scope("POST", "/v1/presentations/doc_x/transactions") == "write"
+    assert "manage" not in local_mode.scopes_for(token)
+    assert "manage" in local_mode.scopes_for(SECRET)
+
+
+def test_an_agent_cannot_decide_a_paused_outline(client):
+    """The story checkpoint is a person's review (editor Phase 6).
+
+    An agent may start a generation, and may read the outline it paused on —
+    but answering it is the same act as approving a proposal.
+    """
+    token = local_mode.mint_grant({"read", "write", "export"}, ttl_seconds=60)
+    refused = client.post("/v1/runs/run_x/resume", headers=bearer(token), json={"action": "approve"})
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["detail"]["required_scope"] == "approve"
+    # The control: starting one and reading it are ordinary work.
+    assert grants.required_scope("POST", "/v1/generate/review") == "write"
+    assert grants.required_scope("GET", "/v1/runs/run_x/checkpoint") == "read"
 
 
 def test_a_grant_that_cannot_say_when_it_was_issued_is_refused(client):

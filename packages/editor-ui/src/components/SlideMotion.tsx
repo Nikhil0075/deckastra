@@ -30,6 +30,12 @@ export interface SlideMotionHandle {
   showFinalState(): void;
   /** True when this slide has motion at all. */
   hasMotion(): boolean;
+  /**
+   * Click reveals done so far: 0 on arrival, the step count once every reveal
+   * has played (or when the slide was entered backwards at its final state).
+   * What the presenter view's "Step 3 of 4" is read from.
+   */
+  step(): number;
 }
 
 export function SlideMotion({
@@ -101,6 +107,7 @@ export function SlideMotion({
       previous: () => adapter.current?.previous() ?? false,
       showFinalState: () => adapter.current?.enterAtEnd(),
       hasMotion: () => timeline.clips.length > 0,
+      step: () => adapter.current?.state.segmentIndex ?? 0,
     }),
     [timeline.clips.length],
   );

@@ -1,0 +1,21 @@
+{
+  "step": "close",
+  "startedAt": "2026-09-19T20:15:12.777Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 34649,
+  "console": [],
+  "cspViolations": [],
+  "mode": "quit",
+  "killedService": true,
+  "marker": "Last words 1789848917569",
+  "typed": "Last words 1789848917569",
+  "ok": "pending",
+  "closeRequestedAt": "2026-09-19T20:15:17.579Z",
+  "windowClosedAt": "2026-09-19T20:15:18.127Z",
+  "willQuitAt": "2026-09-19T20:15:18.127Z"
+}

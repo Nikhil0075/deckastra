@@ -1,0 +1,15 @@
+
+ RUN  v3.2.7 D:/Presentation_app/apps/worker
+
+ ✓ tests/assets.test.ts (9 tests) 274ms
+ ✓ tests/critic-report.test.ts (3 tests) 63ms
+ ✓ tests/render-pool.test.ts (3 tests) 42ms
+ ✓ tests/text-measurement.test.ts (3 tests) 23ms
+ ✓ tests/electron-backend.test.ts (10 tests) 25ms
+ ✓ tests/render-deadline.test.ts (5 tests) 7ms
+
+ Test Files  6 passed (6)
+      Tests  33 passed (33)
+   Start at  01:01:40
+   Duration  6.94s (transform 1.91s, setup 0ms, collect 3.92s, tests 434ms, environment 2ms, prepare 928ms)
+

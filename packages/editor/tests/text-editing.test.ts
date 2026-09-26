@@ -128,6 +128,33 @@ describe("paste sanitization", () => {
   });
 });
 
+describe("blank lines", () => {
+  it("reads the <br> that holds an empty line open as nothing, so a blank line stays one line", () => {
+    const host = document.createElement("div");
+    host.innerHTML = "<div>one</div><div><br></div><div>two<br></div>";
+    expect(readEditable(host).blocks.map((block) => block.spans[0]!.text)).toEqual(["one", "", "two"]);
+  });
+
+  it("still reads a <br> between words as a line break", () => {
+    const host = document.createElement("div");
+    host.innerHTML = "<div>one<br>two</div>";
+    expect(readEditable(host).blocks.map((block) => block.spans[0]!.text)).toEqual(["one", "two"]);
+  });
+});
+
+describe("lists", () => {
+  it("reads an ordered list as numbered and an unordered one as bullets", () => {
+    const host = document.createElement("div");
+    host.innerHTML = "<ol><li>first</li><li>second</li></ol><ul><li>point</li></ul><div>after</div>";
+    expect(readEditable(host).blocks.map((block) => [block.type, block.spans[0]!.text])).toEqual([
+      ["numbered", "first"],
+      ["numbered", "second"],
+      ["bullet", "point"],
+      ["paragraph", "after"],
+    ]);
+  });
+});
+
 describe("plain text paste", () => {
   it("makes one block per line", () => {
     expect(plainTextToRichText("a\nb\nc").blocks).toHaveLength(3);

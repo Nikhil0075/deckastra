@@ -1,0 +1,67 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ✓ tests/useEditor.test.ts (23 tests) 4056ms
+ ✓ tests/close-barrier.test.tsx (12 tests) 2655ms
+   ✓ preparing to close > saves what a failed close journalled as soon as the deck is opened again, with no new edit  1047ms
+   ✓ preparing to close > does not approve a close for a participant that never answers  310ms
+ ✓ tests/motion-panel.test.tsx (5 tests) 784ms
+ ✓ tests/external-change.test.ts (9 tests) 1896ms
+   ✓ a change made outside the editor > never replaces a document with unsaved work in it  302ms
+   ✓ a change made outside the editor > does not poll from a window nobody is looking at  360ms
+ ✓ tests/deck-list-race.test.tsx (5 tests) 917ms
+   ✓ switching projects > does not let a late answer for A replace B's cards  307ms
+ ✓ tests/deck-list.test.tsx (9 tests) 873ms
+ ✓ tests/export-save-barrier.test.tsx (7 tests) 1163ms
+   ✓ exporting from the editor > PDF includes an edit whose autosave had not run yet, pinned to its version  365ms
+ ✓ tests/speaker-notes.test.tsx (9 tests) 412ms
+ ✓ tests/canvas-gesture.test.tsx (12 tests) 1652ms
+ ✓ tests/generate-deck-scope.test.tsx (11 tests) 843ms
+ ✓ tests/ui-primitives.test.tsx (22 tests) 415ms
+ ✓ tests/timeline-lanes.test.tsx (10 tests) 313ms
+ ✓ tests/proposals-panel.test.tsx (5 tests) 384ms
+ ✓ tests/generate-deck.test.tsx (5 tests) 423ms
+ ✓ tests/theme-panel.test.tsx (2 tests) 661ms
+   ✓ saves the current portable theme as the workspace default when selected  343ms
+ ✓ tests/recovery-copies.test.tsx (8 tests) 438ms
+ ✓ tests/presenter.test.tsx (13 tests) 477ms
+ ✓ tests/share-panel.test.tsx (4 tests) 256ms
+ ✓ tests/notes-rich.test.ts (10 tests) 257ms
+ ✓ tests/motion-mode-panel.test.tsx (7 tests) 368ms
+ ✓ tests/chrome-theme.test.tsx (4 tests) 197ms
+ ✓ tests/presenter-window.test.tsx (4 tests) 196ms
+ ✓ tests/account-picker.test.tsx (1 test) 284ms
+ ✓ tests/version-history.test.tsx (8 tests) 308ms
+ ✓ tests/present-navigation.test.tsx (6 tests) 329ms
+ ✓ tests/generation-route.test.tsx (7 tests) 285ms
+ ✓ tests/editor-recovery.test.ts (10 tests) 288ms
+ ✓ tests/code-panel.test.tsx (3 tests) 338ms
+ ✓ tests/reconcile.test.ts (5 tests) 180ms
+ ✓ tests/accessibility-panel.test.tsx (1 test) 212ms
+ ✓ tests/critic-issues.test.tsx (2 tests) 136ms
+ ✓ tests/asset-urls.test.tsx (5 tests) 220ms
+ ✓ tests/sync-reconcile.test.ts (5 tests) 242ms
+ ✓ tests/font-rebuild.test.tsx (1 test) 123ms
+ ✓ tests/font-cache.test.ts (1 test) 155ms
+ ✓ tests/slide-actions.test.ts (13 tests) 161ms
+ ✓ tests/slide-transition.test.tsx (5 tests) 180ms
+ ✓ tests/measurer.test.ts (5 tests) 68ms
+ ✓ tests/insert-image.test.tsx (5 tests) 185ms
+ ✓ tests/regions.test.ts (3 tests) 79ms
+ ✓ tests/transition-editing.test.ts (13 tests) 148ms
+ ✓ tests/resize-operations.test.ts (2 tests) 213ms
+ ✓ tests/ui-tokens.test.ts (57 tests) 30ms
+ ✓ tests/proposal-preview.test.ts (5 tests) 31ms
+ ✓ tests/recovery-entries.test.ts (7 tests) 43ms
+ ✓ tests/presentSync.test.ts (11 tests) 13ms
+ ✓ tests/accessibility.test.ts (3 tests) 16ms
+ ✓ tests/ui-keys.test.ts (11 tests) 14ms
+ ✓ tests/display-fit.test.ts (6 tests) 10ms
+ ✓ tests/editor-layout.test.ts (7 tests) 11ms
+ ✓ tests/host-commands.test.ts (2 tests) 7ms
+
+ Test Files  51 passed (51)
+      Tests  406 passed (406)
+   Start at  00:56:12
+   Duration  163.63s (transform 4.33s, setup 0ms, collect 29.88s, tests 23.95s, environment 82.02s, prepare 9.35s)
+

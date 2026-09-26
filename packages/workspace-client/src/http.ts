@@ -11,6 +11,9 @@ import type {
   DocumentHead,
   DocumentRead,
   MovePresentationResult,
+  DeletePresentationResult,
+  RestorePresentationResult,
+  DuplicatePresentationResult,
   EditScopePayload,
   ExportJob,
   ExportRequest,
@@ -21,6 +24,8 @@ import type {
   MotionRequest,
   MotionResult,
   PendingProposal,
+  ProposalDetail,
+  ReviewedGeneration,
   PresentationSummary,
   PreviewRequest,
   PreviewResult,
@@ -38,6 +43,7 @@ import type {
   TransactionRequest,
   TransactionResult,
   VersionSummary,
+  RestoreVersionResult,
   WorkspaceClient,
   UploadedAsset,
 } from "@deckastra/workspace-contracts";
@@ -251,12 +257,38 @@ const q = encodeURIComponent;
           ...request,
         }),
       versions: (presentationId, request) =>
-        json<VersionSummary[]>(`/v1/presentations/${q(presentationId)}/versions`, { ...request }),
+        // Fresh: the drawer is opened to see what just happened.
+        json<VersionSummary[]>(`/v1/presentations/${q(presentationId)}/versions`, { fresh: true, ...request }),
+      restoreVersion: (presentationId, versionId, expectedVersionId, request) =>
+        json<RestoreVersionResult>(
+          `/v1/presentations/${q(presentationId)}/versions/${q(versionId)}/restore`,
+          { body: { expected_version_id: expectedVersionId }, ...request },
+        ),
       move: (presentationId, projectId, request) =>
         json<MovePresentationResult>(`/v1/presentations/${q(presentationId)}/move`, {
           body: { project_id: projectId },
           ...request,
         }),
+      delete: (presentationId, request) =>
+        json<DeletePresentationResult>(`/v1/presentations/${q(presentationId)}`, {
+          method: "DELETE",
+          ...request,
+        }),
+      restore: (presentationId, request) =>
+        json<RestorePresentationResult>(`/v1/presentations/${q(presentationId)}/restore`, {
+          method: "POST",
+          ...request,
+        }),
+      duplicate: (presentationId, request) =>
+        json<DuplicatePresentationResult>(`/v1/presentations/${q(presentationId)}/duplicate`, {
+          method: "POST",
+          ...request,
+        }),
+      trash: (projectId, request) =>
+        json<{ presentations: PresentationSummary[] }>(
+          `/v1/projects/${q(projectId)}/presentations?deleted=true`,
+          { fresh: true, ...request },
+        ).then((body) => body.presentations),
     },
 
     motion: {
@@ -272,6 +304,11 @@ const q = encodeURIComponent;
 
     generation: {
       run: (body: GenerateRequest, request) => json<GenerateResult>("/v1/generate", { body, ...request }),
+      review: (body, request) => json<ReviewedGeneration>("/v1/generate/review", { body, ...request }),
+      checkpoint: (runId, request) =>
+        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/checkpoint`, { fresh: true, ...request }),
+      decide: (runId, decision, request) =>
+        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/resume`, { method: "POST", body: decision, ...request }),
     },
 
     agent: {
@@ -282,6 +319,11 @@ const q = encodeURIComponent;
         }),
       proposals: (presentationId, request) =>
         json<PendingProposal[]>(`/v1/presentations/${q(presentationId)}/proposals`, { ...request }),
+      proposal: (presentationId, proposalId, request) =>
+        json<ProposalDetail>(`/v1/presentations/${q(presentationId)}/proposals/${q(proposalId)}`, {
+          fresh: true,
+          ...request,
+        }),
       approve: (presentationId, proposalId, expectedVersionId, request) =>
         json<AppliedChange>(
           `/v1/presentations/${q(presentationId)}/proposals/${q(proposalId)}/approve`,

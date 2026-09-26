@@ -1,0 +1,98 @@
+[
+  {
+    "workspace": "@deckastra/animation-engine",
+    "exitCode": 0,
+    "log": "animation-engine-test.log",
+    "summary": "Tests  174 passed (174)"
+  },
+  {
+    "workspace": "@deckastra/editor",
+    "exitCode": 0,
+    "log": "editor-test.log",
+    "summary": "Tests  113 passed (113)"
+  },
+  {
+    "workspace": "@deckastra/export-core",
+    "exitCode": 0,
+    "log": "export-core-test.log",
+    "summary": "Tests  2 passed (2)"
+  },
+  {
+    "workspace": "@deckastra/export-pdf",
+    "exitCode": 0,
+    "log": "export-pdf-test.log",
+    "summary": "Tests  2 passed (2)"
+  },
+  {
+    "workspace": "@deckastra/export-pptx",
+    "exitCode": 0,
+    "log": "export-pptx-test.log",
+    "summary": "Tests  53 passed (53)"
+  },
+  {
+    "workspace": "@deckastra/layout-engine",
+    "exitCode": 0,
+    "log": "layout-engine-test.log",
+    "summary": "Tests  46 passed (46)"
+  },
+  {
+    "workspace": "@deckastra/presentation-core",
+    "exitCode": 0,
+    "log": "presentation-core-test.log",
+    "summary": "Tests  57 passed (57)"
+  },
+  {
+    "workspace": "@deckastra/presentation-schema",
+    "exitCode": 0,
+    "log": "presentation-schema-test.log",
+    "summary": "Tests  100 passed (100)"
+  },
+  {
+    "workspace": "@deckastra/renderer",
+    "exitCode": 0,
+    "log": "renderer-test.log",
+    "summary": "Tests  159 passed | 1 skipped (160)"
+  },
+  {
+    "workspace": "@deckastra/transactions",
+    "exitCode": 0,
+    "log": "transactions-test.log",
+    "summary": "Tests  61 passed (61)"
+  },
+  {
+    "workspace": "@deckastra/workspace-client",
+    "exitCode": 0,
+    "log": "workspace-client-test.log",
+    "summary": "Tests  12 passed (12)"
+  },
+  {
+    "workspace": "@deckastra/desktop",
+    "exitCode": 0,
+    "log": "desktop-test.log",
+    "summary": "Tests  127 passed (127)"
+  },
+  {
+    "workspace": "@deckastra/mcp-server",
+    "exitCode": 0,
+    "log": "mcp-server-test.log",
+    "summary": "Tests  21 passed (21)"
+  },
+  {
+    "workspace": "@deckastra/web",
+    "exitCode": 0,
+    "log": "web-test.log",
+    "summary": "Tests  3 passed (3)"
+  },
+  {
+    "workspace": "@deckastra/worker",
+    "exitCode": 0,
+    "log": "worker-test.log",
+    "summary": "Tests  33 passed (33)"
+  },
+  {
+    "workspace": "@deckastra/editor-ui",
+    "exitCode": 0,
+    "log": "editor-ui-serial.log",
+    "summary": "Tests  406 passed (406)"
+  }
+]

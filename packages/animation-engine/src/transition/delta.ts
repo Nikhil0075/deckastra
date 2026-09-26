@@ -36,51 +36,60 @@ export function pairDelta(
   destination: TransitionNode,
   matchMode: MatchMode,
 ): PairDelta {
-  // Centre to centre. Corner-to-corner drifts whenever the two boxes differ in
-  // size, which is exactly the case a morph exists for: the element appears to
-  // slide sideways as it grows.
-  const sourceCentre = {
-    x: source.bounds.x + source.bounds.width / 2,
-    y: source.bounds.y + source.bounds.height / 2,
-  };
-  const destinationCentre = {
-    x: destination.bounds.x + destination.bounds.width / 2,
-    y: destination.bounds.y + destination.bounds.height / 2,
-  };
+  const text = source.fontSize !== undefined && destination.fontSize !== undefined;
 
-  const scales =
-    matchMode === "position"
-      ? { scaleX: 1, scaleY: 1 }
-      : {
-          scaleX: round(ratio(destination.bounds.width, source.bounds.width)),
-          scaleY: round(ratio(destination.bounds.height, source.bounds.height)),
-        };
+  // The point that corresponds on both. For a box, its centre: corner-to-corner
+  // drifts whenever the two boxes differ in size, which is exactly the case a
+  // morph exists for. For text, the edge the words are aligned to: a
+  // left-aligned headline whose box grew stays put on the left, and matching
+  // centres would slide every letter sideways as it arrived.
+  const from = text && source.anchor ? source.anchor : centre(source);
+  const to = text && destination.anchor ? destination.anchor : centre(destination);
 
-  // The delta is expressed from the *destination's* resting place backwards,
-  // because that is where the element lives once the transition ends. The
-  // incoming element starts displaced and settles; nothing has to be positioned
-  // absolutely at any point.
+  let scales: { scaleX: number; scaleY: number };
+  if (matchMode === "position") {
+    scales = { scaleX: 1, scaleY: 1 };
+  } else if (text) {
+    // Text scales by its type size, uniformly. The box says where the words may
+    // wrap, not how big they are: a box made twice as wide with the same 40px
+    // type would otherwise draw every glyph stretched to double width and
+    // squeeze it back — the single most visible way a morph looks broken.
+    const uniform = round(ratio(destination.fontSize!, source.fontSize!));
+    scales = { scaleX: uniform, scaleY: uniform };
+  } else {
+    scales = {
+      scaleX: round(ratio(destination.bounds.width, source.bounds.width)),
+      scaleY: round(ratio(destination.bounds.height, source.bounds.height)),
+    };
+  }
+
+  // Expressed from the *destination's* resting place backwards, because that is
+  // where the element lives once the transition ends.
   const delta: PairDelta = {
     sourceId: source.id,
     destinationId: destination.id,
-    dx: round(sourceCentre.x - destinationCentre.x),
-    dy: round(sourceCentre.y - destinationCentre.y),
+    dx: round(from.x - to.x),
+    dy: round(from.y - to.y),
     ...scales,
     rotate: 0,
     fadeFrom: 1,
     fadeTo: 1,
+    from: { x: round(from.x), y: round(from.y) },
+    to: { x: round(to.x), y: round(to.y) },
   };
 
   if (matchMode === "full") {
     // Only `full` interpolates what the element *is* rather than where it sits.
-    // Rotation and opacity change an element's appearance, and an author who
-    // asked for position matching did not ask for that.
     delta.rotate = round((source.rotation ?? 0) - (destination.rotation ?? 0));
     delta.fadeFrom = source.opacity ?? 1;
     delta.fadeTo = destination.opacity ?? 1;
   }
 
   return delta;
+}
+
+function centre(node: TransitionNode): { x: number; y: number } {
+  return { x: node.bounds.x + node.bounds.width / 2, y: node.bounds.y + node.bounds.height / 2 };
 }
 
 /** Whether a delta would visibly do anything, so a no-op pair can be dropped. */

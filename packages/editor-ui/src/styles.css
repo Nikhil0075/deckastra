@@ -9,7 +9,21 @@
  * forgot to copy them would look fine and behave wrong.
  *
  * Deliberately plain otherwise: the slide surface is the product.
+ *
+ * The Bauhaus rewrite (Phase 0) adds its tokens and primitive styles below as
+ * `--dk-*` / `.dk-*`, alongside the legacy tokens the current components still
+ * read. Fonts are bundled from `@fontsource-variable` as local woff2 — the
+ * desktop CSP allows `font-src 'self'` and nothing remote, and a UI font that
+ * depends on a CDN renders in the fallback face offline.
  */
+
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/jost/wght.css";
+@import "./styles/tokens.css";
+@import "./styles/components.css";
+@import "./styles/shell.css";
+@import "./styles/present.css";
+@import "./styles/decks.css";
 
 :root {
   --bg: #08090c;
@@ -62,7 +76,13 @@ a {
 
 /* A visible focus indicator is shared by every native control, including the
    canvas-adjacent toolbars and the anonymous share journey. */
-:where(button, a, input, textarea, select, summary, [tabindex]):focus-visible {
+/* Outside the editor chrome only: inside it the palette's blue ring applies
+   (components.css). Both rules score only :focus-visible, so without this
+   exclusion the one later in the file — this one — won there too, and the
+   chrome showed the pre-rewrite cyan. */
+:where(button, a, input, textarea, select, summary, [tabindex]):not(
+    :where([class^="dk-"], [class*=" dk-"], [class^="dk-"] *, [class*=" dk-"] *)
+  ):focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }

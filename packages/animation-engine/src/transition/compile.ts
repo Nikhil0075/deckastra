@@ -17,7 +17,7 @@ import { DEFAULT_EASING, round } from "../easing";
 import { isMoving, pairDelta } from "./delta";
 import { resolvePairing, type PairingInput } from "./pairing";
 import { resolveTransitionKind, type TransitionDirection } from "./kinds";
-import type { CompiledTransition, MatchMode, PairDelta, TransitionSlide } from "./types";
+import type { CompiledTransition, MatchMode, PairDelta, TransitionNode, TransitionSlide } from "./types";
 
 export interface TransitionSpec {
   type?: string;
@@ -101,11 +101,23 @@ export function compileTransition(
 
   const sources = new Map(from.nodes.map((node) => [node.id, node]));
   const destinations = new Map(to.nodes.map((node) => [node.id, node]));
+  // A group travels with everything in it, so a pair inside a paired group
+  // would be drawn twice — once carried by its group and once on its own path.
+  // The group's pairing wins: it is the larger object and the one the author
+  // reads as moving.
+  const pairedSources = new Set(pairing.pairs.map((pair) => pair.sourceId));
+  const pairedDestinations = new Set(pairing.pairs.map((pair) => pair.destinationId));
   const deltas: PairDelta[] = [];
   for (const pair of pairing.pairs) {
     const source = sources.get(pair.sourceId);
     const destination = destinations.get(pair.destinationId);
     if (!source || !destination) continue;
+    if (insidePaired(source, sources, pairedSources) || insidePaired(destination, destinations, pairedDestinations)) {
+      warnings.push(
+        `"${pair.sourceId}" moves with the group it is in, which is paired too, so it is not paired on its own.`,
+      );
+      continue;
+    }
     const delta = pairDelta(source, destination, pair.matchMode);
     // A pair that does not move is not drawn. Emitting a track that animates
     // nothing costs a compositor layer per element and buys no motion — and on a
@@ -126,6 +138,19 @@ export function compileTransition(
     degraded,
     warnings,
   };
+}
+
+function insidePaired(
+  node: TransitionNode,
+  nodes: ReadonlyMap<string, TransitionNode>,
+  paired: ReadonlySet<string>,
+): boolean {
+  let parent = node.parentId;
+  while (parent) {
+    if (paired.has(parent)) return true;
+    parent = nodes.get(parent)?.parentId;
+  }
+  return false;
 }
 
 /**

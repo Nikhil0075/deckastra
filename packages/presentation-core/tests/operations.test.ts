@@ -31,6 +31,7 @@ import {
   resolveElementById,
   resolveSlideById,
   setProperty,
+  setPropertyDeep,
   setSlideProperty,
   validateReferences,
   withFreshIds,
@@ -514,5 +515,27 @@ describe("move indices land exactly (regression)", () => {
         expect(after.slides, `${from} -> ${to}`).toHaveLength(ids.length);
       }
     }
+  });
+});
+
+describe("setPropertyDeep", () => {
+  it("adds the outermost missing object, so the inverse removes exactly that", () => {
+    const text = base.slides[0]!.elements.find((element) => element.type === "text")!;
+    const doc = structuredClone(base);
+    const found = resolveElementById(doc, text.id)!;
+    delete (found.element as { paragraph?: unknown }).paragraph;
+    const operations = setPropertyDeep(doc, text.id, "paragraph.align", "center");
+    expect(operations).toEqual([{ op: "add", path: `${found.path}/paragraph`, value: { align: "center" } }]);
+    const result = applyPatch(doc, operations);
+    expect((resolveElementById(result.document, text.id)!.element as { paragraph?: unknown }).paragraph).toEqual({ align: "center" });
+    expect(applyPatch(result.document, result.inverse).document).toEqual(doc);
+  });
+
+  it("replaces an existing value and removes on undefined, and removing nothing is no operation", () => {
+    const shape = makeStarterElement({ kind: "shape", viewport: base.viewport });
+    const doc = apply(base, addElement(base, { slideId, element: shape }));
+    expect(setPropertyDeep(doc, shape.id, "style.cornerRadius", 4)[0]).toMatchObject({ op: "replace" });
+    expect(setPropertyDeep(doc, shape.id, "style.cornerRadius", undefined)[0]).toMatchObject({ op: "remove" });
+    expect(setPropertyDeep(doc, shape.id, "style.stroke", undefined)).toEqual([]);
   });
 });

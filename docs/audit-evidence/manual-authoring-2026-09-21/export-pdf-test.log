@@ -1,0 +1,10 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/export-pdf
+
+ ✓ tests/metrics.test.ts (2 tests) 38ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:58:25
+   Duration  1.78s (transform 738ms, setup 0ms, collect 1.13s, tests 38ms, environment 0ms, prepare 157ms)
+

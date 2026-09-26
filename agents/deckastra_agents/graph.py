@@ -115,7 +115,7 @@ def build_graph(
     builder.add_conditional_edges(
         STORY_CHECKPOINT,
         _after_checkpoint,
-        {CREATIVE: CREATIVE, LAYOUT: LAYOUT, END: END},
+        {CREATIVE: CREATIVE, LAYOUT: LAYOUT, STORY: STORY, END: END},
     )
     builder.add_edge(CREATIVE, LAYOUT)
     builder.add_conditional_edges(LAYOUT, _after_layout, {MOTION: MOTION, CRITIC: CRITIC, PROPOSE: PROPOSE})
@@ -166,6 +166,11 @@ def _after_checkpoint(state: PresentationAgentState) -> str:
     decision = state.get("human_decision") or {}
     if decision.get("action") == "reject":
         return END
+    # The reviewer asked for a different outline. Back to the story stage, which
+    # reads their note and clears the decision, and then to this checkpoint
+    # again: a revised outline is one nobody has approved yet either.
+    if decision.get("action") == "revise":
+        return STORY
 
     stages = _stages(state)
     if "creative" in stages:

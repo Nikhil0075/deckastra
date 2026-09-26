@@ -1,0 +1,43 @@
+{
+  "step": "history",
+  "startedAt": "2026-09-19T18:25:34.763Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3250,
+  "console": [],
+  "cspViolations": [],
+  "log": [
+    "edited",
+    "compared",
+    "restored",
+    "undone",
+    "put back"
+  ],
+  "rows": 9,
+  "drawerTitle": "Version history",
+  "marked": [
+    "changed",
+    "same",
+    "same",
+    "same"
+  ],
+  "notesOnScreenAfterRestore": "",
+  "versionCount": 10,
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 414.2,
+    "byTypeMb": {
+      "Browser": 108.2,
+      "GPU": 154,
+      "Utility": 47,
+      "Tab": 105
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:25:42.521Z"
+}

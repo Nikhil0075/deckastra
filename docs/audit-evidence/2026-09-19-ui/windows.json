@@ -1,0 +1,41 @@
+{
+  "step": "windows",
+  "startedAt": "2026-09-19T13:29:17.016Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5393,
+  "console": [],
+  "cspViolations": [],
+  "bothWindowsRendered": true,
+  "firstWindowStorage": {
+    "keys": [],
+    "session": [
+      "deckastra.editor-recovery.owner:doc_01M2WXHCK1MB1H03RZPYPFVVPN"
+    ]
+  },
+  "secondWindowStorage": {
+    "keys": [],
+    "session": [
+      "deckastra.editor-recovery.owner:doc_01M2WXHCK1MB1H03RZPYPFVVPN"
+    ]
+  },
+  "secondWindowSaved": false,
+  "secondWindowSurface": "Deckastra\n/\nAnimation Conformance Deck\nLocal work retained — review conflict\nDESIGN\nAI\nMOTION\nCODE\nread-only\nAgents off\nSHARE\nEXPORT\nPRESENT\nYour local edits have been retained.\nREVIEW CONFLICTING VERSIONS\nDOWNLOAD LOCAL COPY\nSLIDES 4\n1\n\nMotion reinforces order\n\nProposed\n\nApplied\n\n128\n2\n\nRevealed on click\n\nAgents propose\n\nDeterministic engines compose\n\nHumans stay in control\n\n3\n\nEntered with a zoo",
+  "ok": true,
+  "memory": {
+    "processes": 5,
+    "totalMb": 459.9,
+    "byTypeMb": {
+      "Browser": 98,
+      "GPU": 119.2,
+      "Utility": 47,
+      "Tab": 195.8
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T13:29:51.865Z"
+}

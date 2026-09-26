@@ -1,0 +1,31 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/audit-export-save.test.tsx (1 test | 1 failed) 240ms
+   × audit: export should include an edit whose autosave is pending 239ms
+     → expected 'old' to be 'latest' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-export-save.test.tsx > audit: export should include an edit whose autosave is pending
+AssertionError: expected 'old' to be 'latest' // Object.is equality
+
+Expected: "latest"
+Received: "old"
+
+ ❯ tests/audit-export-save.test.tsx:34:20
+     32|   await waitFor(() => expect(exported).toBeDefined());
+     33|   expect(hook.result.current.document.metadata.title).toBe("latest");
+     34|   expect(exported).toBe("latest");
+       |                    ^
+     35| });
+     36| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  19:03:06
+   Duration  4.73s (transform 834ms, setup 0ms, collect 1.67s, tests 240ms, environment 1.60s, prepare 324ms)
+

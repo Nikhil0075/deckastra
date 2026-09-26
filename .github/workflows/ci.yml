@@ -11,6 +11,15 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The desktop candidate is also built on demand: packaging takes minutes and
+  # produces a 250MB artifact, which is worth it before a release and not on
+  # every push.
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Build an unsigned installer as well
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -297,3 +306,99 @@ jobs:
       - name: Stop rehearsal services
         if: always()
         run: docker compose -f infrastructure/docker/docker-compose.yml down --volumes
+
+  # ---------------------------------------------------------------- desktop
+  #
+  # The product is a Windows desktop app, and until this job existed nothing in
+  # CI built it (final package review, item 10): a broken preload, a missing
+  # PyInstaller import, a stale packaged worker or a failing installed smoke
+  # step could not turn the build red. Everything here runs on the platform the
+  # release ships for, because that is the only place those failures happen.
+  #
+  # Unsigned throughout. Signing and notarization are the release path (items
+  # 11-13), which runs deliberately rather than on every push.
+  desktop:
+    name: Desktop (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          # The version the dependency lock was resolved for.
+          python-version: "3.13"
+
+      - run: npm ci
+
+      - name: Typecheck the desktop app
+        run: npm run typecheck --workspace @deckastra/desktop
+
+      - name: Desktop unit tests
+        run: npm test --workspace @deckastra/desktop
+
+      # Main, preload, renderer, exporter and MCP server. A preload that does
+      # not build is a bridge that is simply absent at runtime.
+      - name: Build the desktop bundles
+        run: npm run build --workspace @deckastra/desktop
+
+      # From the hashed lock, into a clean environment (item 09). This is also
+      # what proves the lock installs on a machine that is not the author's.
+      - name: Freeze the workspace service
+        run: npm run build:sidecar --workspace @deckastra/desktop
+
+      - name: Inventory and build identity
+        run: |
+          npm run sbom --workspace @deckastra/desktop
+          npm run manifest --workspace @deckastra/desktop
+
+      # The acceptance harness, on its own profile. These are the steps that
+      # need no second display and no human: the app opens a deck, edits it,
+      # finds the edit after a restart, renders the fixtures inside Electron's
+      # own Chromium, and closes without losing unsaved work.
+      - name: Acceptance steps
+        shell: bash
+        env:
+          DECKASTRA_SMOKE_DIR: ${{ github.workspace }}/.artifacts/desktop
+          DECKASTRA_SMOKE_PROFILE: ${{ github.workspace }}/.artifacts/desktop-profile
+          DECKASTRA_SMOKE_FIXTURES: ${{ github.workspace }}/packages/presentation-schema/fixtures
+          DECKASTRA_SMOKE_BASELINES: ${{ github.workspace }}/packages/renderer/baselines
+        run: |
+          mkdir -p "$DECKASTRA_SMOKE_DIR" "$DECKASTRA_SMOKE_PROFILE"
+          cd apps/desktop
+          for step in open edit verify digest close close-verify; do
+            echo "--- $step"
+            DECKASTRA_SMOKE_STEP=$step npx electron . || true
+            node -e "
+              const record = require(process.env.DECKASTRA_SMOKE_DIR + '/$step.json');
+              // The close step hands the app to a real quit, so its own record
+              // stays 'pending' by design; close-verify is where that is tested.
+              const ok = record.ok === true || (record.step === 'close' && record.ok === 'pending');
+              if (!ok) {
+                console.error('$step failed:', record.error ?? record.ok);
+                process.exit(1);
+              }
+              console.log('$step', record.ok);
+            "
+          done
+
+      - name: Build an unsigned installer
+        if: inputs.package
+        run: npm run package --workspace @deckastra/desktop
+
+      - name: Upload what the run produced
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-candidate
+          path: |
+            .artifacts/desktop
+            apps/desktop/dist/build-manifest.json
+            apps/desktop/dist/sbom.json
+            apps/desktop/release/*.exe
+          if-no-files-found: warn

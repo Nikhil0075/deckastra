@@ -1,0 +1,64 @@
+{
+  "step": "ai",
+  "startedAt": "2026-09-19T18:26:40.278Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 4221,
+  "console": [],
+  "cspViolations": [],
+  "original": "doc_01M2XEKNW26R3M0EH4QWVQS7FB",
+  "proposal": {
+    "status": 200,
+    "outcome": "pending",
+    "id": "txn_01M2XEQAAF737X5W5HMGYJXJV6",
+    "version": "ver_01M2XENR5QYEEXEADVX11N4VGS",
+    "slideId": "sld_01JB8Z9K2QW4RN7F3X03002300"
+  },
+  "cardText": "PendingMedium risk · from external via MCPSmoke: clear two objectsBeforeRevealed on clickAgents proposeDeterministic engines composeHumans stay in controlAfterSlide 2RejectApply",
+  "pictures": {
+    "before": [
+      115,
+      81
+    ],
+    "after": [
+      115,
+      81
+    ],
+    "slideLine": "Slide 2"
+  },
+  "afterReject": {
+    "version": "ver_01M2XENR5QYEEXEADVX11N4VGS",
+    "pending": 0
+  },
+  "reviewOffered": true,
+  "outline": [
+    "Why a migration needs a control tower",
+    "Every slide here is a real, editable object",
+    "What holds this together",
+    "Budgets, not adjectives",
+    "Two halves, clearly divided",
+    "One property, not a rewrite"
+  ],
+  "reviseDisabledWithoutNote": true,
+  "revised": true,
+  "generated": "doc_01M2XEQGXDEDJ95NTTY129B7GH",
+  "generatedSlides": 6,
+  "restoredOpen": "doc_01M2XEKNW26R3M0EH4QWVQS7FB",
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 396.7,
+    "byTypeMb": {
+      "Browser": 101.3,
+      "GPU": 137.9,
+      "Utility": 47.4,
+      "Tab": 109.9
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:26:49.555Z"
+}

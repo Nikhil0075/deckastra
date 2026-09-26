@@ -1,0 +1,34 @@
+{
+  "step": "decks",
+  "startedAt": "2026-09-19T18:27:33.618Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5245,
+  "console": [],
+  "cspViolations": [],
+  "original": "doc_01M2XEKNW26R3M0EH4QWVQS7FB",
+  "cardsBefore": 1,
+  "copy": "doc_01M2XERYGGDEQ9J44BS3D9CC7D",
+  "copyTitle": "Animation Conformance Deck (copy)",
+  "mainProcessOpen": "doc_01M2XERYGGDEQ9J44BS3D9CC7D",
+  "undoRestored": true,
+  "restoredOpen": "doc_01M2XEKNW26R3M0EH4QWVQS7FB",
+  "cardsAfter": 1,
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 394.3,
+    "byTypeMb": {
+      "Browser": 100.9,
+      "GPU": 137.6,
+      "Utility": 49.4,
+      "Tab": 106.4
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:27:38.469Z"
+}

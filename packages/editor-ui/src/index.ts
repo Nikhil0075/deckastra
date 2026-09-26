@@ -21,6 +21,9 @@ export type { EditorShellProps } from "./components/EditorShell";
 export { PresentMode } from "./components/PresentMode";
 export { GenerationFailed, QuotaReached } from "./components/EmptyState";
 export { AccountPicker } from "./components/AccountPicker";
+export { DeckList } from "./components/DeckList";
+export type { DeckListProps } from "./components/DeckList";
+export type { DeckListCommand, HostCommand, SubscribeHostCommands } from "./lib/host-commands";
 export { RepositoryPanel } from "./components/RepositoryPanel";
 export { SourcesPanel } from "./components/SourcesPanel";
 
@@ -30,6 +33,8 @@ export { SourcesPanel } from "./components/SourcesPanel";
 // (`saveNow`, `adoptDocument`) is what a host must respect before it lets the
 // server replace the document.
 export { useEditor } from "./lib/useEditor";
+export { prepareToClose, type CloseReadiness } from "./lib/close-barrier";
+export { generationRoute, type GenerationRoute } from "./lib/generation-route";
 export type { ApplyOptions, EditorApi, SaveState, UseEditorInput } from "./lib/useEditor";
 
 // --- Text measurement --------------------------------------------------------
@@ -48,5 +53,8 @@ export type { PresentChannelHandlers, SyncMessage } from "./lib/presentSync";
 // --- Recovery ----------------------------------------------------------------
 // A shell has to be able to ask "is there unsaved work from a previous session",
 // and answer it before it opens a document.
-export type { RecoveryCopy } from "./lib/editor-recovery";
+export type { RecoveryCopy, RecoveryEntry } from "./lib/editor-recovery";
+// A shell backing this install up carries the unsaved work too (desktop item 14).
+export { allRecoveryEntries, writeRecoveryEntries } from "./lib/editor-recovery";
+export { settleWork } from "./lib/close-barrier";
 export type { ConflictChoice, ConflictReview } from "./lib/reconcile";

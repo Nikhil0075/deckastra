@@ -1,0 +1,148 @@
+/*
+ * Design tokens for the editor chrome — Bauhaus, light.
+ *
+ * The rules these encode (plan: "Design language: Bauhaus"):
+ *
+ * - Primary colours only, and each one means one thing. Blue is the single
+ *   action colour. Yellow means "waiting on a human" — paused, pending, an
+ *   automatic pairing someone should look at. Red means danger or a finding.
+ *   A colour that means two things means nothing, so status colours are reached
+ *   through `StatusChip` and never picked per screen.
+ * - Structure is drawn with black rules, not shadows. There is deliberately no
+ *   radius token: a component that wants a rounded corner has to argue with
+ *   this file, which is the point.
+ * - Yellow is a fill behind black text, never a text colour — it fails contrast
+ *   on cream. `tests/ui-tokens.test.ts` reads this file and checks every pair
+ *   the components use, so a tweak that breaks AA fails a test rather than a
+ *   user.
+ *
+ * Everything is prefixed `--dk-` so it cannot collide with the legacy tokens in
+ * `styles.css` (`--bg`, `--fg`, …) that the pre-rewrite components still read.
+ * Those go when the last component that uses them is rewritten.
+ *
+ * The dark set (the Figma file's Page 1 charcoal, squared to Bauhaus) is the
+ * `[data-dk-theme="dark"]` block at the end. It redefines colours only: space,
+ * type and structure are one design in two lights. `useChromeTheme` resolves
+ * the person's choice — System, Light or Dark — to one of the two and writes it
+ * on the root element, so there is exactly one definition of each set and no
+ * media-query copy of it to drift. The token test checks every pair in both.
+ */
+
+:root {
+  /* Surfaces */
+  --dk-ground: #f2efe7; /* the cream the whole app sits on */
+  --dk-surface: #ffffff; /* cards, fields, popovers */
+  --dk-stage: #e7e3d8; /* the area around the slide on the canvas */
+  --dk-sunk: #ebe7dd; /* hovered rows, pressed ghost buttons */
+  --dk-scrim: rgb(17 17 17 / 0.45); /* behind a modal drawer */
+  /* What is behind a slide wherever one is drawn — canvas, present mode,
+     thumbnails. Pure black, matching EditorCanvas and PresentMode, so a deck
+     with no background of its own looks the same in the strip as on stage. */
+  --dk-backdrop: #000000;
+  /* Text and rules drawn *on* that backdrop — present mode's controls. White in
+     both themes, because a projected slide is on black whatever the laptop is. */
+  --dk-on-backdrop: #ffffff;
+
+  /* Ink */
+  --dk-ink: #111111;
+  --dk-ink-muted: #57544d; /* secondary text; AA on ground, surface and stage */
+  --dk-ink-inverse: #ffffff;
+
+  /* Rules */
+  --dk-rule: #111111; /* structural lines */
+  --dk-rule-soft: #8a867c; /* field outlines; 3:1 against ground (non-text) */
+
+  /* The three primaries */
+  --dk-blue: #1e4bd2;
+  --dk-on-blue: #ffffff;
+  --dk-yellow: #f4c20d;
+  --dk-on-yellow: #111111;
+  --dk-red: #c4231a;
+  --dk-on-red: #ffffff;
+  /* Yellow's text-safe form: "waiting on a human" said in words rather than as
+     a fill — a conflict notice, a warning line. Yellow itself fails as text. */
+  --dk-ochre: #7a5600;
+
+  /* Type */
+  --dk-font-ui: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Geometric display face for large numerals and headings (presenter timer,
+     deck titles). The presenter frames in the Figma used a serif here; that is
+     a token away if it is wanted back. */
+  --dk-font-display: "Jost Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --dk-font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+
+  --dk-text-xs: 10px; /* micro-labels — always uppercase + tracked */
+  --dk-text-sm: 12px; /* dense UI: inspector fields, rows */
+  --dk-text-md: 13px; /* default UI text */
+  --dk-text-lg: 16px; /* panel titles */
+  --dk-text-xl: 24px; /* page titles */
+  --dk-text-display: 40px; /* presenter timer */
+  --dk-tracking-label: 0.08em;
+
+  /* Space: an 8px grid, with a 4px half-step for dense controls */
+  --dk-space-1: 4px;
+  --dk-space-2: 8px;
+  --dk-space-3: 12px;
+  --dk-space-4: 16px;
+  --dk-space-5: 24px;
+  --dk-space-6: 32px;
+  --dk-space-8: 48px;
+
+  /* Lines */
+  --dk-line: 1px;
+  --dk-line-strong: 2px; /* the active or focused frame */
+
+  /* Control sizes */
+  --dk-control-sm: 24px;
+  --dk-control-md: 32px;
+  --dk-control-lg: 40px;
+
+  /* Fixed panel widths on the grid */
+  --dk-rail-width: 48px;
+  --dk-strip-width: 176px;
+  --dk-inspector-width: 288px;
+  --dk-bar-height: 48px;
+
+  /* Chrome motion is mechanical: short, no overshoot. Deck motion belongs to
+     the document and never reads these. */
+  --dk-duration: 120ms;
+  --dk-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layering */
+  --dk-z-popover: 40;
+  --dk-z-drawer: 30;
+  --dk-z-tooltip: 50;
+}
+
+/*
+ * Dark. Charcoal ground, cream ink, a periwinkle blue that still means "the
+ * action" and still passes AA against every surface it sits on. Yellow keeps
+ * black text on it: a fill is a fill in either light. Ochre (yellow said in
+ * words) becomes amber, which reads on charcoal where ochre would not.
+ */
+:root[data-dk-theme="dark"] {
+  color-scheme: dark;
+
+  --dk-ground: #18181b;
+  --dk-surface: #222226;
+  --dk-stage: #0e0e10;
+  --dk-sunk: #2d2d33;
+  --dk-scrim: rgb(0 0 0 / 0.6);
+  --dk-backdrop: #000000;
+  --dk-on-backdrop: #ffffff;
+
+  --dk-ink: #f1ede4;
+  --dk-ink-muted: #aaa59a;
+  --dk-ink-inverse: #111111;
+
+  --dk-rule: #e6e1d6;
+  --dk-rule-soft: #7a766d;
+
+  --dk-blue: #8aa0ff;
+  --dk-on-blue: #0b0d18;
+  --dk-yellow: #f4c20d;
+  --dk-on-yellow: #111111;
+  --dk-red: #ff7a6e;
+  --dk-on-red: #111111;
+  --dk-ochre: #e8b923;
+}

@@ -17,9 +17,32 @@
  */
 
 export interface SyncMessage {
-  type: "index" | "hello" | "bye";
+  type: "index" | "hello" | "bye" | "state" | "command";
   index?: number;
+  /**
+   * `state` (audience → presenter): where the talk is *within* the slide, and
+   * whether the projector is blacked out. Only the audience window plays the
+   * slide's motion, so only it knows which reveal is showing.
+   */
+  step?: number;
+  blacked?: boolean;
+  /**
+   * `command` (presenter → audience): an intent the audience window carries
+   * out, because it owns the motion. "Next" from the laptop has to reveal the
+   * next bullet on the projector, not jump the slide past it.
+   */
+  action?: "advance" | "black";
+  delta?: 1 | -1;
 }
+
+/** What the audience window reports after every change. */
+export interface PresentState {
+  index: number;
+  step: number;
+  blacked: boolean;
+}
+
+export type PresentCommand = { action: "advance"; delta: 1 | -1 } | { action: "black" };
 
 /**
  * Clamp an index from the other window.
@@ -41,6 +64,15 @@ export interface PresentChannelHandlers {
   currentIndex: () => number;
   /** How many slides this window has, for clamping. */
   slideCount: () => number;
+  /**
+   * The audience window's full state arrived (presenter side). The index is
+   * already clamped; the step is passed through as sent.
+   */
+  onState?: (state: PresentState) => void;
+  /** A command arrived from a presenter window (audience side). */
+  onCommand?: (command: PresentCommand) => void;
+  /** This window's full state, for answering a late joiner (audience side). */
+  currentState?: () => PresentState;
 }
 
 /**
@@ -80,12 +112,44 @@ export class PresentChannel {
       return;
     }
 
+    if (message.type === "state" && typeof message.index === "number") {
+      this.handlers.onState?.({
+        index: clampIndex(message.index, this.handlers.slideCount()),
+        step: typeof message.step === "number" && message.step >= 0 ? Math.trunc(message.step) : 0,
+        blacked: message.blacked === true,
+      });
+      return;
+    }
+
+    if (message.type === "command") {
+      // Only the two commands there are; anything else is ignored rather than
+      // guessed at, since a guess here moves a projector in front of a room.
+      if (message.action === "advance" && (message.delta === 1 || message.delta === -1)) {
+        this.handlers.onCommand?.({ action: "advance", delta: message.delta });
+      } else if (message.action === "black") {
+        this.handlers.onCommand?.({ action: "black" });
+      }
+      return;
+    }
+
     if (message.type === "hello") {
       this.channel?.postMessage({
         type: "index",
         index: this.handlers.currentIndex(),
       } satisfies SyncMessage);
+      const state = this.handlers.currentState?.();
+      if (state) this.postState(state);
     }
+  }
+
+  /** Announce this window's full state (audience side). */
+  postState(state: PresentState): void {
+    this.channel?.postMessage({ type: "state", ...state } satisfies SyncMessage);
+  }
+
+  /** Ask the audience window to do something (presenter side). */
+  command(command: PresentCommand): void {
+    this.channel?.postMessage({ type: "command", ...command } satisfies SyncMessage);
   }
 
   /** Announce this window's position. */

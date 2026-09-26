@@ -1,0 +1,188 @@
+Window: "Deckastra", App: electron.exe.
+	0 window Deckastra Secondary Actions: Raise
+		1 pane (disabled)
+		2 region Deckastra
+			3 region
+				4 region
+					5 region
+						6 region
+							7 region
+								8 region
+									10 document Deckastra Value: deckastra://app/index.html ID: RootWebArea
+										17 group
+											11 group ID: root
+												33 header
+													34 button All decks
+													35 heading Deckastra Animation Conformance Deck Description: Animation Conformance Deck
+													36 button Undo
+													37 button (disabled) Redo
+													206 button Save changes
+													38 radio group (settable, string) Editor mode
+														39 radio button (selectable, settable, string) DESIGN
+														40 radio button (selectable, settable, string) AI
+														41 radio button (selectable, settable, string) MOTION
+														42 radio button (selectable, settable, string) CODE read-only
+													43 button INTELLIGENCE
+													44 button Agents off
+													45 button Appearance: system (dark)
+													46 button SHARE
+													47 button EXPORT
+													48 button PRESENT
+												49 tool bar Insert
+													50 button Add text
+													51 button Add rectangle
+													52 button Add ellipse
+													53 button Add line
+													54 button Add image
+													55 button Add chart
+													56 button Add diagram
+													57 button Add table
+													58 button Add code
+													59 button Add icon
+												60 navigation Slides
+													61 text SLIDES
+													62 text 4
+													63 button Add slide
+													64 list
+														65 list item Motion reinforces orderProposedApplied128
+															66 button Slide 1 of 4: Motion reinforces narrative order Description: Motion reinforces narrative order
+																67 group Proposed
+																68 group Applied
+															69 button Slide 1 actions
+														70 list item Revealed on clickAgents proposeDeterministic engines composeHumans stay in control
+															71 button Slide 2 of 4: The presenter paces the slide, not the timeline Description: The presenter paces the slide, not the timeline
+																72 group Bullets
+															73 button Slide 2 actions
+														74 list item Entered with a zoom
+															75 button Slide 3 of 4: Transitions belong to the slide being entered Description: Transitions belong to the slide being entered
+															76 button Slide 3 actions
+														77 list item The same headline, moved
+															78 button Slide 4 of 4: Paired elements travel; everything else crossfades Description: Paired elements travel; everything else crossfades
+															79 button Slide 4 actions
+												80 main Slide editor
+													81 tool bar Canvas
+														82 button Zoom out
+														83 status Zoom
+															84 text 33%
+														85 button Zoom in
+														86 toggle button FIT
+													87 slide canvas Slide canvas. Tab moves between objects, arrow keys nudge the selection, Escape clears it.
+														88 text Motion reinforces order
+														89 group Proposed
+															90 text Proposed
+														91 group Applied
+															92 text Applied
+														207 text 128
+														155 group Description: Rotate
+													94 region Speaker notes
+														95 section header
+															96 text SPEAKER NOTES
+															97 text Slide
+															98 text 1
+															99 text ·
+															100 text no notes yet
+															101 button Collapse speaker notes
+														102 tool bar Format speaker notes
+															103 toggle button Bold
+															104 toggle button Italic
+															105 toggle button Underline
+															106 toggle button Bulleted list
+															107 toggle button Numbered list
+														108 edit (settable, string) SPEAKER NOTES Value: What to say on this slide. Only you see these, in the presenter view.
+															109 text What to say on this slide. Only you see these, in the presenter view.
+														110 section footer
+															111 text 0
+															112 text character
+															113 text s
+													114 region Motion timeline
+														115 text MOTION
+														116 button PREVIEW
+														117 group Description: Entrance: 970ms of 2500ms
+															118 text 970
+															119 text ms
+														156 combo box (settable, string) Add animation to the selection Value: Add animation…
+														121 text 0
+														122 text s
+														123 text headline
+														124 button fadeUp, 0 to 240 milliseconds Description: fadeUp · 0–240ms · drag to move, drag the right edge to trim, hold Shift to ripple
+														125 text Proposed
+														126 button fadeUp, 240 to 480 milliseconds Description: fadeUp · 240–480ms · drag to move, drag the right edge to trim, hold Shift to ripple
+														127 text Applied
+														128 button fadeUp, 310 to 550 milliseconds Description: fadeUp · 310–550ms · drag to move, drag the right edge to trim, hold Shift to ripple
+														129 text metric
+														130 button numberCount, 550 to 970 milliseconds Description: numberCount · 550–970ms · drag to move, drag the right edge to trim, hold Shift to ripple
+														131 slider (settable, float) Scrub the slide timeline Value: 0
+												132 complementary Inspector
+													157 group Description: text
+														158 text Motion reinforces order
+													159 text HEADLINE
+													160 toggle button Lock
+													161 toggle button Hide
+													162 button More actions
+													163 heading POSITION & SIZE
+														164 button POSITION & SIZE
+													165 text X
+													166 edit (settable, string) X position Value: 319
+													167 text Y
+													168 edit (settable, string) Y position Value: 360
+													169 text W
+													170 edit (settable, string) Width Value: 1400
+													171 text H
+													172 edit (settable, string) Height Value: 180
+													173 text R
+													174 edit (settable, string) Rotation Value: 0
+													175 text °
+													176 text Logical units,
+													177 text 1920
+													178 text ×
+													179 text 1080
+													180 text space
+													181 heading TEXT token:typography.display.fontFamily 88
+														182 button TEXT token:typography.display.fontFamily 88
+													183 text CONTENT
+													184 edit (settable, string) CONTENT Value: Motion reinforces order ID: text-el_01JB8Z9K2QW4RN7F3X03000100
+													185 text Size
+													186 edit (settable, string) Font size Value: 88
+													187 text FIT MODE
+													188 radio group (settable, string) Fit mode
+														189 radio button (selectable, settable, string) FIXED
+														190 radio button (selectable, settable, string) AUTO H
+														191 radio button (selectable, settable, string) SHRINK
+													192 heading APPEARANCE
+														193 button APPEARANCE
+													194 text Opacity
+													195 edit (settable, string) Opacity Value: 0
+													196 text %
+													197 heading DETAILS
+														198 button DETAILS
+													134 heading LAYERS 4 objects
+														135 button LAYERS 4 objects
+													136 list
+														137 list item TEXTMotion reinforces order
+															138 toggle button TEXT Motion reinforces order
+														139 list item SHAPEProposed
+															140 toggle button SHAPE Proposed
+														141 list item SHAPEApplied
+															142 toggle button SHAPE Applied
+														143 list item TEXT0
+															144 toggle button TEXT 0
+													145 heading THEME Neo Technical
+														146 button THEME Neo Technical
+													147 heading ACCESSIBILITY WCAG 2.1 AA
+														148 button ACCESSIBILITY WCAG 2.1 AA
+													149 heading THIS SESSION 3 changes
+														150 button THIS SESSION 3 changes
+													151 button VERSION HISTORY All saved versions
+								9 region
+
+Selected text: ```
+
+ACCESSIBILITY
+WCAG 2.1 AA
+THIS SESSION
+3 changes
+VERSION HISTORY
+All saved versions
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

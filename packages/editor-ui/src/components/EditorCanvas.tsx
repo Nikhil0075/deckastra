@@ -5,10 +5,18 @@ import type { CSSProperties } from "react";
 import type {
   PresentationDocument,
   Rect,
-  RichTextDocument,
   Transform,
 } from "@deckastra/presentation-schema";
-import { FrameSampler, buildDocumentScene, flattenScene } from "@deckastra/renderer";
+import {
+  FrameSampler,
+  IDENTITY,
+  buildDocumentScene,
+  flattenScene,
+  localMatrix,
+  multiply,
+  transformedBounds,
+  type Matrix,
+} from "@deckastra/renderer";
 import { useAssetUrls } from "../lib/asset-urls";
 import type { FrameStats } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
@@ -40,6 +48,7 @@ import {
 import { useBrowserMeasurer } from "../lib/measurer";
 import { resizeOperations } from "../lib/resize-operations";
 import { TextEditor } from "./TextEditor";
+import { textTargetOf } from "../lib/text-targets";
 import type { EditorApi } from "../lib/useEditor";
 
 /**
@@ -102,6 +111,8 @@ export function EditorCanvas({
 }: EditorCanvasProps) {
   const { document: doc, slideIndex, selection, setSelection, apply, nodes } = editor;
   const slide = doc.slides[slideIndex];
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [gesture, setGesture] = useState<Gesture>({ kind: "none" });
@@ -114,6 +125,7 @@ export function EditorCanvas({
   const [guides, setGuides] = useState<SnapLine[]>([]);
   const [spacingGuides, setSpacingGuides] = useState<SpacingGuide[]>([]);
   const modifiers = useRef({ shift: false, alt: false, mod: false });
+  const pointerHit = useRef<{ id?: string; clientX: number; clientY: number; moved: boolean } | undefined>(undefined);
 
   // Frame-time sampling for the drag budget (doc 04 §31.1: <16ms p95). Measured
   // as the interval between frames, not the duration of the handler — a handler
@@ -207,6 +219,7 @@ export function EditorCanvas({
 
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-element-id]");
       const hitId = target?.dataset.elementId;
+      pointerHit.current = { id: hitId, clientX: event.clientX, clientY: event.clientY, moved: false };
 
       if (!hitId) {
         setSelection((current) => ({ ...current, selectedIds: [], primaryId: undefined }));
@@ -248,20 +261,31 @@ export function EditorCanvas({
    */
   const onDoubleClick = useCallback(
     (event: React.MouseEvent) => {
-      const target = (event.target as HTMLElement).closest<HTMLElement>("[data-element-id]");
-      const hitId = target?.dataset.elementId;
+      // Pointer capture may retarget the synthesized dblclick to the canvas.
+      // Ask the browser what is physically under the pointer, then fall back to
+      // the hit recorded before capture. A gesture that actually moved is not a
+      // request to edit, even if Chromium still emits a click afterwards.
+      if (pointerHit.current?.moved) return;
+      const physical = typeof document.elementsFromPoint === "function"
+        ? document.elementsFromPoint(event.clientX, event.clientY)
+            .map((candidate) => candidate.closest<HTMLElement>("[data-element-id]"))
+            .find((candidate) => candidate && containerRef.current?.contains(candidate))
+        : undefined;
+      const target = physical ?? (event.target as HTMLElement).closest<HTMLElement>("[data-element-id]");
+      const hitId = target?.dataset.elementId ?? pointerHit.current?.id;
       if (!hitId) return;
+      event.preventDefault();
 
       setSelection((current) => {
         const resolved = resolveClickTarget(index, hitId, {
           isolationGroupId: current.isolationGroupId,
         });
 
-        // At the leaf. On a text element that means editing it — the thing a
-        // double-click means everywhere else in the product.
+        // At the leaf. On a text box or a shape that means editing its words —
+        // the thing a double-click means everywhere else in the product.
         if (!resolved || resolved === hitId) {
           const found = resolveElementById(doc, hitId);
-          if (found?.element.type === "text" && found.element.locked !== true) {
+          if (found && found.element.locked !== true && textTargetOf(found.element)) {
             return { ...current, selectedIds: [hitId], primaryId: hitId, editingTextId: hitId };
           }
           return current;
@@ -451,6 +475,8 @@ export function EditorCanvas({
 
   const onPointerMove = useCallback(
     (event: React.PointerEvent) => {
+      const hit = pointerHit.current;
+      if (hit && Math.hypot(event.clientX - hit.clientX, event.clientY - hit.clientY) > 4) hit.moved = true;
       // The React event is pooled-adjacent and must not be read in a later
       // frame; only the two numbers that matter are kept.
       pendingMove.current = { clientX: event.clientX, clientY: event.clientY };
@@ -504,7 +530,13 @@ export function EditorCanvas({
     // handleMove can have queued a React update in this very event. Read its
     // synchronous result, rather than the draft captured by the last render.
     const latestDraft = draftRef.current;
-    if (latestDraft.size > 0) {
+    // A click is not a drag. A pointer that wobbled a pixel or two between
+    // down and up used to commit a "Move" — so selecting an object, or the two
+    // clicks of a double-click, dirtied the deck and filled the undo history
+    // with moves nobody made. Past the same threshold that decides whether a
+    // double-click is a request to edit, it is a drag.
+    const clickOnly = gesture.kind === "move" && pointerHit.current !== undefined && !pointerHit.current.moved;
+    if (latestDraft.size > 0 && !clickOnly) {
       const operations = [];
       for (const [id, transform] of latestDraft) {
         // Rounded once, here, not on every pointermove — rounding each step
@@ -583,23 +615,47 @@ export function EditorCanvas({
 
     const node = flattenScene(slideScene).find((candidate) => candidate.id === id);
     const found = resolveElementById(doc, id);
-    if (!node || !found || node.renderPayload.kind !== "text") return undefined;
+    const target = textTargetOf(found?.element);
+    if (!node || !found || !target) return undefined;
 
     const payload = node.renderPayload;
-    return {
-      id,
-      content: (found.element as { content: RichTextDocument }).content,
-      typography: payload.typography,
-      align: payload.align,
-      verticalAlign: payload.verticalAlign,
-      padding: payload.padding,
-      rect: {
-        x: node.bounds.x * scale,
-        y: node.bounds.y * scale,
-        width: node.bounds.width * scale,
-        height: node.bounds.height * scale,
-      },
+    const rect = {
+      x: node.bounds.x * scale,
+      y: node.bounds.y * scale,
+      width: node.bounds.width * scale,
+      height: node.bounds.height * scale,
     };
+    // The element's own box and composed matrix, so a rotated box, or one in
+    // a rotated group, is edited where it is drawn (MA-12).
+    const local = { width: node.localBounds.width, height: node.localBounds.height, matrix: node.worldTransform };
+    if (payload.kind === "text") {
+      return {
+        id,
+        property: target.property,
+        content: target.value,
+        typography: payload.typography,
+        align: payload.align,
+        verticalAlign: payload.verticalAlign,
+        padding: payload.padding,
+        rect,
+        local,
+      };
+    }
+    if (payload.kind === "shape" && payload.labelTypography) {
+      // The renderer centres a label vertically inside 16px of padding.
+      return {
+        id,
+        property: target.property,
+        content: target.value,
+        typography: payload.labelTypography,
+        align: "center",
+        verticalAlign: "middle",
+        padding: { top: 16, right: 16, bottom: 16, left: 16 },
+        rect,
+        local,
+      };
+    }
+    return undefined;
   })();
   const singleRotation =
     selection.selectedIds.length === 1
@@ -613,18 +669,33 @@ export function EditorCanvas({
       // styles would also land on the slide-strip thumbnails, which render the
       // same element ids.
       data-editor-canvas=""
-      onPointerDown={onPointerDown}
+      data-region="canvas"
+      // The canvas is a focus target so its shortcuts have somewhere to live:
+      // Tab walks the objects and hands focus on after the last, arrows nudge,
+      // Escape backs out. `application` tells a screen reader these keys are
+      // the canvas's, not the page's.
+      tabIndex={0}
+      role="application"
+      aria-roledescription="slide canvas"
+      aria-label="Slide canvas. Tab moves between objects, arrow keys nudge the selection, Escape clears it."
+      onPointerDown={(event) => {
+        // Clicking an object gives the canvas focus, as clicking any control
+        // does, so Delete and the arrows then act on what was clicked.
+        (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+        onPointerDown(event);
+      }}
       onDoubleClick={onDoubleClick}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={cancelGesture}
       onLostPointerCapture={cancelGesture}
+      onDragStart={(event) => event.preventDefault()}
       style={{
         width,
         height: doc.viewport.height * scale,
         position: "relative",
         overflow: "hidden",
-        background: "#000",
+        background: "var(--dk-backdrop)",
         touchAction: "none",
         // A drag across text otherwise starts a native text selection, which
         // paints the dragged element in the browser's highlight colour and
@@ -662,7 +733,7 @@ export function EditorCanvas({
             key={`${guide.axis}${guide.position}${i}`}
             style={{
               position: "absolute",
-              background: "var(--accent)",
+              background: "var(--dk-blue)",
               ...(guide.axis === "x"
                 ? { left: guide.position * scale, top: 0, width: 1, height: "100%" }
                 : { top: guide.position * scale, left: 0, height: 1, width: "100%" }),
@@ -685,8 +756,9 @@ export function EditorCanvas({
                     top: rect.y * scale,
                     width: rect.width * scale,
                     height: rect.height * scale,
-                    border: "1px solid var(--accent)",
-                    background: "rgba(76,194,255,0.12)",
+                    border: "1px solid var(--dk-blue)",
+                    // The action blue, faintly: a marquee is a selection being made.
+                    background: "color-mix(in srgb, var(--dk-blue) 14%, transparent)",
                   }}
                 />
               );
@@ -711,13 +783,22 @@ export function EditorCanvas({
           value={editing.content}
           typography={editing.typography}
           rect={editing.rect}
+          local={editing.local}
           scale={scale}
           align={editing.align}
           verticalAlign={editing.verticalAlign}
           padding={editing.padding}
+          registerDraft={editor.registerDraft}
           onCommit={(next) => {
-            apply(setProperty(doc, editing.id, "content", next), { label: "Edit text" });
-            setSelection((current) => ({ ...current, editingTextId: undefined }));
+            // The latest document, not this render's: a commit can arrive from
+            // the save barrier or an unmount, after later edits have landed.
+            const current = editorRef.current.document;
+            if (resolveElementById(current, editing.id)) {
+              editorRef.current.apply(setProperty(current, editing.id, editing.property, next), {
+                label: editing.property === "text" ? "Edit shape label" : "Edit text",
+              });
+            }
+            setSelection((state) => ({ ...state, editingTextId: undefined }));
           }}
           onCancel={() => setSelection((current) => ({ ...current, editingTextId: undefined }))}
         />
@@ -739,7 +820,7 @@ function SpacingIndicators({ guide, scale }: { guide: SpacingGuide; scale: numbe
         const end = (horizontal ? b.x : b.y) * scale;
         const point = (along: number, across: number) => horizontal ? `${along},${across}` : `${across},${along}`;
         return (
-          <g key={index} stroke="var(--accent)" strokeWidth={1} fill="none">
+          <g key={index} stroke="var(--dk-blue)" strokeWidth={1} fill="none">
             <polyline points={`${point(start, cross)} ${point(end, cross)}`} />
             <polyline points={`${point(start + 4, cross - 3)} ${point(start, cross)} ${point(start + 4, cross + 3)}`} />
             <polyline points={`${point(end - 4, cross - 3)} ${point(end, cross)} ${point(end - 4, cross + 3)}`} />
@@ -747,7 +828,7 @@ function SpacingIndicators({ guide, scale }: { guide: SpacingGuide; scale: numbe
               x={horizontal ? (start + end) / 2 : cross + 6}
               y={horizontal ? cross - 6 : (start + end) / 2}
               textAnchor={horizontal ? "middle" : "start"}
-              fill="var(--accent)" stroke="none" fontSize={12}
+              fill="var(--dk-blue)" stroke="none" fontSize={12}
             >{guide.gap}</text>
           </g>
         );
@@ -777,7 +858,7 @@ function SelectionOverlay({
     top: rect.y * scale,
     width: rect.width * scale,
     height: rect.height * scale,
-    outline: "1px solid var(--accent)",
+    outline: "1px solid var(--dk-blue)",
     transform: rotation ? `rotate(${rotation}deg)` : undefined,
     transformOrigin: "center",
     pointerEvents: "none",
@@ -796,8 +877,8 @@ function SelectionOverlay({
             height: 9,
             marginLeft: -5,
             marginTop: -5,
-            background: "#fff",
-            border: "1px solid var(--accent)",
+            background: "var(--dk-on-backdrop)",
+            border: "1px solid var(--dk-blue)",
             borderRadius: 2,
             pointerEvents: "auto",
             cursor: handleCursor(handle),
@@ -817,7 +898,7 @@ function SelectionOverlay({
             width: 11,
             height: 11,
             marginLeft: -6,
-            background: "var(--accent)",
+            background: "var(--dk-blue)",
             borderRadius: "50%",
             pointerEvents: "auto",
             cursor: "grab",
@@ -858,7 +939,7 @@ function handleCursor(handle: HandleId): string {
 
 /** Overlay the in-flight gesture onto the scene, so the drag is visible without
  *  committing a transaction per pointermove. */
-function applyDraft(
+export function applyDraft(
   scene: ReturnType<typeof buildDocumentScene>["slides"][number],
   draft: ReadonlyMap<string, Transform>,
   /** Hidden while its text is being edited in place — otherwise the rendered
@@ -867,33 +948,46 @@ function applyDraft(
 ): ReturnType<typeof buildDocumentScene>["slides"][number] {
   if (draft.size === 0 && !editingId) return scene;
 
-  const patch = (nodes: typeof scene.nodes): typeof scene.nodes =>
+  const sameMatrix = (a: Matrix, b: Matrix) =>
+    a.a === b.a && a.b === b.b && a.c === b.c && a.d === b.d && a.e === b.e && a.f === b.f;
+
+  const patch = (
+    nodes: typeof scene.nodes,
+    parentWorld: Matrix,
+    parentChanged: boolean,
+  ): typeof scene.nodes =>
     nodes.map((node) => {
-      const children = node.children ? patch(node.children) : undefined;
-
-      if (node.id === editingId) {
-        return { ...node, flags: { ...node.flags, hidden: true }, ...(children ? { children } : {}) };
-      }
-
       const override = draft.get(node.id);
-      if (!override) return children ? { ...node, children } : node;
+      const localBounds = override
+        ? { ...node.localBounds, width: override.width, height: override.height }
+        : node.localBounds;
+      const local = override ? localMatrix(override) : node.localTransform;
+      const composed = override || parentChanged ? multiply(parentWorld, local) : node.worldTransform;
+      const geometryChanged = Boolean(override || parentChanged || !sameMatrix(composed, node.worldTransform));
+      const children = node.children ? patch(node.children, composed, geometryChanged) : undefined;
+      const editingHere = node.id === editingId;
+      // A shape keeps its fill and outline while its label is edited; only the
+      // label is hidden, or the words would draw twice.
+      const labelOnly = editingHere && node.renderPayload.kind === "shape";
+      const hidden = editingHere && !labelOnly;
 
-      const dx = override.x - node.localTransform.e;
-      const dy = override.y - node.localTransform.f;
-
+      if (!geometryChanged && !editingHere && (!children || children === node.children)) return node;
       return {
         ...node,
-        localBounds: { ...node.localBounds, width: override.width, height: override.height },
-        worldTransform: {
-          ...node.worldTransform,
-          e: node.worldTransform.e + dx,
-          f: node.worldTransform.f + dy,
-        },
+        localBounds,
+        worldTransform: composed,
+        bounds: geometryChanged
+          ? transformedBounds(composed, localBounds.width, localBounds.height)
+          : node.bounds,
+        ...(hidden ? { flags: { ...node.flags, hidden: true } } : {}),
+        ...(labelOnly && node.renderPayload.kind === "shape"
+          ? { renderPayload: { ...node.renderPayload, label: undefined } }
+          : {}),
         ...(children ? { children } : {}),
       };
     });
 
-  return { ...scene, nodes: patch(scene.nodes) };
+  return { ...scene, nodes: patch(scene.nodes, IDENTITY, false) };
 }
 
 function draftBounds(

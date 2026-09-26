@@ -81,6 +81,30 @@ export interface AccountWorkspace {
  */
 export interface Capabilities {
   sharing: boolean;
+  /**
+   * Whether a generation can pause at its outline for review (editor Phase 6).
+   * It needs a durable checkpoint store; where there is none, "review the
+   * outline first" is not offered rather than offered and refused. Optional
+   * because a server older than the field says nothing, which means no.
+   */
+  checkpoints?: boolean;
+  /**
+   * What pressing Generate will do here (final package review, item 19).
+   * Optional because an older server says nothing.
+   */
+  generation?: GenerationStatus;
+}
+
+/**
+ * Which provider writes a generated deck, whether it can, and why not.
+ *
+ * `stub` is the development planner (a template, not a model) and only a
+ * checkout answers it; `none` is an installed product with nothing set up.
+ */
+export interface GenerationStatus {
+  provider: "cloud" | "local" | "stub" | "none" | "unavailable" | "misconfigured";
+  available: boolean;
+  reason: string | null;
 }
 
 export interface AccountContext {
@@ -91,5 +115,5 @@ export interface AccountContext {
 
 /** What `/health` answers. `generation` says whether a real key is configured. */
 export interface HealthReport {
-  generation: "model" | "stub";
+  generation: "model" | "stub" | "unavailable";
 }

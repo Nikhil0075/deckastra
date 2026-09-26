@@ -1,0 +1,11 @@
+
+ RUN  v3.2.7 D:/Presentation_app/apps/web
+
+ ✓ tests/blank-creation.test.tsx (3 tests) 771ms
+   ✓ creates a blank deck from home and opens its saved editor  340ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  01:01:32
+   Duration  6.73s (transform 2.54s, setup 0ms, collect 4.27s, tests 771ms, environment 1.20s, prepare 169ms)
+

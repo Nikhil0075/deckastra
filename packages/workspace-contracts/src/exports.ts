@@ -36,6 +36,8 @@ export interface ExportJob {
   bytes: number;
   report: ExportReport | null;
   error: string | null;
+  /** The deck version this file is of — what the export pinned when it started. */
+  version_id?: string | null;
 }
 
 export interface ExportRequest {
@@ -44,4 +46,9 @@ export interface ExportRequest {
   /** Which frame animations resolve to. `final` by default (doc 04 §41.1). */
   at_time: "final" | "initial";
   idempotency_key: string;
+  /**
+   * The version to export. When given and the stored head is different, the
+   * service refuses with 409 rather than exporting a deck the caller never saw.
+   */
+  expected_version_id?: string;
 }

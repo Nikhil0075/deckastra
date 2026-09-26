@@ -38,6 +38,10 @@ import { fontManifest } from "@deckastra/export-core";
 import { buildPptx } from "@deckastra/export-pptx";
 
 const doc = JSON.parse(readFileSync(process.argv[2], "utf8"));
+// A note the reader can look for. The fixture carries none, and a test that
+// only checked their absence passed against an exporter writing them into the
+// wrong element entirely.
+doc.slides[0].speakerNotes = ["Remember to mention the budget.", "And thank the team."].join(String.fromCharCode(10));
 const scene = buildDocumentScene(doc);
 const scenes = new Map(scene.slides.map((s) => [s.slideId, s]));
 
@@ -215,10 +219,79 @@ def test_shape_names_are_stable_and_derived_from_element_ids(exported):
 
 
 def test_speaker_notes_survive(exported):
+    """A note written in the editor comes back out through a reader that is not ours.
+
+    This used to assert only that the fixture's slides had *no* notes, which is
+    true of a correct exporter and just as true of one writing them into an
+    element no conforming reader looks for — which is what it was doing. The
+    part is `notesSlides/notesSlide1.xml` and the element inside it is
+    `<p:notes>`, not `<p:notesSlide>`; the two names differ, and nothing noticed
+    while the only thing reading these files was the code that wrote them.
+
+    `python-pptx` did not merely disagree: it raised, because it could not map
+    the root element to its notes class at all.
+    """
     from pptx import Presentation
 
     path, _ = exported
     deck = Presentation(str(path))
-    # The fixture carries none, so what matters is that asking for notes did not
-    # produce a package the reader chokes on.
-    assert all(slide.has_notes_slide is False for slide in deck.slides)
+
+    with_notes = [slide for slide in deck.slides if slide.has_notes_slide]
+    assert with_notes, "the deck exported no notes slide at all"
+
+    text = with_notes[0].notes_slide.notes_text_frame.text
+    assert "Remember to mention the budget." in text
+    # Both lines: a note is paragraphs, and flattening them to one would lose
+    # the shape of what somebody wrote.
+    assert "And thank the team." in text
+
+    # And only the slide that has one: a notes part per slide regardless would
+    # bloat every deck and tell PowerPoint there is something to show.
+    assert len(with_notes) == 1
+
+
+def _all_shapes(shapes):
+    for shape in shapes:
+        yield shape
+        if shape.shape_type == 6:  # MSO_SHAPE_TYPE.GROUP
+            yield from _all_shapes(shape.shapes)
+
+
+def test_a_table_arrives_as_a_real_table_with_its_cells(exported):
+    """Tables used to be a labelled placeholder box: the numbers were not in the file."""
+    from pptx import Presentation
+
+    path, report = exported
+    deck = Presentation(str(path))
+    document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    index = next(i for i, slide in enumerate(document["slides"]) if any(e["type"] == "table" for e in slide["elements"]))
+    element = next(e for e in document["slides"][index]["elements"] if e["type"] == "table")
+
+    tables = [shape.table for shape in deck.slides[index].shapes if shape.has_table]
+    assert len(tables) == 1, "the table is not a PowerPoint table"
+    table = tables[0]
+    header = [table.cell(0, c).text for c in range(len(table.columns))]
+    assert header == [column.get("label", "") for column in element["columns"]]
+
+    def text(cell):
+        content = cell["content"]
+        return content if isinstance(content, str) else "\n".join("".join(s["text"] for s in b["spans"]) for b in content["blocks"])
+
+    first_row = [table.cell(1, c).text for c in range(len(table.columns))]
+    assert first_row[0] == text(element["rows"][0]["cells"][0])
+    dropped = [w["feature"] for w in report["warnings"] if w["action"] == "dropped"]
+    assert "table" not in dropped and "diagram" not in dropped, dropped
+
+
+def test_a_diagram_arrives_as_shapes_with_its_labels_editable(exported):
+    from pptx import Presentation
+
+    path, _ = exported
+    deck = Presentation(str(path))
+    document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    index = next(i for i, slide in enumerate(document["slides"]) if any(e["type"] == "diagram" for e in slide["elements"]))
+    labels = [node["label"] for e in document["slides"][index]["elements"] if e["type"] == "diagram" for node in e["nodes"]]
+
+    texts = [shape.text_frame.text for shape in _all_shapes(deck.slides[index].shapes) if shape.has_text_frame]
+    for label in labels:
+        assert any(label in text for text in texts), f"the diagram's {label!r} is not in the file"

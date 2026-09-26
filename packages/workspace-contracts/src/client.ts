@@ -1,18 +1,22 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
-import type { AgentEditResult, AppliedChange, EditScopePayload, PendingProposal } from "./agent";
+import type { AgentEditResult, AppliedChange, EditScopePayload, PendingProposal, ProposalDetail } from "./agent";
 import type {
   CreatePresentationRequest,
   CreatePresentationResult,
   DocumentHead,
   DocumentRead,
   MovePresentationResult,
+  DeletePresentationResult,
+  RestorePresentationResult,
+  DuplicatePresentationResult,
   PreviewRequest,
   PreviewResult,
   PresentationSummary,
   TransactionRequest,
   TransactionResult,
   VersionSummary,
+  RestoreVersionResult,
 } from "./documents";
 import type { ExportJob, ExportRequest } from "./exports";
 import type {
@@ -22,7 +26,7 @@ import type {
   TransitionRequest,
   TransitionResult,
 } from "./motion";
-import type { GenerateRequest, GenerateResult } from "./generation";
+import type { GenerateRequest, GenerateResult, ReviewedGeneration, StoryDecision } from "./generation";
 import type { Repository, RepositoryList, SlideSources } from "./repositories";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
 import type { UploadedAsset } from "./documents";
@@ -131,6 +135,17 @@ export interface WorkspaceClient {
     ): Promise<TransactionResult>;
     versions(presentationId: string, options?: RequestOptions): Promise<VersionSummary[]>;
     /**
+     * Put the deck back to an earlier version, as a new change (editor Phase 5).
+     * `expectedVersionId` is the head the person was looking at; a deck that
+     * moved since is a 409, never a restore over work they did not see.
+     */
+    restoreVersion(
+      presentationId: string,
+      versionId: string,
+      expectedVersionId: string,
+      options?: RequestOptions,
+    ): Promise<RestoreVersionResult>;
+    /**
      * Move one deck to another project — the only way a deck changes workspace.
      *
      * Here rather than on a "sync" surface because that is the whole design:
@@ -142,10 +157,30 @@ export interface WorkspaceClient {
       projectId: string,
       options?: RequestOptions,
     ): Promise<MovePresentationResult>;
+    /**
+     * Move a deck to its project's trash. Soft and undoable: every read treats
+     * it as missing (share links included) until `restore` brings it back.
+     */
+    delete(presentationId: string, options?: RequestOptions): Promise<DeletePresentationResult>;
+    /** Bring a deleted deck back exactly as it was. A no-op if it is not deleted. */
+    restore(presentationId: string, options?: RequestOptions): Promise<RestorePresentationResult>;
+    /** A new deck in the same project, with fresh ids throughout. */
+    duplicate(presentationId: string, options?: RequestOptions): Promise<DuplicatePresentationResult>;
+    /** The decks in one project's trash, most recently deleted first. */
+    trash(projectId: string, options?: RequestOptions): Promise<PresentationSummary[]>;
   };
 
   readonly generation: {
     run(body: GenerateRequest, options?: RequestOptions): Promise<GenerateResult>;
+    /**
+     * Generate, stopping at the outline for the person to approve or revise.
+     * Only where `capabilities.checkpoints` says a run can pause.
+     */
+    review(body: GenerateRequest, options?: RequestOptions): Promise<ReviewedGeneration>;
+    /** The outline a paused run is waiting on, read from its checkpoint. */
+    checkpoint(runId: string, options?: RequestOptions): Promise<ReviewedGeneration>;
+    /** Approve, revise or discard a paused outline. */
+    decide(runId: string, decision: StoryDecision, options?: RequestOptions): Promise<ReviewedGeneration>;
   };
 
   /**
@@ -177,6 +212,8 @@ export interface WorkspaceClient {
       options?: RequestOptions,
     ): Promise<AgentEditResult>;
     proposals(presentationId: string, options?: RequestOptions): Promise<PendingProposal[]>;
+    /** One pending proposal with its operations. */
+    proposal(presentationId: string, proposalId: string, options?: RequestOptions): Promise<ProposalDetail>;
     /**
      * Approve a pending proposal.
      *

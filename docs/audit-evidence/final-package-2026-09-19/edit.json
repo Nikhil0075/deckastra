@@ -1,0 +1,119 @@
+{
+  "step": "edit",
+  "startedAt": "2026-09-19T18:24:57.226Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5722,
+  "console": [
+    "[3] Refused to connect to 'https://example.com/' because it violates the following Content Security Policy directive: \"connect-src 'self'\".\n (:12)",
+    "[3] Refused to connect to 'https://example.com/' because it violates the document's Content Security Policy. (:12)",
+    "[3] Refused to connect to 'https://example.com/' because it violates the following Content Security Policy directive: \"connect-src 'self'\".\n (:12)",
+    "[3] Refused to connect to 'https://example.com/' because it violates the document's Content Security Policy. (:12)"
+  ],
+  "cspViolations": [],
+  "canvasAppeared": true,
+  "msToEditableDeck": 6820,
+  "before": {
+    "title": "Deckastra",
+    "origin": "deckastra://app",
+    "secureContext": true,
+    "storage": "ok",
+    "webLocks": "object",
+    "broadcastChannel": "function",
+    "bridge": "object",
+    "elements": 18,
+    "canvas": true,
+    "status": [
+      "Agents cannot reach this app. Turn this on to let Claude Code or Codex work on your decks."
+    ],
+    "buttons": [
+      "Design",
+      "AI",
+      "Motion",
+      "Coderead-only",
+      "Agents off",
+      "Allow agent access",
+      "Share",
+      "Export",
+      "PDF",
+      "PowerPoint",
+      "Present",
+      "Refresh comparison",
+      "Download local copy",
+      "Keep editing locally",
+      "Motion reinforces orderProposedApplied128",
+      "Revealed on clickAgents proposeDeterministic engines composeHumans stay in control",
+      "Entered with a zoom",
+      "The same headline, moved",
+      "Fit",
+      "Preview",
+      "Layers4 objects",
+      "textMotion reinforces order",
+      "shapeProposed",
+      "shapeApplied"
+    ],
+    "network": "blocked: Failed to fetch",
+    "bodyText": "Deckastra\n/\nAnimation Conformance Deck\nDESIGN\nAI\nMOTION\nCODE\nread-only\nAgents off\nSHARE\nEXPORT\nPRESENT\nSLIDES 4\n1\n\nMotion reinforces order\n\nProposed\n\nApplied\n\n128\n2\n\nRevealed on click\n\nAgents propose\n\nDeterministic engines compose\n\nHumans stay in control\n\n3\n\nEntered with a zoom\n\n4\n\nThe same headline, moved\n\n33%\nFIT\n\nMotion reinforces order\n\nProposed\n\nApplied\n\n128\nSPEAKER NOTES\nSlide 1 · no notes y"
+  },
+  "clickedAddRect": true,
+  "reportedSaved": true,
+  "after": {
+    "title": "Deckastra",
+    "origin": "deckastra://app",
+    "secureContext": true,
+    "storage": "ok",
+    "webLocks": "object",
+    "broadcastChannel": "function",
+    "bridge": "object",
+    "elements": 20,
+    "canvas": true,
+    "status": [
+      "Agents cannot reach this app. Turn this on to let Claude Code or Codex work on your decks."
+    ],
+    "buttons": [
+      "Design",
+      "AI",
+      "Motion",
+      "Coderead-only",
+      "Agents off",
+      "Allow agent access",
+      "Share",
+      "Export",
+      "PDF",
+      "PowerPoint",
+      "Present",
+      "Refresh comparison",
+      "Download local copy",
+      "Keep editing locally",
+      "Motion reinforces orderProposedApplied128",
+      "Revealed on clickAgents proposeDeterministic engines composeHumans stay in control",
+      "Entered with a zoom",
+      "The same headline, moved",
+      "Fit",
+      "Preview",
+      "Position & size",
+      "Appearance",
+      "rectangle",
+      "Details"
+    ],
+    "network": "blocked: Failed to fetch",
+    "bodyText": "Deckastra\n/\nAnimation Conformance Deck\nSaved\nDESIGN\nAI\nMOTION\nCODE\nread-only\nAgents off\nSHARE\nEXPORT\nPRESENT\nSLIDES 4\n1\n\nMotion reinforces order\n\nProposed\n\nApplied\n\n128\n2\n\nRevealed on click\n\nAgents propose\n\nDeterministic engines compose\n\nHumans stay in control\n\n3\n\nEntered with a zoom\n\n4\n\nThe same headline, moved\n\n33%\nFIT\n\nMotion reinforces order\n\nProposed\n\nApplied\n\n128\nSPEAKER NOTES\nSlide 1 · no n"
+  },
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 395.2,
+    "byTypeMb": {
+      "Browser": 109.4,
+      "GPU": 143.6,
+      "Utility": 47.3,
+      "Tab": 94.9
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:25:01.005Z"
+}

@@ -85,17 +85,99 @@ describe("morph", () => {
   });
 
   it("moves a paired element and crossfades the rest", () => {
-    const compiled = compileTransition({ type: "morph" }, from, to, { autoPair: true });
+    // Not text: a box morph, scaled by its box.
+    const boxFrom: TransitionSlide = { id: "s1", nodes: [node("card", { x: 100, y: 100, width: 200, height: 50 }, { type: "shape" })] };
+    const boxTo: TransitionSlide = { id: "s2", nodes: [node("card", { x: 500, y: 400, width: 400, height: 100 }, { type: "shape" })] };
+    const compiled = compileTransition(
+      { type: "morph", durationMs: 400, easing: "linear", sharedElements: [{ sourceElementId: "card", destinationElementId: "card" }] },
+      boxFrom,
+      boxTo,
+    );
 
-    const paired = compiled.tracks.filter((track) => track.kind === "paired");
-    expect(paired).toHaveLength(1);
-    expect(paired[0]!.targetId).toBe("title");
-    // Centre to centre: (200,125) → (700,450). Corner-to-corner would drift as
-    // the box grows, which is exactly the case a morph exists for.
-    expect(paired[0]!.keyframes[0]!.properties.translateX).toBe("-500px");
-    expect(paired[0]!.keyframes[0]!.properties.translateY).toBe("-325px");
-    // And it ends at rest, so nothing is ever positioned absolutely.
-    expect(paired[0]!.keyframes[1]!.properties.translateX).toBe("0px");
+    const targets = new Set(compiled.tracks.filter((track) => track.kind === "paired").map((track) => track.targetId));
+    expect([...targets].sort()).toEqual(["pair:in:card", "pair:out:card"]);
+
+    // Where the arriving copy's box actually is, composed the way CSS composes
+    // the longhands about the slide origin - the renderer's transform-origin.
+    // Asserting the numbers the kind emits would pass against the bug this
+    // replaced: those numbers were right and the origin they assumed was not.
+    const at = (t: number) => boxOf(sampleTransition(compiled, t)["pair:in:card"]!, boxTo.nodes[0]!.bounds);
+    expect(at(0)).toEqual({ x: 100, y: 100, width: 200, height: 50 });
+    expect(at(200)).toEqual({ x: 300, y: 250, width: 300, height: 75 });
+    expect(at(400)).toEqual({ x: 500, y: 400, width: 400, height: 100 });
+
+    // The leaving copy is on the same path at every instant.
+    const leaving = (t: number) => boxOf(sampleTransition(compiled, t)["pair:out:card"]!, boxFrom.nodes[0]!.bounds);
+    for (const t of [0, 100, 200, 300, 400]) expect(leaving(t)).toEqual(at(t));
+  });
+
+  it("crosses the two copies without ever dipping", () => {
+    const compiled = compileTransition({ type: "morph", durationMs: 400 }, from, to, { autoPair: true });
+    for (const t of [0, 100, 200, 300, 400]) {
+      const styles = sampleTransition(compiled, t);
+      const arriving = Number(styles["pair:in:title"]!.opacity);
+      const leaving = Number(styles["pair:out:title"]!.opacity);
+      // One of the two is always fully drawn, so two identical copies read as
+      // one object rather than a flicker at the midpoint.
+      expect(Math.max(arriving, leaving)).toBe(1);
+    }
+    expect(sampleTransition(compiled, 0)["pair:in:title"]!.opacity).toBe(0);
+    expect(sampleTransition(compiled, 400)["pair:out:title"]!.opacity).toBe(0);
+  });
+
+  it("scales text by its type size and holds its alignment edge, never stretching a glyph", () => {
+    // The box doubled in width; the type went from 40px to 60px. Scaling by the
+    // box would draw every letter twice as wide as it is tall at the start.
+    const textFrom: TransitionSlide = {
+      id: "s1",
+      nodes: [node("t", { x: 100, y: 100, width: 400, height: 60 }, { fontSize: 40, anchor: { x: 100, y: 100 } })],
+    };
+    const textTo: TransitionSlide = {
+      id: "s2",
+      nodes: [node("t", { x: 200, y: 300, width: 800, height: 90 }, { fontSize: 60, anchor: { x: 200, y: 300 } })],
+    };
+    const compiled = compileTransition(
+      { type: "morph", durationMs: 400, easing: "linear", sharedElements: [{ sourceElementId: "t", destinationElementId: "t" }] },
+      textFrom,
+      textTo,
+    );
+    const start = sampleTransition(compiled, 0)["pair:in:t"]!;
+    expect(start.scaleX).toBe(start.scaleY);
+    expect(Number(start.scaleX)).toBeCloseTo(40 / 60, 2);
+    // The left edge of the words sits where the source's did.
+    expect(boxOf(start, textTo.nodes[0]!.bounds).x).toBeCloseTo(100, 0);
+    expect(boxOf(start, textTo.nodes[0]!.bounds).y).toBeCloseTo(100, 0);
+  });
+
+  it("moves a group with everything in it, and does not pair a child of a paired group again", () => {
+    const groupFrom: TransitionSlide = {
+      id: "s1",
+      nodes: [
+        node("card", { x: 0, y: 0, width: 100, height: 100 }, { type: "group" }),
+        node("label", { x: 10, y: 10, width: 80, height: 20 }, { type: "shape", parentId: "card" }),
+      ],
+    };
+    const groupTo: TransitionSlide = {
+      id: "s2",
+      nodes: [
+        node("card", { x: 500, y: 0, width: 100, height: 100 }, { type: "group" }),
+        node("label", { x: 510, y: 10, width: 80, height: 20 }, { type: "shape", parentId: "card" }),
+      ],
+    };
+    const compiled = compileTransition(
+      {
+        type: "morph",
+        sharedElements: [
+          { sourceElementId: "card", destinationElementId: "card" },
+          { sourceElementId: "label", destinationElementId: "label" },
+        ],
+      },
+      groupFrom,
+      groupTo,
+    );
+    const targets = new Set(compiled.tracks.filter((track) => track.kind === "paired").map((track) => track.targetId));
+    expect([...targets].sort()).toEqual(["pair:in:card", "pair:out:card"]);
+    expect(compiled.warnings.join(" ")).toMatch(/moves with the group/);
   });
 
   it("does not emit a track for a pair that does not move", () => {
@@ -124,9 +206,11 @@ describe("morph", () => {
       to,
     );
 
-    expect(scaled.tracks.at(-1)!.keyframes[0]!.properties.scaleX).toBe(0.5);
+    const startScale = (compiled: typeof scaled) => sampleTransition(compiled, 0)["pair:in:title"]!.scaleX;
+    // The title is text with no type size recorded here, so it scales by its box.
+    expect(startScale(scaled)).toBe(0.5);
     // An author who wrote "position" decided the sizes differ for a reason.
-    expect(positionOnly.tracks.at(-1)!.keyframes[0]!.properties.scaleX).toBe(1);
+    expect(startScale(positionOnly)).toBe(1);
   });
 });
 
@@ -197,10 +281,27 @@ describe("the boundary with the rest of motion", () => {
     // The renderer already puts a base `transform` on the element; a shorthand
     // here would erase it and send the element to the slide origin.
     const compiled = compileTransition({ type: "morph" }, from, to, { autoPair: true });
-    const css = transitionCss(compiled, 0)["title"]!;
+    const css = transitionCss(compiled, 0)["pair:in:title"]!;
 
     expect(css.transform).toBeUndefined();
-    expect(css.translate).toBe("-500px -325px");
+    expect(css.translate).toMatch(/^-?[\d.]+px -?[\d.]+px$/);
     expect(css.scale).toBe("0.5 0.5");
   });
 });
+
+/**
+ * Where a box lands under sampled longhands, composed as CSS composes them
+ * about `transform-origin: 0 0` at the slide origin: `p' = t + R*S*p`.
+ */
+function boxOf(
+  styles: Record<string, string | number>,
+  box: { x: number; y: number; width: number; height: number },
+): { x: number; y: number; width: number; height: number } {
+  const px = (value: string | number | undefined) => Number(String(value ?? 0).replace("px", ""));
+  const tx = px(styles.translateX);
+  const ty = px(styles.translateY);
+  const sx = Number(styles.scaleX ?? 1);
+  const sy = Number(styles.scaleY ?? 1);
+  const round = (value: number) => Math.round(value * 100) / 100;
+  return { x: round(tx + sx * box.x), y: round(ty + sy * box.y), width: round(sx * box.width), height: round(sy * box.height) };
+}

@@ -18,7 +18,10 @@ import type { AgentAccess } from "../shared/ipc";
  *
  * - **Off by default**, including for an install that used to work: after an
  *   update the toggle has to be pressed once. An existing setup quietly keeping a
- *   permission nobody granted is the thing this exists to stop.
+ *   permission nobody granted is the thing this exists to stop. The decision
+ *   records the build it was made in, and a different one reads as off (item 06)
+ *   — the twelve-hour life alone would have carried a permission across an
+ *   update installed the same afternoon, which is the case this claim is about.
  * - **It lapses.** Twelve hours, the life of the grant it publishes. A permission
  *   that never expires is one nobody revisits, and "I turned it on for an
  *   afternoon in March" should not still be true in June.
@@ -35,6 +38,12 @@ export const ACCESS_TTL_SECONDS = 12 * 60 * 60;
 
 const OFF: AgentAccess = { allowed: false, scopes: [], expiresAt: null, decidedAt: null };
 
+/** What is written beside the decision, so an update can be told from a restart. */
+interface StoredAccess extends AgentAccess {
+  /** The app version the decision was made in. Absent in files written before item 06. */
+  version?: string;
+}
+
 function accessPath(): string {
   return join(app.getPath("userData"), "agent-access.json");
 }
@@ -48,32 +57,38 @@ function lapsed(access: AgentAccess): boolean {
  * an allowance whose time is up reads as off, and says when it ended.
  */
 export async function readAgentAccess(): Promise<AgentAccess> {
-  let stored: AgentAccess;
+  let stored: StoredAccess;
   try {
-    stored = JSON.parse(await readFile(accessPath(), "utf8")) as AgentAccess;
+    stored = JSON.parse(await readFile(accessPath(), "utf8")) as StoredAccess;
   } catch {
     // Missing or unreadable both mean nobody has said yes on this machine, which
     // is the safe reading of both.
     return OFF;
   }
   if (!stored?.allowed) return { ...OFF, decidedAt: stored?.decidedAt ?? null };
+  // A decision made in another build is not a decision about this one. A file
+  // from before this was recorded has no version, and reads as off for the same
+  // reason: nobody granted anything to *this* build.
+  if (stored.version !== app.getVersion()) return { ...OFF, decidedAt: stored.decidedAt ?? null };
   if (lapsed(stored)) return { ...stored, allowed: false };
-  return stored;
+  return { allowed: stored.allowed, scopes: stored.scopes, expiresAt: stored.expiresAt, decidedAt: stored.decidedAt };
 }
 
 export async function setAgentAccess(allow: boolean): Promise<AgentAccess> {
   const now = new Date();
-  const next: AgentAccess = allow
+  const next: StoredAccess = allow
     ? {
         allowed: true,
         scopes: [...AGENT_SCOPES],
         expiresAt: new Date(now.getTime() + ACCESS_TTL_SECONDS * 1_000).toISOString(),
         decidedAt: now.toISOString(),
+        version: app.getVersion(),
       }
-    : { ...OFF, decidedAt: now.toISOString() };
+    : { ...OFF, decidedAt: now.toISOString(), version: app.getVersion() };
 
   await writeFile(accessPath(), JSON.stringify(next, null, 2), { encoding: "utf8", mode: 0o600 });
-  return next;
+  const { version: _version, ...access } = next;
+  return access;
 }
 
 /**

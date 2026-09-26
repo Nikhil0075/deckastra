@@ -1,0 +1,208 @@
+import { cleanup, fireEvent, render, waitFor, act } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
+import { isGroup, newId, type GroupElement, type TextElement } from "@deckastra/presentation-schema";
+import { EditorCanvas } from "../src/components/EditorCanvas";
+import { useEditor, type EditorApi } from "../src/lib/useEditor";
+import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
+
+it("AUDIT: children follow the group during a drag before release", async () => {
+  const { canvas, target } = await mount("scaleChildren");
+  const group = editor.document.slides[0]!.elements[0] as GroupElement;
+  const child = (group.children[0] as GroupElement).children[0]!;
+  const childNode = canvas.querySelector<HTMLElement>(`[data-element-id="${child.id}"]`)!;
+  const before = childNode.style.transform;
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 190, clientY: 180 });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+  expect(childNode.style.transform).not.toBe(before);
+});
+
+it("AUDIT: rotating previews the actual object before release", async () => {
+  const { canvas, target } = await mount();
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150 });
+  const before = target.style.transform;
+  const handle = canvas.querySelector<HTMLElement>('[title="Rotate"]')!;
+  expect(handle).toBeTruthy();
+  fireEvent.pointerDown(handle, { button: 0, clientX: 150, clientY: 90 });
+  fireEvent.pointerMove(canvas, { clientX: 210, clientY: 150 });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+  expect(target.style.transform).not.toBe(before);
+});
+
+// Geometry/transaction wiring, not browser typography or pixel calibration.
+vi.mock("../src/lib/measurer", () => ({ useBrowserMeasurer: () => undefined }));
+
+let editor: EditorApi;
+let elementId: string;
+const originalPointerCapture = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "setPointerCapture");
+beforeEach(() => {
+  localStorage.clear(); sessionStorage.clear();
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  Object.defineProperty(HTMLElement.prototype, "setPointerCapture", { configurable: true, value: vi.fn() });
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ version_id: "v1" }) })));
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  if (originalPointerCapture) Object.defineProperty(HTMLElement.prototype, "setPointerCapture", originalPointerCapture);
+  else Reflect.deleteProperty(HTMLElement.prototype, "setPointerCapture");
+});
+
+async function mount(groupMode?: "scaleChildren" | "resizeContainer", zoom = 1, spacing = false) {
+  const document = loadFixture("technical");
+  elementId = document.slides[0]!.elements[0]!.id;
+  document.slides = [{ ...document.slides[0]!, elements: [{
+    id: elementId, type: "shape", shape: "rectangle", name: "Gesture target",
+    transform: { x: 100, y: 120, width: 100, height: 60 },
+  }] }];
+  if (spacing) {
+    const shape = document.slides[0]!.elements[0]!;
+    shape.transform.x = 230;
+    shape.transform.y = 123;
+    document.slides[0]!.elements.push(
+      { ...shape, id: newId("el"), transform: { ...shape.transform, x: 100, y: 120 } },
+      { ...shape, id: newId("el"), transform: { ...shape.transform, x: 400, y: 120 } },
+    );
+  }
+  if (groupMode) {
+    const text = loadFixture("technical").slides[0]!.elements.find(element => element.type === "text") as TextElement;
+    document.slides[0]!.elements = [{
+      id: elementId, type: "group", name: "Group", resizeMode: groupMode,
+      transform: { x: 100, y: 120, width: 100, height: 60 },
+      children: [{
+        id: newId("el"), type: "group", name: "Nested", resizeMode: "resizeContainer",
+        transform: { x: 10, y: 10, width: 60, height: 40, rotation: 15 },
+        children: [{ ...text, id: newId("el"), transform: { x: 5, y: 5, width: 40, height: 20 }, typography: { ...text.typography, fontSize: 20 } }],
+      }],
+    }];
+  }
+  function Harness() {
+    editor = useEditor({ initialDocument: document, presentationId: "prs_gesture", initialVersionId: "v0" });
+    return <EditorCanvas editor={editor} width={1920 * zoom} />;
+  }
+  const view = render(<Harness />, { wrapper: withWorkspaceClient() });
+  await waitFor(() => expect(editor.recoveryReady).toBe(true));
+  const canvas = view.container.querySelector<HTMLElement>("[data-editor-canvas]")!;
+  const target = canvas.querySelector<HTMLElement>(`[data-element-id="${elementId}"]`)!;
+  expect(target).toBeTruthy();
+  // Disable snapping so the final pointer delta has an exact expected value.
+  fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
+  return { canvas, target };
+}
+
+it("commits the final queued movement before any animation frame and undoes it once", async () => {
+  const { canvas, target } = await mount();
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 185, clientY: 177 });
+  fireEvent.pointerUp(canvas, { clientX: 185, clientY: 177 });
+  expect(editor.document.slides[0]!.elements[0]!.transform).toMatchObject({ x: 135, y: 147 });
+  expect(editor.historyEntries).toHaveLength(1);
+  act(() => editor.undo());
+  expect(editor.document.slides[0]!.elements[0]!.transform).toMatchObject({ x: 100, y: 120 });
+});
+
+it.each([0.5, 2])("snaps equal gaps at zoom %s, draws final distances, and undoes once", async (zoom) => {
+  const { canvas, target } = await mount(undefined, zoom, true);
+  fireEvent.keyUp(window, { key: "Control", ctrlKey: false });
+  fireEvent.pointerDown(target, { button: 0, clientX: 280 * zoom, clientY: 150 * zoom });
+  fireEvent.pointerMove(canvas, { clientX: 300 * zoom - 4, clientY: 150 * zoom });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+  const guide = canvas.querySelector('[data-spacing-guide="x"]')!;
+  expect(guide).toBeTruthy();
+  expect([...guide.querySelectorAll("text")].map(node => node.textContent)).toEqual(["50", "50"]);
+  fireEvent.pointerUp(canvas, { clientX: 300 * zoom - 4, clientY: 150 * zoom });
+  expect(editor.document.slides[0]!.elements[0]!.transform.x).toBe(250);
+  expect(canvas.querySelector("[data-spacing-guide]")).toBeNull();
+  expect(editor.historyEntries).toHaveLength(1);
+  act(() => editor.undo());
+  expect(editor.document.slides[0]!.elements[0]!.transform.x).toBe(230);
+});
+
+it("Ctrl disables spacing snaps and their indicators", async () => {
+  const { canvas, target } = await mount(undefined, 1, true);
+  fireEvent.pointerDown(target, { button: 0, clientX: 280, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 296, clientY: 150 });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+  expect(canvas.querySelector("[data-spacing-guide]")).toBeNull();
+  fireEvent.pointerUp(canvas, { clientX: 296, clientY: 150 });
+  expect(editor.document.slides[0]!.elements[0]!.transform.x).toBe(246);
+});
+
+it("Shift keeps the fixed axis unchanged even when a nearby alignment target exists", async () => {
+  const { canvas, target } = await mount(undefined, 1, true);
+  fireEvent.keyDown(window, { key: "Shift", shiftKey: true });
+  fireEvent.pointerDown(target, { button: 0, clientX: 280, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 296, clientY: 154 });
+  fireEvent.pointerUp(canvas, { clientX: 296, clientY: 154 });
+  expect(editor.document.slides[0]!.elements[0]!.transform).toMatchObject({ x: 250, y: 123 });
+});
+
+it.each(["scaleChildren", "resizeContainer"] as const)("previews and commits %s in one undoable canvas resize", async (mode) => {
+  const { canvas, target } = await mount(mode);
+  const before = structuredClone(editor.document);
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150 });
+  const handle = canvas.querySelector<HTMLElement>('[data-resize-handle="se"]')!;
+  fireEvent.pointerDown(handle, { button: 0, clientX: 200, clientY: 180 });
+  fireEvent.pointerMove(canvas, { clientX: 300, clientY: 240 });
+  const queued = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
+  act(() => queued(16));
+  const group = before.slides[0]!.elements[0] as GroupElement;
+  const nested = group.children[0] as GroupElement;
+  const textId = nested.children[0]!.id;
+  const preview = canvas.querySelector(`[data-element-id="${textId}"]`)!.outerHTML;
+  expect(editor.document).toEqual(before);
+  fireEvent.pointerUp(canvas, { clientX: 300, clientY: 240 });
+  const resized = editor.document.slides[0]!.elements[0]!;
+  expect(isGroup(resized)).toBe(true);
+  expect(resized.transform).toMatchObject({ width: 200, height: 120 });
+  const child = (resized as GroupElement).children[0] as GroupElement;
+  const factor = mode === "scaleChildren" ? 2 : 1;
+  expect(child.transform).toMatchObject({ x: 10 * factor, width: 60 * factor, rotation: 15 });
+  expect((child.children[0] as TextElement).typography.fontSize).toBe(20 * factor);
+  expect(canvas.querySelector(`[data-element-id="${textId}"]`)!.outerHTML).toBe(preview);
+  expect(editor.historyEntries).toHaveLength(1);
+  act(() => editor.undo());
+  expect(editor.document).toEqual(before);
+});
+
+it("uses the final queued marquee corner when released before an animation frame", async () => {
+  const { canvas } = await mount();
+  fireEvent.pointerDown(canvas, { button: 0, clientX: 80, clientY: 100 });
+  fireEvent.pointerMove(canvas, { clientX: 220, clientY: 200 });
+  fireEvent.pointerUp(canvas, { clientX: 220, clientY: 200 });
+  expect(editor.selection.selectedIds).toContain(elementId);
+  expect(editor.historyEntries).toHaveLength(0);
+});
+
+it.each([
+  ["move", false], ["move", true], ["resize", false], ["resize", true],
+] as const)("cancels %s (painted=%s) without committing or undoing previous edits", async (kind, painted) => {
+  const { canvas, target } = await mount(kind === "resize" ? "scaleChildren" : undefined);
+  act(() => editor.apply([{ op: "replace", path: "/metadata/title", value: "Previous edit" }], { label: "Rename" }));
+  const before = structuredClone(editor.document);
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  if (kind === "resize") {
+    fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150 });
+    fireEvent.pointerDown(canvas.querySelector('[data-resize-handle="se"]')!, { button: 0, clientX: 200, clientY: 180 });
+  }
+  fireEvent.pointerMove(canvas, { clientX: 300, clientY: 240 });
+  if (painted) act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+  fireEvent.pointerCancel(canvas);
+  fireEvent.pointerUp(canvas, { clientX: 300, clientY: 240 });
+  expect(editor.document).toEqual(before);
+  expect(editor.historyEntries).toHaveLength(1);
+  expect(canvas.querySelector("[data-spacing-guide]")).toBeNull();
+  // The next pointer is a fresh gesture, not a continuation of the cancelled one.
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 160, clientY: 155 });
+  fireEvent.pointerUp(canvas, { clientX: 160, clientY: 155 });
+  expect(editor.document.slides[0]!.elements[0]!.transform).toMatchObject({ x: 110, y: 125 });
+  expect(editor.historyEntries).toHaveLength(2);
+  act(() => editor.undo());
+  expect(editor.document).toEqual(before);
+});

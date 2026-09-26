@@ -1,0 +1,62 @@
+{
+  "step": "motion",
+  "startedAt": "2026-09-20T19:32:14.448Z",
+  "packaged": false,
+  "appVersion": "0.9.0-beta.1",
+  "build": {
+    "commit": "025fcb2c01b33d81f3ac600c651f9eae9ca2ce54",
+    "dirty": true,
+    "treeSha256": "6ddd9624538b17073147d416500ba01134c0d721ea7b585a575c9ada163a941e",
+    "payloads": {
+      "app": "fedcc3ff421be664d7da04c553529c9c01fcfdcb9faad953312680735354b017",
+      "worker": "1f38982de2ee84fc5c9450771ce029dc2f64a9bd2dfba388d83ef5c340d4c4c8",
+      "mcp": "3e01bf9ae8b17da2fd46e52ff1796ca4c132af5d95af5039fd43405615091be2",
+      "sidecar": "74490ed4bf40cb95a686b6cbdaf4a57eef7d2375be8b041fc6c4e9f3aad3d572"
+    },
+    "migrations": "53130f527b53947859a7f4843620c323d71e1e4035fdadadf95949f42a57f025"
+  },
+  "versions": {
+    "electron": "44.4.3",
+    "chrome": "152.0.7977.130",
+    "node": "24.21.0"
+  },
+  "msToWindow": 24672,
+  "console": [],
+  "cspViolations": [],
+  "firstRunNotice": false,
+  "transition": {
+    "morphIndex": 3,
+    "pairs": [
+      "manual",
+      "manual"
+    ],
+    "pairsBefore": 2
+  },
+  "edits": {
+    "faded": {
+      "type": "fade",
+      "durationMs": 600,
+      "easing": "emphasized"
+    },
+    "notice": "2 shared-element pairs were removed with the morph. Undo brings them back.",
+    "budget": "Total 0.6s — within the 2.5s budget"
+  },
+  "applied": {
+    "changed": true,
+    "tracks": 2,
+    "restored": true
+  },
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 369.7,
+    "byTypeMb": {
+      "Browser": 103.9,
+      "GPU": 120.6,
+      "Utility": 45.3,
+      "Tab": 99.9
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-20T19:33:27.366Z"
+}

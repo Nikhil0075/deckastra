@@ -33,4 +33,40 @@ export interface GenerateResult {
   presentation_id: string;
   document: PresentationDocument;
   diagnostics: GenerationDiagnostics;
+  version_id?: string;
+  run_id?: string | null;
 }
+
+/** One slide of an outline under review: its words, never its geometry. */
+export interface OutlineSlide {
+  headline: string;
+  key_message: string;
+  layout: string;
+}
+
+export interface StoryOutline {
+  title: string;
+  narrative_arc: string;
+  slides: OutlineSlide[];
+  warnings: string[];
+}
+
+/**
+ * A generation that stops at its outline for a person (editor Phase 6).
+ *
+ * `awaiting_story` carries the outline and the run to resume; `completed` the
+ * deck, exactly as a plain generation returns it; `rejected` nothing, because
+ * nothing was made.
+ */
+export interface ReviewedGeneration {
+  run_id: string;
+  status: "awaiting_story" | "completed" | "rejected";
+  outline?: StoryOutline | null;
+  generation?: GenerateResult | null;
+}
+
+/** What a person decided about a paused outline. A revision needs a note. */
+export type StoryDecision =
+  | { action: "approve" }
+  | { action: "reject" }
+  | { action: "revise"; note: string };

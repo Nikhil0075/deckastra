@@ -27,13 +27,25 @@ afterEach(() => {
   else Reflect.deleteProperty(HTMLElement.prototype, "setPointerCapture");
 });
 
-async function mount(groupMode?: "scaleChildren" | "resizeContainer", zoom = 1, spacing = false) {
+async function mount(
+  groupMode?: "scaleChildren" | "resizeContainer",
+  zoom = 1,
+  spacing = false,
+  kind: "shape" | "text" = "shape",
+) {
   const document = loadFixture("technical");
   elementId = document.slides[0]!.elements[0]!.id;
-  document.slides = [{ ...document.slides[0]!, elements: [{
-    id: elementId, type: "shape", shape: "rectangle", name: "Gesture target",
-    transform: { x: 100, y: 120, width: 100, height: 60 },
-  }] }];
+  const targetElement = kind === "text"
+    ? {
+        ...(document.slides[0]!.elements.find(element => element.type === "text") as TextElement),
+        id: elementId,
+        transform: { x: 100, y: 120, width: 240, height: 80 },
+      }
+    : {
+        id: elementId, type: "shape" as const, shape: "rectangle" as const, name: "Gesture target",
+        transform: { x: 100, y: 120, width: 100, height: 60 },
+      };
+  document.slides = [{ ...document.slides[0]!, elements: [targetElement] }];
   if (spacing) {
     const shape = document.slides[0]!.elements[0]!;
     shape.transform.x = 230;
@@ -68,6 +80,51 @@ async function mount(groupMode?: "scaleChildren" | "resizeContainer", zoom = 1, 
   fireEvent.keyDown(window, { key: "Control", ctrlKey: true });
   return { canvas, target };
 }
+
+it("enters text editing when pointer capture retargets double-click to the canvas", async () => {
+  const { canvas, target } = await mount(undefined, 1, false, "text");
+  Object.defineProperty(document, "elementsFromPoint", {
+    configurable: true,
+    value: vi.fn(() => [target, canvas]),
+  });
+
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150, pointerId: 1 });
+  fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150, pointerId: 1 });
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150, pointerId: 1 });
+  fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150, pointerId: 1 });
+  fireEvent.doubleClick(canvas, { clientX: 150, clientY: 150 });
+
+  expect(editor.selection.editingTextId).toBe(elementId);
+  expect(canvas.querySelector('[role="textbox"]')).toBeTruthy();
+});
+
+it("moves group descendants in every painted preview frame", async () => {
+  const { canvas, target } = await mount("scaleChildren");
+  const group = editor.document.slides[0]!.elements[0] as GroupElement;
+  const child = (group.children[0] as GroupElement).children[0]!;
+  const childNode = canvas.querySelector<HTMLElement>(`[data-element-id="${child.id}"]`)!;
+  const before = childNode.style.transform;
+
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerMove(canvas, { clientX: 190, clientY: 180 });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+
+  expect(childNode.style.transform).not.toBe(before);
+});
+
+it("rotates the rendered object during preview, before commit", async () => {
+  const { canvas, target } = await mount();
+  fireEvent.pointerDown(target, { button: 0, clientX: 150, clientY: 150 });
+  fireEvent.pointerUp(canvas, { clientX: 150, clientY: 150 });
+  const before = target.style.transform;
+  const handle = canvas.querySelector<HTMLElement>('[title="Rotate"]')!;
+
+  fireEvent.pointerDown(handle, { button: 0, clientX: 150, clientY: 90 });
+  fireEvent.pointerMove(canvas, { clientX: 210, clientY: 150 });
+  act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16));
+
+  expect(target.style.transform).not.toBe(before);
+});
 
 it("commits the final queued movement before any animation frame and undoes it once", async () => {
   const { canvas, target } = await mount();

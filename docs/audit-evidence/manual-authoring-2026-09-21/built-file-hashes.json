@@ -1,0 +1,14 @@
+[
+  {
+    "path": "D:\\Presentation_app\\apps\\desktop\\dist\\main\\index.js",
+    "sha256": "2666bb35766f9040d7cce78b1f324fec4d0d7a9c56f6c7b8aed99a9e9ac951f5"
+  },
+  {
+    "path": "D:\\Presentation_app\\apps\\desktop\\dist\\main\\preload.cjs",
+    "sha256": "f2ebb5b0b4ff869e00559b953584dd22d80a6cdc63d56c311b82ec48daa1d7eb"
+  },
+  {
+    "path": "D:\\Presentation_app\\apps\\desktop\\dist\\main\\renderer\\assets\\index-DiufzQZf.js",
+    "sha256": "8b14ed887f0da750c1cf6ee8766d4e6eed2fc72994bcdf8f16a1038fbe54d5ff"
+  }
+]

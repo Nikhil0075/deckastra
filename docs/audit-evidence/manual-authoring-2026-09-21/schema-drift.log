@@ -1,0 +1,13 @@
+
+> deckastra@0.0.0 schema:drift
+> npm run schema:drift --workspace @deckastra/presentation-schema
+
+
+> @deckastra/presentation-schema@0.0.0 schema:drift
+> tsx scripts/emit-json-schema.ts --check
+
+  ok     mydeck-document.schema.json
+  ok     mydeck-theme.schema.json
+  ok     mydeck-patch.schema.json
+  ok     mydeck-patch-operation.schema.json
+  ok     mydeck-transaction.schema.json

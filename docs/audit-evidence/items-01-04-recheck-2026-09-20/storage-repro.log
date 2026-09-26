@@ -1,0 +1,42 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/audit-close-storage.test.tsx (9 tests | 1 failed) 2571ms
+   ✓ unloading > takes a note still inside its draft interval into the document and the journal  348ms
+   ✓ unloading > does not object to a close the shell already prepared 148ms
+   ✓ unloading > still objects in a browser, where nothing prepared the close 118ms
+   ✓ preparing to close > saves the draft and answers clean 122ms
+   ✓ preparing to close > answers journalled when the save fails, with the note in the journal 120ms
+   ✓ preparing to close > answers within its bound when the save never returns  325ms
+   ✓ preparing to close > saves what a failed close journalled as soon as the deck is opened again, with no new edit  1113ms
+   ✓ preparing to close > commits the words from before an IME composition, never the half-composed ones 153ms
+   × audit: failed storage plus failed save must not approve closing 122ms
+     → expected true to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-close-storage.test.tsx > audit: failed storage plus failed save must not approve closing
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/audit-close-storage.test.tsx:151:29
+    149|     expect(journalHolds("Only copy of my final note")).toBe(false);
+    150|     expect(saved).toHaveLength(0);
+    151|     expect(closeApproved()).toBe(false);
+       |                             ^
+    152|   } finally { deny.mockRestore(); }
+    153| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 passed (9)
+   Start at  01:40:20
+   Duration  18.82s (transform 2.54s, setup 0ms, collect 4.20s, tests 2.57s, environment 10.30s, prepare 688ms)
+

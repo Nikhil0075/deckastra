@@ -1,0 +1,184 @@
+Window: "Deckastra", App: electron.exe.
+	0 window Deckastra Secondary Actions: Raise
+		1 pane (disabled)
+		2 region Deckastra
+			3 region
+				4 region
+					5 region
+						6 region
+							7 region
+								8 region
+									10 document Deckastra Value: deckastra://app/index.html ID: RootWebArea
+										17 group
+											11 group ID: root
+												33 header
+													34 button All decks
+													35 heading Deckastra Animation Conformance Deck Description: Animation Conformance Deck
+													36 button Undo
+													37 button (disabled) Redo
+													458 text Saved
+													38 radio group (settable, string) Editor mode
+														39 radio button (selectable, settable, string) DESIGN
+														40 radio button (selectable, settable, string) AI
+														41 radio button (selectable, settable, string) MOTION
+														42 radio button (selectable, settable, string) CODE read-only
+													43 button INTELLIGENCE
+													44 button Agents off
+													45 button Appearance: system (dark)
+													46 button SHARE
+													47 button EXPORT
+													48 button PRESENT
+												49 tool bar Insert
+													50 button Add text
+													51 button Add rectangle
+													52 button Add ellipse
+													53 button Add line
+													54 button Add image
+													55 button Add chart
+													56 button Add diagram
+													57 button Add table
+													58 button Add code
+													59 button Add icon
+												60 navigation Slides
+													61 text SLIDES
+													62 text 4
+													63 button Add slide
+													64 list
+														65 list item Motion reinforces orderProposedApplied128
+															66 button Slide 1 of 4: Motion reinforces narrative order Description: Motion reinforces narrative order
+																67 group Proposed
+																68 group Applied
+																352 graphic test-picture.png
+															69 button Slide 1 actions
+														70 list item Revealed on clickAgents proposeDeterministic engines composeHumans stay in controlNew text
+															71 button Slide 2 of 4: The presenter paces the slide, not the timeline Description: The presenter paces the slide, not the timeline
+																72 group Bullets
+															73 button Slide 2 actions
+														74 list item Entered with a zoom
+															75 button Slide 3 of 4: Transitions belong to the slide being entered Description: Transitions belong to the slide being entered
+															76 button Slide 3 actions
+														77 list item The same headline, moved
+															78 button Slide 4 of 4: Paired elements travel; everything else crossfades Description: Paired elements travel; everything else crossfades
+															79 button Slide 4 actions
+												80 main Slide editor
+													81 tool bar Canvas
+														82 button Zoom out
+														83 status Zoom
+															84 text 20%
+														85 button Zoom in
+														86 toggle button FIT
+													87 slide canvas Slide canvas. Tab moves between objects, arrow keys nudge the selection, Escape clears it.
+														398 text Revealed on click
+														399 group Bullets
+														400 text Agents propose
+														401 text Deterministic engines compose
+														402 text Humans stay in control
+														447 text New text
+														448 group Description: Rotate
+													94 region Speaker notes
+														95 section header
+															96 text SPEAKER NOTES
+															97 text Slide
+															98 text 2
+															99 text ·
+															100 text no notes yet
+															101 button Collapse speaker notes
+														102 tool bar Format speaker notes
+															103 toggle button Bold
+															104 toggle button Italic
+															105 toggle button Underline
+															106 toggle button Bulleted list
+															107 toggle button Numbered list
+														108 edit (settable, string) SPEAKER NOTES Value: What to say on this slide. Only you see these, in the presenter view.
+															109 text What to say on this slide. Only you see these, in the presenter view.
+														110 section footer
+															111 text 0
+															112 text character
+															113 text s
+													114 region Motion timeline
+														115 text MOTION
+														116 button PREVIEW
+														117 group Description: Entrance: 0ms of 2500ms
+															118 text 0
+															119 text ms
+														449 combo box (settable, string) Add animation to the selection Value: Add animation…
+														121 text 0
+														122 text s
+														404 group Description: Waits for a click
+														405 group Description: Waits for a click
+														406 text Bullets
+														407 button staggerReveal, 0 to 210 milliseconds Description: staggerReveal · 0–210ms · drag to move, drag the right edge to trim, hold Shift to ripple
+														131 slider (settable, float) Scrub the slide timeline Value: 0
+												132 complementary Motion
+													361 heading TRANSITION INTO SLIDE 2
+														362 button TRANSITION INTO SLIDE 2
+													408 radio group (settable, string) Transition
+														409 radio button (selectable, settable, string) CUT
+														410 radio button (selectable, settable, string) FADE
+														411 radio button (selectable, settable, string) SLIDE
+														412 radio button (selectable, settable, string) ZOOM
+														413 radio button (selectable, settable, string) MORPH
+													414 text Duration
+													415 edit (settable, string) Duration Value: 400
+													416 text ms
+													417 text EASING
+													418 button EASING easeInOut
+														419 text easeInOut
+													375 heading PLAN BY ROLES
+														376 button PLAN BY ROLES
+													425 radio group (settable, string) Plan
+														426 radio button (selectable, settable, string) ENTRANCES
+														427 radio button (selectable, settable, string) TRANSITION
+													428 text REVEAL IN THIS ORDER
+													429 list
+														430 list item
+															431 check box (settable, string) headline
+															432 button (disabled) Move headline later
+														450 list item body· on screen from the start
+															451 check box (settable, string) body · on screen from the start
+															452 text body
+															453 text · on screen from the start
+													433 text ENTRANCE
+													434 button ENTRANCE fade
+														435 text fade
+													436 text On click
+													437 edit (settable, string) On click Value: 0
+													438 radio group (settable, string) Pacing
+														439 radio button (selectable, settable, string) TIGHT
+														440 radio button (selectable, settable, string) MEASURED
+														441 radio button (selectable, settable, string) DELIBERATE
+													442 button PLAN MOTION BY ROLES
+								9 region
+
+Selected text: ```
+TRANSITION INTO SLIDE 2
+CUT
+FADE
+SLIDE
+ZOOM
+MORPH
+Duration
+400
+ms
+EASING
+easeInOut
+PLAN BY ROLES
+ENTRANCES
+TRANSITION
+REVEAL IN THIS ORDER
+￼
+Move headline later
+￼
+body
+· on screen from the start
+ENTRANCE
+fade
+On click
+0
+TIGHT
+MEASURED
+DELIBERATE
+PLAN MOTION BY ROLES
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

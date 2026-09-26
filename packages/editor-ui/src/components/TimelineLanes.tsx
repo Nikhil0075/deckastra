@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 
 import { MIN_CLIP_MS, type TimelineView } from "@deckastra/animation-engine";
 
@@ -312,13 +311,13 @@ export function TimelineLanes({
   const scale = view.durationMs > 0 ? 100 / view.durationMs : 0;
 
   return (
-    <div style={{ position: "relative" }} ref={surface}>
+    <div className="dk-lanes" ref={surface}>
       {view.lanes.map((lane) => (
-        <div key={lane.targetId} style={laneRow}>
-          <span style={laneLabel} title={lane.label}>
+        <div key={lane.targetId} className="dk-lanes__row">
+          <span className="dk-lanes__label" title={lane.label}>
             {lane.label}
           </span>
-          <div style={laneTrack} data-lane-track="">
+          <div className="dk-lanes__track" data-lane-track="">
             {lane.bars.map((bar) => {
               // Only a clip gesture moves the bar. A keyframe drag happens
               // *inside* it, and letting it reposition the bar would slide the
@@ -355,21 +354,23 @@ export function TimelineLanes({
                       onSelect(bar.clipId);
                     }
                   }}
+                  className={[
+                    "dk-lanes__bar",
+                    bar.clipId === selectedClipId && "dk-lanes__bar--selected",
+                    // Doc 04 §25.3: an overlap is striped, never blended.
+                    bar.conflicted && "dk-lanes__bar--conflict",
+                    dragged && "dk-lanes__bar--dragging",
+                    dragged?.kind === "trim" && "dk-lanes__bar--trimming",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   style={{
-                    ...clipBar,
                     left: `${startMs * scale}%`,
                     width: `${Math.max(1.5, durationMs * scale)}%`,
-                    background: bar.clipId === selectedClipId ? "var(--accent)" : "var(--surface-alt)",
-                    color: bar.clipId === selectedClipId ? "var(--accent-fg)" : "var(--fg-muted)",
-                    // Doc 04 §25.3: an overlap is striped, never blended.
-                    borderColor: bar.conflicted ? "var(--warning)" : "var(--border)",
-                    borderStyle: bar.conflicted ? "dashed" : "solid",
-                    cursor: dragged?.kind === "trim" ? "ew-resize" : "grab",
-                    opacity: dragged ? 0.85 : 1,
                   }}
                 >
                   {bar.label}
-                  <span aria-hidden style={trimHandle} />
+                  <span aria-hidden className="dk-lanes__trim" />
 
                 </div>
               );
@@ -390,13 +391,10 @@ export function TimelineLanes({
                   .map((bar) => (
                     <div
                       key={`kf-${bar.clipId}`}
+                      className="dk-lanes__keyframes"
                       style={{
-                        position: "absolute",
                         left: `${bar.startMs * scale}%`,
                         width: `${Math.max(1.5, (bar.endMs - bar.startMs) * scale)}%`,
-                        top: 0,
-                        height: 20,
-                        pointerEvents: "none",
                       }}
                     >
                       {keyframes.tracks.flatMap((track) =>
@@ -426,7 +424,8 @@ export function TimelineLanes({
                               onPointerUp={() => finish(true)}
                               onPointerCancel={() => finish(false)}
                               onLostPointerCapture={() => finish(false)}
-                              style={{ ...keyframeHandle, left: `calc(${at * 100}% - 3px)` }}
+                              className="dk-lanes__handle"
+                              style={{ left: `calc(${at * 100}% - 3px)` }}
                             />
                           );
                         }),
@@ -439,7 +438,7 @@ export function TimelineLanes({
       ))}
 
       {preview ? (
-        <p aria-live="polite" style={readout}>
+        <p aria-live="polite" className="dk-lanes__readout">
           {preview.kind === "keyframe"
             ? `${preview.property} keyframe at ${Math.round(preview.toMs)}ms`
             : preview.kind === "move"
@@ -456,83 +455,14 @@ export function TimelineLanes({
           const box = surface.current?.getBoundingClientRect();
           if (box && onScrub) onScrub(((event.clientX - box.left) / box.width) * view.durationMs);
         }}
-        style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: `calc(96px + ${playheadMs * scale}% * 0.01 * (100% - 96px))`,
-          width: 1,
-          background: "var(--accent)",
-          pointerEvents: "none",
-        }}
+        className="dk-lanes__playhead"
+        // A length times a number, never a length times a length: the old
+        // `P% * 0.01 * (100% - 96px)` was invalid CSS, so the browser dropped
+        // `left` and the playhead sat at the lanes' left edge whatever the time.
+        // 96px is the label column (88px + the 8px gap), as in the ruler.
+        style={{ left: `calc(96px + (100% - 96px) * ${Math.min(1, Math.max(0, (playheadMs * scale) / 100))})` }}
       />
     </div>
   );
 }
 
-const laneRow: CSSProperties = { display: "flex", alignItems: "center", gap: 8, height: 26 };
-
-const laneLabel: CSSProperties = {
-  width: 88,
-  flex: "0 0 88px",
-  fontSize: 11,
-  color: "var(--fg-subtle)",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const laneTrack: CSSProperties = {
-  position: "relative",
-  flex: 1,
-  height: 20,
-  background: "var(--surface)",
-  borderRadius: 4,
-};
-
-const clipBar: CSSProperties = {
-  position: "absolute",
-  top: 2,
-  height: 16,
-  borderWidth: 1,
-  borderRadius: 3,
-  fontSize: 10,
-  lineHeight: "14px",
-  padding: "0 4px",
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textAlign: "left",
-  touchAction: "none",
-  userSelect: "none",
-};
-
-const trimHandle: CSSProperties = {
-  position: "absolute",
-  right: 0,
-  top: 0,
-  bottom: 0,
-  width: EDGE_PX,
-  cursor: "ew-resize",
-};
-
-const keyframeHandle: CSSProperties = {
-  position: "absolute",
-  // The layer above is `pointer-events: none` so it never swallows a click
-  // meant for the bar; the handles themselves opt back in.
-  pointerEvents: "auto",
-  top: 2,
-  width: 6,
-  height: 12,
-  borderRadius: 2,
-  background: "var(--accent-fg, #fff)",
-  border: "1px solid var(--accent, #4CC2FF)",
-  cursor: "ew-resize",
-  touchAction: "none",
-};
-
-const readout: CSSProperties = {
-  margin: "6px 0 0",
-  fontSize: 11,
-  color: "var(--fg-subtle)",
-  fontVariantNumeric: "tabular-nums",
-};

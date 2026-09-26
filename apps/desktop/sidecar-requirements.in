@@ -1,0 +1,20 @@
+# What the frozen workspace service is built from (final package review, item 09).
+#
+# The service's own dependencies, plus the freezer itself. Compiled to
+# `sidecar-requirements.lock` with hashes, and installed into a clean
+# environment by `scripts/build-sidecar.mjs` — so two people building the same
+# commit install the same bytes, and a compromised or merely different version
+# of a dependency cannot walk in through a developer's global site-packages.
+#
+#   python -m piptools compile --generate-hashes --strip-extras \
+#     --output-file apps/desktop/sidecar-requirements.lock \
+#     apps/desktop/sidecar-requirements.in
+#
+# The lock is resolved for the platform it is compiled on. This release is
+# Windows x64 / CPython 3.13, which is what it therefore pins.
+
+-r ../api/requirements.txt
+
+# The freezer. Pinned here rather than taken from whatever a machine has,
+# because it decides how the binary is laid out and what it carries.
+pyinstaller>=6.11,<7

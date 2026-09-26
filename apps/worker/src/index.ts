@@ -24,7 +24,7 @@ import type { SlideScene } from "@deckastra/renderer";
 import { buildPdf } from "@deckastra/export-pdf";
 import { buildPptx } from "@deckastra/export-pptx";
 
-import { RenderPool, renderPdfScene } from "./render";
+import { RenderPool, renderDeadlineFor, renderPdfScene } from "./render";
 import { buildBrowserScene } from "./text-measurement";
 import { AssetLibrary, type InlineAsset } from "./assets";
 
@@ -74,6 +74,12 @@ export async function runExport(
   const owned = pool ?? new RenderPool();
   const library = new AssetLibrary(job.assets);
   try {
+    // Sized to this deck, not to a constant: the lease covers measuring and
+    // rendering every slide, and sixty of them do not fit in the twenty seconds
+    // five of them did (item 30).
+    const slideCount = Array.isArray((job.document as { slides?: unknown[] }).slides)
+      ? (job.document as { slides: unknown[] }).slides.length
+      : 1;
     return await owned.withPage(1, async (page) => {
     // Final measured scenes are shared with the adapter (doc 04 §32.1). An adapter
     // that resolved its own would be a second layout engine, free to disagree with
@@ -137,7 +143,7 @@ export async function runExport(
       filename,
       contentType: CONTENT_TYPES.pdf,
     };
-    });
+    }, renderDeadlineFor(slideCount));
   } finally {
     // Only close a pool this call created. A caller that passed one is running
     // several exports through a warm browser, and closing it here would make

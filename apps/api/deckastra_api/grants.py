@@ -38,23 +38,44 @@ CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #: Narrower capabilities, matched first. Each exists because handing it to an
 #: agent is a decision someone should make deliberately:
 #:
-#: - **approve** is the human's half of proposal-before-apply. An agent that holds
-#:   it can wave through its own work.
+#: - **approve** is the human's half of proposal-before-apply, and of the story
+#:   checkpoint. An agent that holds it can wave through its own work.
 #: - **share** mints a bearer credential to a document. A link cannot be recalled
 #:   from whoever already read it.
 #: - **export** writes a file and can be large and slow; worth being able to hand
 #:   over separately from ordinary editing.
-#: - **administer** is the app's own: granting and revoking agent access. No
-#:   grant carries it, which is what stops an agent from managing its own leash.
+#: - **manage** is a deck's life, not its content: deleting or restoring a deck,
+#:   restoring an earlier version over the current one, moving a deck to another
+#:   project. Each replaces or removes a whole deck at once and applies
+#:   immediately, outside the proposal lifecycle that keeps an agent's edits in
+#:   front of a person. No grant carries it (editor Phase 5). Moving was already
+#:   refused to agents by the MCP tool surface (D5.1); this makes it a property
+#:   of the credential rather than of which tools an adapter registered.
+#: - **administer** is the app's own: granting and revoking agent access, and
+#:   taking a backup. No grant carries it, which is what stops an agent from
+#:   managing its own leash, or from writing every deck to a folder it chose.
 RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
     # Only the app itself. A grant that could revoke grants could revoke someone
     # else's access, or turn its own refusals into a thing it decides about.
     (re.compile(r"^/v1/local/agent-access(/|$)"), CHANGING, "administer"),
+    # Backing up names a destination on disk, which is the one place in this
+    # product a path crosses a boundary (item 14). `administer` keeps it the
+    # app's own: an agent that could ask for a backup could ask for one written
+    # wherever it liked, and could read every deck out of the result.
+    (re.compile(r"^/v1/local/backup$"), CHANGING, "administer"),
     (
         re.compile(r"^/v1/presentations/[^/]+/proposals/[^/]+/(approve|reject)$"),
         frozenset({"POST"}),
         "approve",
     ),
+    # Deciding a paused outline is the same act as deciding a proposal: the
+    # checkpoint exists so a person reads the story before a deck is built from
+    # it, and an agent able to answer it would be reviewing its own plan.
+    (re.compile(r"^/v1/runs/[^/]+/resume$"), frozenset({"POST"}), "approve"),
+    (re.compile(r"^/v1/presentations/[^/]+$"), frozenset({"DELETE"}), "manage"),
+    (re.compile(r"^/v1/presentations/[^/]+/restore$"), frozenset({"POST"}), "manage"),
+    (re.compile(r"^/v1/presentations/[^/]+/versions/[^/]+/restore$"), frozenset({"POST"}), "manage"),
+    (re.compile(r"^/v1/presentations/[^/]+/move$"), frozenset({"POST"}), "manage"),
     (re.compile(r"^/v1/presentations/[^/]+/shares$"), CHANGING, "share"),
     (re.compile(r"^/v1/shares(/|$)"), CHANGING, "share"),
     (re.compile(r"^/v1/presentations/[^/]+/exports$"), frozenset({"POST"}), "export"),

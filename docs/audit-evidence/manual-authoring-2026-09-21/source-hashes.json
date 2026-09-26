@@ -1,0 +1,50 @@
+[
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\EditorCanvas.tsx",
+    "Hash": "A506E5F8842D2213F7AF9E9A96217DF3DD0EB6FDB494281D83C9F20A641FD122"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\EditorShell.tsx",
+    "Hash": "474691110E371ADDC20F3B18E6E72DF6EF5B0F0402B7B6258C0DE144E206F2C7"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\TextEditor.tsx",
+    "Hash": "EA0A6573EF93C8B3DF713EA72891D3E3EBD6B174F2E1E8FCF0F0F42C2A417D4F"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\MotionPreview.tsx",
+    "Hash": "840BE862CA8E41501184FE66FE0CC0FF5778CC863697D8CC351A4AC0F44AE0BF"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\inspector\\Inspector.tsx",
+    "Hash": "8E488320EDF38FE68B06E215A84F8C5272ADB79D62F81605104C105009F159C6"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\components\\shell\\MotionModePanel.tsx",
+    "Hash": "4E9AA3B42522C59BB501AE2072DDF35A4E871616A337B4DC076525734124F0EA"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\editor-ui\\src\\lib\\insert-image.ts",
+    "Hash": "37CC54BE40E00F33732C9E1B29267650EF9B0022B92D27B9F5783BFFC2BB286D"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\renderer\\src\\react\\elements.tsx",
+    "Hash": "042452665C5D597DF1CD83D2415953190F589EF9FF1C0D2414C406AA5C6A1C4A"
+  },
+  {
+    "Path": "D:\\Presentation_app\\packages\\renderer\\src\\react\\SlideView.tsx",
+    "Hash": "72D41EF348AE4289AB01AE3E385E0C24DD3E64BE18DF347BBFCEC65845978AD7"
+  },
+  {
+    "Path": "D:\\Presentation_app\\apps\\desktop\\src\\main\\sidecar.ts",
+    "Hash": "3A408C0117FB21114877D74C43FDD5A3ED14C3A0787DC3643CBCC68B74ED9418"
+  },
+  {
+    "Path": "D:\\Presentation_app\\apps\\desktop\\src\\main\\smoke.ts",
+    "Hash": "C9BBAE853974DE07FA81BF562244CAB57A86E7CFA63F90B08900DA996BD8188C"
+  },
+  {
+    "Path": "D:\\Presentation_app\\apps\\desktop\\package.json",
+    "Hash": "88B022E2EC87B7ADFA290961952E93C6938453EA38FC666EED1713CFD8C58818"
+  }
+]

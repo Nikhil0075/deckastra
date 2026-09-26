@@ -1,0 +1,82 @@
+{
+  "step": "timeline",
+  "startedAt": "2026-09-19T13:28:39.090Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 6334,
+  "console": [],
+  "cspViolations": [],
+  "addedSlide": true,
+  "addedAnimation": true,
+  "dragged": {
+    "before": "fade · 0–252ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+    "after": "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+    "laneWidth": 198
+  },
+  "openedKeyframes": true,
+  "keyframeDrag": {
+    "readout": [],
+    "before": [
+      "0",
+      "420"
+    ],
+    "after": [
+      "153",
+      "420"
+    ],
+    "barBefore": "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+    "barAfter": "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple"
+  },
+  "duplicated": true,
+  "conflict": {
+    "offered": [
+      "Start the later clip 252ms later",
+      "Shorten the earlier clip to 168ms"
+    ],
+    "applied": true,
+    "barsBefore": [
+      "fadeUp · 0–240ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fadeUp · 240–480ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fadeUp · 310–550ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "numberCount · 550–970ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple"
+    ],
+    "barsAfter": [
+      "fadeUp · 0–240ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fadeUp · 240–480ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fadeUp · 310–550ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "numberCount · 550–970ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fade · 102–354ms · drag to move, drag the right edge to trim, hold Shift to ripple",
+      "fade · 354–606ms · drag to move, drag the right edge to trim, hold Shift to ripple"
+    ],
+    "before": 2,
+    "remaining": 0
+  },
+  "unwound": {
+    "presses": 8,
+    "refused": false,
+    "slides": 4,
+    "target": 4
+  },
+  "unwindSaved": {
+    "drained": true
+  },
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 386.6,
+    "byTypeMb": {
+      "Browser": 98.8,
+      "GPU": 128.2,
+      "Utility": 49.5,
+      "Tab": 110.1
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T13:28:52.794Z"
+}

@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/transactions
+
+ ✓ tests/apply.test.ts (30 tests) 952ms
+   ✓ property: every patch inverts exactly > holds over 400 generated patches  597ms
+ ✓ tests/lifecycle.test.ts (31 tests) 92ms
+
+ Test Files  2 passed (2)
+      Tests  61 passed (61)
+   Start at  00:59:00
+   Duration  3.66s (transform 1.18s, setup 0ms, collect 1.74s, tests 1.04s, environment 1ms, prepare 296ms)
+

@@ -354,3 +354,33 @@ class EditPlan(BaseModel):
         default="", description="Why no edit was proposed. Empty when edits were produced."
     )
     confidence: float = Field(default=0.8, ge=0, le=1)
+
+
+class AuthorOperation(BaseModel):
+    """One patch operation, as the author agent writes it.
+
+    `value_json` is a string rather than a value because the value is any JSON
+    at all - an element, a colour, a whole theme - and structured output can
+    only constrain objects whose properties are named in advance. The server
+    parses it and the document validator decides whether it is right.
+    """
+
+    op: Literal["add", "remove", "replace", "move"]
+    path: str = Field(description="An id-addressed JSON Pointer, e.g. /slides/id:sld_x/elements/id:el_y/transform/x")
+    value_json: str = Field(default="", description="The value for add/replace, as JSON text. Empty for remove/move.")
+    from_path: str = Field(default="", description="The source path, for move. Empty otherwise.")
+
+
+class AuthorPlan(BaseModel):
+    """A change to a deck, written as operations (the built-in agent's MCP parity).
+
+    The author agent does what an external agent does over MCP: it reads the
+    deck and writes the patch. Nothing about that bypasses anything - the
+    operations are applied to a copy and validated against the schema before
+    they become a proposal, the risk tier is computed from them server-side,
+    and a large change waits for a person exactly as an external agent's does.
+    """
+
+    summary: str = Field(description="One or two plain sentences for the person: what this change does.")
+    operations: list[AuthorOperation]
+    refusal: str = Field(default="", description="Why nothing was changed. Empty when operations were written.")

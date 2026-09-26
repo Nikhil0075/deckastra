@@ -1,0 +1,120 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/manual-authoring-audit.test.tsx (6 tests | 3 failed) 261ms
+   ✓ control: ordinary text commits on blur 148ms
+   ✓ control: plain pasted content reaches the commit 28ms
+   ✓ control: a landscape image is placed inside the slide 3ms
+   × does not commit a partially composed canvas text draft on blur 44ms
+     → expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      Object {
+        "blocks": Array [
+          Object {
+            "id": "blk_01M30485R9G0DCET3XDNEP6ABS",
+            "spans": Array [
+              Object {
+                "text": "Before partial",
+              },
+            ],
+            "type": "paragraph",
+          },
+        ],
+        "version": 1,
+      },
+    ]
+
+
+Number of calls: 1
+
+   × retains supported bold formatting pasted into canvas text 34ms
+     → expected false to be true // Object.is equality
+   × fits a portrait image entirely inside the slide on insertion 2ms
+     → expected -4260 to be greater than or equal to 0
+ ✓ tests/canvas-gesture.test.tsx (12 tests) 1418ms
+ ✓ tests/motion-mode-panel.test.tsx (7 tests) 511ms
+ ✓ tests/transition-editing.test.ts (13 tests) 101ms
+ ✓ tests/insert-image.test.tsx (5 tests) 136ms
+ ✓ tests/resize-operations.test.ts (2 tests) 75ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/manual-authoring-audit.test.tsx > does not commit a partially composed canvas text draft on blur
+AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      Object {
+        "blocks": Array [
+          Object {
+            "id": "blk_01M30485R9G0DCET3XDNEP6ABS",
+            "spans": Array [
+              Object {
+                "text": "Before partial",
+              },
+            ],
+            "type": "paragraph",
+          },
+        ],
+        "version": 1,
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ tests/manual-authoring-audit.test.tsx:41:22
+     39|   host.textContent = "Before partial";
+     40|   fireEvent.blur(host);
+     41|   expect(commit).not.toHaveBeenCalled();
+       |                      ^
+     42| });
+     43| it("retains supported bold formatting pasted into canvas text", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/manual-authoring-audit.test.tsx > retains supported bold formatting pasted into canvas text
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/manual-authoring-audit.test.tsx:47:119
+     45|   fireEvent.paste(host, { clipboardData: { getData: (format: string) =…
+     46|   fireEvent.blur(host);
+     47|   expect(commit.mock.calls[0]?.[0].blocks.flatMap((b: any) => b.spans)…
+       |                                                                                                                       ^
+     48| });
+     49| it("fits a portrait image entirely inside the slide on insertion", () …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/manual-authoring-audit.test.tsx > fits a portrait image entirely inside the slide on insertion
+AssertionError: expected -4260 to be greater than or equal to 0
+ ❯ tests/manual-authoring-audit.test.tsx:55:31
+     53|   } as any });
+     54|   const element = (result.operations[1] as any).value;
+     55|   expect(element.transform.y).toBeGreaterThanOrEqual(0);
+       |                               ^
+     56|   expect(element.transform.height).toBeLessThanOrEqual(doc.viewport.he…
+     57| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  3 failed | 42 passed (45)
+   Start at  00:51:12
+   Duration  29.39s (transform 5.28s, setup 0ms, collect 11.88s, tests 2.50s, environment 12.05s, prepare 1.02s)
+

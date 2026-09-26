@@ -1,0 +1,39 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/audit-outline-order.test.tsx (9 tests | 1 failed | 8 skipped) 245ms
+   ↓ item 03: a paused outline survives a failure that says nothing about it > keeps the pointer on a 503, and Try again recovers the same outline
+   ↓ item 03: a paused outline survives a failure that says nothing about it > keeps the pointer after an expired session
+   ↓ item 03: a paused outline survives a failure that says nothing about it > keeps the pointer after a server error
+   ↓ item 03: a paused outline survives a failure that says nothing about it > forgets on the server's 404, and only the run it asked about
+   ↓ item 02: one project's run never shows under another > does not show A's paused outline after switching to B
+   ↓ item 02: one project's run never shows under another > keeps an outline A was writing for A when it arrives after the switch, and shows it on return
+   ↓ item 02: one project's run never shows under another > does not open A's finished deck from B
+   ↓ item 02: one project's run never shows under another > does not open a deck after the drawer is gone
+   × audit: an older generation must not replace a newer run pointer after returning to A 243ms
+     → expected 'run_old' to be 'run_new' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-outline-order.test.tsx > audit: an older generation must not replace a newer run pointer after returning to A
+AssertionError: expected 'run_old' to be 'run_new' // Object.is equality
+
+Expected: "run_new"
+Received: "run_old"
+
+ ❯ tests/audit-outline-order.test.tsx:171:46
+    169|   expect(localStorage.getItem(key("prj_a"))).toBe("run_new");
+    170|   await act(async () => old.release(reply({ run_id: "run_old", status:…
+    171|   expect(localStorage.getItem(key("prj_a"))).toBe("run_new");
+       |                                              ^
+    172| });
+    173| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+   Start at  01:41:44
+   Duration  4.52s (transform 1.03s, setup 0ms, collect 1.57s, tests 245ms, environment 1.57s, prepare 396ms)
+

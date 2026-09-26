@@ -1,0 +1,14 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/presentation-schema
+
+ ✓ tests/validation.test.ts (22 tests) 350ms
+ ✓ tests/forward-compat.test.ts (7 tests) 217ms
+ ✓ tests/known-element-validation.test.ts (23 tests) 230ms
+ ✓ tests/fixtures.test.ts (26 tests) 244ms
+ ✓ tests/patch-and-serialize.test.ts (22 tests) 52ms
+
+ Test Files  5 passed (5)
+      Tests  100 passed (100)
+   Start at  00:58:39
+   Duration  6.46s (transform 866ms, setup 0ms, collect 2.41s, tests 1.09s, environment 2ms, prepare 1.06s)
+

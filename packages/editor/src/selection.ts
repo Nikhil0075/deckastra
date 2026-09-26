@@ -296,6 +296,29 @@ export function cycleSelection(
   return { ...state, selectedIds: [next], primaryId: next, editingTextId: undefined };
 }
 
+/**
+ * Whether Tab should leave the canvas rather than cycle (editor Phase 8).
+ *
+ * Tab walks the objects on the slide, and past the last one (Shift+Tab: before
+ * the first) it hands focus on to the next control instead of wrapping. A cycle
+ * that wraps forever is a keyboard trap: nothing on the canvas is ever the last
+ * stop, so nothing after it can be reached. The selection is left as it is, so
+ * the inspector after the canvas edits the object Tab ended on.
+ */
+export function cycleLeavesScope(
+  state: SelectionState,
+  index: NodeIndex,
+  order: readonly string[],
+  direction: 1 | -1,
+): boolean {
+  const siblings = siblingsInScope(index, order, state.isolationGroupId);
+  if (siblings.length === 0) return true;
+  const current = state.primaryId ? siblings.indexOf(state.primaryId) : -1;
+  // Nothing selected: Tab enters at the first object, Shift+Tab goes back out.
+  if (current < 0) return direction === -1;
+  return direction === 1 ? current === siblings.length - 1 : current === 0;
+}
+
 export function selectAll(
   state: SelectionState,
   index: NodeIndex,

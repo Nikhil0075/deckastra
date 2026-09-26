@@ -1,0 +1,39 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/audit-project-race.test.tsx (1 test | 1 failed) 383ms
+   × audit: a late response from project A must not replace project B's cards 381ms
+     → expected <span class="dk-card__title" …(1)></span> to be null
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/audit-project-race.test.tsx > audit: a late response from project A must not replace project B's cards
+AssertionError: expected <span class="dk-card__title" …(1)></span> to be null
+
+- Expected: 
+null
+
++ Received: 
+<span
+  class="dk-card__title"
+  title="A only deck"
+>
+  A only deck
+</span>
+
+ ❯ tests/audit-project-race.test.tsx:24:45
+     22|   await screen.findByText("B only deck");
+     23|   await act(async () => release(reply({ presentations: [{ id: "doc_a",…
+     24|   expect(screen.queryByText("A only deck")).toBeNull();
+       |                                             ^
+     25|   expect(screen.queryByText("B only deck")).not.toBeNull();
+     26| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  19:04:06
+   Duration  5.68s (transform 1.29s, setup 0ms, collect 2.38s, tests 383ms, environment 1.81s, prepare 289ms)
+

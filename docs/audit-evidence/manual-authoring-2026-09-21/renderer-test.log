@@ -1,0 +1,28 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/renderer
+
+ ✓ tests/baseline.test.ts (4 tests) 206ms
+stdout | tests/perf.test.ts > scene build budget > builds a 120-object slide well inside the typical-paint budget
+[perf] Typical slide (≤120 objects) first paint: 10ms / 250ms ok (scene build only)
+
+stdout | tests/perf.test.ts > scene build budget > stays roughly linear from 120 to 480 objects
+[perf] 120 objects 7.1ms, 480 objects 20.0ms (2.8x for 4x the objects)
+
+stdout | tests/perf.test.ts > scene build budget > builds a 300-object slide inside the heavy-paint budget
+[perf] Heavy slide (300 objects) first paint: 10.01ms / 700ms ok (scene build only)
+
+ ✓ tests/perf.test.ts (16 tests) 226ms
+ ✓ tests/render.test.tsx (17 tests) 221ms
+ ✓ tests/visuals.test.ts (32 tests) 108ms
+ ✓ tests/container.test.ts (7 tests) 128ms
+ ✓ tests/accessibility.test.ts (13 tests) 71ms
+ ✓ tests/scene.test.ts (34 tests) 45ms
+ ✓ tests/charts.test.ts (21 tests) 28ms
+ ✓ tests/semantic.test.ts (15 tests) 23ms
+ ↓ tests/preview.test.tsx (1 test | 1 skipped)
+
+ Test Files  9 passed | 1 skipped (10)
+      Tests  159 passed | 1 skipped (160)
+   Start at  00:58:47
+   Duration  11.39s (transform 1.99s, setup 0ms, collect 5.55s, tests 1.06s, environment 3ms, prepare 1.77s)
+

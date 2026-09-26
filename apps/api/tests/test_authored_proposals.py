@@ -316,3 +316,47 @@ def test_someone_outside_the_workspace_cannot_author_a_change(client, auth, deck
     # And the deck is unchanged, which is the claim the status code stands for.
     document = client.get(f"/v1/presentations/{presentation_id}", headers=auth).json()["document"]
     assert document["metadata"]["title"] != "Mine now"
+
+
+# -------------------------------------------------- one proposal, in full
+
+
+def test_a_pending_proposal_can_be_read_with_its_operations(client, auth, deck):
+    """The AI panel draws Before and After from these (editor Phase 6).
+
+    The list stays small for polling; one proposal answers with the operations,
+    and with the version it was written against so a rebase can be named.
+    """
+    presentation_id = deck["presentation_id"]
+    slide = deck["document"]["slides"][0]
+    element_id = slide["elements"][0]["id"]
+    base = head_version(client, auth, presentation_id)
+    operations = [
+        {"op": "remove", "path": f"/slides/id:{slide['id']}/elements/id:{element_id}"},
+        {"op": "remove", "path": f"/slides/id:{slide['id']}/elements/id:{slide['elements'][1]['id']}"},
+    ]
+    created = propose(
+        client, auth, presentation_id, operations=operations, intent="Clear the opening slide", expected_version_id=base
+    ).json()
+    assert created["outcome"] == "pending"
+
+    detail = client.get(
+        f"/v1/presentations/{presentation_id}/proposals/{created['transaction_id']}", headers=auth
+    )
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["operations"] == operations
+    assert body["base_version_id"] == base
+    assert body["operation_count"] == 2 and body["intent"] == "Clear the opening slide"
+
+    # Once decided it is history, not a pending change.
+    client.post(
+        f"/v1/presentations/{presentation_id}/proposals/{created['transaction_id']}/reject",
+        headers=auth,
+        json={"reason": "no"},
+    )
+    gone = client.get(f"/v1/presentations/{presentation_id}/proposals/{created['transaction_id']}", headers=auth)
+    assert gone.status_code == 404
+
+    # And another deck's id answers the same as a missing one.
+    assert client.get(f"/v1/presentations/{presentation_id}/proposals/txn_nope", headers=auth).status_code == 404

@@ -1,0 +1,29 @@
+{
+  "step": "close-verify",
+  "startedAt": "2026-09-19T20:13:59.049Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 5328,
+  "console": [],
+  "cspViolations": [],
+  "marker": "Last words 1789848831506",
+  "closedBy": "window",
+  "onScreen": "Last words 1789848831506",
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 428.8,
+    "byTypeMb": {
+      "Browser": 123.8,
+      "GPU": 119.5,
+      "Utility": 80.9,
+      "Tab": 104.6
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T20:13:59.888Z"
+}

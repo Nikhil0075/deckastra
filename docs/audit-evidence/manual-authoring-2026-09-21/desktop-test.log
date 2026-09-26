@@ -1,0 +1,34 @@
+
+ RUN  v3.2.7 D:/Presentation_app/apps/desktop
+
+ ✓ tests/build-manifest.test.ts (9 tests) 47633ms
+   ✓ the manifest > names this build, its source and its payloads  45588ms
+   ✓ the manifest > says so rather than passing when a payload is missing  2006ms
+ ✓ tests/sidecar-data.test.ts (8 tests) 4246ms
+   ✓ what the frozen service must carry > refuses a build missing the migrations  1598ms
+   ✓ what the frozen service must carry > refuses a build missing alembic's config  1023ms
+   ✓ what the frozen service must carry > refuses a build missing the generated schema  838ms
+   ✓ what the frozen service must carry > still passes a file that exists and is not a directory  496ms
+ ✓ tests/logs.test.ts (10 tests) 831ms
+   ✓ the log files > keeps a bound on what it writes  805ms
+ ✓ tests/backup.test.ts (9 tests) 512ms
+ ✓ tests/upgrade.test.ts (5 tests) 695ms
+   ✓ installing the next version over this one > keeps the key the person stored  468ms
+ ✓ tests/attachment.test.ts (4 tests) 401ms
+ ✓ tests/cloud-key.test.ts (10 tests) 241ms
+ ✓ tests/agent-access.test.ts (5 tests) 18ms
+ ✓ tests/diagnostics.test.ts (3 tests) 58ms
+ ✓ tests/save-file.test.ts (7 tests) 85ms
+ ✓ tests/sbom.test.ts (7 tests) 48ms
+ ✓ tests/client.test.ts (6 tests) 12ms
+ ✓ tests/menu.test.ts (6 tests) 8ms
+ ✓ tests/host.test.ts (5 tests) 15ms
+ ✓ tests/ipc-guard.test.ts (14 tests) 14ms
+ ✓ tests/service-failure.test.ts (15 tests) 12ms
+ ✓ tests/profile.test.ts (4 tests) 5ms
+
+ Test Files  17 passed (17)
+      Tests  127 passed (127)
+   Start at  00:59:07
+   Duration  138.55s (transform 2.08s, setup 0ms, collect 55.29s, tests 54.83s, environment 20.14s, prepare 2.88s)
+

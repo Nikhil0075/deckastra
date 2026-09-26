@@ -59,9 +59,36 @@ function rotationOf(node: SceneNode): number | undefined {
   return (Math.atan2(b, a) * 180) / Math.PI;
 }
 
-function flatten(nodes: readonly SceneNode[], out: TransitionNode[]): void {
+/**
+ * A text node's type size and the world point its words hang from.
+ *
+ * The anchor is the alignment edge — left, centre or right; top, middle or
+ * bottom — because that is what holds still when a text box is resized, and so
+ * what a morph has to carry from one slide to the other.
+ */
+function typeOf(node: SceneNode): { fontSize?: number; anchor?: { x: number; y: number } } {
+  const payload = node.renderPayload as {
+    kind?: string;
+    metrics?: { appliedFontSize?: number };
+    align?: string;
+    verticalAlign?: string;
+  };
+  if (payload?.kind !== "text") return {};
+  const fontSize = payload.metrics?.appliedFontSize;
+  if (typeof fontSize !== "number" || fontSize <= 0) return {};
+  const { x, y, width, height } = node.bounds;
+  const align = payload.align ?? "left";
+  const vertical = payload.verticalAlign ?? "top";
+  const ax = align === "center" ? x + width / 2 : align === "right" || align === "end" ? x + width : x;
+  const ay = vertical === "middle" || vertical === "center" ? y + height / 2 : vertical === "bottom" ? y + height : y;
+  return { fontSize, anchor: { x: ax, y: ay } };
+}
+
+function flatten(nodes: readonly SceneNode[], out: TransitionNode[], parentId?: string): void {
   for (const node of nodes) {
     out.push({
+      ...typeOf(node),
+      parentId,
       id: node.id,
       type: node.type,
       semanticRole: node.semanticRole,
@@ -76,7 +103,7 @@ function flatten(nodes: readonly SceneNode[], out: TransitionNode[]): void {
       opacity: node.resolvedStyle?.opacity,
       rotation: rotationOf(node),
     });
-    if (node.children?.length) flatten(node.children, out);
+    if (node.children?.length) flatten(node.children, out, node.id);
   }
 }
 

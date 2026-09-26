@@ -2,11 +2,16 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import {
   IPC,
+  isMenuCommand,
+  type CloudKeyRequest,
+  type CloudKeyState,
+  type MenuCommand,
   type AgentAccess,
   type AgentAccessRequest,
   type CurrentPresentation,
   type DesktopBridge,
   type DesktopInfo,
+  type OpenPresentationRequest,
   type OpenPresenterRequest,
   type SaveFileRequest,
   type SaveFileResult,
@@ -34,6 +39,9 @@ const bridge: DesktopBridge = {
 
   currentPresentation: () =>
     ipcRenderer.invoke(IPC.currentPresentation) as Promise<CurrentPresentation>,
+
+  openPresentation: (request: OpenPresentationRequest) =>
+    ipcRenderer.invoke(IPC.openPresentation, request) as Promise<CurrentPresentation>,
 
   saveFile: (request: SaveFileRequest) =>
     ipcRenderer.invoke(IPC.saveFile, request) as Promise<SaveFileResult>,
@@ -78,6 +86,65 @@ const bridge: DesktopBridge = {
     ipcRenderer.send(IPC.serviceStatus);
     return () => ipcRenderer.off(IPC.serviceStatus, wrapped);
   },
+
+  onMenuCommand: (listener: (command: MenuCommand) => void) => {
+    // Only the listed names get through: the channel is a menu, not a message bus.
+    const wrapped = (_event: unknown, command: unknown): void => {
+      if (isMenuCommand(command)) listener(command);
+    };
+    ipcRenderer.on(IPC.menuCommand, wrapped);
+    return () => ipcRenderer.off(IPC.menuCommand, wrapped);
+  },
+
+  restartService: () => ipcRenderer.invoke(IPC.restartService) as Promise<ServiceStatus>,
+
+  cloudKey: () => ipcRenderer.invoke(IPC.cloudKey) as Promise<CloudKeyState>,
+
+  setCloudKey: (request: CloudKeyRequest) => ipcRenderer.invoke(IPC.cloudKeySet, request) as Promise<CloudKeyState>,
+
+  onPrepareToClose: (prepare: () => Promise<"clean" | "journalled">) => {
+    const wrapped = (_event: unknown, id: unknown): void => {
+      if (typeof id !== "string") return;
+      // A preparation that throws is still an answer: the page wrote its journal
+      // first, so closing is safe, and silence would only make main wait.
+      void prepare()
+        .catch(() => "journalled" as const)
+        .then((readiness) => ipcRenderer.send(IPC.closeReady, { id, readiness }));
+    };
+    ipcRenderer.on(IPC.prepareToClose, wrapped);
+    return () => ipcRenderer.off(IPC.prepareToClose, wrapped);
+  },
+
+  onCollectJournals: (collect: () => Promise<{ key: string; value: string }[]>) => {
+    const wrapped = (_event: unknown, id: unknown): void => {
+      if (typeof id !== "string") return;
+      // Storage that refuses to be read, or work that will not settle, costs
+      // this window's unsaved edits and not the backup: an empty answer is
+      // still an answer, and silence would make main wait out its timeout.
+      void collect()
+        .catch(() => [])
+        .then((entries) => ipcRenderer.send(IPC.journalsCollected, { id, entries }));
+    };
+    ipcRenderer.on(IPC.journalsCollect, wrapped);
+    return () => ipcRenderer.off(IPC.journalsCollect, wrapped);
+  },
+
+  onRestoreJournals: (apply: (entries: { key: string; value: string }[]) => void) => {
+    const wrapped = (_event: unknown, entries: unknown): void => {
+      if (!Array.isArray(entries)) return;
+      // Checked here as well as in main, because this is the boundary that
+      // decides what reaches the page's own storage.
+      apply(
+        entries.filter(
+          (entry): entry is { key: string; value: string } =>
+            !!entry && typeof entry.key === "string" && typeof entry.value === "string",
+        ),
+      );
+    };
+    ipcRenderer.on(IPC.journalsRestore, wrapped);
+    return () => ipcRenderer.off(IPC.journalsRestore, wrapped);
+  },
 };
 
 contextBridge.exposeInMainWorld("deckastra", bridge);
+

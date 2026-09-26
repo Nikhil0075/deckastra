@@ -367,7 +367,7 @@ def test_local_mode_is_not_owner_of_a_workspace_it_never_joined(local):
         )
 
     listed = local.get("/v1/account", headers=auth()).json()
-    assert [workspace["name"] for workspace in listed["workspaces"]] == ["You's workspace"]
+    assert [workspace["name"] for workspace in listed["workspaces"]] == ["Your workspace"]
 
     assert local.get(f"/v1/projects/{project_id}/presentations", headers=auth()).status_code == 404
     assert (

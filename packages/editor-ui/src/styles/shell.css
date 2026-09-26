@@ -1,0 +1,2154 @@
+/*
+ * The editor shell's layout (Figma: MAIN SCREEN) — top bar, insert rail, slide
+ * strip, canvas stage, right panel, motion dock. Same discipline as
+ * components.css: `--dk-*` tokens only, no colour literals, square corners.
+ * `tests/ui-tokens.test.ts` checks this file too.
+ */
+
+
+/* A panel inside a Section that draws its own heading (Accessibility) keeps it
+   for where it is mounted on its own; inside a Section the Section's title
+   already says it. */
+.dk-section__body > section > h3:first-child,
+.dk-section__body > section > div:first-child > h3:first-child {
+  display: none;
+}
+
+/* --- Frame ----------------------------------------------------------------- */
+
+.dk-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+.dk-shell--message {
+  display: grid;
+  place-items: center;
+  color: var(--dk-ink-muted);
+}
+.dk-shell__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.dk-shell__center {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  border-right: var(--dk-line) solid var(--dk-rule);
+}
+
+/* --- Top bar --------------------------------------------------------------- */
+
+.dk-appbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--dk-space-3);
+  height: var(--dk-bar-height);
+  padding: 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+  flex: none;
+}
+.dk-appbar__start,
+.dk-appbar__end {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
+}
+.dk-appbar__end {
+  justify-content: flex-end;
+}
+.dk-appbar__center {
+  display: flex;
+  justify-content: center;
+  min-width: 360px;
+}
+.dk-appbar__center .dk-segmented {
+  width: 100%;
+}
+/* A colour, not an opacity: 0.7 over the checked blue measured 4.26:1 in the
+   a11y step, and the token test cannot see what an opacity does to a pair. */
+.dk-appbar__hint {
+  white-space: nowrap;
+  font-size: var(--dk-text-xs);
+  font-weight: 500;
+  color: var(--dk-ink-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.dk-segmented__item--checked .dk-appbar__hint {
+  color: var(--dk-on-blue);
+}
+.dk-brand {
+  width: 20px;
+  height: 20px;
+  background: var(--dk-blue);
+  flex: none;
+}
+.dk-appbar__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--dk-space-1);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  font-weight: 400;
+}
+.dk-appbar__product {
+  color: var(--dk-ink-muted);
+  flex: none;
+}
+.dk-appbar__sep {
+  color: var(--dk-ink-muted);
+}
+.dk-appbar__deck {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-appbar__group {
+  display: flex;
+  flex: none;
+  margin-left: var(--dk-space-2);
+  padding-left: var(--dk-space-2);
+  border-left: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-appbar__popover {
+  width: 360px;
+  padding: var(--dk-space-3) 0;
+  max-height: calc(100vh - var(--dk-bar-height) - var(--dk-space-4));
+  overflow-y: auto;
+}
+
+/* Save status: sentence case on purpose (see SaveIndicator). */
+.dk-save-slot {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.dk-save {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+  white-space: nowrap;
+}
+.dk-save__mark {
+  width: 6px;
+  height: 6px;
+  background: var(--dk-ink);
+}
+.dk-save__action.dk-btn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-size: var(--dk-text-sm);
+}
+.dk-save--notice {
+  color: var(--dk-blue);
+}
+.dk-save--warning {
+  color: var(--dk-ochre);
+}
+.dk-save--danger.dk-btn {
+  color: var(--dk-red);
+}
+
+/* --- Banners --------------------------------------------------------------- */
+
+.dk-banner {
+  flex: none;
+  padding: var(--dk-space-2) var(--dk-space-4);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  font-size: var(--dk-text-sm);
+}
+.dk-banner--notice {
+  background: var(--dk-yellow);
+  color: var(--dk-on-yellow);
+}
+.dk-banner--danger {
+  background: var(--dk-red);
+  color: var(--dk-on-red);
+}
+
+/* --- Insert rail ----------------------------------------------------------- */
+
+.dk-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dk-space-1);
+  width: var(--dk-rail-width);
+  padding: var(--dk-space-2) 0;
+  border-right: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+  flex: none;
+}
+.dk-rail__rule {
+  width: 24px;
+  height: var(--dk-line);
+  margin: var(--dk-space-1) 0;
+  background: var(--dk-rule-soft);
+}
+
+/* --- Slide strip ----------------------------------------------------------- */
+
+.dk-strip {
+  display: flex;
+  flex-direction: column;
+  width: var(--dk-strip-width);
+  border-right: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+  flex: none;
+  min-height: 0;
+}
+.dk-strip__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--dk-control-lg);
+  padding: 0 var(--dk-space-2) 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-strip__title {
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-strip__count {
+  margin-left: var(--dk-space-1);
+  color: var(--dk-ink-muted);
+  font-weight: 500;
+}
+.dk-strip__list {
+  flex: 1;
+}
+.dk-strip__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  margin: 0;
+  padding: var(--dk-space-3) var(--dk-space-2) var(--dk-space-3) 0;
+  list-style: none;
+}
+.dk-strip__item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+.dk-strip__item--dragging {
+  opacity: 0.4;
+}
+/* The drop line: a blue rule in the gap the slide will land in (Figma frame 8). */
+.dk-strip__item--drop-before::before,
+.dk-strip__item--drop-after::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 0;
+  height: 3px;
+  background: var(--dk-blue);
+  pointer-events: none;
+}
+.dk-strip__item--drop-before::before {
+  top: -8px;
+}
+.dk-strip__item--drop-after::after {
+  bottom: -8px;
+}
+.dk-strip__gutter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dk-space-1);
+  width: 24px;
+  flex: none;
+}
+.dk-strip__handle {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--dk-ink-muted);
+  cursor: grab;
+  opacity: 0;
+}
+.dk-strip__item:hover .dk-strip__handle,
+.dk-strip__item:focus-within .dk-strip__handle {
+  opacity: 1;
+}
+.dk-strip__handle:active {
+  cursor: grabbing;
+}
+.dk-strip__card {
+  position: relative;
+  display: block;
+}
+/* The slide menu sits on the thumbnail's corner: shown on hover and whenever
+   anything in the item has focus, so a keyboard user reaches it by Tab. */
+.dk-strip__menu {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  line-height: normal;
+  opacity: 0;
+}
+.dk-strip__item:hover .dk-strip__menu,
+.dk-strip__item:focus-within .dk-strip__menu,
+.dk-strip__menu:has([aria-expanded="true"]) {
+  opacity: 1;
+}
+.dk-strip__thumb {
+  position: relative;
+  padding: 0;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-backdrop);
+  /* `display: block` rather than `line-height: 0` to drop the gap under the
+     image: text inside the slide inherits line-height, and 0 collapsed every
+     line box of an element that does not set its own. */
+  display: block;
+  cursor: pointer;
+}
+.dk-strip__thumb:hover {
+  border-color: var(--dk-rule);
+}
+/* The current slide: a black frame and the blue bar on its left edge. */
+.dk-strip__thumb--current {
+  border-color: var(--dk-rule);
+  outline: var(--dk-line) solid var(--dk-rule);
+}
+.dk-strip__thumb--current::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: -1px;
+  bottom: -1px;
+  width: 4px;
+  background: var(--dk-blue);
+}
+.dk-strip__flag {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--dk-yellow);
+  box-shadow: 0 0 0 1px var(--dk-ink);
+}
+
+/* --- Canvas stage ---------------------------------------------------------- */
+
+.dk-stage-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--dk-stage);
+}
+.dk-canvasbar {
+  position: absolute;
+  top: var(--dk-space-3);
+  left: var(--dk-space-3);
+  right: var(--dk-space-3);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  pointer-events: none;
+}
+.dk-canvasbar > * {
+  pointer-events: auto;
+}
+.dk-canvasbar__zoom,
+.dk-canvasbar__frames {
+  display: inline-flex;
+  align-items: center;
+  height: var(--dk-control-sm);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  font-size: var(--dk-text-xs);
+}
+.dk-canvasbar__value {
+  min-width: 40px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.dk-canvasbar__zoom .dk-btn {
+  height: calc(var(--dk-control-sm) - 2px);
+  border-left: var(--dk-line) solid var(--dk-rule);
+}
+.dk-canvasbar__fit--on.dk-btn {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-canvasbar__frames {
+  gap: var(--dk-space-2);
+  padding: 0 var(--dk-space-2);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-canvasbar__frames--over {
+  border-color: var(--dk-red);
+  color: var(--dk-red);
+}
+.dk-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  /* Top clears the floating canvas toolbar; must match STAGE_TOP / STAGE_PADDING
+     in lib/editor-layout.ts, which the fit scale is computed from. */
+  padding: 56px 32px 32px;
+}
+.dk-stage--scroll {
+  overflow: auto;
+  place-items: start center;
+  padding-top: 56px;
+}
+.dk-stage__slide {
+  line-height: 0;
+  outline: var(--dk-line) solid var(--dk-rule);
+}
+
+/* --- Speaker notes ------------------------------------------------------- */
+
+.dk-notes {
+  flex: none;
+  border-top: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+}
+.dk-notes__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  height: var(--dk-control-md);
+  padding: 0 var(--dk-space-2) 0 var(--dk-space-4);
+}
+.dk-notes__title {
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-notes__meta {
+  flex: 1;
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+  text-align: right;
+}
+.dk-notes__body {
+  padding: 0 var(--dk-space-4) var(--dk-space-2);
+}
+.dk-notes__tools {
+  display: flex;
+  gap: var(--dk-space-1);
+  padding-bottom: var(--dk-space-1);
+}
+.dk-notes__input {
+  display: block;
+  width: 100%;
+  height: 72px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  cursor: text;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  line-height: 1.5;
+  resize: vertical;
+}
+/* The field is a contenteditable, which has no placeholder of its own. */
+.dk-notes__input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--dk-ink-muted);
+  pointer-events: none;
+}
+.dk-notes__input ul,
+.dk-notes__input ol {
+  margin: 0;
+  padding-left: var(--dk-space-5);
+}
+.dk-notes__input h4 {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 700;
+}
+.dk-notes__input blockquote {
+  margin: 0;
+  padding-left: var(--dk-space-2);
+  border-left: var(--dk-line-strong) solid var(--dk-rule-soft);
+}
+.dk-notes__input:hover {
+  border-color: var(--dk-rule);
+}
+.dk-notes__input:focus-visible {
+  outline: none;
+  border-color: var(--dk-blue);
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+}
+.dk-notes__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dk-space-3);
+  padding-top: var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-notes__warning {
+  color: var(--dk-ochre);
+}
+
+/* --- Motion dock ----------------------------------------------------------- */
+
+.dk-dock {
+  flex: none;
+  overflow: auto;
+  padding: 0 var(--dk-space-2);
+  border-top: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+/* MotionPanel draws its own top rule; the dock already has one. */
+.dk-dock > div:first-child {
+  border-top: 0 !important;
+}
+
+/* --- Right panel ----------------------------------------------------------- */
+
+.dk-panel {
+  display: flex;
+  flex-direction: column;
+  width: var(--dk-inspector-width);
+  flex: none;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--dk-ground);
+  font-size: var(--dk-text-sm);
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+.dk-modepanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dk-inspector__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-height: var(--dk-bar-height);
+  padding: 0 var(--dk-space-2) 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-inspector__type {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-inspector__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.dk-inspector__head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  flex: none;
+}
+.dk-inspector__empty {
+  margin: 0;
+  padding: var(--dk-space-4) var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  color: var(--dk-ink-muted);
+}
+
+.dk-grid2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--dk-space-2);
+}
+.dk-textarea {
+  height: auto;
+  padding: var(--dk-space-2);
+  resize: vertical;
+  line-height: 1.4;
+}
+.dk-textarea--mono {
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+}
+.dk-muted {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+
+.dk-layers {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(-1 * var(--dk-space-3));
+  padding: 0;
+  list-style: none;
+}
+.dk-layers__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  height: 28px;
+  padding-right: var(--dk-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-layers__row:hover {
+  background: var(--dk-sunk);
+}
+.dk-layers__row--selected,
+.dk-layers__row--selected:hover {
+  background: var(--dk-ink);
+  color: var(--dk-ink-inverse);
+}
+.dk-layers__row--hidden .dk-layers__name {
+  text-decoration: line-through;
+}
+.dk-layers__type {
+  width: 52px;
+  flex: none;
+  font-size: var(--dk-text-xs);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-layers__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-history__row {
+  display: flex;
+  gap: var(--dk-space-2);
+  color: var(--dk-ink-muted);
+}
+.dk-history__who {
+  width: 28px;
+  flex: none;
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  color: var(--dk-ink);
+}
+/* Agent-authored: the yellow square, as in the Figma's version list. */
+.dk-history__who--agent::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--dk-space-1);
+  background: var(--dk-yellow);
+  box-shadow: 0 0 0 1px var(--dk-ink);
+}
+
+/* --- Code mode ------------------------------------------------------------- */
+
+.dk-code {
+  flex: 1;
+}
+.dk-code__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--dk-control-lg);
+  padding: 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-code__head .dk-label {
+  margin: 0;
+}
+.dk-code__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-code__count {
+  margin-left: auto;
+}
+.dk-code__body {
+  flex: 1;
+  margin: 0;
+  padding: var(--dk-space-3);
+  background: var(--dk-surface);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* --- Host-owned surfaces ----------------------------------------------------
+ * Drawn by a shell rather than the editor (the desktop's startup screens and
+ * agent-access chip), styled here so they share one palette with it. */
+
+.dk-startup {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  padding: var(--dk-space-5);
+  text-align: left;
+  color: var(--dk-ink);
+}
+.dk-startup__card {
+  display: grid;
+  gap: var(--dk-space-2);
+  max-width: 520px;
+}
+.dk-startup__title {
+  margin: 0 0 var(--dk-space-3);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+  font-weight: 500;
+}
+/* What to do about it, in the same voice as the rest of the app; the detail
+   below stays monospaced, because it is the thing someone copies into a report. */
+.dk-startup__advice {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  line-height: 1.5;
+}
+.dk-startup__card .dk-btn {
+  justify-self: start;
+}
+.dk-startup__detail {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  white-space: pre-wrap;
+}
+
+.dk-agent-chip.dk-btn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.dk-agent-chip--on.dk-btn {
+  background: var(--dk-yellow);
+  border-color: var(--dk-ink);
+  color: var(--dk-on-yellow);
+}
+.dk-agent-access {
+  display: grid;
+  gap: var(--dk-space-3);
+  width: 320px;
+}
+.dk-agent-access__text {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  line-height: 1.5;
+}
+
+/* --- Version history (Phase 5) ----------------------------------------------- */
+
+.dk-inspector__link {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  padding: var(--dk-space-3);
+  border: 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-inspector__link:hover {
+  background: var(--dk-sunk);
+}
+.dk-inspector__link-title {
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-inspector__link-meta {
+  margin-left: auto;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+
+.dk-banner--actions {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+}
+
+.dk-versions__actions {
+  display: flex;
+  gap: var(--dk-space-2);
+  width: 100%;
+}
+.dk-versions__actions > * {
+  flex: 1;
+}
+
+.dk-versions__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3) var(--dk-space-4);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-versions__preview-title {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  margin: 0;
+  font-weight: 600;
+}
+.dk-versions__frame {
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+  line-height: 0;
+}
+.dk-versions__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-versions__summary {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  font-weight: 600;
+}
+.dk-versions__compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-versions__slides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-versions__slide {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  padding-left: var(--dk-space-2);
+  border-left: var(--dk-line-strong) solid transparent;
+}
+/* Colour repeats what the chip says in words; it is never the only signal. */
+.dk-versions__slide--changed {
+  border-left-color: var(--dk-blue);
+}
+.dk-versions__slide--added {
+  border-left-color: var(--dk-yellow);
+}
+.dk-versions__slide--removed {
+  border-left-color: var(--dk-red);
+}
+.dk-versions__slide-thumb {
+  padding: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+  line-height: 0;
+  cursor: pointer;
+}
+.dk-versions__slide-gap {
+  width: 96px;
+  height: 54px;
+  border: var(--dk-line) dashed var(--dk-rule);
+}
+.dk-versions__slide-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-1);
+  font-size: var(--dk-text-sm);
+}
+
+.dk-versions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-versions__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dk-space-3);
+  width: 100%;
+  padding: var(--dk-space-3) var(--dk-space-4);
+  border: 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-versions__row:hover {
+  background: var(--dk-sunk);
+}
+.dk-versions__row--selected {
+  box-shadow: inset var(--dk-line-strong) 0 0 var(--dk-blue);
+  background: var(--dk-sunk);
+}
+/* Square for a person, yellow for an agent: the Figma's markers. */
+.dk-versions__marker {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  background: var(--dk-ink);
+}
+.dk-versions__marker--agent {
+  background: var(--dk-yellow);
+  outline: var(--dk-line) solid var(--dk-ink);
+}
+.dk-versions__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dk-versions__title {
+  font-weight: 600;
+}
+.dk-versions__number {
+  font-family: var(--dk-font-mono);
+}
+.dk-versions__detail {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-versions__hint {
+  margin: 0;
+  padding: var(--dk-space-3) var(--dk-space-4);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-versions__error {
+  margin: 0;
+  padding: var(--dk-space-2) var(--dk-space-4);
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+
+/* --- Copies from other windows ------------------------------------------------ */
+
+.dk-recovery {
+  flex: none;
+}
+.dk-recovery__error {
+  color: var(--dk-on-yellow);
+  font-weight: 600;
+}
+.dk-recovery__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) var(--dk-space-4) var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-recovery__hint {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+/* Bounded: however many windows left work behind, the canvas keeps its room. */
+.dk-recovery__list {
+  align-self: stretch;
+  max-height: 240px;
+  overflow: auto;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-recovery__group + .dk-recovery__group {
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-recovery__title {
+  margin: 0;
+  padding: var(--dk-space-2) var(--dk-space-3) 0;
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-recovery__copies {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-recovery__copy {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-1) var(--dk-space-3);
+}
+.dk-recovery__detail {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
+  font-size: var(--dk-text-sm);
+}
+
+/* --- AI mode: pending changes (Phase 6) ---------------------------------------- */
+
+.dk-proposals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+}
+.dk-proposals__error {
+  margin: 0;
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+/* Yellow is the "waiting on a human" colour, so a pending change carries it as
+   its rule; the chip says it in words as well. */
+.dk-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+  border-left: var(--dk-line-strong) solid var(--dk-yellow);
+  background: var(--dk-surface);
+}
+.dk-proposal__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-proposal__who {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-proposal__intent {
+  margin: 0;
+  font-weight: 600;
+}
+.dk-proposal__reason,
+.dk-proposal__grounded {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-proposal__grounded {
+  color: var(--dk-ink);
+}
+.dk-proposal__warning {
+  margin: 0;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+.dk-proposal__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dk-space-2);
+}
+.dk-proposal__figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: 0;
+  line-height: 0;
+}
+/* The strip's backing: a slide with a transparent ground is drawn over black,
+   as it is projected, rather than over the card. */
+.dk-proposal__frame {
+  background: var(--dk-backdrop);
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-proposal__figure figcaption {
+  line-height: normal;
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-proposal__gap {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border: var(--dk-line) dashed var(--dk-rule);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  line-height: normal;
+}
+.dk-proposal__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-proposal__step {
+  display: flex;
+  gap: var(--dk-space-1);
+}
+.dk-proposal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dk-space-2);
+}
+
+/* --- Generate and the story checkpoint (Phase 6) ------------------------------- */
+
+.dk-generate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-4);
+}
+.dk-generate__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+}
+.dk-generate__prompt {
+  height: 120px;
+}
+.dk-generate__check {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-generate__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.dk-intelligence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-3);
+}
+.dk-intelligence__key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-intelligence__key .dk-input {
+  flex: 1 1 220px;
+}
+.dk-intelligence__close {
+  display: flex;
+  justify-content: flex-end;
+}
+.dk-generate__route {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-generate__route .dk-label {
+  margin: 0;
+}
+.dk-generate__working {
+  margin: 0;
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border-left: var(--dk-line-strong) solid var(--dk-blue);
+  background: var(--dk-sunk);
+  font-size: var(--dk-text-sm);
+}
+.dk-generate__error {
+  margin: 0;
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+
+.dk-checkpoint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+  border-left: var(--dk-line-strong) solid var(--dk-yellow);
+  background: var(--dk-surface);
+}
+.dk-checkpoint__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dk-checkpoint__title {
+  margin: 0;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+}
+.dk-checkpoint__arc {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-checkpoint__slides {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-checkpoint__slide {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-checkpoint__number {
+  flex: none;
+  width: 20px;
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-checkpoint__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dk-checkpoint__headline {
+  font-weight: 600;
+}
+.dk-checkpoint__message {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-checkpoint__layout {
+  flex: none;
+  font-size: var(--dk-text-xs);
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+  color: var(--dk-ink-muted);
+}
+.dk-checkpoint__warnings {
+  margin: 0;
+  padding-left: var(--dk-space-4);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-checkpoint__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dk-space-2);
+}
+
+.dk-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-ask__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+
+/* --- Motion mode panel (Phase 7) ----------------------------------------------- */
+
+.dk-motion {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--dk-space-2);
+}
+.dk-motion__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dk-space-2);
+  align-items: end;
+}
+.dk-motion__grid > .dk-segmented {
+  grid-column: 1 / -1;
+}
+.dk-motion__pairs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding-top: var(--dk-space-2);
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-motion__pair-list,
+.dk-motion__roles,
+.dk-motion__tracks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-motion__pair,
+.dk-motion__role {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-motion__pair-names {
+  flex: 1;
+  min-width: 0;
+}
+.dk-motion__role--off {
+  color: var(--dk-ink-muted);
+}
+.dk-motion__add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dk-space-2);
+  align-items: end;
+}
+.dk-motion__add > .dk-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.dk-motion__tracks {
+  font-size: var(--dk-text-sm);
+  font-family: var(--dk-font-mono);
+}
+
+/* --- The motion dock (Phase 8: was pre-rewrite inline styles) -------------------- */
+
+.dk-input--sm {
+  height: var(--dk-control-sm);
+}
+.dk-dock-motion {
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+}
+.dk-dock-motion__head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-2) var(--dk-space-3);
+}
+.dk-dock-motion__title {
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-dock-motion__spacer {
+  flex: 1;
+}
+.dk-dock-motion__empty {
+  padding: 0 var(--dk-space-3) var(--dk-space-3);
+}
+.dk-dock-motion__body {
+  padding: 0 var(--dk-space-3) var(--dk-space-3);
+}
+.dk-dock-motion__scrub {
+  width: 100%;
+  margin-top: var(--dk-space-2);
+  accent-color: var(--dk-blue);
+}
+.dk-dock-motion__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+  margin-top: var(--dk-space-2);
+}
+/* "Waiting on a human" said in words: ochre, the text-safe form of yellow. */
+.dk-dock-motion__warning {
+  margin: var(--dk-space-2) 0 0;
+  color: var(--dk-ochre);
+  font-size: var(--dk-text-sm);
+}
+.dk-dock-motion__list {
+  margin: var(--dk-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-dock-motion__conflict {
+  margin-bottom: var(--dk-space-2);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) dashed var(--dk-ochre);
+}
+.dk-dock-motion__inspector {
+  margin-top: var(--dk-space-3);
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-ground);
+}
+.dk-dock-motion__field {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-dock-motion__number {
+  width: 76px;
+}
+.dk-dock-motion__prop {
+  width: 72px;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-dock-motion__chip {
+  padding: 0 var(--dk-space-1);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  cursor: pointer;
+}
+.dk-dock-motion__chip:hover {
+  background: var(--dk-sunk);
+}
+
+.dk-budget {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+}
+.dk-budget__track {
+  width: 70px;
+  height: 4px;
+  background: var(--dk-sunk);
+}
+.dk-budget__fill {
+  display: block;
+  height: 100%;
+  background: var(--dk-blue);
+}
+.dk-budget__fill--over {
+  background: var(--dk-red);
+}
+.dk-budget__label {
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+}
+.dk-budget__label--over {
+  color: var(--dk-red);
+}
+
+.dk-ruler {
+  display: flex;
+  margin-bottom: var(--dk-space-1);
+}
+.dk-ruler__gutter {
+  width: 96px;
+  flex: none;
+}
+.dk-ruler__scale {
+  position: relative;
+  flex: 1;
+  height: 16px;
+}
+.dk-ruler__tick {
+  position: absolute;
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+}
+/* Where playback waits for the presenter. */
+.dk-ruler__segment {
+  position: absolute;
+  top: 0;
+  bottom: calc(-1 * var(--dk-space-1));
+  width: var(--dk-line-strong);
+  background: var(--dk-ink-muted);
+}
+
+.dk-lanes {
+  position: relative;
+}
+.dk-lanes__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  height: 26px;
+}
+.dk-lanes__label {
+  flex: 0 0 88px;
+  width: 88px;
+  overflow: hidden;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-lanes__track {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  background: var(--dk-ground);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-lanes__bar {
+  position: absolute;
+  top: 1px;
+  height: 16px;
+  padding: 0 var(--dk-space-1);
+  overflow: hidden;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-size: var(--dk-text-xs);
+  line-height: 14px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.dk-lanes__bar:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 1px;
+}
+.dk-lanes__bar--selected {
+  border-color: var(--dk-blue);
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+/* Doc 04 §25.3: an overlap is striped, never blended. */
+.dk-lanes__bar--conflict {
+  border-style: dashed;
+  border-color: var(--dk-red);
+}
+.dk-lanes__bar--dragging {
+  opacity: 0.85;
+}
+.dk-lanes__bar--trimming {
+  cursor: ew-resize;
+}
+/* EDGE_PX in TimelineLanes.tsx: the trim edge a pointer-down is measured against. */
+.dk-lanes__trim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+.dk-lanes__keyframes {
+  position: absolute;
+  top: 0;
+  height: 20px;
+  pointer-events: none;
+}
+/* The layer above ignores the pointer so it never swallows a click meant for
+   the bar; the handles opt back in. */
+.dk-lanes__handle {
+  position: absolute;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  pointer-events: auto;
+  border: var(--dk-line) solid var(--dk-blue);
+  background: var(--dk-surface);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.dk-lanes__handle:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+}
+.dk-lanes__readout {
+  margin: var(--dk-space-1) 0 0;
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+}
+.dk-lanes__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--dk-line);
+  /* Ink, not red: red means danger or a finding, and a playhead is neither. */
+  background: var(--dk-ink);
+  pointer-events: none;
+}
+
+/* --- Export (Phase 8) ----------------------------------------------------------- */
+
+.dk-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  min-width: 280px;
+}
+.dk-export__heading {
+  margin: 0;
+}
+.dk-export__formats {
+  display: flex;
+  gap: var(--dk-space-2);
+}
+.dk-export__option {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-export__block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+}
+.dk-export__progress {
+  width: 100%;
+  accent-color: var(--dk-blue);
+}
+.dk-export__error {
+  margin: 0;
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+.dk-export__note {
+  margin: 0;
+  color: var(--dk-ochre);
+  font-size: var(--dk-text-sm);
+}
+.dk-export__summary {
+  cursor: pointer;
+  font-size: var(--dk-text-sm);
+}
+.dk-export__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: var(--dk-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-export__warning {
+  display: flex;
+  align-items: baseline;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+
+.dk-share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  min-width: 280px;
+}
+.dk-share__fresh {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2);
+  border: var(--dk-line-strong) solid var(--dk-blue);
+}
+.dk-share__warn {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--dk-text-sm);
+}
+.dk-share__link {
+  display: block;
+  color: var(--dk-ink);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  word-break: break-all;
+}
+.dk-share__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-share__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) 0;
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+  font-size: var(--dk-text-sm);
+}
+.dk-share__who {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Sources, accessibility, themes, critic issues (Phase 8) ---------------------- */
+
+.dk-sources,
+.dk-a11y__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-sources__item {
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+}
+.dk-sources__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--dk-space-2);
+}
+.dk-sources__ref {
+  font-weight: 600;
+  font-size: var(--dk-text-sm);
+  word-break: break-word;
+}
+.dk-sources__ref--link {
+  color: var(--dk-blue);
+}
+.dk-sources__excerpt {
+  max-height: 130px;
+  margin: var(--dk-space-2) 0 0;
+  overflow: auto;
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dk-a11y {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-a11y__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dk-a11y__issue {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  border-left: var(--dk-line-strong) solid var(--dk-red);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-a11y__issue:hover:not(:disabled) {
+  background: var(--dk-sunk);
+}
+.dk-a11y__severity {
+  color: var(--dk-red);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-a11y__object {
+  width: 100%;
+  padding: var(--dk-space-1) var(--dk-space-2);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-a11y__object:hover {
+  background: var(--dk-sunk);
+}
+
+.dk-themes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+}
+.dk-themes__field {
+  display: grid;
+  gap: var(--dk-space-1);
+  width: 100%;
+  font-size: var(--dk-text-sm);
+}
+
+.dk-critic__title {
+  margin: 0 0 var(--dk-space-2);
+  font-size: var(--dk-text-md);
+}
+.dk-critic__list {
+  margin: 0;
+  padding-left: var(--dk-space-4);
+  font-size: var(--dk-text-sm);
+}
+.dk-critic__item {
+  margin-bottom: var(--dk-space-2);
+}
+
+/* --- Repository picker (Phase 8) ------------------------------------------------- */
+
+.dk-repos--card {
+  margin-top: var(--dk-space-5);
+  padding: var(--dk-space-4);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-repos__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-repos__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  margin-top: var(--dk-space-2);
+}
+.dk-repos__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-repos__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+}
+.dk-repos__row--chosen {
+  border-color: var(--dk-blue);
+  box-shadow: inset var(--dk-line-strong) 0 0 var(--dk-blue);
+}
+.dk-repos__line {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-repos__name {
+  flex: 1;
+  min-width: 0;
+}
+.dk-repos__local {
+  display: grid;
+  gap: var(--dk-space-1);
+  align-self: stretch;
+}
+.dk-repos__local > .dk-btn {
+  justify-self: start;
+}
+
+/* --- Conflict review dialog (Phase 8) ------------------------------------------- */
+
+.dk-dialog {
+  width: min(960px, 94vw);
+  max-height: 85vh;
+  overflow: auto;
+  padding: var(--dk-space-5);
+  border: var(--dk-line-strong) solid var(--dk-rule);
+  border-radius: 0;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+}
+.dk-dialog::backdrop {
+  background: var(--dk-scrim);
+}
+.dk-dialog__title {
+  margin: 0 0 var(--dk-space-2);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+}
+.dk-dialog__previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-5);
+  margin: var(--dk-space-4) 0;
+}
+.dk-dialog__preview {
+  min-width: 0;
+}
+.dk-dialog__conflict {
+  margin: var(--dk-space-4) 0;
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-dialog__choice {
+  display: block;
+  margin: var(--dk-space-2) 0;
+  font-size: var(--dk-text-sm);
+}
+.dk-dialog__value {
+  max-height: 160px;
+  margin: var(--dk-space-1) 0 0;
+  overflow: auto;
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
+  white-space: pre-wrap;
+}
+
+/* The canvas is a focus target (Phase 8): show it when the keyboard is there. */
+[data-editor-canvas]:focus {
+  outline: none;
+}
+[data-editor-canvas]:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 3px;
+}
+
+/* --------------------------------------- inspector content editors (MA-14+) */
+
+.dk-colorfield__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dk-space-2);
+}
+.dk-colorfield__row > .dk-field,
+.dk-colorfield__row > div {
+  flex: 1;
+  min-width: 0;
+}
+.dk-colorfield__swatch {
+  flex: none;
+  width: var(--dk-control-md);
+  height: var(--dk-control-md);
+  border: var(--dk-line) solid var(--dk-rule);
+}
+/* No colour: a diagonal rule, drawn from the ink token. */
+.dk-colorfield__swatch--none {
+  background: linear-gradient(to top right, transparent 47%, var(--dk-red) 47%, var(--dk-red) 53%, transparent 53%);
+}
+
+.dk-datagrid {
+  overflow-x: auto;
+  margin-bottom: var(--dk-space-2);
+}
+.dk-datagrid table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.dk-datagrid th,
+.dk-datagrid td {
+  padding: 0;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  font-weight: normal;
+}
+.dk-datagrid__corner {
+  padding: 0 var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+  text-align: left;
+}
+.dk-datagrid__head {
+  display: flex;
+  align-items: center;
+}
+.dk-cell {
+  width: 100%;
+  min-width: 56px;
+  height: var(--dk-control-sm);
+  padding: 0 var(--dk-space-1);
+  border: 0;
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink);
+  background: var(--dk-surface);
+}
+.dk-cell--header {
+  font-weight: 600;
+  background: var(--dk-sunk);
+}
+.dk-cell:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dk-blue);
+}
+.dk-cell.dk-input--invalid {
+  box-shadow: inset 0 0 0 2px var(--dk-red);
+}
+
+.dk-datalist {
+  list-style: none;
+  margin: 0 0 var(--dk-space-2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}
+.dk-datalist__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+}
+.dk-datalist__row > .dk-cell {
+  flex: 1;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-datalist__row--edge > * {
+  min-width: 0;
+}
+
+.dk-image-preview {
+  position: relative;
+  margin: var(--dk-space-2) 0;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-stage);
+  line-height: 0;
+}
+.dk-image-preview img {
+  width: 100%;
+  height: auto;
+  opacity: 0.55;
+}
+.dk-image-preview__window {
+  position: absolute;
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  pointer-events: none;
+}
+
+.dk-button-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dk-space-1);
+  margin-bottom: var(--dk-space-2);
+}
+
+/* Passes the stage's flex sizing through: the wrapper exists only to end a
+   motion preview when a press on the canvas starts an edit (MA-26). */
+.dk-shell__canvas-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.dk-transition-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-transition-preview__stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--dk-backdrop);
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-transition-preview__scrub {
+  width: 100%;
+  accent-color: var(--dk-blue);
+}
+.dk-transition-preview__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+}
+
+.dk-pair-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  margin: var(--dk-space-2) 0;
+}
+.dk-pair-preview__side {
+  margin: 0;
+}
+.dk-pair-preview__slide {
+  position: relative;
+  overflow: hidden;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-pair-preview__mark {
+  position: absolute;
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  box-shadow: 0 0 0 1px var(--dk-ink);
+  pointer-events: none;
+}
+.dk-pair-preview__arrow {
+  color: var(--dk-ink-muted);
+}
+.dk-motion__repair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin-bottom: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}

@@ -25,6 +25,13 @@ export interface ClipboardPayload {
   /** Where the copy came from, so a paste into the same slide can offset. */
   sourceSlideId: string;
   elements: PresentationElement[];
+  /**
+   * The asset manifest entries the copied elements cite. A picture pasted into
+   * another deck cites an `assetId` that deck's manifest does not have, and an
+   * element whose asset cannot be resolved is a labelled gap, not a picture
+   * (MA-23). Carried with the copy so the paste can add what is missing.
+   */
+  assets?: PresentationDocument["assets"];
 }
 
 export function copy(
@@ -52,10 +59,21 @@ export function copy(
 
   const roots = located.filter(({ element }) => !contained.has(element.id));
 
+  const elements = roots.map(({ element }) => structuredClone(element) as PresentationElement);
+  const cited = new Set<string>();
+  for (const root of elements) {
+    for (const { element } of walkElements([root])) {
+      const assetId = (element as { assetId?: unknown }).assetId;
+      if (typeof assetId === "string") cited.add(assetId);
+    }
+  }
+  const assets = document.assets.filter((asset) => cited.has(asset.id)).map((asset) => structuredClone(asset));
+
   return {
     version: 1,
     sourceSlideId: roots[0]!.slide.id,
-    elements: roots.map(({ element }) => structuredClone(element) as PresentationElement),
+    elements,
+    ...(assets.length > 0 ? { assets } : {}),
   };
 }
 
@@ -85,6 +103,15 @@ export function paste(
   const samSlide = payload.sourceSlideId === options.targetSlideId;
   const operations: PatchOperation[] = [];
   const elementIds: string[] = [];
+
+  // Manifest entries the paste needs and this deck lacks, added in the same
+  // patch so the pictures and their entries arrive and undo together.
+  const known = new Set(document.assets.map((asset) => asset.id));
+  for (const asset of payload.assets ?? []) {
+    if (known.has(asset.id)) continue;
+    known.add(asset.id);
+    operations.push({ op: "add", path: "/assets/-", value: structuredClone(asset) });
+  }
 
   // Anchor a multi-element paste on the top-left of the set, so relative
   // positions survive.
@@ -190,4 +217,25 @@ export function duplicate(
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+/**
+ * Read a clipboard payload another window or deck wrote, refusing anything
+ * that is not one. The clipboard is shared with every other program on the
+ * machine, so a string under this type is untrusted until it has the shape.
+ */
+export function parseClipboardPayload(text: string | undefined | null): ClipboardPayload | undefined {
+  if (!text) return undefined;
+  try {
+    const value = JSON.parse(text) as Partial<ClipboardPayload>;
+    if (value?.version !== 1 || typeof value.sourceSlideId !== "string" || !Array.isArray(value.elements)) return undefined;
+    if (value.elements.length === 0) return undefined;
+    if (!value.elements.every((element) => element && typeof element === "object" && typeof (element as { type?: unknown }).type === "string" && (element as { transform?: unknown }).transform)) {
+      return undefined;
+    }
+    if (value.assets !== undefined && !Array.isArray(value.assets)) return undefined;
+    return value as ClipboardPayload;
+  } catch {
+    return undefined;
+  }
 }

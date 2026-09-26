@@ -234,6 +234,10 @@ def ensure_ready() -> str:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True,
+                # The runtime prints UTF-8; the locale code page would garble it,
+                # or raise on a byte cp1252 does not define.
+                encoding="utf-8",
+                errors="replace",
                 cwd=str(Path(pack.directory)),
             )
         except OSError as error:

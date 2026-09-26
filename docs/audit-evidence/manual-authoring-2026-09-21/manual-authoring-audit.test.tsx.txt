@@ -1,0 +1,57 @@
+import { cleanup, fireEvent, render } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { TextEditor } from "../src/components/TextEditor";
+import { insertImageOperations } from "../src/lib/insert-image";
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
+
+afterEach(cleanup);
+function setup() {
+  const commit = vi.fn();
+  const view = render(<TextEditor value={{ blocks: [{ id: "blk_audit", type: "paragraph", spans: [{ text: "Before" }] }] } as any}
+    typography={{ fontFamily: "Arial", fontSize: 24, fontWeight: 400, color: "#ffffff" } as any}
+    rect={{ x: 0, y: 0, width: 300, height: 80 }} scale={1} onCommit={commit} onCancel={vi.fn()} />);
+  return { host: view.getByRole("textbox"), commit };
+}
+it("control: ordinary text commits on blur", () => {
+  const { host, commit } = setup();
+  host.textContent = "Changed";
+  fireEvent.blur(host);
+  expect(commit.mock.calls[0]?.[0].blocks[0].spans[0].text).toBe("Changed");
+});
+it("control: plain pasted content reaches the commit", () => {
+  const { host, commit } = setup();
+  fireEvent.paste(host, { clipboardData: { getData: (format: string) => format === "text/plain" ? "Pasted" : "" } });
+  fireEvent.blur(host);
+  expect(commit.mock.calls[0]?.[0].blocks[0].spans[0].text).toBe("Pasted");
+});
+it("control: a landscape image is placed inside the slide", () => {
+  const doc = loadFixture("technical");
+  const result = insertImageOperations(doc, { slideId: doc.slides[0]!.id, asset: {
+    id: "ast_audit", storage_key: "audit.png", width: 1600, height: 900,
+  } as any });
+  const element = (result.operations[1] as any).value;
+  expect(element.transform.y).toBeGreaterThanOrEqual(0);
+  expect(element.transform.height).toBeLessThanOrEqual(doc.viewport.height);
+});
+it("does not commit a partially composed canvas text draft on blur", () => {
+  const { host, commit } = setup();
+  fireEvent.compositionStart(host);
+  host.textContent = "Before partial";
+  fireEvent.blur(host);
+  expect(commit).not.toHaveBeenCalled();
+});
+it("retains supported bold formatting pasted into canvas text", () => {
+  const { host, commit } = setup();
+  fireEvent.paste(host, { clipboardData: { getData: (format: string) => format === "text/html" ? "<b>Bold</b>" : "Bold" } });
+  fireEvent.blur(host);
+  expect(commit.mock.calls[0]?.[0].blocks.flatMap((b: any) => b.spans).some((s: any) => s.text === "Bold" && s.bold)).toBe(true);
+});
+it("fits a portrait image entirely inside the slide on insertion", () => {
+  const doc = loadFixture("technical");
+  const result = insertImageOperations(doc, { slideId: doc.slides[0]!.id, asset: {
+    id: "ast_audit", storage_key: "audit.png", width: 100, height: 1000, bytes: 100, content_type: "image/png",
+  } as any });
+  const element = (result.operations[1] as any).value;
+  expect(element.transform.y).toBeGreaterThanOrEqual(0);
+  expect(element.transform.height).toBeLessThanOrEqual(doc.viewport.height);
+});

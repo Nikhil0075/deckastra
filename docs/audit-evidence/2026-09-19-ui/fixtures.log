@@ -1,0 +1,13 @@
+  ok    animation-test.mydeck.json (4 slides)
+  ok    repository-context.mydeck.json (2 slides)
+  ok    technical-deck.mydeck.json (5 slides)
+
+  ok    rejects missing required top-level property
+  ok    rejects zero-size element
+  ok    rejects malformed id
+  ok    rejects chart palette below the six-series minimum
+  ok    rejects opacity outside 0..1
+  ok    rejects unparseable schemaVersion
+  ok    rejects known line with start/end instead of from/to
+  ok    preserves genuine future element and enum values
+3 fixtures validate; schema rejects all 6 base negative cases and passes both element-boundary checks.

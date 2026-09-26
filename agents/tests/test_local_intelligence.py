@@ -16,8 +16,10 @@ import pytest
 from deckastra_agents import model_packs
 from deckastra_agents.budgets import RunBudget
 from deckastra_agents.local_model import LlamaServerClient
+from deckastra_agents import router
 from deckastra_agents.router import (
     INTELLIGENCE_ENV,
+    IntelligenceMisconfigured,
     ModelError,
     ModelRequest,
     ModelUnavailable,
@@ -36,6 +38,7 @@ def clean_environment(monkeypatch):
     """
     for name in (
         INTELLIGENCE_ENV,
+        router.DISTRIBUTION_ENV,
         model_packs.MODEL_DIR_ENV,
         "DECKASTRA_MODEL_PACK",
         "ANTHROPIC_API_KEY",
@@ -201,6 +204,34 @@ def test_cloud_without_a_key_refuses_rather_than_quietly_stubbing(monkeypatch):
         default_client()
 
     assert "ANTHROPIC_API_KEY" in str(refusal.value)
+
+
+@pytest.mark.parametrize("mode", ["locla", "clod", "stub", "anthropic", "local cloud"])
+@pytest.mark.parametrize("key", [True, False])
+def test_a_mode_this_build_does_not_know_is_refused_before_any_client(monkeypatch, mode, key):
+    """Final package review, item 04.
+
+    An unknown value used to be read as unset, and unset with a key present means
+    the cloud — so `locla`, written by someone who wanted nothing to leave the
+    machine, sent their brief to Anthropic. With or without a key it now refuses,
+    in the choice itself and before anything is built.
+    """
+    monkeypatch.setattr(router, "api_key_available", lambda: key)
+    monkeypatch.setenv(INTELLIGENCE_ENV, mode)
+    monkeypatch.setattr(router, "AnthropicClient", lambda *a, **k: pytest.fail("a cloud client was built"))
+
+    with pytest.raises(IntelligenceMisconfigured) as refusal:
+        router.selected_provider()
+    assert repr(mode) in str(refusal.value)
+    with pytest.raises(IntelligenceMisconfigured):
+        default_client()
+
+
+@pytest.mark.parametrize("written", [" Local ", "LOCAL", "\tcloud\n"])
+def test_case_and_surrounding_space_are_forgiven_deliberately(monkeypatch, written):
+    """Normalised on purpose: the same word in another case is not a typo."""
+    monkeypatch.setenv(INTELLIGENCE_ENV, written)
+    assert router.intelligence() == written.strip().lower()
 
 
 def test_saying_nothing_keeps_exactly_the_old_behaviour():
@@ -371,3 +402,56 @@ def test_an_answer_this_client_does_not_understand_is_not_an_empty_deck(tmp_path
             ModelRequest(task_type="fast", system="s", messages=[{"role": "user", "content": "go"}]),
             RunBudget(),
         )
+
+
+# ------------------------------------------------------ an installed product (item 20)
+
+
+def test_an_installed_product_with_nothing_chosen_refuses_rather_than_stubbing(monkeypatch):
+    """The stub keeps a checkout runnable with no key; on an installed product its
+    template deck would be taken for a generated one."""
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    monkeypatch.setattr(router, "api_key_available", lambda: False)
+
+    assert router.selected_provider() == router.PROVIDER_NONE
+    with pytest.raises(ModelUnavailable) as refusal:
+        default_client(fallback=lambda: pytest.fail("the stub was reached"))
+    assert "not set up" in str(refusal.value)
+
+
+def test_an_installed_product_does_not_take_an_inherited_key_as_consent(monkeypatch):
+    """A key in the environment is not someone choosing to send their brief out."""
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    monkeypatch.setattr(router, "api_key_available", lambda: True)
+    monkeypatch.setattr(router, "AnthropicClient", lambda *a, **k: pytest.fail("a cloud client was built"))
+
+    assert router.selected_provider() == router.PROVIDER_NONE
+    with pytest.raises(ModelUnavailable):
+        default_client()
+
+
+def test_an_installed_product_uses_the_cloud_only_when_chosen(monkeypatch):
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    monkeypatch.setenv(INTELLIGENCE_ENV, "cloud")
+    monkeypatch.setattr(router, "api_key_available", lambda: True)
+    built = []
+    monkeypatch.setattr(router, "AnthropicClient", lambda *a, **k: built.append(True) or "cloud-client")
+
+    assert router.selected_provider() == router.PROVIDER_CLOUD
+    assert default_client() == "cloud-client" and built
+
+
+def test_an_installed_product_does_not_ship_local_models(monkeypatch):
+    monkeypatch.setenv(router.DISTRIBUTION_ENV, "1")
+    monkeypatch.setenv(INTELLIGENCE_ENV, "local")
+    with pytest.raises(ModelUnavailable) as refusal:
+        router.selected_provider()
+    assert "not included in this release" in str(refusal.value)
+
+
+def test_a_checkout_keeps_the_stub(monkeypatch):
+    """Development, CI and the smoke steps: unchanged."""
+    monkeypatch.delenv(router.DISTRIBUTION_ENV, raising=False)
+    monkeypatch.setattr(router, "api_key_available", lambda: False)
+    assert router.selected_provider() == router.PROVIDER_STUB
+    assert isinstance(default_client(), StubClient)

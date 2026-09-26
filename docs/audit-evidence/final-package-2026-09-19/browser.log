@@ -1,0 +1,22 @@
+
+> @deckastra/worker@0.0.0 test:browser
+> vitest run .browser.test.ts
+
+
+ RUN  v3.2.7 D:/Presentation_app/apps/worker
+
+ ✓ tests/assets.browser.test.ts (1 test) 4011ms
+   ✓ draws the supplied picture, and draws a placeholder without it  3781ms
+ ✓ tests/browser-measurement.browser.test.ts (6 tests) 7151ms
+   ✓ real browser text measurement > animation-test matches the editor's resolved scene digest with no estimates  3504ms
+   ✓ real browser text measurement > technical-deck matches the editor's resolved scene digest with no estimates  638ms
+   ✓ real browser text measurement > repository-context matches the editor's resolved scene digest with no estimates  1079ms
+   ✓ real browser text measurement > matches the editor across wrapping, paragraphs, fit modes and font bounds  512ms
+   ✓ real browser text measurement > PNG, PDF and PPTX reports use measured scenes  741ms
+   ✓ real browser text measurement > keeps overlapping renders isolated on the shared warm pool  552ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  23:54:30
+   Duration  10.86s (transform 2.03s, setup 0ms, collect 4.25s, tests 11.16s, environment 1ms, prepare 880ms)
+

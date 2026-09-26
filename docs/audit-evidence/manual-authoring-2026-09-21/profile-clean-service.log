@@ -1,0 +1,42 @@
+2026-09-20T19:23:17.427Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+2026-09-20T19:23:17.453Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+INFO:alembic.runtime.plugins:setup plugin alembic.ext.checkconstraint_byname
+2026-09-20T19:23:17.700Z INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+2026-09-20T19:23:17.924Z INFO  [alembic.runtime.migration] Running upgrade  -> 5f70aef2912e, initial schema
+2026-09-20T19:23:31.101Z INFO  [alembic.runtime.migration] Running upgrade 5f70aef2912e -> fcc98f773800, agent runs, memory and proposal expiry
+2026-09-20T19:23:36.173Z INFO  [alembic.runtime.migration] Running upgrade fcc98f773800 -> 82df959ba119, github installations, repositories and chunks
+2026-09-20T19:23:41.764Z INFO  [alembic.runtime.migration] Running upgrade 82df959ba119 -> e6f9e3ffab16, export jobs
+2026-09-20T19:23:43.362Z INFO  [alembic.runtime.migration] Running upgrade e6f9e3ffab16 -> 76226b0ee21d, sharing, quotas, assets and themes
+2026-09-20T19:23:50.839Z INFO  [alembic.runtime.migration] Running upgrade 76226b0ee21d -> a8c6f0d91e42, external authentication identities
+2026-09-20T19:23:52.988Z INFO  [alembic.runtime.migration] Running upgrade a8c6f0d91e42 -> d49ad72c54f1, durable export jobs
+2026-09-20T19:23:54.482Z INFO  [alembic.runtime.migration] Running upgrade d49ad72c54f1 -> b31f4c7a0d52, workspace origin: this machine's own, or a mirror of a cloud one
+2026-09-20T19:23:56.901Z INFO  [alembic.runtime.migration] Running upgrade b31f4c7a0d52 -> c7e2a91b46f3, a change key, and the outbox that owes it to a server
+2026-09-20T19:23:59.012Z INFO  [alembic.runtime.migration] Running upgrade c7e2a91b46f3 -> e5b93d17c284, a refused change is not a failed one
+2026-09-20T19:24:01.086Z INFO  [alembic.runtime.migration] Running upgrade e5b93d17c284 -> f1c8a25e73b6, a membership in a mirrored workspace is a cache, and a cache expires
+2026-09-20T19:24:02.823Z INFO  [alembic.runtime.migration] Running upgrade f1c8a25e73b6 -> a0d46b8f912c, assets travel with a deck, and a link can show one exact version
+2026-09-20T19:24:04.262Z INFO  [alembic.runtime.migration] Running upgrade a0d46b8f912c -> b8f207ce4d13, record which server version a mirrored deck is a copy of
+2026-09-20T19:24:05.391Z INFO  [alembic.runtime.migration] Running upgrade b8f207ce4d13 -> d94c1ba7f082, when the server refused, so a resolution can be required to come after it
+2026-09-20T19:24:06.534Z INFO  [alembic.runtime.migration] Running upgrade d94c1ba7f082 -> 3f7a2c9e1b40, a deck list shows slide counts, and a deleted deck can come back
+2026-09-20T19:31:54.083Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+INFO:alembic.runtime.plugins:setup plugin alembic.ext.checkconstraint_byname
+2026-09-20T19:31:54.886Z INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+2026-09-21T06:22:19.847Z INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+INFO:alembic.runtime.plugins:setup plugin alembic.ext.checkconstraint_byname
+2026-09-21T06:22:22.697Z INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.

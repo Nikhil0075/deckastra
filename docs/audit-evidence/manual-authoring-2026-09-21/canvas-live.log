@@ -1,0 +1,53 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ❯ tests/canvas-live-audit.test.tsx (14 tests | 2 failed) 2207ms
+   × AUDIT: children follow the group during a drag before release 347ms
+     → expected 'matrix(0.9659, 0.2588, -0.2588, 0.965…' not to be 'matrix(0.9659, 0.2588, -0.2588, 0.965…' // Object.is equality
+   × AUDIT: rotating previews the actual object before release 126ms
+     → expected 'matrix(1, 0, 0, 1, 100, 120)' not to be 'matrix(1, 0, 0, 1, 100, 120)' // Object.is equality
+   ✓ commits the final queued movement before any animation frame and undoes it once 141ms
+   ✓ snaps equal gaps at zoom 0.5, draws final distances, and undoes once 125ms
+   ✓ snaps equal gaps at zoom 2, draws final distances, and undoes once 117ms
+   ✓ Ctrl disables spacing snaps and their indicators 97ms
+   ✓ Shift keeps the fixed axis unchanged even when a nearby alignment target exists 102ms
+   ✓ previews and commits scaleChildren in one undoable canvas resize 163ms
+   ✓ previews and commits resizeContainer in one undoable canvas resize 151ms
+   ✓ uses the final queued marquee corner when released before an animation frame 124ms
+   ✓ cancels move (painted=false) without committing or undoing previous edits 157ms
+   ✓ cancels move (painted=true) without committing or undoing previous edits 161ms
+   ✓ cancels resize (painted=false) without committing or undoing previous edits 231ms
+   ✓ cancels resize (painted=true) without committing or undoing previous edits 162ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/canvas-live-audit.test.tsx > AUDIT: children follow the group during a drag before release
+AssertionError: expected 'matrix(0.9659, 0.2588, -0.2588, 0.965…' not to be 'matrix(0.9659, 0.2588, -0.2588, 0.965…' // Object.is equality
+ ❯ tests/canvas-live-audit.test.tsx:18:41
+     16|   fireEvent.pointerMove(canvas, { clientX: 190, clientY: 180 });
+     17|   act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16)…
+     18|   expect(childNode.style.transform).not.toBe(before);
+       |                                         ^
+     19| });
+     20| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/canvas-live-audit.test.tsx > AUDIT: rotating previews the actual object before release
+AssertionError: expected 'matrix(1, 0, 0, 1, 100, 120)' not to be 'matrix(1, 0, 0, 1, 100, 120)' // Object.is equality
+ ❯ tests/canvas-live-audit.test.tsx:31:38
+     29|   fireEvent.pointerMove(canvas, { clientX: 210, clientY: 150 });
+     30|   act(() => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](16)…
+     31|   expect(target.style.transform).not.toBe(before);
+       |                                      ^
+     32| });
+     33| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  00:55:13
+   Duration  35.64s (transform 4.80s, setup 0ms, collect 19.60s, tests 2.21s, environment 10.68s, prepare 2.15s)
+

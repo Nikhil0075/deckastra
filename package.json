@@ -25,7 +25,8 @@
     "dev:api": "python -m uvicorn deckastra_api.main:app --reload --port 8000 --app-dir apps/api",
     "db:migrate": "python -m alembic -c infrastructure/database/alembic.ini upgrade head",
     "db:revision": "python -m alembic -c infrastructure/database/alembic.ini revision --autogenerate -m",
-    "dev:desktop": "npm run start --workspace @deckastra/desktop"
+    "dev:desktop": "npm run start --workspace @deckastra/desktop",
+    "release:win": "npm run release:win --workspace @deckastra/desktop"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

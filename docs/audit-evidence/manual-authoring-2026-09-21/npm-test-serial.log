@@ -1,0 +1,89 @@
+npm warn Unknown cli config "--maxWorkers". This will stop working in the next major version of npm.
+npm warn Unknown cli config "--file-parallelism". This will stop working in the next major version of npm.
+
+> @deckastra/animation-engine@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/animation-engine
+
+ ✓ tests/compile.test.ts (23 tests) 25ms
+ ✓ tests/playback.test.ts (23 tests) 127ms
+ ✓ tests/timeline-authoring.test.ts (20 tests) 15ms
+ ✓ tests/presets.test.ts (28 tests) 32ms
+ ✓ tests/timeline.test.ts (12 tests) 23ms
+ ✓ tests/transition-pairing.test.ts (10 tests) 17ms
+ ✓ tests/transition-compile.test.ts (16 tests) 20ms
+ ✓ tests/timeline-applies.test.ts (5 tests) 575ms
+   ✓ applying timeline operations to the conformance deck > splits a clip into two the schema accepts  525ms
+ ✓ tests/timeline-conflicts.test.ts (10 tests) 15ms
+ ✓ tests/transition-fixture.test.ts (4 tests) 52ms
+ ✓ tests/fixture.test.ts (16 tests) 55ms
+ ✓ tests/deck-acceptance.test.ts (7 tests) 56ms
+
+ Test Files  12 passed (12)
+      Tests  174 passed (174)
+   Start at  00:53:40
+   Duration  23.34s (transform 52.88s, setup 0ms, collect 85.61s, tests 1.01s, environment 4ms, prepare 49.23s)
+
+
+> @deckastra/editor@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor
+
+ ✓ tests/spacing.test.ts (4 tests) 12ms
+ ✓ tests/rebuild-by-hand.test.ts (5 tests) 9ms
+ ✓ tests/editor.test.ts (80 tests) 56ms
+ ✓ tests/text-editing.test.ts (24 tests) 79ms
+
+ Test Files  4 passed (4)
+      Tests  113 passed (113)
+   Start at  00:54:06
+   Duration  33.94s (transform 3.82s, setup 0ms, collect 5.90s, tests 155ms, environment 27.94s, prepare 2.37s)
+
+
+> @deckastra/editor-ui@0.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ✓ tests/canvas-gesture.test.tsx (12 tests) 1864ms
+   ✓ commits the final queued movement before any animation frame and undoes it once  407ms
+ ✓ tests/external-change.test.ts (9 tests) 2156ms
+   ✓ a change made outside the editor > never replaces a document with unsaved work in it  313ms
+   ✓ a change made outside the editor > does not mistake the editor's own save for someone else's  305ms
+   ✓ a change made outside the editor > does not poll from a window nobody is looking at  399ms
+ ❯ tests/canvas-live-audit.test.tsx (14 tests | 2 failed) 2407ms
+   × AUDIT: children follow the group during a drag before release 444ms
+     → expected 'matrix(0.9659, 0.2588, -0.2588, 0.965…' not to be 'matrix(0.9659, 0.2588, -0.2588, 0.965…' // Object.is equality
+   × AUDIT: rotating previews the actual object before release 118ms
+     → expected 'matrix(1, 0, 0, 1, 100, 120)' not to be 'matrix(1, 0, 0, 1, 100, 120)' // Object.is equality
+   ✓ commits the final queued movement before any animation frame and undoes it once 142ms
+   ✓ snaps equal gaps at zoom 0.5, draws final distances, and undoes once 104ms
+   ✓ snaps equal gaps at zoom 2, draws final distances, and undoes once 139ms
+   ✓ Ctrl disables spacing snaps and their indicators 114ms
+   ✓ Shift keeps the fixed axis unchanged even when a nearby alignment target exists 144ms
+   ✓ previews and commits scaleChildren in one undoable canvas resize 186ms
+   ✓ previews and commits resizeContainer in one undoable canvas resize 181ms
+   ✓ uses the final queued marquee corner when released before an animation frame 99ms
+   ✓ cancels move (painted=false) without committing or undoing previous edits 137ms
+   ✓ cancels move (painted=true) without committing or undoing previous edits 169ms
+   ✓ cancels resize (painted=false) without committing or undoing previous edits 176ms
+   ✓ cancels resize (painted=true) without committing or undoing previous edits 253ms
+ ✓ tests/motion-panel.test.tsx (5 tests) 1922ms
+   ✓ edits stored timing independently of the previous track, rejects negative offsets and undoes  516ms
+   ✓ reorders a whole track in both directions, preserves its contents and undoes the order  591ms
+   ✓ edits and duplicates a stagger child through its source clip  303ms
+ ✓ tests/deck-list-race.test.tsx (5 tests) 1746ms
+   ✓ switching projects > does not let a late answer for A replace B's cards  767ms
+   ✓ switching projects > does not let a refresh after deleting in A fill B's view  517ms
+ ✓ tests/close-barrier.test.tsx (12 tests) 3553ms
+   ✓ unloading > takes a note still inside its draft interval into the document and the journal  420ms
+   ✓ preparing to close > answers within its bound when the save never returns  389ms
+   ✓ preparing to close > saves what a failed close journalled as soon as the deck is opened again, with no new edit  1116ms
+   ✓ preparing to close > does not approve a close for a participant that never answers  310ms
+ ✓ tests/useEditor.test.ts (23 tests) 4637ms
+   ✓ autosave > recovers a closed tab against its historical base when the server advanced  311ms

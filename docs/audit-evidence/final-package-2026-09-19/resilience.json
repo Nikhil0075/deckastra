@@ -1,0 +1,36 @@
+{
+  "step": "resilience",
+  "startedAt": "2026-09-19T18:29:49.900Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3984,
+  "console": [],
+  "cspViolations": [],
+  "startingElements": 22,
+  "firstSaveAcknowledged": true,
+  "serviceStoppedReported": true,
+  "elementsWhileDown": 26,
+  "offlineEditKeptOnScreen": true,
+  "recoveredToReady": true,
+  "savedAfterRecovery": true,
+  "elementsAfterRecovery": 28,
+  "elementsAfterReload": 28,
+  "expectedElements": 28,
+  "ok": true,
+  "memory": {
+    "processes": 4,
+    "totalMb": 423.7,
+    "byTypeMb": {
+      "Browser": 110.4,
+      "GPU": 155.6,
+      "Utility": 46.9,
+      "Tab": 110.8
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:30:01.498Z"
+}

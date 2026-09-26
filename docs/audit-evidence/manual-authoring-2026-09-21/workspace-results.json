@@ -1,0 +1,77 @@
+[
+  {
+    "workspace": "@deckastra/animation-engine",
+    "exitCode": 0,
+    "log": "animation-engine-test.log"
+  },
+  {
+    "workspace": "@deckastra/editor",
+    "exitCode": 0,
+    "log": "editor-test.log"
+  },
+  {
+    "workspace": "@deckastra/export-core",
+    "exitCode": 0,
+    "log": "export-core-test.log"
+  },
+  {
+    "workspace": "@deckastra/export-pdf",
+    "exitCode": 0,
+    "log": "export-pdf-test.log"
+  },
+  {
+    "workspace": "@deckastra/export-pptx",
+    "exitCode": 0,
+    "log": "export-pptx-test.log"
+  },
+  {
+    "workspace": "@deckastra/layout-engine",
+    "exitCode": 0,
+    "log": "layout-engine-test.log"
+  },
+  {
+    "workspace": "@deckastra/presentation-core",
+    "exitCode": 0,
+    "log": "presentation-core-test.log"
+  },
+  {
+    "workspace": "@deckastra/presentation-schema",
+    "exitCode": 0,
+    "log": "presentation-schema-test.log"
+  },
+  {
+    "workspace": "@deckastra/renderer",
+    "exitCode": 0,
+    "log": "renderer-test.log"
+  },
+  {
+    "workspace": "@deckastra/transactions",
+    "exitCode": 0,
+    "log": "transactions-test.log"
+  },
+  {
+    "workspace": "@deckastra/workspace-client",
+    "exitCode": 0,
+    "log": "workspace-client-test.log"
+  },
+  {
+    "workspace": "@deckastra/desktop",
+    "exitCode": 0,
+    "log": "desktop-test.log"
+  },
+  {
+    "workspace": "@deckastra/mcp-server",
+    "exitCode": 0,
+    "log": "mcp-server-test.log"
+  },
+  {
+    "workspace": "@deckastra/web",
+    "exitCode": 0,
+    "log": "web-test.log"
+  },
+  {
+    "workspace": "@deckastra/worker",
+    "exitCode": 0,
+    "log": "worker-test.log"
+  }
+]

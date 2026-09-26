@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 import { buildDocumentScene } from "@deckastra/renderer";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
-import { compileTransition, transitionSlideFromScene } from "../src/transition";
+import { sampleTransition, compileTransition, transitionSlideFromScene } from "../src/transition";
 
 const FIXTURE = join(
   __dirname,
@@ -65,14 +65,14 @@ describe("the fixture's shared-element morph", () => {
     // Author-declared, so nothing here depends on the scoring heuristic.
     expect(compiled.pairing.pairs.every((pair) => pair.origin === "explicit")).toBe(true);
 
-    const paired = compiled.tracks.filter((track) => track.kind === "paired");
-    expect(paired).toHaveLength(2);
-    // Both actually travel: a pair that does not move emits no track, so two
-    // tracks is the fixture proving it exercises the delta path rather than
-    // merely declaring a mapping.
-    for (const track of paired) {
-      const start = track.keyframes[0]!.properties;
-      expect(`${start.translateX} ${start.translateY}`).not.toBe("0px 0px");
+    // Both actually travel: a pair that does not move emits no track, so an
+    // arriving copy for each is the fixture proving it exercises the delta
+    // path rather than merely declaring a mapping.
+    const arriving = [...new Set(compiled.tracks.filter((track) => track.targetId.startsWith("pair:in:")).map((track) => track.targetId))];
+    expect(arriving).toHaveLength(2);
+    const start = sampleTransition(compiled, 0);
+    for (const target of arriving) {
+      expect(`${start[target]!.translateX} ${start[target]!.translateY}`).not.toBe("0px 0px");
     }
   });
 
@@ -84,17 +84,15 @@ describe("the fixture's shared-element morph", () => {
       transitionSlideFromScene(to),
     );
 
-    const byTarget = new Map(
-      compiled.tracks.filter((track) => track.kind === "paired").map((track) => [track.targetId, track]),
-    );
+    const start = sampleTransition(compiled, 0);
     const headline = to.nodes.find((node) => node.semanticRole === "headline")!;
     const badge = to.nodes.find((node) => node.semanticRole === "decoration")!;
 
-    // `positionAndScale`: the box grew, so the element starts smaller.
-    expect(Number(byTarget.get(headline.id)!.keyframes[0]!.properties.scaleX)).toBeLessThan(1);
+    // `positionAndScale`: the headline's type grew, so the arriving copy starts smaller.
+    expect(Number(start[`pair:in:${headline.id}`]!.scaleX)).toBeLessThan(1);
     // `position`: the author said these two sizes differ for a reason, and that
     // is a permission rather than a hint.
-    expect(byTarget.get(badge.id)!.keyframes[0]!.properties.scaleX).toBe(1);
+    expect(start[`pair:in:${badge.id}`]!.scaleX).toBe(1);
   });
 
   it("still cuts under reduced motion", () => {

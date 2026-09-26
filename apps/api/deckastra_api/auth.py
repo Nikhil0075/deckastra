@@ -202,7 +202,7 @@ def _insert_personal_account(
         user = User(id=new_id("usr"), email=normalized_email, name=display_name)
         session.add(user)
         workspace = Workspace(
-            id=new_id("wsp"), name=f"{display_name}'s workspace", owner_id=user.id
+            id=new_id("wsp"), name=personal_workspace_name(display_name), owner_id=user.id
         )
         session.add(workspace)
         session.add(
@@ -222,6 +222,17 @@ def _insert_personal_account(
         session.add(project)
         session.flush()
     return user, workspace, project
+
+
+def personal_workspace_name(display_name: str) -> str:
+    """The name a new personal workspace gets.
+
+    "Ada's workspace" for a named person; "Your workspace" for the local
+    install's singleton account, whose display name is the pronoun "You" — a
+    possessive of it reads "You's workspace", which the deck list's breadcrumb
+    then shows on every screen.
+    """
+    return "Your workspace" if display_name.strip() == "You" else f"{display_name}'s workspace"
 
 
 def provision_personal_account(
@@ -272,7 +283,7 @@ def provision_personal_account(
         # onboarding. Finish it without creating a second User row.
         display_name = (user.name or normalized.split("@", 1)[0]).strip()[:200]
         workspace = Workspace(
-            id=new_id("wsp"), name=f"{display_name}'s workspace", owner_id=user.id
+            id=new_id("wsp"), name=personal_workspace_name(display_name), owner_id=user.id
         )
         session.add(workspace)
         session.add(
@@ -586,14 +597,22 @@ def resolve_presentation_access(
     user_id: str,
     presentation_id: str,
     require: Role = Role.VIEWER,
+    include_deleted: bool = False,
 ) -> PresentationAccess:
     """Walk the whole chain in one place.
 
     Doing this per-endpoint is how one endpoint ends up skipping a link. Every
     route that touches a presentation calls this.
+
+    A deleted deck is missing to every caller but the one that asks for it
+    (`include_deleted`, which only `restore` and the trash listing pass). Here
+    rather than per route, for the reason this function exists: a route that
+    forgot would keep editing, exporting or sharing a deck its owner deleted.
     """
     presentation = session.get(Presentation, presentation_id)
     if presentation is None:
+        raise Forbidden()
+    if presentation.deleted_at is not None and not include_deleted:
         raise Forbidden()
 
     project = session.get(Project, presentation.project_id)

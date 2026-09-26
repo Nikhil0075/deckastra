@@ -42,20 +42,19 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
     finally { pending.current = false; setBusy(false); }
   }
 
-  return <section aria-label="Themes" style={{ marginBottom: 20 }}>
-    <h3>Themes</h3>
-    <button disabled={busy} onClick={() => void run(async () => {
+  return <section aria-label="Themes" className="dk-themes">
+    <button className="dk-btn dk-btn--ghost dk-btn--sm" disabled={busy} onClick={() => void run(async () => {
       const result = await list();
       if (active.current) setThemes(result.themes);
     })}>Refresh themes</button>
-    <label style={{ display: "grid", gap: 6 }}>
+    <label className="dk-themes__field">
       Saved theme
-      <select value={selected} onChange={event => setSelected(event.target.value)} disabled={busy}>
+      <select className="dk-input" value={selected} onChange={event => setSelected(event.target.value)} disabled={busy}>
         <option value="">Choose a theme</option>
         {themes.map(theme => <option key={theme.id} value={theme.id}>{theme.name}{theme.is_default ? " (default)" : ""}</option>)}
       </select>
     </label>
-    <button disabled={!selected || busy} onClick={() => void run(async () => {
+    <button className="dk-btn dk-btn--primary dk-btn--sm" disabled={!selected || busy} onClick={() => void run(async () => {
       const documentId = latestEditor.current.document.id;
       // Read-only: the portable definition and the themeId patch are applied to
       // the local document through the editor's own `apply`, so pending edits,
@@ -65,16 +64,16 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
       const operations = PatchOperationSchema.array().parse(result.operations);
       latestEditor.current.apply(operations, { label: `Apply theme ${result.theme.name}` });
     })}>Apply theme</button>
-    <label style={{ display: "grid", gap: 6, marginTop: 12 }}>
+    <label className="dk-themes__field">
       Save current theme as
-      <input value={name} maxLength={255} onChange={event => setName(event.target.value)} disabled={busy} />
+      <input className="dk-input" value={name} maxLength={255} onChange={event => setName(event.target.value)} disabled={busy} />
     </label>
-    <small>A matching name replaces that saved theme.</small>
-    <label style={{ display: "block", marginTop: 8 }}>
+    <small className="dk-muted">A matching name replaces that saved theme.</small>
+    <label className="dk-export__option">
       <input type="checkbox" checked={makeDefault} disabled={busy} onChange={event => setMakeDefault(event.target.checked)} />
       Use as default for new decks
     </label>
-    <button disabled={!name.trim() || busy} onClick={() => void run(async () => {
+    <button className="dk-btn dk-btn--secondary dk-btn--sm" disabled={!name.trim() || busy} onClick={() => void run(async () => {
       const documentId = latestEditor.current.document.id;
       const saved = await client.themes.save(presentationId, {
         name: name.trim(),
@@ -85,7 +84,7 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
       setThemes((current) => [...current.filter(theme => theme.id !== saved.id).map(theme => saved.is_default ? { ...theme, is_default: false } : theme), saved]);
       setSelected(saved.id); setMessage("Theme saved to this workspace.");
     })}>Save theme</button>
-    {busy ? <p role="status">Updating theme…</p> : null}
-    {message ? <p role="status">{message}</p> : null}
+    {busy ? <p role="status" className="dk-muted">Updating theme…</p> : null}
+    {message ? <p role="status" className="dk-muted">{message}</p> : null}
   </section>;
 }

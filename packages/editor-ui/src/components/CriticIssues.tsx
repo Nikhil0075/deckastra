@@ -15,13 +15,13 @@ export function CriticIssues({ value, slideId }: { value: unknown; slideId?: str
   );
   if (!issues.length) return null;
   return (
-    <section aria-label="Unresolved review issues" style={{ marginTop: 16 }}>
-      <h3 style={{ fontSize: 13 }}>Review before presenting</h3>
-      <ul style={{ paddingLeft: 18, fontSize: 12 }}>
+    <section aria-label="Unresolved review issues" className="dk-critic">
+      <h3 className="dk-critic__title">Review before presenting</h3>
+      <ul className="dk-critic__list">
         {issues.map((issue, index) => (
-          <li key={index} style={{ marginBottom: 8 }}>
+          <li key={index} className="dk-critic__item">
             <strong>{issue.scope}: </strong>{issue.message}
-            {issue.fix ? <div>{issue.fix}</div> : null}
+            {issue.fix ? <div className="dk-muted">{issue.fix}</div> : null}
           </li>
         ))}
       </ul>

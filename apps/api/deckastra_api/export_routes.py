@@ -35,6 +35,13 @@ class ExportRequest(BaseModel):
     #: click-reveal deck, where the final state gives every answer away at once.
     at_time: Literal["final", "initial"] = "final"
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
+    #: The version the caller means to export — the editor passes the one its
+    #: save queue has just been acknowledged at. Without it an export takes
+    #: whatever is stored, which can be older than what is on screen (an edit
+    #: still in the autosave debounce) or newer (an agent's change landing in
+    #: between). Optional, because an agent exporting "the deck as it stands"
+    #: means exactly the stored head.
+    expected_version_id: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/presentations/{presentation_id}/exports", status_code=status.HTTP_202_ACCEPTED)
@@ -61,6 +68,14 @@ def start_export(
     )
 
     loaded = store.load_presentation(session, presentation_id)
+    if request.expected_version_id is not None and request.expected_version_id != loaded.version_id:
+        # A different version from the one the caller saw is a different file.
+        # Refused rather than exported, so "export" never quietly means "export
+        # something other than what I was looking at".
+        raise HTTPException(
+            status_code=409,
+            detail="The deck changed after it was saved for this export. Export again to include the latest version.",
+        )
 
     try:
         job = export_service.create_job(

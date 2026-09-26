@@ -13,6 +13,7 @@ import type { DegradationLedger } from "@deckastra/export-core";
 
 import { alpha, hex, rotation, shapeName, xml, type Units } from "./units";
 import { fitPicture } from "./media";
+import { chartShape, diagramShape, tableShape } from "./drawn";
 
 /** Deckastra shape kinds that map to a PPTX preset geometry. */
 const PRESET_GEOMETRY: Record<string, string> = {
@@ -126,8 +127,11 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
       return pictureShape(node, context);
 
     case "table":
+      return tableShape(node, context);
     case "chart":
+      return chartShape(node, context);
     case "diagram":
+      return diagramShape(node, context);
     case "icon":
     case "placeholder":
     default:
@@ -451,6 +455,13 @@ function codeShape(node: SceneNode, context: ShapeContext): string {
  * registry's own reason attached — "no bytes reached the exporter" and "this is
  * a format PowerPoint will not open" send someone to different places.
  */
+/** The scene's `object-position` ("30.0% 50.0%") back as a focal point. */
+function focalFrom(position: string | undefined): { x: number; y: number } {
+  const match = /^\s*(-?[\d.]+)%\s+(-?[\d.]+)%\s*$/.exec(position ?? "");
+  if (!match) return { x: 0.5, y: 0.5 };
+  return { x: Number(match[1]) / 100, y: Number(match[2]) / 100 };
+}
+
 function pictureShape(node: SceneNode, context: ShapeContext): string {
   const payload = node.renderPayload;
   if (payload.kind !== "image") return unsupported(node, context);
@@ -463,7 +474,7 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
   const { units } = context;
   const intrinsic = context.intrinsic?.get(payload.assetId);
   const fit = payload.objectFit || "cover";
-  const placed = fitPicture(node.bounds, fit, intrinsic);
+  const placed = fitPicture(node.bounds, fit, intrinsic, focalFrom(payload.objectPosition));
 
   if (!intrinsic && fit !== "fill") {
     // Stated rather than silently stretched: a photograph that arrives the wrong

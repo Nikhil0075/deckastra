@@ -1,0 +1,89 @@
+ M CLAUDE.md
+ M agents/deckastra_agents/graph.py
+ M agents/deckastra_agents/nodes/story.py
+ M agents/deckastra_agents/runner.py
+ M apps/api/deckastra_api/agent_routes.py
+ M apps/api/deckastra_api/agent_service.py
+ M apps/api/deckastra_api/auth.py
+ M apps/api/deckastra_api/db/models.py
+ M apps/api/deckastra_api/grants.py
+ M apps/api/deckastra_api/local_mode.py
+ M apps/api/deckastra_api/main.py
+ M apps/api/deckastra_api/models.py
+ M apps/api/deckastra_api/quotas.py
+ M apps/api/deckastra_api/routes.py
+ M apps/api/deckastra_api/sharing.py
+ M apps/api/deckastra_api/store.py
+ M apps/api/deckastra_api/workspace_routes.py
+ M apps/api/tests/test_authored_proposals.py
+ M apps/api/tests/test_grants.py
+ M apps/api/tests/test_local_mode.py
+ M apps/api/tests/test_patch_conformance.py
+ M apps/desktop/src/main/app.ts
+ M apps/desktop/src/main/smoke.ts
+ M apps/desktop/src/main/workspace-state.ts
+ M apps/desktop/src/preload/index.ts
+ M apps/desktop/src/renderer/App.tsx
+ M apps/desktop/src/shared/ipc.ts
+ M apps/desktop/tests/host.test.ts
+ M apps/web/tests/recovery.e2e.test.ts
+ M package-lock.json
+ M packages/editor-ui/package.json
+ M packages/editor-ui/src/components/AskPanel.tsx
+ M packages/editor-ui/src/components/ConflictRecovery.tsx
+ M packages/editor-ui/src/components/EditorShell.tsx
+ M packages/editor-ui/src/components/PresentMode.tsx
+ M packages/editor-ui/src/components/PresenterView.tsx
+ M packages/editor-ui/src/components/ProposalsPanel.tsx
+ M packages/editor-ui/src/components/SlideMotion.tsx
+ M packages/editor-ui/src/index.ts
+ M packages/editor-ui/src/lib/editor-recovery.ts
+ M packages/editor-ui/src/lib/presentSync.ts
+ M packages/editor-ui/src/lib/useEditor.ts
+ M packages/editor-ui/src/styles.css
+ M packages/editor-ui/tests/present-navigation.test.tsx
+ M packages/editor-ui/tests/proposals-panel.test.tsx
+ M packages/presentation-core/src/references.ts
+ M packages/workspace-client/src/http.ts
+ M packages/workspace-contracts/src/agent.ts
+ M packages/workspace-contracts/src/client.ts
+ M packages/workspace-contracts/src/documents.ts
+ M packages/workspace-contracts/src/generation.ts
+ M packages/workspace-contracts/src/session.ts
+?? apps/api/deckastra_api/deck_copy.py
+?? apps/api/deckastra_api/version_restore.py
+?? apps/api/tests/test_deck_list.py
+?? apps/api/tests/test_story_review.py
+?? apps/api/tests/test_version_history.py
+?? apps/desktop/src/renderer/AgentAccessControl.tsx
+?? docs/FRONTEND_REQUIREMENTS.md
+?? infrastructure/database/migrations/versions/20260919_1000_deck_list.py
+?? packages/editor-ui/src/components/DeckList.tsx
+?? packages/editor-ui/src/components/FinalFrameSlide.tsx
+?? packages/editor-ui/src/components/GenerateDeck.tsx
+?? packages/editor-ui/src/components/StoryCheckpoint.tsx
+?? packages/editor-ui/src/components/VersionHistory.tsx
+?? packages/editor-ui/src/components/inspector/
+?? packages/editor-ui/src/components/shell/
+?? packages/editor-ui/src/lib/deck-list.ts
+?? packages/editor-ui/src/lib/editor-layout.ts
+?? packages/editor-ui/src/lib/presenter.ts
+?? packages/editor-ui/src/lib/proposal-preview.ts
+?? packages/editor-ui/src/lib/recovery-copies.ts
+?? packages/editor-ui/src/lib/slide-actions.ts
+?? packages/editor-ui/src/lib/ui-keys.ts
+?? packages/editor-ui/src/lib/version-history.ts
+?? packages/editor-ui/src/styles/
+?? packages/editor-ui/src/ui/
+?? packages/editor-ui/tests/deck-list.test.tsx
+?? packages/editor-ui/tests/editor-layout.test.ts
+?? packages/editor-ui/tests/generate-deck.test.tsx
+?? packages/editor-ui/tests/presenter.test.tsx
+?? packages/editor-ui/tests/proposal-preview.test.ts
+?? packages/editor-ui/tests/recovery-copies.test.tsx
+?? packages/editor-ui/tests/slide-actions.test.ts
+?? packages/editor-ui/tests/ui-keys.test.ts
+?? packages/editor-ui/tests/ui-primitives.test.tsx
+?? packages/editor-ui/tests/ui-tokens.test.ts
+?? packages/editor-ui/tests/version-history.test.tsx
+?? packages/presentation-core/tests/slide-deletion.test.ts

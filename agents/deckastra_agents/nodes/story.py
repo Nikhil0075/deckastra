@@ -54,6 +54,28 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
             *context_blocks,
         ]
 
+    # A person reviewed the previous outline at the checkpoint and asked for
+    # changes. Their note is the user's turn, like the brief, and it is
+    # enveloped like the brief: it is their words, not an instruction channel
+    # anything else can write to. The previous outline travels with it, because
+    # "make slide 3 about pricing" means nothing without the slide 3 it replaces.
+    decision = state.get("human_decision") or {}
+    revising = decision.get("action") == "revise"
+    if revising:
+        previous = state.get("story_plan") or {}
+        outline = "\n".join(
+            f"{index}. {slide.get('headline', '')}"
+            for index, slide in enumerate(previous.get("slides") or [], start=1)
+        )
+        parts += [
+            "",
+            "A person reviewed your previous outline and asked for changes. Keep what they did not ask to change.",
+            "The previous outline:",
+            envelope(outline, Source(id="previous-outline", kind="draft")),
+            "Their note:",
+            envelope(str(decision.get("note") or ""), Source(id="revision-note", kind="user-brief")),
+        ]
+
     memory_context = ctx.memory.prompt_context() if ctx.memory else ""
 
     plan = ask_model(
@@ -91,11 +113,16 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         )
     )
 
-    return {
+    produced: dict[str, Any] = {
         "current_stage": STAGE,
         "story_plan": plan.model_dump(mode="json"),
         "warnings": warnings,
     }
+    if revising:
+        # Consumed. Left in place, a graph without an interrupt would route from
+        # the checkpoint straight back here, forever.
+        produced["human_decision"] = {}
+    return produced
 
 
 def apply_revision_note(state: PresentationAgentState) -> str:

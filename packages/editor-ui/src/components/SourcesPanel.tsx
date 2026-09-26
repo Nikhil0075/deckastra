@@ -52,16 +52,16 @@ export function SourcesPanel({
   }, [client, presentationId, slideId]);
 
   if (error) {
-    return <p style={mutedStyle}>{error}</p>;
+    return <p className="dk-muted">{error}</p>;
   }
 
   if (sources === null) {
-    return <p style={mutedStyle}>Loading sources…</p>;
+    return <p className="dk-muted">Loading sources…</p>;
   }
 
   if (sources.length === 0) {
     return (
-      <p style={mutedStyle}>
+      <p className="dk-muted">
         This slide is not grounded in a source. Nothing on it was written from an
         indexed file.
       </p>
@@ -69,7 +69,7 @@ export function SourcesPanel({
   }
 
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+    <ul className="dk-sources">
       {sources.map((source) => (
         <SourceRow key={source.id} source={source} />
       ))}
@@ -83,48 +83,29 @@ function SourceRow({ source }: { source: SlideSource }) {
   const [, reference = source.sourceReference] = source.sourceReference.split("#");
 
   return (
-    <li
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: 10,
-        padding: "10px 12px",
-        marginBottom: 8,
-        background: "var(--surface-alt)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+    <li className="dk-sources__item">
+      <div className="dk-sources__head">
         {source.url ? (
           <a
             href={source.url}
             target="_blank"
             rel="noreferrer"
-            style={{ color: "var(--accent)", fontSize: 13, fontWeight: 600 }}
+            className="dk-sources__ref dk-sources__ref--link"
           >
             {reference}
           </a>
         ) : (
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{reference}</span>
+          <span className="dk-sources__ref">{reference}</span>
         )}
         {typeof source.confidence === "number" ? (
-          <span style={{ color: "var(--fg-subtle)", fontSize: 11 }}>
+          <span className="dk-muted">
             match {source.confidence.toFixed(2)}
           </span>
         ) : null}
       </div>
 
       {source.excerpt ? (
-        <pre
-          style={{
-            margin: "8px 0 0",
-            fontSize: 11,
-            lineHeight: 1.5,
-            color: "var(--fg-muted)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            maxHeight: 130,
-            overflow: "auto",
-          }}
-        >
+        <pre className="dk-sources__excerpt" tabIndex={0}>
           {source.excerpt}
         </pre>
       ) : null}
@@ -132,8 +113,3 @@ function SourceRow({ source }: { source: SlideSource }) {
   );
 }
 
-const mutedStyle: React.CSSProperties = {
-  color: "var(--fg-muted)",
-  fontSize: 13,
-  margin: 0,
-};

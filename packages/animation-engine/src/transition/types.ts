@@ -28,6 +28,25 @@ export interface TransitionNode {
   assetKey?: string;
   opacity?: number;
   rotation?: number;
+  /**
+   * The group this node sits in, when it is nested. A morph moves a group and
+   * everything inside it as one object, so a child of a paired group must not
+   * also travel on its own — it would be drawn twice, once with its group and
+   * once by itself.
+   */
+  parentId?: string;
+  /**
+   * For text: the font size the renderer actually applied. A text box that only
+   * got wider has the same glyphs, and scaling it by its box would stretch every
+   * letter; the type size is what says how much bigger the words became.
+   */
+  fontSize?: number;
+  /**
+   * For text: the world point the words hang from (their alignment edge), which
+   * is what stays put when a box is resized around them. Absent for everything
+   * else, where the box's centre is that point.
+   */
+  anchor?: { x: number; y: number };
 }
 
 /** A slide reduced to what a transition needs from it. */
@@ -85,6 +104,14 @@ export interface PairDelta {
   rotate: number;
   fadeFrom: number;
   fadeTo: number;
+  /**
+   * The matching point on each element, in slide space: the centre of a box, or
+   * a text's alignment anchor. `dx`/`dy` are `from - to`. The renderer places
+   * every element from the slide's origin, so a scale has to be compensated by
+   * where the element sits — which needs the point itself, not only the delta.
+   */
+  from: { x: number; y: number };
+  to: { x: number; y: number };
 }
 
 export interface TransitionKeyframe {
@@ -95,7 +122,12 @@ export interface TransitionKeyframe {
 
 /** A layer the transition animates: the whole outgoing slide, the whole incoming one, or one paired element. */
 export interface TransitionTrack {
-  /** `slide:out`, `slide:in`, or the destination element id for a morph. */
+  /**
+   * `slide:out`, `slide:in`, or for a morph `pair:in:<destination id>` (the
+   * arriving element) and `pair:out:<source id>` (the leaving one). One target
+   * can carry several tracks — a morph's movement and its crossfade have
+   * different timing — and the sampler merges them.
+   */
   targetId: string;
   kind: "outgoing" | "incoming" | "paired";
   keyframes: TransitionKeyframe[];

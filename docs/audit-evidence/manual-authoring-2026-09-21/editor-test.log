@@ -1,0 +1,13 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor
+
+ ✓ tests/text-editing.test.ts (24 tests) 103ms
+ ✓ tests/editor.test.ts (80 tests) 77ms
+ ✓ tests/spacing.test.ts (4 tests) 9ms
+ ✓ tests/rebuild-by-hand.test.ts (5 tests) 17ms
+
+ Test Files  4 passed (4)
+      Tests  113 passed (113)
+   Start at  00:58:11
+   Duration  7.88s (transform 2.35s, setup 0ms, collect 3.53s, tests 206ms, environment 1.55s, prepare 971ms)
+

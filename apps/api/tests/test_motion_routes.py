@@ -331,3 +331,55 @@ def test_someone_outside_the_workspace_cannot_animate_a_slide(client, auth, deck
         },
     )
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------- dry runs
+
+
+def test_a_dry_run_plans_without_writing_anything(client, auth, deck):
+    """The editor's "Plan by roles" (Phase 7).
+
+    The planner is deterministic, so a person can see what a plan would do and
+    apply it as their own edit. A dry run must therefore leave no trace: no
+    version, no proposal, no attribution to an agent that did not exist.
+    """
+    presentation_id = deck["presentation_id"]
+    before = head_version(client, auth, presentation_id)
+    response = animate(client, auth, deck, sequence=["headline", "body"], dry_run=True)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "planned"
+    assert body["version_id"] == before
+    [operation] = body["operations"]
+    assert operation["path"].endswith("/animations")
+    assert operation["value"] and body["track_count"] == len(operation["value"])
+
+    assert head_version(client, auth, presentation_id) == before
+    assert client.get(f"/v1/presentations/{presentation_id}/proposals", headers=auth).json() == []
+
+
+def test_a_dry_run_transition_plans_without_writing(client, auth, deck):
+    presentation_id = deck["presentation_id"]
+    before = head_version(client, auth, presentation_id)
+    response = client.post(
+        f"/v1/presentations/{presentation_id}/transition",
+        headers=auth,
+        json={
+            "slide_id": deck["document"]["slides"][1]["id"],
+            "expected_version_id": before,
+            "kind": "fade",
+            "dry_run": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "planned"
+    [operation] = body["operations"]
+    assert operation["path"].endswith("/transition") and operation["value"]["type"] == "fade"
+    assert operation["value"]["durationMs"] > 0
+    assert head_version(client, auth, presentation_id) == before
+
+
+def test_a_dry_run_is_still_refused_against_a_stale_version(client, auth, deck):
+    response = animate(client, auth, deck, dry_run=True, expected_version_id="ver_stale")
+    assert response.status_code == 409

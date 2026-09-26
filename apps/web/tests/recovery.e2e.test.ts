@@ -135,6 +135,8 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
       await second.getByRole("button", { name: "Rect", exact: true }).waitFor({ timeout: 60_000 });
       const secondKey = await journalKey(deck.id, second);
       expect(secondKey).not.toBe(firstKey);
+      // The copies notice is one line until opened.
+      await second.getByTestId("recovery-toggle").click();
       const recoverButton = second.getByRole("button", { name: /^Recover copy:/ });
       expect(await recoverButton.isDisabled()).toBe(true);
       await second.getByRole("button", { name: "Rect", exact: true }).click();

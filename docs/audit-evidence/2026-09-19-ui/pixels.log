@@ -1,0 +1,18 @@
+
+> @deckastra/renderer@0.0.0 test:pixels
+> vitest run tests/pixels.test.ts --maxWorkers=1 --minWorkers=1
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/renderer
+
+ ✓ tests/pixels.test.ts (4 tests) 24012ms
+   ✓ pixel regression > renders byte-identical PNGs twice in a row  7997ms
+   ✓ pixel regression > renders byte-identical PNGs after a full page reload  8393ms
+   ✓ pixel regression > matches the committed pixel baseline for this platform  4715ms
+   ✓ pixel regression > sees a change the scene digest cannot  863ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  19:00:04
+   Duration  26.34s (transform 1.23s, setup 0ms, collect 1.83s, tests 24.01s, environment 0ms, prepare 175ms)
+

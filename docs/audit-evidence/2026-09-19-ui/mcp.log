@@ -1,0 +1,20 @@
+server: C:\Program Files\nodejs\node.exe D:\Presentation_app\node_modules\tsx\dist\cli.mjs D:\Presentation_app\apps\mcp-server\src\cli.ts
+  ok   attaches to the running app — 14 tools
+  ok   offers no way for an agent to approve its own change or share a deck
+  ok   creates a deck of its own to work on — doc_01M2WXVAXBA4T3EQMG5C6M2F7Y
+  ok   lists it back — 2 decks visible
+  ok   a low-risk change applies immediately — low
+  ok   a stale change is refused — This deck has changed since you read it. Read it again and re-author the change 
+  ok   motion is planned in roles and timed by the app — 1 track(s), budget 2500ms
+  ok   adds a second slide to move between — applied
+  ok   pairs elements across slides from roles alone — 1 paired, 0 warning(s)
+  ok   refuses to carry objects across a transition that cannot — Shared elements were named but this is a push, which does no
+  ok   renders a picture of its own work — Slide sld_01M2WXVAXC8TZT01ZP24AKNSA1 at version ver_01M2WXVBMCBWT449C1
+  ok   a destructive change waits for the user — high, expires 2026-09-20T13:31:50.767977+00:00
+  ok   it is attributed to this client, not the product's own agent — mcp:acceptance
+  ok   an export can be cancelled — asked while running, now running
+  ok   and reaches a terminal cancelled state — cancelled
+  ok   an export finishes — 10616 bytes
+
+Worked on doc_01M2WXVAXBA4T3EQMG5C6M2F7Y — a deck this script created; the user's decks were not touched.
+16/16 passed

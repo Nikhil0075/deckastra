@@ -12,16 +12,17 @@ from __future__ import annotations
 import base64
 import copy
 import re
-
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import quotas, sync
+from . import backup, deck_copy, object_storage, quotas, sync, version_restore
 from . import export_service, local_mode, motion, proposals, store, themes
 from .auth import (
     Principal,
@@ -32,7 +33,7 @@ from .auth import (
     resolve_project_access,
 )
 from .compose import blank_document
-from .db.models import Asset, Presentation, PresentationVersion, TransactionRow
+from .db.models import Asset, Presentation, PresentationVersion, TransactionRow, Workspace
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -186,7 +187,12 @@ def get_presentation(
         session, user_id=principal.user_id, presentation_id=presentation_id
     )
 
-    loaded = store.load_presentation(session, presentation_id, at_version=at_version)
+    try:
+        loaded = store.load_presentation(session, presentation_id, at_version=at_version)
+    except store.NotFound as missing:
+        # A version from another deck (or none at all) is the same 404 a missing
+        # deck gets; it used to escape as a 500.
+        raise HTTPException(status_code=404, detail="No such version of this deck.") from missing
     return {
         "presentation_id": loaded.presentation_id,
         "version_id": loaded.version_id,
@@ -250,6 +256,55 @@ def revoke_agent_access(
     return {"revoked_before": local_mode.revoke_grants()}
 
 
+class BackupRequest(BaseModel):
+    """Where to write the backup, and the journals the shell collected."""
+
+    path: str
+    journals: Any = None
+    app_version: str | None = None
+
+
+@router.post("/local/backup")
+def take_backup(
+    request: BackupRequest,
+    principal: Principal = Depends(current_principal),
+) -> dict[str, Any]:
+    """Write a consistent snapshot of this install (item 14).
+
+    **The running service takes it**, because it owns the writers: SQLite's
+    online backup API reads a database other connections are still writing, so
+    nobody has to stop working to be backed up. A restore is the other way round
+    and deliberately has no route — it replaces the database this process has
+    open, so it runs as a one-shot with the service stopped.
+
+    The destination is a path, which is the one place in this product a path
+    crosses a boundary, so the refusals are worth naming. It needs
+    `administer`, which no agent grant carries (`grants.py`) — the same gate
+    that stops an agent managing its own leash — so the only caller that can
+    reach it is the app itself, and the app only ever passes a folder that came
+    out of its own save dialog. The renderer names nothing.
+    """
+    if not local_mode.enabled():
+        # Backing up one directory is a local-install idea. A deployment's data
+        # is a database somebody else operates, and offering this there would be
+        # a claim about their backups that this process cannot make.
+        raise HTTPException(status_code=404, detail="Not found.")
+    assert principal.user_id
+
+    try:
+        manifest = backup.snapshot(
+            Path(request.path),
+            asset_root=object_storage.local_root(),
+            journals=request.journals,
+            app_version=request.app_version,
+        )
+    except backup.BackupError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except OSError as error:
+        raise HTTPException(status_code=409, detail=f"The backup could not be written: {error}") from error
+    return manifest
+
+
 @router.get("/motion/capabilities")
 def motion_capabilities(
     principal: Principal = Depends(current_principal),
@@ -290,6 +345,12 @@ class MotionRequest(BaseModel):
     click_reveals: int = Field(default=0, ge=0, le=6)
     intent: str = Field(default="Animate a slide", min_length=1, max_length=500)
     client_label: str = Field(default="external", max_length=60)
+    #: Plan without proposing (editor Phase 7). The planner is deterministic —
+    #: no model is asked anything — so a person in the editor can see what a plan
+    #: would do, and apply it as their own edit, without the change being filed
+    #: as an agent's proposal it is not. Nothing is written; the operations and
+    #: the version they were planned against come back.
+    dry_run: bool = False
 
 
 @router.post("/presentations/{presentation_id}/motion")
@@ -377,6 +438,15 @@ def propose_motion(
         }
     ]
 
+    if request.dry_run:
+        return {
+            "outcome": "planned",
+            "operations": operations,
+            "version_id": head.version_id,
+            "track_count": len(after or []),
+            "warnings": warnings,
+        }
+
     try:
         outcome = proposals.create_proposal(
             session,
@@ -418,6 +488,12 @@ class TransitionRequest(BaseModel):
     carry: list[str] = Field(default_factory=list, max_length=8)
     intent: str = Field(default="Set a slide transition", min_length=1, max_length=500)
     client_label: str = Field(default="external", max_length=60)
+    #: Plan without proposing (editor Phase 7). The planner is deterministic —
+    #: no model is asked anything — so a person in the editor can see what a plan
+    #: would do, and apply it as their own edit, without the change being filed
+    #: as an agent's proposal it is not. Nothing is written; the operations and
+    #: the version they were planned against come back.
+    dry_run: bool = False
 
 
 @router.post("/presentations/{presentation_id}/transition")
@@ -500,6 +576,15 @@ def propose_transition(
             "value": transition,
         }
     ]
+
+    if request.dry_run:
+        return {
+            "outcome": "planned",
+            "operations": operations,
+            "version_id": head.version_id,
+            "paired": len(transition.get("sharedElements") or []),
+            "warnings": warnings,
+        }
 
     try:
         outcome = proposals.create_proposal(
@@ -651,6 +736,7 @@ def list_presentations(
     project_id: str,
     limit: int = 200,
     after: str | None = None,
+    deleted: bool = False,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
@@ -679,7 +765,13 @@ def list_presentations(
     resolve_project_access(session, user_id=principal.user_id, project_id=project_id)
     size = min(max(limit, 1), 500)
 
-    query = select(Presentation).where(Presentation.project_id == project_id)
+    # `deleted=true` lists the project's trash instead: the decks a person
+    # deleted and can still restore. Never both at once, so a deck list cannot
+    # show a deleted deck as though it were live.
+    query = select(Presentation).where(
+        Presentation.project_id == project_id,
+        Presentation.deleted_at.is_not(None) if deleted else Presentation.deleted_at.is_(None),
+    )
     if after is not None:
         query = query.where(Presentation.id > after).order_by(Presentation.id)
     else:
@@ -687,6 +779,34 @@ def list_presentations(
         query = query.order_by(Presentation.updated_at.desc(), Presentation.id)
 
     rows = session.scalars(query.limit(size)).all()
+
+    # Rows written before `slide_count` existed are counted once, here, and the
+    # count kept: every commit maintains it from then on. One replay per deck,
+    # ever, rather than one per listing.
+    for row in rows:
+        if row.slide_count is None and row.current_version_id is not None:
+            try:
+                loaded = store.load_presentation(session, row.id)
+                row.slide_count = len(loaded.document.get("slides") or [])
+            except Exception:  # noqa: BLE001 - a count is decoration; the list must still answer.
+                continue
+
+    # Pending proposals per deck, in one grouped query: the yellow badge on a
+    # card means "something here is waiting for you to decide".
+    pending: dict[str, int] = {}
+    if rows:
+        pending = {
+            presentation: int(count)
+            for presentation, count in session.execute(
+                select(TransactionRow.presentation_id, func.count())
+                .where(
+                    TransactionRow.presentation_id.in_([row.id for row in rows]),
+                    TransactionRow.status == "pending",
+                )
+                .group_by(TransactionRow.presentation_id)
+            ).all()
+        }
+
     answer: dict[str, Any] = {
         "presentations": [
             {
@@ -694,6 +814,9 @@ def list_presentations(
                 "title": row.title,
                 "version_id": row.current_version_id,
                 "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                "slide_count": row.slide_count,
+                "pending_proposals": pending.get(row.id, 0),
+                **({"deleted_at": row.deleted_at.isoformat()} if row.deleted_at else {}),
             }
             for row in rows
         ]
@@ -701,6 +824,99 @@ def list_presentations(
     if after is not None and len(rows) == size:
         answer["next_after"] = rows[-1].id
     return answer
+
+
+def _refuse_if_syncing(session: Session, workspace_id: str, what: str) -> None:
+    """A deck in a workspace that syncs is shared with a server. Deleting or
+    duplicating it here would be a local act the server never hears of (there
+    is no sync for either yet), so it is refused by name rather than done
+    quietly on one machine."""
+    workspace = session.get(Workspace, workspace_id)
+    if workspace is not None and workspace.origin == "cloud":
+        raise HTTPException(
+            status_code=409,
+            detail=f"This deck syncs with a shared workspace, and {what} a synced deck is not supported yet.",
+        )
+
+
+@router.delete("/presentations/{presentation_id}")
+def delete_presentation(
+    presentation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Move a deck to the project's trash (editor Phase 4).
+
+    Soft: the rows, versions and history stay, every read treats the deck as
+    missing, and `restore` brings it back whole, as an asset's delete and a
+    theme's archive already work. A deck is someone's work, and a delete
+    pressed on the wrong card has to be undoable. Editor on the deck's
+    workspace, the same right that edits it.
+    """
+    access = resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR
+    )
+    _refuse_if_syncing(session, access.workspace_id, "deleting")
+    presentation = access.presentation
+    presentation.deleted_at = datetime.now(timezone.utc)
+    session.flush()
+    return {"presentation_id": presentation.id, "deleted_at": presentation.deleted_at.isoformat()}
+
+
+@router.post("/presentations/{presentation_id}/restore")
+def restore_presentation(
+    presentation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Bring a deleted deck back exactly as it was: same id, same history, same
+    share links. Restoring a deck that is not deleted is a no-op, so an Undo
+    pressed twice does no harm."""
+    access = resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.EDITOR,
+        include_deleted=True,
+    )
+    access.presentation.deleted_at = None
+    session.flush()
+    return {"presentation_id": access.presentation.id, "restored": True}
+
+
+@router.post("/presentations/{presentation_id}/duplicate", status_code=status.HTTP_201_CREATED)
+def duplicate_presentation(
+    presentation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """A new deck in the same project with the source's current content and
+    fresh ids throughout (`deck_copy.duplicate_document`).
+
+    Reading the source needs viewer; creating the copy needs editor on the
+    project, through the same `resolve_creation_project` blank and generated
+    decks use. The copy starts its own history: it is a new deck, and a version
+    chain claiming to be the original's would be a lie about where each change
+    was made.
+    """
+    access = resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id
+    )
+    project = resolve_creation_project(session, user_id=principal.user_id, project_id=access.project.id)
+    _refuse_if_syncing(session, project.workspace_id, "duplicating")
+
+    source = store.load_presentation(session, presentation_id).document
+    title = str((source.get("metadata") or {}).get("title", ""))
+    duplicated, _ = deck_copy.duplicate_document(source, title=deck_copy.copy_title(title))
+    if validate_document(duplicated):
+        # A copy of a valid deck that fails validation is our bug, not the
+        # caller's; say so rather than storing a deck nobody can open.
+        raise HTTPException(status_code=500, detail="The copy failed schema validation.")
+
+    stored = store.create_presentation(
+        session, project_id=project.id, document=duplicated, created_by=principal.user_id, source="user"
+    )
+    return {"presentation_id": stored.presentation_id, "version_id": stored.version_id, "title": stored.title}
 
 
 class MovePresentationRequest(BaseModel):
@@ -1229,6 +1445,16 @@ class VersionSummary(BaseModel):
     created_by: str
     created_at: str
     is_snapshot: bool
+    #: The change that produced this version (editor Phase 5). A version list
+    #: that says only "Version 13" tells nobody anything; the history drawer
+    #: says what happened and who did it — "Layout Agent rebalanced slide 4".
+    #: All null for the first version, which no transaction produced.
+    transaction_id: str | None = None
+    intent: str | None = None
+    agent_id: str | None = None
+    #: The transaction's own source ("user", "agent", …) when there is one: the
+    #: version row's `source` is set at creation and says less.
+    change_source: str | None = None
 
 
 @router.get("/presentations/{presentation_id}/versions", response_model=list[VersionSummary])
@@ -1242,15 +1468,142 @@ def list_versions(
         session, user_id=principal.user_id, presentation_id=presentation_id
     )
 
-    return [
-        VersionSummary(
-            id=version.id,
-            parent_version_id=version.parent_version_id,
-            source=version.source,
-            label=version.label,
-            created_by=version.created_by,
-            created_at=version.created_at.isoformat(),
-            is_snapshot=version.snapshot_json is not None,
+    versions = store.version_history(session, presentation_id, limit=min(limit, 200))
+    # One query for every row's producing transaction, rather than one per row.
+    producing = {
+        row.result_version_id: row
+        for row in session.scalars(
+            select(TransactionRow).where(
+                TransactionRow.presentation_id == presentation_id,
+                TransactionRow.result_version_id.in_([version.id for version in versions]),
+            )
         )
-        for version in store.version_history(session, presentation_id, limit=min(limit, 200))
-    ]
+    } if versions else {}
+
+    summaries = []
+    for version in versions:
+        change = producing.get(version.id)
+        summaries.append(
+            VersionSummary(
+                id=version.id,
+                parent_version_id=version.parent_version_id,
+                source=version.source,
+                label=version.label,
+                created_by=version.created_by,
+                created_at=version.created_at.isoformat(),
+                is_snapshot=version.snapshot_json is not None,
+                transaction_id=change.id if change else None,
+                intent=change.intent if change else None,
+                agent_id=change.agent_id if change else None,
+                change_source=change.source if change else None,
+            )
+        )
+    return summaries
+
+
+class RestoreVersionRequest(BaseModel):
+    """The version the person was looking at when they pressed Restore.
+
+    Required: a restore replaces the whole deck, so one computed against a head
+    that moved after the drawer opened would silently discard whatever arrived
+    in between — last-write-wins by another name.
+    """
+
+    expected_version_id: str = Field(min_length=1)
+
+
+@router.post(
+    "/presentations/{presentation_id}/versions/{version_id}/restore",
+    response_model=ApplyTransactionResponse,
+)
+def restore_version(
+    presentation_id: str,
+    version_id: str,
+    request: RestoreVersionRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> ApplyTransactionResponse:
+    """Put the deck back to how it was at `version_id` (editor Phase 5).
+
+    A new change, not a rewind (`version_restore`): the chain keeps every version,
+    the restore is undoable, and it goes through the same applier, validation and
+    concurrency check as any edit. Editor on the deck, the right that edits it.
+    """
+    resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR
+    )
+
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "The deck changed since you opened its history. Look again before restoring.",
+                "code": "E304",
+                "expected_version_id": request.expected_version_id,
+                "current_version_id": head.version_id,
+            },
+        )
+    if version_id == head.version_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That version is the current one.")
+
+    # Refuses a version that is not in this deck's chain, with the same 404 a
+    # missing deck gets.
+    try:
+        target = store.load_presentation(session, presentation_id, at_version=version_id)
+    except store.NotFound as missing:
+        raise HTTPException(status_code=404, detail="No such version of this deck.") from missing
+    operations = version_restore.restore_operations(head.document, target.document)
+    if not operations:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That version has the same content as the current one; there is nothing to restore.",
+        )
+
+    document, inverse = apply_patch(head.document, operations)
+    if not version_restore.same_document(document, target.document):  # pragma: no cover - our bug
+        raise HTTPException(status_code=500, detail="The restore did not reproduce that version.")
+    errors = validate_document(document)
+    if errors:
+        # An old version valid under an older schema build can fail this one;
+        # say so rather than storing a deck the editor would refuse to open.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={"message": "That version no longer validates, so it cannot be restored.", "errors": errors},
+        )
+
+    risk = assess_risk(operations)
+    try:
+        result = store.commit_transaction(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            inverse_operations=inverse,
+            document=document,
+            parent_version_id=head.version_id,
+            expected_version_id=request.expected_version_id,
+            intent="Restore an earlier version",
+            source="user",
+            created_by=principal.user_id,
+            reason=f"Restored version {version_id}",
+            risk_tier=risk.tier,
+            label="Restored",
+        )
+    except store.VersionConflict as conflict:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": str(conflict),
+                "code": "E304",
+                "expected_version_id": conflict.expected,
+                "current_version_id": conflict.actual,
+            },
+        ) from conflict
+
+    return ApplyTransactionResponse(
+        transaction_id=result.transaction_id,
+        version_id=result.version_id,
+        document=result.document,
+        risk_tier=risk.tier,
+        snapshotted=result.snapshotted,
+    )

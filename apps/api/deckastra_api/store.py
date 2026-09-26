@@ -108,6 +108,7 @@ def create_presentation(
             current_version_id=version_id,
             schema_version=document["schemaVersion"],
             remote_version_id=remote_version_id,
+            slide_count=len(document.get("slides") or []),
         )
     )
     session.add(
@@ -377,13 +378,15 @@ def commit_transaction(
             advance = advance.where(Presentation.current_version_id == expected_version_id)
         changed = session.execute(advance.values(
             current_version_id=version_id, title=document["metadata"]["title"],
+            # Copied like the title, so a deck list never replays a deck to count.
+            slide_count=len(document.get("slides") or []),
         ).execution_options(synchronize_session=False))
         if changed.rowcount != 1:
             actual = session.scalar(select(Presentation.current_version_id).where(
                 Presentation.id == presentation_id,
             ))
             raise VersionConflict(expected_version_id or parent_version_id, actual)
-    session.expire(presentation, ["current_version_id", "title"])
+    session.expire(presentation, ["current_version_id", "title", "slide_count"])
 
     return CommitResult(
         document=document,

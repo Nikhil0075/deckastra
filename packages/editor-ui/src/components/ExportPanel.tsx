@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { ExportJob, ExportReport, ExportWarning } from "@deckastra/workspace-contracts";
+import { commitFocusedDraft } from "../lib/drafts";
+import { Button, StatusChip } from "../ui";
 
 /**
  * Exporting, and reading the report before the file (doc 04 §32.2).
@@ -19,13 +20,37 @@ import type { ExportJob, ExportReport, ExportWarning } from "@deckastra/workspac
  * act on; a red banner would train the user to ignore the one that matters.
  */
 
+type Kind = "pdf" | "pptx";
+
 type State =
   | { phase: "idle" }
-  | { phase: "running"; kind: "pdf" | "pptx"; job?: ExportJob }
+  | { phase: "saving"; kind: Kind }
+  | { phase: "running"; kind: Kind; job?: ExportJob }
   | { phase: "ready"; job: ExportJob }
+  | { phase: "unsaved"; kind: Kind }
   | { phase: "failed"; message: string; job?: ExportJob };
 
-export function ExportPanel({ presentationId }: { presentationId: string }) {
+/**
+ * The open editor, as an export needs it.
+ *
+ * An export renders what the service has stored, and the editor saves on a
+ * debounce — so without this an edit made a moment ago, or one whose save is
+ * failing, is on screen and not in the file, and the file says it succeeded.
+ * With it, the export waits for the save queue to drain and names the version
+ * that drain was acknowledged at, so the file is the deck on screen or nothing.
+ */
+export interface ExportSaveBarrier {
+  saveNow: () => Promise<boolean>;
+  currentVersionId: () => string;
+}
+
+export interface ExportPanelProps {
+  presentationId: string;
+  /** Absent in the deck list, where no deck is open and what is stored is the deck. */
+  editor?: ExportSaveBarrier;
+}
+
+export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
   const client = useWorkspaceClient();
   const [state, setState] = useState<State>({ phase: "idle" });
   const [includeNotes, setIncludeNotes] = useState(false);
@@ -51,10 +76,30 @@ export function ExportPanel({ presentationId }: { presentationId: string }) {
     else setState({ phase: "failed", message: current.error ?? current.message ?? `Export ${current.status}.`, job: current });
   }
 
-  async function run(kind: "pdf" | "pptx") {
+  /**
+   * Export. From the editor, the save queue drains first and the export is
+   * pinned to the version it drained to. If it cannot drain (a failed save, a
+   * conflict under review) nothing starts: the person is told their latest
+   * changes would be missing and may choose, explicitly, to export the last
+   * saved version instead (`lastSaved`).
+   */
+  async function run(kind: Kind, { lastSaved = false }: { lastSaved?: boolean } = {}) {
     polling.current?.abort();
     const controller = new AbortController();
     polling.current = controller;
+
+    let expected: string | undefined;
+    if (editor && !lastSaved) {
+      // A notes draft still in its field is part of "what is on screen".
+      commitFocusedDraft();
+      setState({ phase: "saving", kind });
+      if (!(await editor.saveNow())) {
+        if (!controller.signal.aborted) setState({ phase: "unsaved", kind });
+        return;
+      }
+      if (controller.signal.aborted) return;
+      expected = editor.currentVersionId();
+    }
     setState({ phase: "running", kind });
 
     try {
@@ -65,6 +110,7 @@ export function ExportPanel({ presentationId }: { presentationId: string }) {
           include_notes: includeNotes,
           at_time: atTime,
           idempotency_key: crypto.randomUUID(),
+          ...(expected ? { expected_version_id: expected } : {}),
         },
         { signal: controller.signal },
       );
@@ -127,37 +173,31 @@ export function ExportPanel({ presentationId }: { presentationId: string }) {
     URL.revokeObjectURL(url);
   }
 
-  return (
-    <section style={{ padding: "0 16px 16px" }}>
-      <h3 style={heading}>Export</h3>
+  const busyKind = state.phase === "running" || state.phase === "saving" ? state.kind : null;
+  const busy = busyKind !== null;
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button
-          style={button}
-          disabled={state.phase === "running"}
-          onClick={() => void run("pdf")}
-        >
-          {state.phase === "running" && state.kind === "pdf" ? "Exporting…" : "PDF"}
-        </button>
-        <button
-          style={button}
-          disabled={state.phase === "running"}
-          onClick={() => void run("pptx")}
-        >
-          {state.phase === "running" && state.kind === "pptx" ? "Exporting…" : "PowerPoint"}
-        </button>
+  return (
+    // The heading comes first in the section, and CSS uppercases it: the
+    // desktop export step finds this panel by its rendered text starting
+    // "EXPORT", which is how it tells it from the Share panel.
+    <section className="dk-export">
+      <h3 className="dk-label dk-export__heading">Export</h3>
+
+      <div className="dk-export__formats">
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("pdf")}>
+          {busyKind === "pdf" ? "Exporting…" : "PDF"}
+        </Button>
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("pptx")}>
+          {busyKind === "pptx" ? "Exporting…" : "PowerPoint"}
+        </Button>
       </div>
 
-      <label style={option}>
-        <input
-          type="checkbox"
-          checked={includeNotes}
-          onChange={(event) => setIncludeNotes(event.target.checked)}
-        />
+      <label className="dk-export__option">
+        <input type="checkbox" checked={includeNotes} onChange={(event) => setIncludeNotes(event.target.checked)} />
         Include speaker notes
       </label>
 
-      <label style={option}>
+      <label className="dk-export__option">
         <input
           type="checkbox"
           checked={atTime === "initial"}
@@ -168,24 +208,48 @@ export function ExportPanel({ presentationId }: { presentationId: string }) {
         Freeze before animations run
       </label>
 
+      {state.phase === "saving" ? (
+        <p className="dk-muted" role="status">
+          Saving your latest changes first…
+        </p>
+      ) : null}
+
+      {state.phase === "unsaved" ? (
+        <div className="dk-export__block" data-testid="export-unsaved">
+          <p className="dk-export__error" role="alert">
+            Your latest changes have not saved, so an export now would leave them out. Nothing was exported.
+          </p>
+          <Button size="sm" variant="secondary" onClick={() => void run(state.kind, { lastSaved: true })}>
+            Export the last saved version
+          </Button>
+        </div>
+      ) : null}
+
       {state.phase === "failed" ? (
-        <div style={{ marginTop: 10 }}>
-          <p style={{ ...muted, color: "var(--danger)" }}>{state.message}</p>
+        <div className="dk-export__block">
+          <p className="dk-export__error" role="alert">
+            {state.message}
+          </p>
           {state.job && ["failed", "cancelled"].includes(state.job.status) ? (
-            <button style={{ ...button, marginTop: 8 }} onClick={() => void retry(state.job!)}>Retry</button>
+            // A retry renders the version the job was pinned to, which may be
+            // older than the deck now. The label says so; PDF or PowerPoint
+            // above exports the current deck.
+            <Button size="sm" variant="secondary" onClick={() => void retry(state.job!)}>
+              Retry this version
+            </Button>
           ) : null}
         </div>
       ) : null}
 
       {state.phase === "running" && state.job ? (
-        <div style={{ marginTop: 10 }}>
-          <progress value={state.job.progress} max={1} style={{ width: "100%" }} />
-          <p style={{ ...muted, marginTop: 5 }}>
+        <div className="dk-export__block">
+          <progress className="dk-export__progress" value={state.job.progress} max={1} aria-label="Export progress" />
+          <p className="dk-muted" role="status">
             {state.job.message ?? state.job.stage ?? "Export queued…"}
           </p>
-          <button style={{ ...button, marginTop: 8 }} onClick={() => void cancel(state.job!)}>
+          <Button size="sm" variant="secondary" onClick={() => void cancel(state.job!)}>
             Cancel
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -205,30 +269,29 @@ function Ready({
   const warnings = report?.warnings ?? [];
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <p style={{ ...muted, marginBottom: 8 }}>
-        {report?.slideCount ?? 0} slide{report?.slideCount === 1 ? "" : "s"} ·{" "}
-        {Math.round(job.bytes / 1024)} KB
+    // The version travels on the element so the desktop harness can check the
+    // file is of the deck that was on screen (audit UI-01).
+    <div className="dk-export__block" data-export-version={job.version_id ?? undefined}>
+      <p className="dk-muted">
+        {report?.slideCount ?? 0} slide{report?.slideCount === 1 ? "" : "s"} · {Math.round(job.bytes / 1024)} KB
       </p>
 
       {/* The report first, the button second. That order is doc 04 §32.2's
           requirement, not a layout preference. */}
       {warnings.length === 0 ? (
-        <p style={{ ...muted, color: "var(--accent)" }}>
-          Nothing was degraded — this file carries everything on the deck.
-        </p>
+        <p className="dk-muted">Nothing was degraded — this file carries everything on the deck.</p>
       ) : (
-        <details open style={{ marginBottom: 10 }}>
-          <summary style={{ ...muted, cursor: "pointer" }}>
+        <details open className="dk-export__report">
+          <summary className="dk-export__summary">
             {warnings.length} thing{warnings.length === 1 ? "" : "s"} changed to fit this format
           </summary>
-          <ul style={{ listStyle: "none", padding: 0, margin: "8px 0 0" }}>
+          <ul className="dk-export__warnings">
             {warnings.map((warning) => (
-              <li key={`${warning.slideId}${warning.feature}${warning.action}`} style={warningRow}>
+              <li key={`${warning.slideId}${warning.feature}${warning.action}`} className="dk-export__warning">
                 {/* The action, not the feature name: "unsupported" tells a reader
                     nothing, "rasterized" tells them the text is no longer
-                    selectable. */}
-                <span style={{ ...pill, color: colourFor(warning.action) }}>{warning.action}</span>
+                    selectable. Dropped is the one to go and look for. */}
+                <StatusChip tone={warning.action === "dropped" ? "danger" : "neutral"}>{warning.action}</StatusChip>
                 <span>{warning.message}</span>
               </li>
             ))}
@@ -237,73 +300,16 @@ function Ready({
       )}
 
       {report?.metricsEstimated ? (
-        <p style={{ ...muted, color: "var(--warning)" }}>
-          Some text was measured by estimate rather than by a browser, so line
-          breaks in this file may differ slightly from the editor.
+        <p className="dk-export__note">
+          Some text was measured by estimate rather than by a browser, so line breaks in this file may differ slightly
+          from the editor.
         </p>
       ) : null}
 
-      <button style={{ ...button, marginTop: 10 }} onClick={() => void onDownload(job)}>
+      <Button size="sm" variant="primary" icon="download" onClick={() => void onDownload(job)}>
         Download {job.filename}
-      </button>
+      </Button>
     </div>
   );
 }
 
-function colourFor(action: ExportWarning["action"]): string {
-  // Dropped is the only one a reader has to look for in the file; the rest are
-  // things they should know about and need not act on.
-  return action === "dropped" ? "var(--warning)" : "var(--fg-subtle)";
-}
-
-const heading: CSSProperties = {
-  fontSize: 11,
-  letterSpacing: 1.4,
-  textTransform: "uppercase",
-  color: "var(--fg-subtle)",
-  margin: "0 0 10px",
-};
-
-const button: CSSProperties = {
-  background: "var(--surface-alt)",
-  border: "1px solid var(--border)",
-  color: "var(--fg)",
-  borderRadius: 8,
-  padding: "8px 14px",
-  fontSize: 13,
-  fontWeight: 600,
-};
-
-const option: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-  fontSize: 12,
-  color: "var(--fg-muted)",
-  marginBottom: 5,
-};
-
-const warningRow: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "baseline",
-  fontSize: 12,
-  color: "var(--fg-muted)",
-  marginBottom: 6,
-};
-
-const pill: CSSProperties = {
-  flex: "0 0 auto",
-  border: "1px solid var(--border)",
-  borderRadius: 999,
-  padding: "1px 7px",
-  fontSize: 10,
-  textTransform: "uppercase",
-  letterSpacing: 0.4,
-};
-
-const muted: CSSProperties = {
-  fontSize: 12,
-  color: "var(--fg-subtle)",
-  margin: 0,
-};

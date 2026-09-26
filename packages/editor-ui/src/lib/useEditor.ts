@@ -11,7 +11,8 @@ import {
 import { History, applyPatch, type EditCommand } from "@deckastra/transactions";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { isWorkspaceError, type DocumentRead } from "@deckastra/workspace-contracts";
-import { openRecoveryJournal, type EditorRecovery, type RecoveryCopy, type RecoveryJournal } from "./editor-recovery";
+import { closeApproved, registerCloseParticipant } from "./close-barrier";
+import { openRecoveryJournal, type EditorRecovery, type RecoveryCopy, type RecoveryJournal, type RecoveryPointerStore } from "./editor-recovery";
 import { reconcileDocuments, reconciliationPatch, type ConflictReview, type ConflictChoice } from "./reconcile";
 import {
   EMPTY_SELECTION,
@@ -89,6 +90,15 @@ export interface EditorApi {
    */
   saveNow: () => Promise<boolean>;
   /**
+   * Register a field that holds a draft outside the document — the speaker
+   * notes, which commit after a pause in typing. `flush` must apply the draft
+   * synchronously through `apply`. Every caller of `saveNow`, and every close,
+   * runs the registered flushes first, so "save" and "close" mean the words on
+   * screen and not only the words that had reached the document (final package
+   * review, item 01). Returns the function that unregisters it.
+   */
+  registerDraft: (flush: () => void) => () => void;
+  /**
    * The version this editor is showing, read at call time.
    *
    * For anything that has to tell the server *what the user was looking at* —
@@ -114,6 +124,19 @@ export interface EditorApi {
    * check that makes a deferred undo safe (doc 04 §29.3).
    */
   undoExternalChange: () => Promise<{ ok: boolean; message?: string }>;
+  /**
+   * Put the deck back to an earlier version (editor Phase 5).
+   *
+   * Drains the save queue first and stops if it cannot: a queued edit is
+   * addressed against the version it was authored on, and the restore
+   * supersedes that version. Local undo is cleared on success, because its
+   * inverses were computed against a document that is no longer on screen.
+   */
+  restoreVersion: (versionId: string) => Promise<{ ok: boolean; message?: string }>;
+  /** The restore made here, while it is still the latest thing that happened. */
+  restoredVersion: RestoredVersion | null;
+  /** Undo that restore through the server, where its inverse was computed. */
+  undoRestore: () => Promise<{ ok: boolean; message?: string }>;
   recoveryReady: boolean;
   recoveryCopies: RecoveryCopy[];
   refreshRecoveryCopies: () => Promise<void>;
@@ -134,6 +157,15 @@ export interface ExternalChange {
   at: number;
 }
 
+/** A restore this editor made from the version history (editor Phase 5). */
+export interface RestoredVersion {
+  /** The version that was brought back. */
+  versionId: string;
+  /** The transaction the restore committed; reverting it is the undo. */
+  transactionId: string;
+  at: number;
+}
+
 export interface UseEditorInput {
   initialDocument: PresentationDocument;
   presentationId: string;
@@ -143,6 +175,12 @@ export interface UseEditorInput {
    * it off. See the effect that uses it for why an editor has to ask at all.
    */
   watchHeadMs?: number;
+  /**
+   * Where this editor remembers its recovery journal (`editor-recovery.ts`).
+   * The desktop passes `local`, so a note that could not be saved before the app
+   * closed is replayed on the next launch the way a reload replays it.
+   */
+  recoveryPointer?: RecoveryPointerStore;
 }
 
 export function useEditor(input: UseEditorInput): EditorApi {
@@ -156,6 +194,7 @@ export function useEditor(input: UseEditorInput): EditorApi {
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [recoveryCopies, setRecoveryCopies] = useState<RecoveryCopy[]>([]);
   const [externalChange, setExternalChange] = useState<ExternalChange | null>(null);
+  const [restoredVersion, setRestoredVersion] = useState<RestoredVersion | null>(null);
   const [, forceRender] = useState(0);
 
   const history = useRef(new History()).current;
@@ -185,7 +224,12 @@ export function useEditor(input: UseEditorInput): EditorApi {
   const journal = useRef<RecoveryJournal | null>(null);
   const recoveryBusy = useRef(true);
 
-  const persistRecovery = useCallback(() => {
+  /**
+   * Write the recovery journal. Returns whether it is now holding the current
+   * work — a close that cannot save has nothing else, so "we tried" is not an
+   * answer anything may act on (recheck of item 01).
+   */
+  const persistRecovery = useCallback((): boolean => {
     try {
       const operations = [...(inFlight.current?.operations ?? []), ...pending.current.operations];
       const labels = [...(inFlight.current?.labels ?? []), ...pending.current.labels];
@@ -198,8 +242,10 @@ export function useEditor(input: UseEditorInput): EditorApi {
           format: 1, versionId: versionId.current, document: documentRef.current, operations, labels,
         });
       }
+      return true;
     } catch {
       setSave({ status: "error", message: "Browser recovery storage is unavailable. Keep this page open until your edits are saved." });
+      return false;
     }
   }, [input.presentationId]);
 
@@ -343,6 +389,37 @@ export function useEditor(input: UseEditorInput): EditorApi {
     [flush, persistRecovery],
   );
 
+  // Fields holding a draft outside the document (see `registerDraft`).
+  const drafts = useRef(new Set<() => void>());
+  const registerDraft = useCallback((flushDraft: () => void) => {
+    drafts.current.add(flushDraft);
+    return () => {
+      drafts.current.delete(flushDraft);
+    };
+  }, []);
+  /** Hand over every draft. Returns false if any field could not — its words
+   * are then in no document and no journal, which a close must not call safe. */
+  const runDrafts = useCallback((): boolean => {
+    let all = true;
+    for (const flushDraft of [...drafts.current]) {
+      try {
+        flushDraft();
+      } catch {
+        // One field failing to hand over its draft must not stop the others,
+        // or the save that follows — but it is not a clean close either.
+        all = false;
+      }
+    }
+    return all;
+  }, []);
+  // What outside callers get as `saveNow`: drafts first, then the queue. The
+  // debounced autosave calls `flush` directly and never runs drafts — a timer
+  // must not commit a sentence someone is in the middle of typing.
+  const saveNow = useCallback(() => {
+    runDrafts();
+    return flush();
+  }, [flush, runDrafts]);
+
   const loadRecovered = useCallback((recovered: EditorRecovery) => {
       pending.current = { operations: recovered.operations, labels: recovered.labels };
       documentRef.current = recovered.document;
@@ -358,8 +435,14 @@ export function useEditor(input: UseEditorInput): EditorApi {
       } else {
         adoptionConflict.current = false;
         setSave({ status: "pending" });
+        // Same base: these are exactly the operations the last session was about
+        // to send, so they go through the ordinary autosave as though just made.
+        // Left pending, a note journalled at quit sat unsaved until the next edit
+        // happened to push it (final package review, item 01).
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => void flush(), AUTOSAVE_DEBOUNCE_MS);
       }
-  }, [history]);
+  }, [flush, history]);
 
   const refreshRecoveryCopies = useCallback(async () => {
     if (journal.current) setRecoveryCopies(await journal.current.copies());
@@ -375,7 +458,7 @@ export function useEditor(input: UseEditorInput): EditorApi {
         // it acquires ownership. Do not let it steal the reload pointer.
         await Promise.resolve();
         if (canceled) return;
-        owned = await openRecoveryJournal(input.presentationId);
+        owned = await openRecoveryJournal(input.presentationId, { pointer: input.recoveryPointer });
         if (canceled) { owned.close(); return; }
         journal.current = owned;
         const recovered = owned.read();
@@ -408,7 +491,7 @@ export function useEditor(input: UseEditorInput): EditorApi {
       if (activeDrain.current) void activeDrain.current.finally(close);
       else close();
     };
-  }, [input.presentationId, loadRecovered, refreshRecoveryCopies]);
+  }, [input.presentationId, input.recoveryPointer, loadRecovered, refreshRecoveryCopies]);
 
   const recoverCopy = useCallback(async (key: string) => {
     if (recoveryBusy.current || !journal.current) throw new Error("Recovery storage is not ready.");
@@ -526,8 +609,15 @@ export function useEditor(input: UseEditorInput): EditorApi {
   // data. Never start a competing unload request with a stale expected version.
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      // A draft still in its field first: without this, a note typed a moment
+      // before closing was never in the queue this handler looks at.
+      runDrafts();
       if (!pending.current.operations.length && !inFlight.current && !adoptionConflict.current) return;
       persistRecovery();
+      // The desktop prepared this close already (`close-barrier.ts`): the work is
+      // saved or journalled, and objecting would make Electron cancel the close
+      // with no dialog — a window that will not shut.
+      if (closeApproved()) return;
       event.preventDefault();
       event.returnValue = "";
       if (!flushing.current && !adoptionConflict.current) void flush();
@@ -537,7 +627,30 @@ export function useEditor(input: UseEditorInput): EditorApi {
       window.removeEventListener("beforeunload", onBeforeUnload);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [flush, persistRecovery]);
+  }, [flush, persistRecovery, runDrafts]);
+
+  // Asked before the shell closes this window or quits (`close-barrier.ts`):
+  // drafts into the document, the journal written *before* the network is
+  // tried, then a save. What did not reach the service is in the journal.
+  useEffect(
+    () =>
+      registerCloseParticipant(async (timeoutMs) => {
+        const drafted = runDrafts();
+        const journalled = persistRecovery();
+        // Bounded here rather than only outside, so a save that never returns
+        // can still be reported honestly as "the journal holds it".
+        const saved = await Promise.race([
+          flush(),
+          new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), timeoutMs)),
+        ]);
+        if (saved === true && drafted) return "clean";
+        // The journal is the fallback, and only if it actually took the work.
+        // A draft that could not be handed over is in neither place.
+        if (journalled && drafted && persistRecovery()) return "journalled";
+        return "blocked";
+      }),
+    [flush, persistRecovery, runDrafts],
+  );
 
   const slide = document.slides[slideIndex];
 
@@ -719,6 +832,50 @@ export function useEditor(input: UseEditorInput): EditorApi {
     }
   }, [adoptDocument, client, externalChange, flush, history, input.presentationId]);
 
+  const restoreVersion = useCallback(
+    async (target: string): Promise<{ ok: boolean; message?: string }> => {
+      if (!(await flush())) {
+        return { ok: false, message: "Your edits are not saved yet, so nothing was restored." };
+      }
+      try {
+        const restored = await client.documents.restoreVersion(input.presentationId, target, versionId.current);
+        if (!adoptDocument(restored.document, restored.version_id)) {
+          return { ok: false, message: "You edited while restoring; your edits were kept and nothing on screen changed." };
+        }
+        history.clear();
+        setExternalChange(null);
+        setRestoredVersion({ versionId: target, transactionId: restored.transaction_id, at: Date.now() });
+        setSave({ status: "saved", at: Date.now() });
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : "That version could not be restored." };
+      }
+    },
+    [adoptDocument, client, flush, history, input.presentationId],
+  );
+
+  const undoRestore = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
+    const restore = restoredVersion;
+    if (!restore) return { ok: false, message: "There is no restore to undo." };
+    if (!(await flush())) {
+      return { ok: false, message: "Save your own edits first; they are not saved yet." };
+    }
+    try {
+      // The server refuses when a later edit would be disturbed — the same
+      // deferred-undo rule an agent's change gets (doc 04 §29.3).
+      const reverted = await client.agent.revert(input.presentationId, restore.transactionId);
+      if (!adoptDocument(reverted.document, reverted.version_id)) {
+        return { ok: false, message: "Your local work is unsaved; reconcile it first." };
+      }
+      history.clear();
+      setRestoredVersion(null);
+      setSave({ status: "saved", at: Date.now() });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "The restore could not be undone." };
+    }
+  }, [adoptDocument, client, flush, history, input.presentationId, restoredVersion]);
+
   const reviewConflict = useCallback(async (): Promise<ConflictReview> => {
     // Finish any earlier acknowledgement before capturing the local base. While
     // the review is open, new edits remain local and invalidate that review.
@@ -779,6 +936,9 @@ export function useEditor(input: UseEditorInput): EditorApi {
     currentVersionId: () => versionId.current,
     externalChange,
     undoExternalChange,
+    restoreVersion,
+    restoredVersion,
+    undoRestore,
     slideIndex,
     setSlideIndex,
     selection,
@@ -790,7 +950,8 @@ export function useEditor(input: UseEditorInput): EditorApi {
     canUndo: history.canUndo,
     canRedo: history.canRedo,
     save,
-    saveNow: flush,
+    saveNow,
+    registerDraft,
     recoveryReady,
     recoveryCopies,
     refreshRecoveryCopies,

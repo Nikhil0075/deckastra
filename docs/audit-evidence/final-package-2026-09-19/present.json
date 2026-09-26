@@ -1,0 +1,46 @@
+{
+  "step": "present",
+  "startedAt": "2026-09-19T18:27:43.528Z",
+  "packaged": false,
+  "versions": {
+    "electron": "33.4.11",
+    "chrome": "130.0.6723.191",
+    "node": "20.18.3"
+  },
+  "msToWindow": 3708,
+  "console": [],
+  "cspViolations": [],
+  "enteredPresent": true,
+  "openedSecondScreen": true,
+  "windowCountBefore": 1,
+  "windowCountAfter": 2,
+  "presenterWindowOpened": true,
+  "presenter": {
+    "title": "Deckastra",
+    "origin": "deckastra://app",
+    "secureContext": true,
+    "storage": "ok",
+    "webLocks": "object",
+    "broadcastChannel": "function",
+    "bridge": "object",
+    "elements": 0,
+    "canvas": false,
+    "status": [],
+    "buttons": [],
+    "network": "blocked: Failed to fetch",
+    "bodyText": "Opening…"
+  },
+  "ok": true,
+  "memory": {
+    "processes": 5,
+    "totalMb": 497.9,
+    "byTypeMb": {
+      "Browser": 117.2,
+      "GPU": 143.1,
+      "Utility": 47.4,
+      "Tab": 190.1
+    }
+  },
+  "serviceStopped": true,
+  "finishedAt": "2026-09-19T18:28:17.101Z"
+}

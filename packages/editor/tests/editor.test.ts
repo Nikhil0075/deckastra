@@ -17,6 +17,8 @@ import {
   copy,
   commitTransform,
   cycleSelection,
+  cycleLeavesScope,
+  commandScope,
   describeBinding,
   duplicate,
   editScope,
@@ -187,6 +189,27 @@ describe("selection", () => {
 
     state = cycleSelection(state, index, order, -1);
     expect(state.primaryId).toBe("a");
+  });
+
+  it("tab leaves the canvas past the last object instead of wrapping (no keyboard trap)", () => {
+    // In this scope the siblings are a, b, g.
+    expect(cycleLeavesScope(EMPTY_SELECTION, index, order, 1)).toBe(false);
+    expect(cycleLeavesScope(EMPTY_SELECTION, index, order, -1)).toBe(true);
+    const first = click(EMPTY_SELECTION, index, "a");
+    expect(cycleLeavesScope(first, index, order, 1)).toBe(false);
+    expect(cycleLeavesScope(first, index, order, -1)).toBe(true);
+    const last = click(EMPTY_SELECTION, index, "g");
+    expect(cycleLeavesScope(last, index, order, 1)).toBe(true);
+    expect(cycleLeavesScope(last, index, order, -1)).toBe(false);
+  });
+
+  it("only undo, redo and present act wherever focus is; the rest need the canvas", () => {
+    expect(commandScope("undo")).toBe("global");
+    expect(commandScope("redo")).toBe("global");
+    expect(commandScope("present")).toBe("global");
+    for (const command of ["cycleNext", "nudgeLeft", "delete", "selectAll", "copy", "group"] as const) {
+      expect(commandScope(command), command).toBe("canvas");
+    }
   });
 
   it("select-all respects the isolation scope and skips locked and hidden", () => {
@@ -769,7 +792,9 @@ describe("keyboard", () => {
     // an editor feels broken the first time someone writes a sentence in it.
     expect(isAllowedWhileTyping("duplicate")).toBe(false);
     expect(isAllowedWhileTyping("delete")).toBe(false);
-    expect(isAllowedWhileTyping("undo")).toBe(true);
+    // A text field's own undo and clipboard, not the deck's.
+    expect(isAllowedWhileTyping("undo")).toBe(false);
+    expect(isAllowedWhileTyping("paste")).toBe(false);
     expect(isAllowedWhileTyping("escape")).toBe(true);
   });
 

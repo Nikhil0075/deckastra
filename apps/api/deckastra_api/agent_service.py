@@ -36,7 +36,7 @@ from deckastra_agents import (
 )
 from deckastra_agents.events import Emitter, RedisEmitter, fan_out
 from deckastra_agents.router import PROVIDER_STUB, selected_provider
-from deckastra_agents.runner import resume_generation, run_generation
+from deckastra_agents.runner import paused_state, resume_generation, run_generation
 from deckastra_agents.tools.presentation import register_presentation_tools
 from deckastra_agents.tools.repository import register_repository_tools
 from sqlalchemy.orm import Session
@@ -188,7 +188,52 @@ class AgentOutcome:
     source: str
 
 
+#: One saver per database URL. Each saver holds a connection open, and opening a
+#: new one for every run and every status read leaked a connection (and on
+#: Windows, a file handle on the checkpoint database) per call. Keyed by URL so a
+#: process that changes `DATABASE_URL` — the test suite does — gets its own.
+_SAVERS: dict[str, Any] = {}
+#: The context managers the savers came from, kept for as long as the savers.
+#: `from_conn_string` is a generator-based context manager: once nothing refers
+#: to it, the generator is collected, its `finally` closes the connection, and
+#: the saver it handed out answers "Cannot operate on a closed database" on its
+#: first use. That was true of every saver this module opened until checkpoints
+#: were first used for real (editor Phase 6); nothing had paused a run yet.
+_SAVER_CONTEXTS: list[Any] = []
+
+
 def _checkpointer() -> Any | None:
+    url = os.environ.get("DATABASE_URL", "")
+    if url in _SAVERS:
+        return _SAVERS[url]
+    saver = _open_checkpointer()
+    if saver is not None:
+        _SAVERS[url] = saver
+    return saver
+
+
+def checkpoints_available() -> bool:
+    """Whether a run on this server can pause at the story checkpoint.
+
+    Asked for the account's capabilities, so it must be cheap and must not open
+    anything: the answer is the configuration and the installed savers. The
+    in-memory SQLite the test suite uses cannot hold a checkpoint across
+    connections, so it answers no, as `_open_checkpointer` does.
+    """
+    url = os.environ.get("DATABASE_URL", "")
+    try:
+        if url.startswith("postgresql"):
+            import langgraph.checkpoint.postgres  # noqa: F401
+            return True
+        if url.startswith("sqlite") and _sqlite_checkpoint_path(url) is not None:
+            import langgraph.checkpoint.sqlite  # noqa: F401
+            return True
+    except ImportError:
+        return False
+    return False
+
+
+def _open_checkpointer() -> Any | None:
     """The durable checkpointer, matched to whichever database is configured.
 
     The human checkpoint before the story is approved is a *product* feature, not
@@ -214,6 +259,7 @@ def _checkpointer() -> Any | None:
             # psycopg wants its own URL, without SQLAlchemy's driver suffix.
             saver = PostgresSaver.from_conn_string(url.replace("+psycopg", ""))
             checkpointer = saver.__enter__()
+            _SAVER_CONTEXTS.append(saver)
             checkpointer.setup()
             return checkpointer
         except Exception as exc:  # noqa: BLE001 - a run without checkpoints beats no run
@@ -236,6 +282,7 @@ def _checkpointer() -> Any | None:
         try:
             saver = SqliteSaver.from_conn_string(str(path))
             checkpointer = saver.__enter__()
+            _SAVER_CONTEXTS.append(saver)
             checkpointer.setup()
             return checkpointer
         except Exception as exc:  # noqa: BLE001
@@ -510,10 +557,16 @@ def run_deck_generation(
         )
         current.set_attribute(telemetry.OUTCOME, result.status)
 
+    return _outcome(result, produced)
+
+
+def _outcome(result: RunResult, produced: dict[str, Any]) -> AgentOutcome:
+    """A run's result as the caller persists it: the same for a run that went
+    straight through and one resumed after its outline was approved."""
     operations = result.operations
     assessment = assess_risk(operations) if operations else assess_risk([])
     final_document = produced.get("document")
-    if final_document is not None:
+    if final_document is not None and result.status != "awaiting_approval":
         # Proposal metadata is appended after composition. Persist the final
         # validated proposal, including extensions, rather than its earlier
         # composer snapshot. Keep the composer's generated document metadata.
@@ -534,29 +587,62 @@ def run_deck_generation(
     )
 
 
-def resume(run_id: str, decision: dict[str, Any], request: GenerateRequest, document: dict[str, Any]) -> RunResult:
-    """Continue a run parked at the story checkpoint."""
+def paused_run(run_id: str) -> dict[str, Any] | None:
+    """What a run parked at the story checkpoint is waiting on, or None.
+
+    Read from the checkpoint itself rather than from anything held in memory, so
+    it answers after a reload and in a different process from the one that
+    started the run.
+    """
+    checkpointer = _checkpointer()
+    if checkpointer is None:
+        return None
+    return paused_state(checkpointer, run_id)
+
+
+def resume_deck_generation(
+    run_id: str,
+    decision: dict[str, Any],
+    *,
+    memory: ProjectMemory | None = None,
+) -> tuple[AgentOutcome, GenerateRequest]:
+    """Continue a deck generation parked at the story checkpoint.
+
+    The request and the starting document come from the parked state, not from
+    the caller: the run is resumed as it was started, and a caller cannot swap
+    the brief or the theme between the outline being approved and the deck
+    being composed from it.
+    """
     checkpointer = _checkpointer()
     if checkpointer is None:
         raise RuntimeError(
-            "This run cannot be resumed: durable checkpoints need PostgreSQL, and "
-            "this server is not using it."
+            "This run cannot be resumed: this server has no durable checkpoints."
         )
+    values = paused_state(checkpointer, run_id)
+    if values is None:
+        raise ValueError("This run is not waiting at a checkpoint.")
 
+    request = GenerateRequest.model_validate(values.get("request") or {})
+    document = values.get("document") or {}
     checkpoint_theme = document.get("theme")
     checkpoint_theme_id = (document.get("metadata") or {}).get("themeId")
+    produced: dict[str, Any] = {}
+    emitter = _emitter(run_id)
     run = AgentRun(
         client=telemetry.TracedModelClient(model_server.build_client(fallback=lambda: _stub_answers(request)), run_id),
         registry=build_registry(lambda: document),
         compose=_composer(
             request,
-            {},
+            produced,
             theme_definition=deepcopy(checkpoint_theme) if isinstance(checkpoint_theme, dict) else None,
             theme_id=str(checkpoint_theme_id) if checkpoint_theme_id else None,
         ),
+        memory=memory,
+        emit=fan_out(emitter) if emitter else None,
         checkpointer=checkpointer,
+        human_checkpoint=True,
     )
     with telemetry.span("agent.run", **{telemetry.RUN_ID: run_id}) as current:
         result = resume_generation(run, run_id, decision)
         current.set_attribute(telemetry.OUTCOME, result.status)
-        return result
+    return _outcome(result, produced), request

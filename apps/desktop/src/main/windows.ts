@@ -2,6 +2,8 @@ import { join } from "node:path";
 import { BrowserWindow, shell } from "electron";
 
 import { APP_ORIGIN } from "./protocol";
+import { guardClose } from "./close-guard";
+import { registerAppWindow } from "./ipc-guard";
 
 /**
  * Window creation, and the security posture that goes with it.
@@ -52,7 +54,12 @@ export function createWindow(options: WindowOptions = {}): BrowserWindow {
   });
 
   harden(window);
+  // Privileged requests are answered only for windows this app opened (item 34).
+  registerAppWindow(window);
   void window.loadURL(`${APP_ORIGIN}/index.html${options.search ?? ""}`);
+  // Every app window holds its close until its page has saved or journalled
+  // its work (item 01). A presenter page answers at once.
+  guardClose(window);
   return window;
 }
 

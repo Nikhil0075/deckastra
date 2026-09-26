@@ -18,15 +18,16 @@ import logging
 import os
 from typing import Any, Literal
 
-from deckastra_agents import ProjectMemory, RunBudget, ToolRegistry, initial_state
+from deckastra_agents import ProjectMemory, RunBudget, StubClient, ToolRegistry, initial_state
 from deckastra_agents.nodes._common import NodeContext
+from deckastra_agents.nodes.author import author as author_node
 from deckastra_agents.nodes.edit import edit as edit_node
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import agent_service, agent_store, model_server, proposals, store
+from . import agent_service, agent_store, author_service, model_server, proposals, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import Presentation, TransactionRow
 from .db.session import get_session
@@ -171,6 +172,12 @@ def agent_edit(
         client=client, budget=budget, emit=lambda event: None, registry=registry, memory=memory
     )
 
+    # A real model writes the change itself, the way an external agent does
+    # over MCP; the stub keeps the four-verb edit, which is what it exists to
+    # exercise without a key.
+    if not isinstance(client, StubClient):
+        return _author_edit(session, presentation_id, request, principal, loaded, run_row, state, ctx, budget)
+
     try:
         produced = edit_node(state, ctx)
     except Exception as exc:  # noqa: BLE001 - reported, never a 500 with no reason
@@ -249,6 +256,102 @@ def agent_edit(
         risk_tier=outcome["risk_tier"],
         reasons=outcome.get("reasons") or [],
         changes=reasons,
+        warnings=warnings,
+        expires_at=outcome.get("expires_at"),
+    )
+
+
+def _author_edit(
+    session: Session,
+    presentation_id: str,
+    request: AgentEditRequest,
+    principal: Principal,
+    loaded: Any,
+    run_row: Any,
+    state: Any,
+    ctx: NodeContext,
+    budget: RunBudget,
+) -> AgentEditResponse:
+    """The Ask panel, with the reach an external agent has (`nodes/author.py`).
+
+    The agent writes operations; they are applied to a copy and validated here,
+    and a refusal goes back to the agent with the reason until it converges or
+    runs out of attempts. Only a change that applies and validates becomes a
+    proposal — and from there it is the same proposal an external agent's is:
+    risk computed from the operations, a large change held for the person.
+    """
+    images = author_service.workspace_images(session, presentation_id)
+    feedback: str | None = None
+    operations: list[dict[str, Any]] = []
+    plan: dict[str, Any] = {}
+    warnings: list[str] = []
+
+    def finish_none(message: str) -> AgentEditResponse:
+        agent_store.finish_run(
+            session, run_row, status="completed", stage="author", warnings=warnings, budget=budget.report()
+        )
+        return AgentEditResponse(
+            run_id=run_row.id, status="completed", outcome="none", refusal=message, warnings=warnings
+        )
+
+    try:
+        for attempt in range(1, author_service.MAX_ATTEMPTS + 1):
+            produced = author_node(state, ctx, images=images, feedback=feedback)
+            plan = produced.get("author_plan") or {}
+            if plan.get("refusal") and not plan.get("operations"):
+                return finish_none(plan["refusal"])
+            try:
+                operations = author_service.materialise(plan.get("operations") or [], loaded.document, images)
+                problems = author_service.check(loaded.document, operations)
+            except ValueError as error:
+                problems = [str(error)]
+            if not problems:
+                break
+            feedback = "\n".join(f"- {problem}" for problem in problems[:12])
+            if attempt == author_service.MAX_ATTEMPTS:
+                warnings.append(f"Refused after {attempt} attempts: {problems[0]}")
+                return finish_none(
+                    "The agent could not write a valid change for this request. "
+                    f"The last problem was: {problems[0]}"
+                )
+    except Exception as exc:  # noqa: BLE001 - reported, never a 500 with no reason
+        logger.exception("Agent edit failed")
+        agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(exc)}])
+        raise HTTPException(status_code=502, detail=f"The edit agent failed: {exc}") from exc
+
+    summary = str(plan.get("summary") or request.instruction)[:1000]
+    try:
+        outcome = proposals.create_proposal(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            intent=request.instruction[:500],
+            created_by=principal.user_id,
+            run_id=run_row.id,
+            agent_id="editor",
+            reason=summary,
+            confidence=None,
+            user_instruction=request.instruction,
+            expected_version_id=loaded.version_id,
+        )
+    except proposals.ProposalError as error:
+        agent_store.finish_run(session, run_row, status="failed", errors=[{"message": str(error)}])
+        raise HTTPException(status_code=409, detail={"message": str(error), "code": error.code}) from error
+
+    agent_store.finish_run(
+        session, run_row, status="completed", stage="author", warnings=warnings, budget=budget.report()
+    )
+    return AgentEditResponse(
+        run_id=run_row.id,
+        status="completed",
+        outcome=outcome["status"],
+        transaction_id=outcome["transaction_id"],
+        version_id=outcome.get("version_id"),
+        document=outcome.get("document"),
+        preview=outcome.get("preview"),
+        risk_tier=outcome["risk_tier"],
+        reasons=outcome.get("reasons") or [],
+        changes=[{"element_id": "", "change": "author", "reason": summary}],
         warnings=warnings,
         expires_at=outcome.get("expires_at"),
     )
@@ -433,6 +536,47 @@ def list_proposals(
         session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.VIEWER
     )
     return [_summary(row) for row in proposals.pending(session, presentation_id)]
+
+
+class ProposalDetail(ProposalSummary):
+    """One pending change with its operations (editor Phase 6).
+
+    The panel shows a proposal as Before and After pictures. It draws both from
+    the deck on screen with the editor's own renderer: "after" is the deck the
+    person is looking at with this change applied, which is what approving
+    means. For that it needs the operations, which the list leaves out so a poll
+    stays small.
+    """
+
+    operations: list[dict[str, Any]]
+    #: The version the change was written against. When the head has moved past
+    #: it the change may still apply, but it is not the change as written, and
+    #: approval asks for a fresh look.
+    base_version_id: str | None
+
+
+@router.get(
+    "/presentations/{presentation_id}/proposals/{proposal_id}", response_model=ProposalDetail
+)
+def get_proposal(
+    presentation_id: str,
+    proposal_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> ProposalDetail:
+    resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.VIEWER
+    )
+    row = session.get(TransactionRow, proposal_id)
+    # Pending only, and only this deck's: an applied transaction is history,
+    # read through the version routes, and another deck's is not this caller's.
+    if row is None or row.presentation_id != presentation_id or row.status != "pending":
+        raise HTTPException(status_code=404, detail="No such pending change.")
+    return ProposalDetail(
+        **_summary(row).model_dump(),
+        operations=list(row.operations_json or []),
+        base_version_id=row.parent_version_id,
+    )
 
 
 class ApprovalRequest(BaseModel):

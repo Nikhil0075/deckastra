@@ -1,0 +1,4 @@
+{
+  "_about": "Release-owner decisions for bundled components that ship no licence text. Key: name@version as notices.mjs prints it. Value: what was decided and by whom. A release build (DECKASTRA_RELEASE=1) fails while any such component has no entry here. Empty until a person reviews them.",
+  "withoutText": {}
+}

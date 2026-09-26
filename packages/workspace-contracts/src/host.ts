@@ -53,3 +53,32 @@ export interface PresenterWindow {
   readonly closed: boolean;
   close(): void;
 }
+
+/**
+ * A command from the shell's own chrome — the desktop's application menu — to
+ * the editor or the deck list (editor Phase 8).
+ *
+ * A closed set of names, never a payload: the menu says *what* was chosen and the
+ * page decides whether it applies here (Undo on the deck list is nothing). The
+ * editor still owns every keyboard shortcut it already had, so a menu item and
+ * its key reach one handler rather than two.
+ */
+export type HostCommand =
+  | "new-deck"
+  | "generate-deck"
+  | "all-decks"
+  | "undo"
+  | "redo"
+  | "present"
+  | "version-history"
+  | "mode-design"
+  | "mode-ai"
+  | "mode-motion"
+  | "mode-code"
+  | "theme-system"
+  | "theme-light"
+  | "theme-dark"
+  | "open-intelligence";
+
+/** Subscribe to host commands; returns the unsubscribe function. */
+export type SubscribeHostCommands = (listener: (command: HostCommand) => void) => () => void;

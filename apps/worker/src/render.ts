@@ -78,6 +78,33 @@ export interface RenderResponse {
 /** Doc 04 §41.3. A render that has not finished by here is a render that hung. */
 export const RENDER_TIMEOUT_MS = 20_000;
 
+/**
+ * What each slide adds to the deadline.
+ *
+ * Generous on purpose. This is not a performance target — it is the bound that
+ * stops a wedged render holding the sole page lease forever, and a bound that
+ * fails legitimate work is worse than one that is loose. A slide costs text
+ * measurement, a scene build and a paint; 1.5 seconds is several times what any
+ * slide measured here has taken, and sixty of them still bounds an export at
+ * under two minutes.
+ */
+export const RENDER_TIMEOUT_PER_SLIDE_MS = 1_500;
+
+/**
+ * The deadline for a deck of `slides` slides (item 30).
+ *
+ * A fixed twenty seconds covered the whole of an export — lease, browser start,
+ * every slide's measurement and the render — which was ample for the five-slide
+ * fixtures and not enough for sixty slides with pictures. Measured on
+ * 2026-09-20: the first attempt exceeded it and the export succeeded only
+ * because the job retried into a warm browser, leaving a row marked `completed`
+ * carrying a deadline error.
+ */
+export function renderDeadlineFor(slides: number): number {
+  const counted = Number.isFinite(slides) && slides > 0 ? Math.floor(slides) : 1;
+  return RENDER_TIMEOUT_MS + counted * RENDER_TIMEOUT_PER_SLIDE_MS;
+}
+
 /** Doc 04 §41.4. */
 export const PREVIEW_SIZES = {
   thumbnail: { width: 320, height: 180 },

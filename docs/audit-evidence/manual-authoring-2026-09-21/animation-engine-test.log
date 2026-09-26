@@ -1,0 +1,21 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/animation-engine
+
+ ✓ tests/timeline-applies.test.ts (5 tests) 160ms
+ ✓ tests/playback.test.ts (23 tests) 148ms
+ ✓ tests/deck-acceptance.test.ts (7 tests) 35ms
+ ✓ tests/fixture.test.ts (16 tests) 40ms
+ ✓ tests/transition-fixture.test.ts (4 tests) 33ms
+ ✓ tests/presets.test.ts (28 tests) 27ms
+ ✓ tests/compile.test.ts (23 tests) 21ms
+ ✓ tests/timeline.test.ts (12 tests) 13ms
+ ✓ tests/transition-compile.test.ts (16 tests) 24ms
+ ✓ tests/transition-pairing.test.ts (10 tests) 17ms
+ ✓ tests/timeline-conflicts.test.ts (10 tests) 19ms
+ ✓ tests/timeline-authoring.test.ts (20 tests) 18ms
+
+ Test Files  12 passed (12)
+      Tests  174 passed (174)
+   Start at  00:57:52
+   Duration  15.64s (transform 2.33s, setup 0ms, collect 4.60s, tests 555ms, environment 4ms, prepare 2.39s)
+

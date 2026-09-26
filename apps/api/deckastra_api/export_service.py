@@ -528,6 +528,13 @@ def _invoke_worker(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        # UTF-8 both ways, stated. `text=True` alone means the locale's code page —
+        # cp1252 on Windows — while the exporter speaks UTF-8, so every em dash
+        # in a degradation message reached the export panel as "â€”" (found by the
+        # `handoff` acceptance step), and a non-ASCII path would reach the
+        # exporter garbled.
+        encoding="utf-8",
+        errors="replace",
         # `npx` is a shell script on Windows; without this the call fails with a
         # FileNotFoundError that says nothing about npx. A configured binary needs
         # no shell and must not get one.

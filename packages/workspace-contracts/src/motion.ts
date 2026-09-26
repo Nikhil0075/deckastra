@@ -1,3 +1,5 @@
+import type { PatchOperation } from "@deckastra/presentation-schema";
+
 /**
  * Motion, as an agent may describe it (doc 03 §12, doc 04 §24).
  *
@@ -31,6 +33,8 @@ export interface MotionRequest {
   click_reveals?: number;
   intent?: string;
   client_label?: string;
+  /** Plan without proposing: nothing is written, the operations come back. */
+  dry_run?: boolean;
 }
 
 export interface MotionResult {
@@ -46,6 +50,8 @@ export interface MotionResult {
   /** What the composer left alone, and why. Never silent. */
   warnings: string[];
   refusal?: string;
+  /** A dry run's plan, against `version_id`. Absent when anything was written. */
+  operations?: PatchOperation[];
 }
 
 /**
@@ -64,6 +70,8 @@ export interface TransitionRequest {
   carry?: string[];
   intent?: string;
   client_label?: string;
+  /** Plan without proposing: nothing is written, the operations come back. */
+  dry_run?: boolean;
 }
 
 export interface TransitionResult {
@@ -77,4 +85,6 @@ export interface TransitionResult {
   paired?: number;
   warnings: string[];
   refusal?: string;
+  /** A dry run's plan, against `version_id`. Absent when anything was written. */
+  operations?: PatchOperation[];
 }

@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SlideLayout(str, Enum):
@@ -136,3 +136,50 @@ class GenerateResponse(BaseModel):
     #: The agent run that produced it. Lets a client subscribe to its events and
     #: lets the agent inspector show why each slide is the way it is.
     run_id: str | None = None
+
+
+# ------------------------------------------------------- the story checkpoint
+
+
+class OutlineSlide(BaseModel):
+    """One slide of an outline under review: its words, never its geometry."""
+
+    headline: str
+    key_message: str = ""
+    layout: str = ""
+
+
+class StoryOutline(BaseModel):
+    title: str
+    narrative_arc: str = ""
+    slides: list[OutlineSlide]
+    warnings: list[str] = Field(default_factory=list)
+
+
+class StoryDecision(BaseModel):
+    """What a person decided about the outline a run is paused on."""
+
+    action: Literal["approve", "revise", "reject"]
+    #: What to change. Required for a revision, because a revision with no note
+    #: asks the model to guess what was wrong, and it will guess the same thing.
+    note: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def _revision_has_a_note(self) -> "StoryDecision":
+        if self.action == "revise" and not self.note.strip():
+            raise ValueError("Say what to change: a revision needs a note.")
+        return self
+
+
+class ReviewedGeneration(BaseModel):
+    """A generation that stops at its outline for a person.
+
+    `awaiting_story` carries the outline and the run to resume; `completed`
+    carries the deck exactly as `/v1/generate` returns it; `rejected` carries
+    nothing, because nothing was made.
+    """
+
+    run_id: str
+    status: Literal["awaiting_story", "completed", "rejected"]
+    outline: StoryOutline | None = None
+    generation: GenerateResponse | None = None
