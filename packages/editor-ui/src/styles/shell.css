@@ -3032,3 +3032,39 @@
 .dk-styles__rename {
   flex: 1;
 }
+
+/* --- Theme: Customise (design review, 2026-09-27) ---------------------------- */
+
+.dk-customise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+}
+.dk-customise__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  margin: 0;
+  padding: var(--dk-space-2) 0 0;
+  border: 0;
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-customise__group > legend {
+  padding: 0 var(--dk-space-1) 0 0;
+}
+.dk-customise__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+}
+.dk-customise__sample {
+  color: var(--dk-ink);
+}
+.dk-gallery__preview {
+  display: block;
+  margin: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+}

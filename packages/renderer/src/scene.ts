@@ -1024,19 +1024,34 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
       banding?: string;
       borders?: string;
       headerFill?: unknown;
+      headerColor?: string;
       cellPadding?: Insets;
       compact?: boolean;
     };
   };
 
+  // The element's own style, then the theme's table style, then the defaults
+  // every table had before a theme could say anything about tables.
   const style = el.tableStyle ?? {};
+  const deck = (theme.source as { table?: {
+    headerFill?: unknown;
+    headerColor?: string;
+    borderColor?: string;
+    borders?: string;
+    banding?: string;
+    bandColor?: string;
+    cellPadding?: Insets;
+    fontSize?: number;
+  } }).table ?? {};
   const compact = style.compact === true;
+  const size = deck.fontSize ?? (compact ? 18 : 20);
 
   const typography = resolveTypography(theme, {
     fontFamily: "token:typography.bodySmall.fontFamily",
-    fontSize: compact ? 18 : 20,
+    fontSize: size,
     color: "token:colors.foreground",
   });
+  const headerFill = style.headerFill ?? deck.headerFill;
 
   return {
     kind: "table",
@@ -1070,21 +1085,21 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
     typography,
     headerTypography: resolveTypography(theme, {
       fontFamily: "token:typography.bodySmall.fontFamily",
-      fontSize: compact ? 18 : 20,
+      fontSize: size,
       fontWeight: 600,
-      color: "token:colors.foregroundMuted",
+      color: style.headerColor ?? deck.headerColor ?? "token:colors.foregroundMuted",
     }),
-    padding: style.cellPadding ?? {
+    padding: style.cellPadding ?? deck.cellPadding ?? {
       top: compact ? 6 : 10,
       right: compact ? 10 : 16,
       bottom: compact ? 6 : 10,
       left: compact ? 10 : 16,
     },
-    banding: (style.banding as TablePayload["banding"]) ?? "none",
-    bandColor: String(resolveValue(theme, "token:colors.surfaceAlt", "rgba(127,127,127,0.06)")),
-    borders: (style.borders as TablePayload["borders"]) ?? "horizontal",
-    borderColor: String(resolveValue(theme, "token:colors.border", "rgba(127,127,127,0.3)")),
-    headerFill: style.headerFill ? paintToCss(theme, style.headerFill) : undefined,
+    banding: ((style.banding ?? deck.banding) as TablePayload["banding"]) ?? "none",
+    bandColor: String(resolveValue(theme, deck.bandColor ?? "token:colors.surfaceAlt", "rgba(127,127,127,0.06)")),
+    borders: ((style.borders ?? deck.borders) as TablePayload["borders"]) ?? "horizontal",
+    borderColor: String(resolveValue(theme, deck.borderColor ?? "token:colors.border", "rgba(127,127,127,0.3)")),
+    headerFill: headerFill ? paintToCss(theme, headerFill as never) : undefined,
     emphasisFill: String(resolveValue(theme, "token:colors.surfaceAlt", "rgba(127,127,127,0.08)")),
   };
 }

@@ -185,6 +185,23 @@ export const DiagramThemeSchema = z.looseObject({
 });
 export type DiagramTheme = z.infer<typeof DiagramThemeSchema>;
 
+/**
+ * How tables look across the deck (design review, 2026-09-27). An element's own
+ * `tableStyle` still wins; this is what a table with none draws, so a deck's
+ * tables can be restyled in one place instead of table by table.
+ */
+export const TableThemeSchema = z.looseObject({
+  headerFill: PaintSchema.optional(),
+  headerColor: ColorValueSchema.optional(),
+  borderColor: ColorValueSchema.optional(),
+  borders: z.enum(["all", "horizontal", "outer", "none"]).optional(),
+  banding: z.enum(["none", "rows", "columns"]).optional(),
+  bandColor: ColorValueSchema.optional(),
+  cellPadding: InsetsSchema.optional(),
+  fontSize: FiniteNumber.positive().optional(),
+});
+export type TableTheme = z.infer<typeof TableThemeSchema>;
+
 export const ImageryThemeSchema = z.looseObject({
   treatment: z.enum(["none", "duotone", "grayscale", "tinted"]).optional(),
   duotoneColors: z.tuple([ColorValueSchema, ColorValueSchema]).optional(),
@@ -292,6 +309,7 @@ export const ThemeDefinitionSchema = z.looseObject({
   grid: GridTokensSchema,
   chart: ChartThemeSchema.optional(),
   diagram: DiagramThemeSchema.optional(),
+  table: TableThemeSchema.optional(),
   imagery: ImageryThemeSchema.optional(),
   motion: MotionThemeSchema.optional(),
   contrastPairs: z.array(ContrastPairSchema).optional(),

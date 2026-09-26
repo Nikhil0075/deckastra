@@ -557,6 +557,8 @@ export const TableStyleSchema = z.looseObject({
   banding: z.enum(["none", "rows", "columns"]).optional(),
   borders: z.enum(["all", "horizontal", "outer", "none"]).optional(),
   headerFill: CommonStyleSchema.shape.fill.optional(),
+  /** The heading row's text colour; with a header fill, so the two can be chosen together. */
+  headerColor: ColorValueSchema.optional(),
   cellPadding: InsetsSchema.optional(),
   compact: z.boolean().optional(),
 });

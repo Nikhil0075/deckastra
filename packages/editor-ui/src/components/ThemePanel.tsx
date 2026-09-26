@@ -8,8 +8,9 @@ import type { EditorApi } from "../lib/useEditor";
 import { applyThemeOperations } from "../lib/theme-apply";
 import { Button, Tabs } from "../ui";
 import { ThemeGallery } from "./ThemeGallery";
+import { ThemeCustomise } from "./ThemeCustomise";
 
-type ThemeTab = "gallery" | "workspace" | "file";
+type ThemeTab = "gallery" | "customise" | "workspace" | "file";
 
 /**
  * Themes (Design tab review, 2026-09-26): the built-in gallery, the
@@ -26,6 +27,7 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
       className="dk-theme-tabs"
       items={[
         { value: "gallery", label: "Gallery", panel: <ThemeGallery editor={editor} /> },
+        { value: "customise", label: "Customise", panel: <ThemeCustomise editor={editor} /> },
         { value: "workspace", label: "Workspace", panel: <WorkspaceThemes editor={editor} presentationId={presentationId} /> },
         { value: "file", label: "Import", panel: <ThemeFile editor={editor} presentationId={presentationId} /> },
       ]}

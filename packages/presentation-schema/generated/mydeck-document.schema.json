@@ -533,6 +533,48 @@
           },
           "additionalProperties": {}
         },
+        "table": {
+          "type": "object",
+          "properties": {
+            "headerFill": {
+              "$ref": "#/$defs/__schema17"
+            },
+            "headerColor": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "borderColor": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "borders": {
+              "type": "string",
+              "enum": [
+                "all",
+                "horizontal",
+                "outer",
+                "none"
+              ]
+            },
+            "banding": {
+              "type": "string",
+              "enum": [
+                "none",
+                "rows",
+                "columns"
+              ]
+            },
+            "bandColor": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "cellPadding": {
+              "$ref": "#/$defs/__schema1"
+            },
+            "fontSize": {
+              "exclusiveMinimum": 0,
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          "additionalProperties": {}
+        },
         "imagery": {
           "type": "object",
           "properties": {
@@ -4058,6 +4100,9 @@
                 },
                 "headerFill": {
                   "$ref": "#/$defs/__schema25"
+                },
+                "headerColor": {
+                  "$ref": "#/$defs/__schema2"
                 },
                 "cellPadding": {
                   "$ref": "#/$defs/__schema1"

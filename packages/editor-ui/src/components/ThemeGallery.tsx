@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { THEME_PRESETS, type ThemePreset } from "@deckastra/presentation-schema";
+import { buildDocumentScene } from "@deckastra/renderer";
+import { applyPatch } from "@deckastra/transactions";
 
 import { applyThemeOperations, restyleReach } from "../lib/theme-apply";
 import type { EditorApi } from "../lib/useEditor";
+import { useAssetUrls } from "../lib/asset-urls";
+import { useBrowserMeasurer } from "../lib/measurer";
+import { FinalFrameSlide } from "./FinalFrameSlide";
 import { Button, cx } from "../ui";
 import { resolveColor } from "./inspector/controls";
 import { paintPreview } from "./inspector/paint";
@@ -50,6 +55,9 @@ export function ThemeGallery({ editor }: { editor: EditorApi }) {
       {preset ? (
         <div className="dk-gallery__apply">
           <p className="dk-field__hint">{preset.summary}</p>
+          {/* Only for a theme other than the one on the deck: previewing what is
+              already on screen says nothing. */}
+          {preset.theme.name !== editor.document.theme.name ? <ThemePreview editor={editor} preset={preset} restyle={restyle} /> : null}
           <label className="dk-export__option">
             <input type="checkbox" checked={restyle} onChange={(event) => setRestyle(event.target.checked)} data-testid="theme-restyle" />
             Also restyle cards and backgrounds
@@ -75,6 +83,31 @@ export function ThemeGallery({ editor }: { editor: EditorApi }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The slide on screen, drawn in the chosen theme before anything is applied
+ * (design review, 2026-09-27). A preset card shows a swatch of the theme; this
+ * shows what it does to real text, which is where a font that wraps
+ * differently or an accent that fades into a chart gets noticed.
+ */
+function ThemePreview({ editor, preset, restyle }: { editor: EditorApi; preset: ThemePreset; restyle: boolean }) {
+  const measurer = useBrowserMeasurer();
+  const document = editor.document;
+  const slide = document.slides[editor.slideIndex];
+  const resolveAssetUrl = useAssetUrls(document);
+  const scene = useMemo(() => {
+    if (!slide) return undefined;
+    const candidate = applyPatch(document, applyThemeOperations(document, preset.theme, restyle ? { restyle: preset.kit } : {})).document;
+    const only = candidate.slides.find((s) => s.id === slide.id);
+    return only ? buildDocumentScene({ ...candidate, slides: [only] }, { measurer }).slides[0] : undefined;
+  }, [document, slide, preset, restyle, measurer]);
+  if (!scene) return null;
+  return (
+    <figure className="dk-gallery__preview" data-testid="theme-preview" aria-label={`This slide in ${preset.name}`}>
+      <FinalFrameSlide scene={scene} width={264} resolveAssetUrl={resolveAssetUrl} />
+    </figure>
   );
 }
 
