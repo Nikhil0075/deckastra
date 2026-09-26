@@ -86,3 +86,24 @@ reviewed `.computed` output, then run again with `REQUIRE_PIXEL_BASELINE=1` and
 without update mode. Never record new hashes simply to remove an unexplained
 failure. Test results and limitations are tracked in
 [the remediation report](../../../../docs/PHASE_0_TO_9_FIX_PROGRESS.md).
+
+## 2026-09-26: Linux caught up with three reviewed rendering changes
+
+Ten of eleven Linux hashes changed, and they are exactly the ten the Windows
+baseline changed across `30d5135` (shape labels centred and readable),
+`708db69` (diagrams fill their box, edges route around nodes) and `2902aab`
+(a slide with no background draws the theme's background rather than
+transparent). `technical/0`, which none of the three touched, reproduced its
+old Linux hash byte for byte, so the run and the recorded baseline agree where
+nothing changed.
+
+Recorded in the image CI pins (Chromium `153.0.8010.12`) after reading the
+PNGs: the dark theme background fills every slide, and the animation cards'
+labels ("Proposed", "Applied") sit centred. Then re-run with
+`REQUIRE_PIXEL_BASELINE=1` and no update mode, CI's exact command: green,
+including both determinism properties and the negative control.
+
+Dependencies were installed on the host with
+`npm ci --os=linux --cpu=x64 --ignore-scripts` and the workspace links relinked
+inside the container, because Docker on this host still cannot reach the npm
+registry (the same limitation as 2026-09-17).
