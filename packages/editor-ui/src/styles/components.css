@@ -316,12 +316,15 @@ body:has(.dk-root) {
   text-align: left;
 }
 
-/* Floating panels lift with a flat black offset block rather than a blur. */
+/* Floating panels lift with a flat black offset block rather than a blur.
+   They are portalled to <body> and placed by `useFloating` from the trigger's
+   rectangle (left, top, max-height inline), so no scrolling panel can clip
+   them and they always sit over the slide. */
 .dk-menu,
 .dk-popover {
-  position: absolute;
-  top: calc(100% + var(--dk-space-1));
+  position: fixed;
   z-index: var(--dk-z-popover);
+  overflow-y: auto;
   background: var(--dk-surface);
   border: var(--dk-line) solid var(--dk-rule);
   box-shadow: 4px 4px 0 var(--dk-ink);
@@ -338,19 +341,8 @@ body:has(.dk-root) {
   padding: var(--dk-space-1) 0;
   list-style: none;
 }
-.dk-menu--start,
-.dk-popover--start {
-  left: 0;
-}
-.dk-menu--end,
-.dk-popover--end {
-  right: 0;
-}
 .dk-menu:focus {
   outline: none;
-}
-.dk-select__list {
-  min-width: 100%;
 }
 .dk-menu__item {
   display: flex;

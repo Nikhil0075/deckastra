@@ -3,7 +3,9 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } f
 import { rovingIndex, typeaheadIndex } from "../lib/ui-keys";
 import { cx } from "./cx";
 import { useDismiss } from "./dismiss";
+import { useFloating } from "./floating";
 import { Icon } from "./icons";
+import { floatingPortal } from "./overlays";
 
 export interface SelectOption<T extends string = string> {
   value: T;
@@ -61,6 +63,8 @@ export function Select<T extends string = string>({
   }, []);
   const onDismiss = useCallback((reason: "escape" | "outside") => close(reason === "escape"), [close]);
   useDismiss(open, [listRef, buttonRef], onDismiss);
+  // Portalled and placed from the button, at least as wide as it.
+  const position = useFloating(open, buttonRef, listRef, { align: "start", matchWidth: true });
 
   useEffect(() => {
     if (open) listRef.current?.focus();
@@ -91,7 +95,8 @@ export function Select<T extends string = string>({
       event.preventDefault();
       choose(active);
     } else if (event.key === "Tab") {
-      close(false);
+      event.preventDefault();
+      close(true);
     } else if (event.key.length === 1) {
       const found = typeaheadIndex(
         options.map((option) => option.label),
@@ -130,40 +135,42 @@ export function Select<T extends string = string>({
           <span id={`${id}-value`}>{current?.label ?? value}</span>
           <Icon name="chevronDown" size={12} />
         </button>
-        {open && (
-          <ul
-            ref={listRef}
-            id={listId}
-            role="listbox"
-            tabIndex={-1}
-            aria-labelledby={labelId}
-            aria-activedescendant={`${id}-opt-${active}`}
-            className="dk-menu dk-menu--start dk-select__list"
-            onKeyDown={onListKeyDown}
-          >
-            {options.map((option, index) => (
-              <li
-                key={option.value}
-                id={`${id}-opt-${index}`}
-                role="option"
-                aria-selected={option.value === value}
-                aria-disabled={option.disabled || undefined}
-                className={cx(
-                  "dk-menu__item",
-                  index === active && "dk-menu__item--active",
-                  option.value === value && "dk-menu__item--selected",
-                )}
-                onPointerMove={() => {
-                  if (!option.disabled && index !== active) setActive(index);
-                }}
-                onClick={() => choose(index)}
-              >
-                <span>{option.label}</span>
-                {option.value === value && <Icon name="check" size={12} />}
-              </li>
-            ))}
-          </ul>
-        )}
+        {open &&
+          floatingPortal(
+            <ul
+              ref={listRef}
+              id={listId}
+              role="listbox"
+              tabIndex={-1}
+              aria-labelledby={labelId}
+              aria-activedescendant={`${id}-opt-${active}`}
+              className="dk-menu dk-menu--start dk-select__list"
+              style={position}
+              onKeyDown={onListKeyDown}
+            >
+              {options.map((option, index) => (
+                <li
+                  key={option.value}
+                  id={`${id}-opt-${index}`}
+                  role="option"
+                  aria-selected={option.value === value}
+                  aria-disabled={option.disabled || undefined}
+                  className={cx(
+                    "dk-menu__item",
+                    index === active && "dk-menu__item--active",
+                    option.value === value && "dk-menu__item--selected",
+                  )}
+                  onPointerMove={() => {
+                    if (!option.disabled && index !== active) setActive(index);
+                  }}
+                  onClick={() => choose(index)}
+                >
+                  <span>{option.label}</span>
+                  {option.value === value && <Icon name="check" size={12} />}
+                </li>
+              ))}
+            </ul>,
+          )}
       </span>
     </div>
   );

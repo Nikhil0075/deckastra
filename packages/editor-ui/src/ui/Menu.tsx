@@ -11,7 +11,9 @@ import {
 import { rovingIndex, typeaheadIndex } from "../lib/ui-keys";
 import { cx } from "./cx";
 import { useDismiss } from "./dismiss";
+import { useFloating } from "./floating";
 import { Icon, type IconName } from "./icons";
+import { floatingPortal } from "./overlays";
 
 export interface MenuItem {
   id: string;
@@ -75,6 +77,8 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
   }, []);
   const onDismiss = useCallback((reason: "escape" | "outside") => close(reason === "escape"), [close]);
   useDismiss(open, [listRef, triggerRef], onDismiss);
+  // Portalled and placed from the trigger, so a scrolling panel cannot clip it.
+  const position = useFloating(open, triggerRef, listRef, { align });
 
   const openAt = (where: "first" | "last") => {
     const index = rovingIndex(where === "first" ? -1 : items.length, items.length, where === "first" ? "Home" : "End", {
@@ -103,7 +107,10 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
       return;
     }
     if (event.key === "Tab") {
-      close(false);
+      // The list lives at the end of <body>; hand focus back to the trigger so
+      // the Tab moves on from where the menu was opened.
+      event.preventDefault();
+      close(true);
       return;
     }
     if (event.key.length === 1 && /\S/.test(event.key)) {
@@ -134,40 +141,42 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
           }
         },
       })}
-      {open && (
-        <div
-          ref={listRef}
-          id={menuId}
-          role="menu"
-          aria-label={label}
-          className={cx("dk-menu", `dk-menu--${align}`)}
-          onKeyDown={onListKeyDown}
-        >
-          {items.map((item, index) => (
-            <button
-              key={item.id}
-              ref={(element) => {
-                itemRefs.current[index] = element;
-              }}
-              type="button"
-              role={item.checked === undefined ? "menuitem" : item.kind === "checkbox" ? "menuitemcheckbox" : "menuitemradio"}
-              aria-checked={item.checked}
-              tabIndex={index === active ? 0 : -1}
-              aria-disabled={item.disabled || undefined}
-              className={cx("dk-menu__item", item.danger && "dk-menu__item--danger")}
-              onClick={() => activate(item)}
-              onPointerMove={() => {
-                if (!item.disabled && index !== active) setActive(index);
-              }}
-            >
-              {item.icon && <Icon name={item.icon} size={14} />}
-              <span>{item.label}</span>
-              {item.shortcut ? <kbd className="dk-menu__shortcut">{item.shortcut}</kbd> : null}
-              {item.checked ? <Icon name="check" size={14} className="dk-icon dk-menu__check" /> : null}
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        floatingPortal(
+          <div
+            ref={listRef}
+            id={menuId}
+            role="menu"
+            aria-label={label}
+            className={cx("dk-menu", `dk-menu--${align}`)}
+            style={position}
+            onKeyDown={onListKeyDown}
+          >
+            {items.map((item, index) => (
+              <button
+                key={item.id}
+                ref={(element) => {
+                  itemRefs.current[index] = element;
+                }}
+                type="button"
+                role={item.checked === undefined ? "menuitem" : item.kind === "checkbox" ? "menuitemcheckbox" : "menuitemradio"}
+                aria-checked={item.checked}
+                tabIndex={index === active ? 0 : -1}
+                aria-disabled={item.disabled || undefined}
+                className={cx("dk-menu__item", item.danger && "dk-menu__item--danger")}
+                onClick={() => activate(item)}
+                onPointerMove={() => {
+                  if (!item.disabled && index !== active) setActive(index);
+                }}
+              >
+                {item.icon && <Icon name={item.icon} size={14} />}
+                <span>{item.label}</span>
+                {item.shortcut ? <kbd className="dk-menu__shortcut">{item.shortcut}</kbd> : null}
+                {item.checked ? <Icon name="check" size={14} className="dk-icon dk-menu__check" /> : null}
+              </button>
+            ))}
+          </div>,
+        )}
     </span>
   );
 }

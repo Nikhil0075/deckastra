@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { cx } from "./cx";
 import { focusableWithin, useDismiss } from "./dismiss";
 import { IconButton } from "./Button";
+import { leavesPanel, useFloating } from "./floating";
 
 export interface PopoverTriggerProps {
   ref: (element: HTMLButtonElement | null) => void;
@@ -43,9 +44,12 @@ export interface PopoverProps {
 
 /**
  * A non-modal panel anchored under its trigger — Share and Export in the top
- * bar. Focus moves into it on open and back to the trigger on Escape. A press
- * outside closes it without stealing focus back, because that press was the
- * user going somewhere else.
+ * bar, the colour, shape, icon and font pickers. Focus moves into it on open
+ * and back to the trigger on Escape. A press outside closes it without
+ * stealing focus back, because that press was the user going somewhere else.
+ *
+ * The panel is portalled to `document.body` and placed from the trigger's
+ * rectangle (`useFloating`), so a scrolling inspector cannot clip it.
  */
 export function Popover({
   trigger,
@@ -79,6 +83,7 @@ export function Popover({
     [setOpen],
   );
   useDismiss(isOpen, [panelRef, triggerRef], onDismiss);
+  const position = useFloating(isOpen, triggerRef, panelRef, { align });
 
   useEffect(() => {
     if (!isOpen || !panelRef.current) return;
@@ -96,22 +101,39 @@ export function Popover({
         "aria-controls": isOpen ? id : undefined,
         onClick: () => setOpen(!isOpen),
       })}
-      {(isOpen || keepMounted) && (
-        <div
-          ref={panelRef}
-          id={id}
-          role="dialog"
-          aria-label={label}
-          tabIndex={-1}
-          hidden={!isOpen}
-          data-testid={testId}
-          className={cx("dk-popover", `dk-popover--${align}`, className)}
-        >
-          {children}
-        </div>
-      )}
+      {(isOpen || keepMounted) &&
+        floatingPortal(
+          <div
+            ref={panelRef}
+            id={id}
+            role="dialog"
+            aria-label={label}
+            tabIndex={-1}
+            hidden={!isOpen}
+            data-testid={testId}
+            className={cx("dk-popover", `dk-popover--${align}`, className)}
+            style={position}
+            onKeyDown={(event) => {
+              const panel = panelRef.current;
+              if (!panel || !leavesPanel(event, panel, focusableWithin(panel))) return;
+              event.preventDefault();
+              setOpen(false);
+              triggerRef.current?.focus();
+            }}
+          >
+            {children}
+          </div>,
+        )}
     </span>
   );
+}
+
+/**
+ * Put a floating panel at the end of `<body>`. Outside a browser (a server
+ * render) it stays inline, which is where it always used to be.
+ */
+export function floatingPortal(node: ReactNode): ReactNode {
+  return typeof document === "undefined" ? node : createPortal(node, document.body);
 }
 
 export interface DrawerProps {
