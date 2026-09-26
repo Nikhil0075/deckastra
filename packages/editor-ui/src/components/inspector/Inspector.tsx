@@ -45,6 +45,7 @@ import { EquationSection } from "./EquationSection";
 import { IconPicker, ShapePicker } from "./pickers";
 import { MultiSection } from "./MultiSection";
 import { StylesSection, ThemeStylesSection } from "./StylesSection";
+import { LayoutSection } from "./LayoutSection";
 import { selectedElements } from "../../lib/multi-edit";
 import { useColorStudio } from "../../lib/color-studio";
 import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
@@ -140,6 +141,7 @@ export function Inspector({
           }}
         />
       ) : null}
+      {hasSelection ? <LayoutSection editor={editor} elements={selectedElements(doc, selection.selectedIds, { includeLocked: true })} /> : null}
       {hasSelection ? <ArrangeSection editor={editor} /> : null}
 
       {hasSelection ? <h2 className="dk-inspector__title dk-inspector__title--rule">Slide design</h2> : null}

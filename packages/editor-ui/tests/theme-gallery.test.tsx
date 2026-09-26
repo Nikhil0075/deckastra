@@ -146,7 +146,7 @@ it("keeps the deck's named colours and object styles when another theme is appli
   (doc.theme.colors as { custom?: Record<string, string> }).custom = { "Brand red": "#D2001E" };
   doc.theme.objectStyles = { "Metric card": { appliesTo: "shape", style: { cornerRadius: 16 } } };
   const [replace] = applyThemeOperations(doc, findPreset("bento")!.theme);
-  const theme = replace!.value as PresentationDocument["theme"];
+  const theme = (replace as { value: unknown }).value as PresentationDocument["theme"];
   expect((theme.colors as { custom?: Record<string, string> }).custom).toMatchObject({ "Brand red": "#D2001E" });
   expect(theme.objectStyles).toMatchObject({ "Metric card": { style: { cornerRadius: 16 } } });
   expect(ThemeDefinitionSchema.safeParse(theme).success).toBe(true);
