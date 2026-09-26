@@ -48,12 +48,14 @@ export interface ToolRailProps {
   open?: SidePanel;
   libraryTab?: LibraryTab;
   disabled?: boolean;
+  /** Design Check findings on this slide, shown on the Check button. */
+  checkCount?: number;
 }
 
-export function ToolRail({ onAdd, onAddImage, onPanel, open, libraryTab, disabled }: ToolRailProps) {
+export function ToolRail({ onAdd, onAddImage, onPanel, open, libraryTab, disabled, checkCount = 0 }: ToolRailProps) {
   const fileInput = useRef<HTMLInputElement | null>(null);
 
-  const button = (id: string, label: string, icon: IconName, onClick: () => void, active = false, primary = false, title?: string) => (
+  const button = (id: string, label: string, icon: IconName, onClick: () => void, active = false, primary = false, title?: string, badge?: number) => (
     <button
       key={id}
       type="button"
@@ -67,6 +69,11 @@ export function ToolRail({ onAdd, onAddImage, onPanel, open, libraryTab, disable
     >
       <Icon name={icon} size={18} />
       <span className="dk-railbutton__label">{label}</span>
+      {badge ? (
+        <span className="dk-railbutton__badge" aria-hidden="true" data-testid={`tool-${id}-count`}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      ) : null}
     </button>
   );
 
@@ -101,7 +108,16 @@ export function ToolRail({ onAdd, onAddImage, onPanel, open, libraryTab, disable
       />
       <span className="dk-rail__spacer" aria-hidden="true" />
       {button("layers", "Layers", "list", () => onPanel("layers"), open === "layers", false, "Layers on this slide")}
-      {button("check", "Check", "check", () => onPanel("check"), open === "check", false, "Check accessibility")}
+      {button(
+        "check",
+        "Check",
+        "check",
+        () => onPanel("check"),
+        open === "check",
+        false,
+        checkCount ? `Design check: ${checkCount} ${checkCount === 1 ? "issue" : "issues"} on this slide` : "Design check",
+        checkCount,
+      )}
     </div>
   );
 }

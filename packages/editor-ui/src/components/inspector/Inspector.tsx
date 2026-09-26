@@ -29,7 +29,6 @@ import {
   TextField,
   type IconName,
 } from "../../ui";
-import { AccessibilityPanel } from "../AccessibilityPanel";
 import { ThemePanel } from "../ThemePanel";
 import { labelFor } from "./labels";
 import { LayersList } from "./LayersList";

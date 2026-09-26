@@ -150,6 +150,11 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   W214: { severity: "warning", summary: "Slide is missing an element the brand requires" },
   W215: { severity: "warning", summary: "Logo is smaller than the brand's minimum" },
   W250: { severity: "warning", summary: "Font unavailable; rendered with a metric-matched substitute" },
+
+  // The editor's Design Check (design review, 2026-09-27). Rendered geometry
+  // again: the applied font size after fit, and where a diagram's boxes landed.
+  W216: { severity: "warning", summary: "Text is smaller than the minimum readable size" },
+  W217: { severity: "warning", summary: "Diagram uses little of its frame or shrinks its labels" },
 };
 
 /**
@@ -176,6 +181,8 @@ export const REQUIRES_RENDER_CONTEXT = [
   "W213",
   "W214",
   "W215",
+  "W216",
+  "W217",
   "W250",
 ] as const;
 

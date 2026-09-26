@@ -75,7 +75,8 @@ import { ColorStudioPanel } from "./ColorStudioPanel";
 import { AddLibrary, type LibraryTab } from "./shell/AddLibrary";
 import type { SidePanel } from "./shell/ToolRail";
 import { LayersList } from "./inspector/LayersList";
-import { AccessibilityPanel } from "./AccessibilityPanel";
+import { DesignCheckPanel } from "./DesignCheckPanel";
+import { designCheck } from "../lib/design-check";
 import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
 import { Button, IconButton } from "../ui";
 
@@ -166,6 +167,7 @@ export function EditorShell(props: EditorShellProps) {
   const index = useMemo(() => buildIndex(nodes), [nodes]);
   const measurer = useBrowserMeasurer();
   const scene = useMemo(() => buildDocumentScene(doc, { measurer }), [doc, measurer]);
+  const findings = useMemo(() => designCheck(doc, scene), [doc, scene]);
   const resolveAssetUrl = useAssetUrls(doc);
 
   const order = useMemo(() => nodes.map((node) => node.id), [nodes]);
@@ -909,6 +911,7 @@ export function EditorShell(props: EditorShellProps) {
             onPanel={togglePanel}
             open={side.panel}
             libraryTab={side.tab}
+            checkCount={findings.filter((finding) => finding.slideId === slide?.id && finding.code !== "THEME").length}
           />
         ) : null}
         {side.panel === "library" ? (
@@ -937,15 +940,18 @@ export function EditorShell(props: EditorShellProps) {
             <LayersList editor={editor} />
           </aside>
         ) : side.panel === "check" ? (
-          <aside className="dk-library" aria-label="Check" data-region="library" data-testid="check-panel">
+          <aside className="dk-library" aria-label="Design check" data-region="library" data-testid="check-panel">
             <div className="dk-library__head">
-              <h3 className="dk-library__title">Check</h3>
+              <h3 className="dk-library__title">Design check</h3>
               <IconButton icon="close" label="Close check" size="sm" onClick={() => setSide((current) => ({ ...current, panel: undefined }))} />
             </div>
-            <p className="dk-field__hint">Accessibility against WCAG 2.1 AA: alt text, contrast and reading order.</p>
-            <AccessibilityPanel
+            <p className="dk-field__hint">Overlaps, text that does not fit or is too small, contrast, the safe area, descriptions, and what changes in PowerPoint.</p>
+            <DesignCheckPanel
               document={doc}
               slideId={slide.id}
+              findings={findings}
+              measurer={measurer}
+              apply={(operations, label) => apply(operations, { label })}
               onSelect={(targetSlideId, elementId) => {
                 const targetIndex = doc.slides.findIndex((candidate) => candidate.id === targetSlideId);
                 if (targetIndex < 0) return;

@@ -2648,6 +2648,85 @@
   line-height: 1.1;
   letter-spacing: 0.01em;
 }
+.dk-railbutton {
+  position: relative;
+}
+/* Design Check's count: yellow, "waiting on a human", like every other thing
+   that needs a person to look. */
+.dk-railbutton__badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  min-width: 16px;
+  padding: 0 3px;
+  background: var(--dk-yellow);
+  color: var(--dk-on-yellow);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* --- Design Check ------------------------------------------------------------ */
+
+.dk-check__summary {
+  font-size: var(--dk-text-sm);
+  font-weight: 600;
+}
+.dk-check__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  border-left: var(--dk-line-strong) solid var(--dk-yellow);
+  background: var(--dk-surface);
+}
+.dk-check__item--error {
+  border-left-color: var(--dk-red);
+}
+.dk-check__show {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-check__show:hover .dk-check__title {
+  text-decoration: underline;
+}
+.dk-check__title {
+  font-size: var(--dk-text-sm);
+  font-weight: 600;
+}
+.dk-check__message {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
+.dk-check__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+}
+.dk-check__pptx {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  padding-top: var(--dk-space-2);
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-check__pptxrow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
 
 .dk-library {
   display: flex;
