@@ -43,6 +43,8 @@ import { TableSection } from "./TableSection";
 import { TextSection } from "./TextSection";
 import { EquationSection } from "./EquationSection";
 import { IconPicker, ShapePicker } from "./pickers";
+import { MultiSection } from "./MultiSection";
+import { selectedElements } from "../../lib/multi-edit";
 import { useColorStudio } from "../../lib/color-studio";
 import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
 
@@ -119,6 +121,15 @@ export function Inspector({
       )}
 
       {selected && !many ? <ElementSections editor={editor} element={selected} /> : null}
+      {many ? (
+        <MultiSection
+          document={doc}
+          elements={selectedElements(doc, selection.selectedIds)}
+          edit={(operations, label) => {
+            if (operations.length) editor.apply(operations, { label });
+          }}
+        />
+      ) : null}
       {hasSelection ? <ArrangeSection editor={editor} /> : null}
 
       {hasSelection ? <h2 className="dk-inspector__title dk-inspector__title--rule">Slide design</h2> : null}

@@ -83,6 +83,12 @@ export interface NumberFieldProps {
   disabled?: boolean;
   className?: string;
   "data-testid"?: string;
+  /**
+   * The selected objects disagree (several selected). The field shows "Mixed"
+   * and any number typed is committed, even one equal to `value`, because it
+   * is equal to only some of them.
+   */
+  mixed?: boolean;
 }
 
 /**
@@ -105,22 +111,25 @@ export function NumberField({
   disabled,
   className,
   "data-testid": testId,
+  mixed = false,
 }: NumberFieldProps) {
   const id = useId();
-  const [draft, setDraft] = useState(() => format(value));
+  const shown = (current: number) => (mixed ? "" : format(current));
+  const [draft, setDraft] = useState(() => shown(value));
   const editing = useRef(false);
 
   // An outside change (undo, another field, the canvas) replaces the draft —
   // but not while someone is mid-edit, or their typing would be overwritten.
   useEffect(() => {
-    if (!editing.current) setDraft(format(value));
-  }, [value]);
+    if (!editing.current) setDraft(shown(value));
+    // `shown` only reads `mixed`, which is listed.
+  }, [value, mixed]);
 
   const commit = (text: string) => {
     editing.current = false;
     const parsed = parseNumberInput(text, { min, max, integer });
-    if (parsed === null || parsed === value) {
-      setDraft(format(value));
+    if (parsed === null || (parsed === value && !mixed)) {
+      setDraft(shown(value));
       return;
     }
     setDraft(format(parsed));
@@ -133,7 +142,7 @@ export function NumberField({
       commit(draft);
     } else if (event.key === "Escape") {
       editing.current = false;
-      setDraft(format(value));
+      setDraft(shown(value));
       event.currentTarget.blur();
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
@@ -141,7 +150,7 @@ export function NumberField({
       const next = stepNumber(base, event.key === "ArrowUp" ? 1 : -1, { step, large: event.shiftKey, min, max });
       editing.current = false;
       setDraft(format(next));
-      if (next !== value) onCommit(next);
+      if (next !== value || mixed) onCommit(next);
     }
   };
 
@@ -156,6 +165,7 @@ export function NumberField({
         inputMode="decimal"
         aria-label={ariaLabel}
         value={draft}
+        placeholder={mixed ? "Mixed" : undefined}
         disabled={disabled}
         data-testid={testId}
         onChange={(event) => {

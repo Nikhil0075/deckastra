@@ -61,6 +61,8 @@ export interface ColorFieldProps {
   onChange: (value: string | undefined) => void;
   allowNone?: boolean;
   disabled?: boolean;
+  /** The selected objects disagree; the field says "Mixed" and any choice applies to all. */
+  mixed?: boolean;
   "data-testid"?: string;
 }
 
@@ -83,7 +85,7 @@ interface EyeDropperResult {
  * A hex value is committed once, when it is complete and valid, never per
  * keystroke: "#1e4" on the way to "#1e4bd2" is not a colour anyone chose.
  */
-export function ColorField({ label, value, theme, onChange, allowNone, disabled, "data-testid": testId }: ColorFieldProps) {
+export function ColorField({ label, value, theme, onChange, allowNone, disabled, mixed = false, "data-testid": testId }: ColorFieldProps) {
   const studio = useColorStudio();
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState(() => (value && !value.startsWith("token:") ? value : ""));
@@ -106,7 +108,7 @@ export function ColorField({ label, value, theme, onChange, allowNone, disabled,
   const choose = (next: string | undefined) => {
     setOpen(false);
     setError(undefined);
-    if (next !== value) onChange(next);
+    if (next !== value || mixed) onChange(next);
   };
 
   const commitHex = (candidate = hex) => {
@@ -116,7 +118,7 @@ export function ColorField({ label, value, theme, onChange, allowNone, disabled,
       return;
     }
     setError(undefined);
-    if (trimmed !== value) onChange(trimmed);
+    if (trimmed !== value || mixed) onChange(trimmed);
   };
 
   const eyedropper = typeof window !== "undefined" && "EyeDropper" in window;
@@ -156,8 +158,8 @@ export function ColorField({ label, value, theme, onChange, allowNone, disabled,
     setNameError(undefined);
   };
 
-  const swatch = resolveColor(theme, value);
-  const current = value === undefined ? (allowNone ? "None" : "Default") : colorName(theme, value);
+  const swatch = mixed ? undefined : resolveColor(theme, value);
+  const current = mixed ? "Mixed" : value === undefined ? (allowNone ? "None" : "Default") : colorName(theme, value);
 
   const option = (key: string, name: string, color: string | undefined, next: string | undefined, meta?: string) => (
     <button
