@@ -7,6 +7,7 @@ import type {
 
 import { estimateLabelWidth, round } from "./scale";
 import { paintToCss, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
+import { contrastRatio, parseColor } from "./semantic";
 
 /**
  * Diagram layout (doc 04 §20).
@@ -559,6 +560,12 @@ export function buildDiagramPayload(
   const labelSize = nodeTypography.fontSize;
   const sublabelSize = round(labelSize * 0.72);
   const labelColor = String(nodeTypography.color ?? "#000");
+  const labelFallbacks = [
+    String(resolveValue(theme, "token:colors.background", "#FFFFFF")),
+    String(resolveValue(theme, "token:colors.foreground", "#111111")),
+    "#FFFFFF",
+    "#111111",
+  ];
 
   const edgeStroke = diagramTheme?.edgeStroke;
   const edgeColor =
@@ -741,6 +748,13 @@ export function buildDiagramPayload(
       defaultFill;
     const strokeSource = own?.stroke ?? roleStyle?.stroke ?? diagramTheme?.nodeStroke;
 
+    // A box given its own fill (colour wizard, 2026-09-26) takes a label colour
+    // it can be read on. The theme's label colour was chosen against the theme's
+    // node fill; a person who makes one box dark blue has not also chosen white
+    // text, and dark text on it is a label nobody can read. Only an own fill does
+    // this, so every themed diagram draws exactly as before.
+    const nodeLabelColor = own?.fill ? readableOn(fill, [labelColor, ...labelFallbacks]) : labelColor;
+
     return {
       id: s.node.id,
       x: placement.x,
@@ -755,7 +769,7 @@ export function buildDiagramPayload(
       dash: strokeSource?.dash?.join(" "),
       label: s.node.label,
       sublabel: s.node.sublabel,
-      labelColor,
+      labelColor: nodeLabelColor,
       labelSize: nodeLabelSize,
       sublabelSize: nodeSublabelSize,
       role,
@@ -1062,3 +1076,26 @@ function lanePath(
 }
 
 export const DIAGRAM_INTERNALS = { assignRanks, seededRandom, anchorOn, sizeNode, routeEdges, crossesAny };
+
+/**
+ * The first candidate readable on `fill` at AA (4.5:1), or the one with the most
+ * contrast when none is. A fill that is not a plain colour (a gradient) keeps the
+ * first candidate: there is no single colour to measure it against.
+ */
+function readableOn(fill: string, candidates: string[]): string {
+  const background = parseColor(fill);
+  if (!background) return candidates[0]!;
+  let best = candidates[0]!;
+  let bestRatio = -1;
+  for (const candidate of candidates) {
+    const colour = parseColor(candidate);
+    if (!colour) continue;
+    const ratio = contrastRatio(colour, background);
+    if (ratio >= 4.5) return candidate;
+    if (ratio > bestRatio) {
+      best = candidate;
+      bestRatio = ratio;
+    }
+  }
+  return best;
+}

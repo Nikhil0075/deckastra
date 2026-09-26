@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { DiagramElement, PatchOperation, PresentationDocument } from "@deckastra/presentation-schema";
-import { setPropertyDeep } from "@deckastra/presentation-core";
+import { resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
 
 import {
   addEdgeOperations,
@@ -12,7 +12,8 @@ import {
   setNodeLabelOperations,
 } from "../../lib/diagram-data";
 import { Button, IconButton, Section, Select } from "../../ui";
-import { CellInput, Hint } from "./controls";
+import { CellInput, ColorField, Hint } from "./controls";
+import { setAtOperations } from "../../lib/nested";
 
 /**
  * A diagram's boxes and connections, edited by hand (manual-authoring review
@@ -168,6 +169,111 @@ export function DiagramSection({
           ? "This diagram is placed by hand, so a new box goes to the right of the one it follows."
           : "The diagram lays itself out again after each change."}
       </Hint>
+      <DiagramColors document={document} element={element} edit={edit} disabled={disabled} />
     </Section>
+  );
+}
+
+const ALL = "__all";
+
+function solidOf(paint: unknown): string | undefined {
+  const value = paint as { type?: string; color?: string } | undefined;
+  return value?.type === "solid" ? value.color : undefined;
+}
+
+/**
+ * A diagram's colours (colour wizard, 2026-09-26): a box's fill and border, or
+ * every box's at once, and a connection's colour. The layout is untouched, and
+ * a box given a dark fill gets a label colour it can be read on (the renderer
+ * picks it). Clearing a colour hands the box back to its role's style or the
+ * theme.
+ */
+function DiagramColors({ document, element, edit, disabled }: { document: PresentationDocument; element: DiagramElement; edit: Edit; disabled: boolean }) {
+  const [box, setBox] = useState<string>(element.nodes[0]?.id ?? ALL);
+  const [link, setLink] = useState<string>(element.edges[0]?.id ?? "");
+  const path = resolveElementById(document, element.id)?.path;
+  const targets = box === ALL ? element.nodes : element.nodes.filter((node) => node.id === box);
+  const shared = (read: (node: DiagramElement["nodes"][number]) => string | undefined) => {
+    const values = targets.map(read);
+    return values.every((value) => value === values[0]) ? values[0] : undefined;
+  };
+
+  const paintNodes = (property: "fill" | "stroke", color: string | undefined, label: string) => {
+    if (!path) return;
+    const operations = targets.flatMap((node) => {
+      const index = element.nodes.indexOf(node);
+      if (property === "fill") {
+        return setAtOperations(element, path, ["nodes", { at: index }, "style", "fill"], color ? { type: "solid", color } : undefined);
+      }
+      const width = node.style?.stroke?.width ?? 2;
+      return setAtOperations(element, path, ["nodes", { at: index }, "style", "stroke"], color ? { paint: { type: "solid", color }, width } : undefined);
+    });
+    edit(operations, label);
+  };
+
+  const edgeIndex = element.edges.findIndex((edge) => edge.id === link);
+  const edge = element.edges[edgeIndex];
+
+  return (
+    <>
+      <span className="dk-label">Colours</span>
+      <Select
+        label="Colour a box"
+        value={box}
+        disabled={disabled || element.nodes.length === 0}
+        options={[
+          { value: ALL, label: "Every box" },
+          ...element.nodes.map((node, index) => ({ value: node.id, label: node.label || `Box ${index + 1}` })),
+        ]}
+        onChange={setBox}
+      />
+      <ColorField
+        label="Box fill"
+        value={shared((node) => solidOf(node.style?.fill))}
+        theme={document.theme}
+        allowNone
+        disabled={disabled || targets.length === 0}
+        data-testid="diagram-node-fill"
+        onChange={(color) => paintNodes("fill", color, box === ALL ? "Colour every box" : "Colour a box")}
+      />
+      <ColorField
+        label="Box border"
+        value={shared((node) => solidOf(node.style?.stroke?.paint))}
+        theme={document.theme}
+        allowNone
+        disabled={disabled || targets.length === 0}
+        data-testid="diagram-node-border"
+        onChange={(color) => paintNodes("stroke", color, box === ALL ? "Colour every border" : "Colour a border")}
+      />
+      {element.edges.length ? (
+        <>
+          <Select
+            label="Colour a connection"
+            value={link}
+            disabled={disabled}
+            options={element.edges.map((candidate, index) => ({
+              value: candidate.id,
+              label: `${element.nodes.find((node) => node.id === candidate.from)?.label ?? "?"} → ${element.nodes.find((node) => node.id === candidate.to)?.label ?? "?"}` || `Connection ${index + 1}`,
+            }))}
+            onChange={setLink}
+          />
+          <ColorField
+            label="Connection colour"
+            value={solidOf(edge?.style?.stroke?.paint)}
+            theme={document.theme}
+            allowNone
+            disabled={disabled || !edge}
+            data-testid="diagram-edge-color"
+            onChange={(color) => {
+              if (!path || !edge) return;
+              edit(
+                setAtOperations(element, path, ["edges", { at: edgeIndex }, "style", "stroke"], color ? { paint: { type: "solid", color }, width: edge.style?.stroke?.width ?? 2 } : undefined),
+                "Colour a connection",
+              );
+            }}
+          />
+        </>
+      ) : null}
+    </>
   );
 }

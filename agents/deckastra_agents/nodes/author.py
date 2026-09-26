@@ -57,9 +57,15 @@ well.
   LaTeX is typeset by KaTeX, so write standard math-mode LaTeX without `$`
   delimiters. Say in `altText` what the equation means in words.
 - Colours in element styles may be literal (`"#1A1A1A"`) or theme references
-  (`{"token": "colors.accent"}`) — match what the slide already uses. A theme
-  change is a `replace` on `/theme/colors`, `/theme/typography` or the whole
-  `/theme`; every element that references a token follows it.
+  written as a string, `"token:colors.accent"` — match what the slide already
+  uses. A theme change is a `replace` on `/theme/colors`, `/theme/typography` or
+  the whole `/theme`; every element that references a token follows it.
+- The person's own named colours are `/theme/colors/custom` (name to colour).
+  When they name one ("make it brand red"), refer to it as
+  `"token:colors.custom.<Name>"`, exactly as named, rather than copying its hex:
+  a reference follows the colour when they change it. A new named colour is an
+  `add` at `/theme/colors/custom/<Name>` (or of the whole `custom` object when
+  there is none yet).
 - A slide's background is `/slides/id:<slide>/background`.
 - A slide transition is `/slides/id:<slide>/transition`, e.g.
   `{"type": "morph", "durationMs": 700, "easing": "standard",

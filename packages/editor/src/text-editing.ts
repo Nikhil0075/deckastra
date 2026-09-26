@@ -79,12 +79,27 @@ interface Marks {
   strike?: boolean;
   code?: boolean;
   link?: string;
+  /** A run's own colour: a hex, or a theme or named-colour token. */
+  color?: string;
+}
+
+/**
+ * The colours a run may carry, as read from `data-color` (colour wizard,
+ * 2026-09-26). A theme or named-colour token, or a hex; anything else — a CSS
+ * function, an expression — is dropped, because pasted markup is someone else's.
+ * The empty string is "the box's own colour", which ends an inherited run.
+ */
+const RUN_COLOR = /^(?:token:colors\.[\p{L}\p{N} _.-]{1,60}|#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8}))$/iu;
+
+export function isRunColor(value: string): boolean {
+  return RUN_COLOR.test(value);
 }
 
 function spanFrom(text: string, marks: Marks): TextSpan {
   const span: TextSpan = { text };
   for (const mark of INLINE_MARKS) if (marks[mark]) span[mark] = true;
   if (marks.link) span.link = marks.link;
+  if (marks.color) span.color = marks.color;
   return span;
 }
 
@@ -99,7 +114,8 @@ function mergeSpans(spans: TextSpan[]): TextSpan[] {
     const sameMarks =
       previous !== undefined &&
       INLINE_MARKS.every((mark) => Boolean(previous[mark]) === Boolean(span[mark])) &&
-      previous.link === span.link;
+      previous.link === span.link &&
+      previous.color === span.color;
 
     if (sameMarks) previous.text += span.text;
     else out.push({ ...span });
@@ -178,6 +194,16 @@ export function readEditable(root: Node): RichTextDocument {
       if (isSafeLink(href)) nextMarks.link = href;
       // An unsafe href drops the link and keeps the text: the words are the
       // user's content, the destination is not.
+    }
+
+    // A run's colour is read from the attribute the editors write, never from
+    // CSS: a computed colour is a number, and a named colour read back as one
+    // would stop following its name. Pasted `style="color:…"` is ignored for
+    // the same reason and because it is someone else's markup.
+    const runColor = element.getAttribute("data-color");
+    if (runColor !== null) {
+      if (runColor === "") delete nextMarks.color;
+      else if (isRunColor(runColor)) nextMarks.color = runColor;
     }
 
     // Inline styles are the other common carrier of emphasis in pasted HTML.
@@ -287,6 +313,8 @@ export function textChanged(before: RichTextDocument, after: RichTextDocument): 
           span.strike ?? false,
           span.code ?? false,
           span.link ?? "",
+          // A run recoloured and nothing else is an edit (colour wizard).
+          span.color ?? "",
         ]),
       ]),
     );

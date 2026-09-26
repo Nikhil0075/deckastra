@@ -43,6 +43,8 @@ import { BackgroundSection } from "./BackgroundSection";
 import { TableSection } from "./TableSection";
 import { TextSection } from "./TextSection";
 import { EquationSection } from "./EquationSection";
+import { useColorStudio } from "../../lib/color-studio";
+import { deckColors, namedColors, resolveColorValue } from "../../lib/colors";
 
 export type ReorderDirection = "forward" | "backward" | "front" | "back";
 
@@ -120,6 +122,7 @@ export function Inspector({
       <Section title="Theme" meta={doc.theme.name}>
         <ThemePanel key={presentationId} editor={editor} presentationId={presentationId} />
       </Section>
+      <ColorsSection editor={editor} />
       <Section title="Accessibility" meta="WCAG 2.1 AA">
         <AccessibilityPanel
           document={doc}
@@ -413,4 +416,35 @@ function countElements(elements: readonly PresentationElement[]): number {
     if (isGroup(element)) count += countElements(element.children);
   }
   return count;
+}
+
+/**
+ * The deck's palette at a glance, and the way into the Colours panel (colour
+ * wizard, 2026-09-26): the brand roles and the named colours as swatches, and a
+ * count of loose colours that will not follow a new theme.
+ */
+function ColorsSection({ editor }: { editor: EditorApi }) {
+  const studio = useColorStudio();
+  const doc = editor.document;
+  const named = namedColors(doc);
+  const loose = deckColors(doc).length;
+  const colors = doc.theme.colors as unknown as Record<string, unknown>;
+  const brand = ["accent", "secondary", "foreground", "background", "surface"].filter((token) => typeof colors[token] === "string");
+  return (
+    <Section title="Colours" meta={`${named.length} named${loose ? ` · ${loose} loose` : ""}`}>
+      <div className="dk-swatches" aria-label="Deck colours">
+        {brand.map((token) => (
+          <span key={token} className="dk-swatch dk-swatch--static" title={token} style={{ background: resolveColorValue(doc, colors[token] as string) }} />
+        ))}
+        {named.map((color) => (
+          <span key={color.name} className="dk-swatch dk-swatch--static" title={color.name} style={{ background: resolveColorValue(doc, color.value) }} />
+        ))}
+      </div>
+      {studio ? (
+        <Button size="sm" icon="theme" onClick={() => studio.open()} data-testid="open-color-studio">
+          Edit colours…
+        </Button>
+      ) : null}
+    </Section>
+  );
 }

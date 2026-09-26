@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { RichTextDocument, TypographyStyle } from "@deckastra/presentation-schema";
 import {
@@ -11,6 +11,8 @@ import {
   textChanged,
 } from "@deckastra/editor";
 import { insertRichText, renderRichText } from "../lib/rich-dom";
+import { useColorStudio } from "../lib/color-studio";
+import { THEME_COLOR_ROLES, deckColors, namedColors, resolveColorValue, themeColorToken } from "../lib/colors";
 
 /**
  * In-place text editing (doc 04 §17).
@@ -87,6 +89,9 @@ export function TextEditor({
   registerDraft,
 }: TextEditorProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const studio = useColorStudio();
+  const resolveColor = (color: string) => (studio ? resolveColorValue(studio.document, color) : undefined);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   // The element, kept past unmount: React clears `ref` before the unmount
   // cleanup runs, and that cleanup is exactly when the words must be read.
   const hostElement = useRef<HTMLDivElement | null>(null);
@@ -109,7 +114,7 @@ export function TextEditor({
     if (!host) return;
     hostElement.current = host;
 
-    host.replaceChildren(renderRichText(document, value, { inheritTypography: true }));
+    host.replaceChildren(renderRichText(document, value, { inheritTypography: true, resolveColor }));
     host.focus();
 
     // Select everything on entry: the overwhelmingly common intent when opening
@@ -233,7 +238,7 @@ export function TextEditor({
         })
       : plainTextToRichText(text);
 
-    insertRichText(host, parsed, { inheritTypography: true });
+    insertRichText(host, parsed, { inheritTypography: true, resolveColor });
   }, []);
 
   const matrix = local?.matrix;
@@ -295,6 +300,47 @@ export function TextEditor({
     }
   };
 
+  /**
+   * Colour the selected words (colour wizard, 2026-09-26). The selection is
+   * lifted out and put back inside a `data-color` span, which is what
+   * `readEditable` reads a run's colour from: a token stays a token, so a named
+   * colour on three words follows its name. Colours nested inside the selection
+   * are unwrapped first, so the new colour is the one that shows. "Box colour"
+   * writes an empty `data-color`, which ends a colour the words sat inside.
+   */
+  const colorSelection = (color: string) => {
+    const host = ref.current;
+    const selection = window.getSelection();
+    if (!host || !selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed || !host.contains(range.commonAncestorContainer)) return;
+    const fragment = range.extractContents();
+    for (const inner of Array.from(fragment.querySelectorAll("[data-color]"))) inner.replaceWith(...Array.from(inner.childNodes));
+    const run = document.createElement("span");
+    run.setAttribute("data-color", color);
+    const drawn = color ? resolveColor(color) : undefined;
+    if (drawn) run.style.color = drawn;
+    else if (!color) run.style.color = "inherit";
+    run.appendChild(fragment);
+    range.insertNode(run);
+    const after = document.createRange();
+    after.selectNodeContents(run);
+    selection.removeAllRanges();
+    selection.addRange(after);
+  };
+
+  const palette: { name: string; value: string }[] = studio
+    ? [
+        ...THEME_COLOR_ROLES.filter(
+          (role) =>
+            ["Text", "Brand", "Status"].includes(role.group) &&
+            typeof (studio.document.theme.colors as unknown as Record<string, unknown>)[role.token] === "string",
+        ).map((role) => ({ name: role.label, value: themeColorToken(role.token) })),
+        ...namedColors(studio.document).map((color) => ({ name: color.name, value: color.token })),
+        ...deckColors(studio.document).slice(0, 6).map((color) => ({ name: color.value, value: color.value })),
+      ]
+    : [];
+
   return (
     <>
       <div
@@ -326,6 +372,51 @@ export function TextEditor({
             {item.glyph}
           </button>
         ))}
+        {palette.length ? (
+          <button
+            type="button"
+            className="dk-text-toolbar__button"
+            aria-label="Text colour"
+            title="Text colour"
+            aria-expanded={paletteOpen}
+            data-testid="text-color-button"
+            tabIndex={-1}
+            onClick={() => setPaletteOpen((open) => !open)}
+            style={{ textDecoration: "underline", textDecorationThickness: 3 }}
+          >
+            A
+          </button>
+        ) : null}
+        {paletteOpen ? (
+          <div className="dk-text-toolbar__palette" role="group" aria-label="Text colours" data-testid="text-color-palette">
+            <button
+              type="button"
+              className="dk-swatch dk-swatch--none"
+              aria-label="Box colour"
+              title="The text box's own colour"
+              tabIndex={-1}
+              onClick={() => {
+                colorSelection("");
+                setPaletteOpen(false);
+              }}
+            />
+            {palette.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="dk-swatch"
+                aria-label={option.name}
+                title={option.name}
+                tabIndex={-1}
+                style={{ background: resolveColor(option.value) }}
+                onClick={() => {
+                  colorSelection(option.value);
+                  setPaletteOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
       <div
         ref={ref}

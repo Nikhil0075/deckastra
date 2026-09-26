@@ -17,7 +17,7 @@ import {
   type ChartGrid,
 } from "../../lib/chart-data";
 import { Button, IconButton, Section, Segmented, Select, TextField } from "../../ui";
-import { CellInput, Hint } from "./controls";
+import { CellInput, ColorField, Hint } from "./controls";
 
 /**
  * A chart's data and labels, edited by hand (manual-authoring review MA-17).
@@ -101,6 +101,8 @@ export function ChartSection({
           items={[{ value: "on", label: "Show", disabled }, { value: "off", label: "Hide", disabled }]}
         />
       </Section>
+
+      <ChartColors document={document} element={element} edit={edit} disabled={disabled} names={chartColorNames(element, result)} />
 
       <Section title="Data" defaultOpen meta={result.editable ? `${result.grid.rows.length} × ${result.grid.series.length}` : "linked"}>
         {!result.editable ? (
@@ -218,5 +220,87 @@ function ChartGridEditor({
       </Button>
       <p className="dk-field__hint">Paste a range from a spreadsheet into any cell to fill the grid. Empty cells are gaps.</p>
     </div>
+  );
+}
+
+/**
+ * What each palette entry colours, in order: a series for most charts, a slice
+ * for a pie or a donut, which draws one series and colours it by category.
+ */
+function chartColorNames(element: ChartElement, result: ReturnType<typeof chartGrid>): string[] {
+  if (!result.editable) return [];
+  const pie = element.chartType === "pie" || element.chartType === "donut";
+  return pie ? result.grid.rows.map((row) => row.category || "(blank)") : result.grid.series;
+}
+
+/**
+ * A chart's colours (colour wizard, 2026-09-26). By default a chart takes the
+ * theme's series palette, so a new theme recolours it. "Own colours" copies that
+ * palette onto the chart as references to the theme's series, so it looks the
+ * same until one entry is changed; each entry can then be a theme colour, a
+ * named colour or a hex. "Use theme colours" hands it back.
+ */
+function ChartColors({
+  document,
+  element,
+  edit,
+  disabled,
+  names,
+}: {
+  document: PresentationDocument;
+  element: ChartElement;
+  edit: Edit;
+  disabled: boolean;
+  names: string[];
+}) {
+  const own = element.chartStyle?.palette;
+  const themeSeries = ((document.theme.colors as unknown as { chartSeries?: string[] }).chartSeries ?? []).map(
+    (_, index) => `token:colors.chartSeries.${index}`,
+  );
+  const count = Math.max(names.length, own?.length ?? 0, Math.min(themeSeries.length, 6));
+  const palette = own ?? themeSeries;
+  const set = (next: string[] | undefined, label: string) =>
+    edit(setPropertyDeep(document, element.id, "chartStyle.palette", next), label);
+
+  return (
+    <Section title="Chart colours" defaultOpen={Boolean(own)} meta={own ? "Own colours" : "Theme"}>
+      <Segmented
+        label="Chart colours"
+        size="sm"
+        value={own ? "own" : "theme"}
+        onChange={(value) =>
+          value === "own"
+            ? set(Array.from({ length: count }, (_, index) => palette[index % palette.length]!), "Give the chart its own colours")
+            : set(undefined, "Use the theme's chart colours")
+        }
+        items={[
+          { value: "theme", label: "Theme", disabled },
+          { value: "own", label: "Own colours", disabled },
+        ]}
+      />
+      {own
+        ? own.map((color, index) => (
+            <ColorField
+              key={index}
+              label={names[index] ? `${names[index]} colour` : `Colour ${index + 1}`}
+              value={color}
+              theme={document.theme}
+              disabled={disabled}
+              data-testid="chart-series-color"
+              onChange={(value) => {
+                if (!value) return;
+                const next = own.slice();
+                next[index] = value;
+                set(next, `Recolour ${names[index] ?? `series ${index + 1}`}`);
+              }}
+            />
+          ))
+        : <Hint>This chart follows the theme's series colours, which the Colours panel edits for every chart at once.</Hint>}
+      {own && names.length > own.length ? (
+        <Button size="sm" variant="ghost" icon="plus" disabled={disabled} onClick={() => set([...own, themeSeries[own.length % themeSeries.length]!], "Add a chart colour")}>
+          Add a colour for {names[own.length]}
+        </Button>
+      ) : null}
+    </Section>
   );
 }

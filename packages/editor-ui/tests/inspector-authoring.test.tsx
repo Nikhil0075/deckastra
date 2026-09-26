@@ -72,7 +72,7 @@ it("styles a text box's own font, weight, colour and alignment, without touching
   const { current, original } = await mountWith("text");
   choose(/^Font/, "Georgia");
   choose(/^Weight/, "Bold");
-  choose(/^Colour/, "Accent");
+  choose(/^Colour: /, "Accent");
   fireEvent.click(screen.getByRole("radio", { name: "Centre" }));
   fireEvent.click(screen.getByRole("radio", { name: "Italic" }));
 

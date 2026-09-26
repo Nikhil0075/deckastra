@@ -71,6 +71,8 @@ import type { OpenPresenterWindow } from "@deckastra/workspace-contracts";
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { PresentMode } from "./PresentMode";
 import { VersionHistory } from "./VersionHistory";
+import { ColorStudioPanel } from "./ColorStudioPanel";
+import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
 import { Button } from "../ui";
 
 /**
@@ -132,6 +134,8 @@ export function EditorShell(props: EditorShellProps) {
   const [clipboard, setClipboard] = useState<ClipboardPayload | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
   const [historyOpen, setHistoryOpen] = useState(false);
+  // The Colours panel, and what it opens at (a theme role or a named colour).
+  const [colors, setColors] = useState<{ open: boolean; focus?: string }>({ open: false });
   const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("design");
   const [zoom, setZoom] = useState<Zoom>("fit");
@@ -254,6 +258,9 @@ export function EditorShell(props: EditorShellProps) {
         break;
       case "version-history":
         setHistoryOpen(true);
+        break;
+      case "colors":
+        setColors({ open: true });
         break;
     }
   };
@@ -794,7 +801,16 @@ export function EditorShell(props: EditorShellProps) {
       />
     );
 
+  const colorStudio: ColorStudio = {
+    document: editor.document,
+    apply: (operations, label) => {
+      if (operations.length) editor.apply(operations, { label });
+    },
+    open: (focus) => setColors({ open: true, ...(focus ? { focus } : {}) }),
+  };
+
   return (
+    <ColorStudioProvider value={colorStudio}>
     <div className="dk-root dk-shell" data-editor-mode={mode}>
       <AppBar
         editor={editor}
@@ -939,6 +955,13 @@ export function EditorShell(props: EditorShellProps) {
           onClose={() => setHistoryOpen(false)}
         />
 
+        <ColorStudioPanel
+          editor={editor}
+          open={colors.open}
+          focus={colors.focus}
+          onClose={() => setColors({ open: false })}
+        />
+
         {panels.inspector ? (
           <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
             {rightPanel}
@@ -946,6 +969,7 @@ export function EditorShell(props: EditorShellProps) {
         ) : null}
       </div>
     </div>
+    </ColorStudioProvider>
   );
 }
 

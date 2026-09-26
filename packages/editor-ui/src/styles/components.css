@@ -767,3 +767,19 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
 .dk-text-toolbar__button:hover {
   background: var(--dk-sunk);
 }
+
+/* The text colour palette hangs under the toolbar, in the same frame. */
+.dk-text-toolbar {
+  position: relative;
+}
+.dk-text-toolbar__palette {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 22px);
+  gap: 4px;
+  padding: var(--dk-space-1);
+  background: var(--dk-surface);
+  border: var(--dk-line) solid var(--dk-rule);
+}

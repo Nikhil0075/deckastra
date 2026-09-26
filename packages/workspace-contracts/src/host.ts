@@ -71,6 +71,7 @@ export type HostCommand =
   | "redo"
   | "present"
   | "version-history"
+  | "colors"
   | "mode-design"
   | "mode-ai"
   | "mode-motion"

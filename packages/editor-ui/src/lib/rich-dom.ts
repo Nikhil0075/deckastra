@@ -24,6 +24,12 @@ export interface RenderRichTextOptions {
    * margin would make the words jump on entry.
    */
   inheritTypography?: boolean;
+  /**
+   * What a run's colour draws as (a token resolved against the deck's theme).
+   * Without one the run still carries `data-color`, so reading it back gives the
+   * same document; it just draws in the box's own colour while being edited.
+   */
+  resolveColor?: (value: string) => string | undefined;
 }
 
 export function renderRichText(
@@ -53,27 +59,31 @@ export function renderRichText(
       }
       fragment.appendChild(line);
     }
-    appendSpans(doc, line, block);
+    appendSpans(doc, line, block, options.resolveColor);
   }
   return fragment;
 }
 
 /** The inline runs of one block, marks and all, without the block element. */
-export function renderSpans(doc: Document, block: Pick<TextBlock, "spans">): DocumentFragment {
+export function renderSpans(
+  doc: Document,
+  block: Pick<TextBlock, "spans">,
+  resolveColor?: (value: string) => string | undefined,
+): DocumentFragment {
   const fragment = doc.createDocumentFragment();
-  for (const span of block.spans) if (span.text !== "") fragment.appendChild(spanNode(doc, span));
+  for (const span of block.spans) if (span.text !== "") fragment.appendChild(spanNode(doc, span, resolveColor));
   return fragment;
 }
 
-function appendSpans(doc: Document, line: HTMLElement, block: TextBlock): void {
+function appendSpans(doc: Document, line: HTMLElement, block: TextBlock, resolveColor?: (value: string) => string | undefined): void {
   const spans = block.spans.filter((span) => span.text !== "");
   // An empty line still needs a line box, or the browser collapses it and a
   // deliberate blank line disappears.
   if (spans.length === 0) line.appendChild(doc.createElement("br"));
-  for (const span of spans) line.appendChild(spanNode(doc, span));
+  for (const span of spans) line.appendChild(spanNode(doc, span, resolveColor));
 }
 
-function spanNode(doc: Document, span: TextSpan): Node {
+function spanNode(doc: Document, span: TextSpan, resolveColor?: (value: string) => string | undefined): Node {
   let node: Node = doc.createTextNode(span.text);
   const wrap = (tag: string) => {
     const element = doc.createElement(tag);
@@ -90,6 +100,15 @@ function spanNode(doc: Document, span: TextSpan): Node {
     anchor.setAttribute("href", span.link);
     anchor.appendChild(node);
     node = anchor;
+  }
+  // Outermost, so the colour covers the link and the marks inside it.
+  if (typeof span.color === "string" && span.color) {
+    const colored = doc.createElement("span");
+    colored.setAttribute("data-color", span.color);
+    const drawn = resolveColor?.(span.color);
+    if (drawn) colored.style.color = drawn;
+    colored.appendChild(node);
+    node = colored;
   }
   return node;
 }

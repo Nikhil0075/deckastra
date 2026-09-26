@@ -88,6 +88,7 @@ export function menuTemplate(
         pageOwned("Redo", "redo", "CmdOrCtrl+Shift+Z"),
         { type: "separator" },
         item("Version history", "version-history", "CmdOrCtrl+Alt+H"),
+        item("Colours…", "colors"),
       ],
     },
     {

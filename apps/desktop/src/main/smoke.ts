@@ -3925,6 +3925,52 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
       15_000,
     );
 
+    // ---- a named colour: made in the Colours panel, used on the title, changed once
+    await openSection(/^Colours/);
+    await press("open-color-studio");
+    await need("the Colours panel did not open", `document.querySelector('[data-testid="color-studio"]')`, 5_000);
+    await pressText('[data-testid="color-studio"] [role="tab"]', /^Named/);
+    await trustedClick(window, '[data-testid="named-color-name"]');
+    await window.webContents.insertText("Smoke red");
+    await trustedClick(window, '[data-testid="named-color-value"]');
+    await key("A", ["control"]);
+    await window.webContents.insertText("#C0142B");
+    await press("named-color-add");
+    await settle();
+    deck = await stored(created);
+    if ((deck.theme.colors as { custom?: Record<string, string> }).custom?.["Smoke red"] !== "#C0142B") {
+      throw new Error("design: the named colour is not in the stored theme");
+    }
+    // The panel sits over the inspector; close it, and the title (still
+    // selected) offers the new name in its colour picker.
+    await trustedClick(window, '[data-testid="color-studio"] button[aria-label="Close colours"]');
+    await need("the Colours panel did not close", `!document.querySelector('[data-testid="color-studio"]')`, 5_000);
+    await trustedClick(window, '[data-testid="text-color"] .dk-colorfield__trigger');
+    await trustedClick(window, '[role="option"][aria-label="Smoke red"]');
+    await settle();
+    deck = await stored(created);
+    const coloured = deck.slides[0]!.elements.find((element: any) => element.type === "text");
+    if (coloured?.typography?.color !== "token:colors.custom.Smoke red") {
+      throw new Error(`design: the title's colour is ${coloured?.typography?.color}, not the named colour`);
+    }
+    // Change the colour once, in the panel: the title follows without being touched.
+    await press("open-color-studio");
+    await need("the Colours panel did not reopen", `document.querySelector('[data-testid="color-studio"]')`, 5_000);
+    await pressText('[data-testid="color-studio"] [role="tab"]', /^Named/);
+    await trustedClick(window, '[data-testid="named-color-row"] .dk-colorstudio__input .dk-input');
+    await key("A", ["control"]);
+    await window.webContents.insertText("#1F7A3D");
+    await key("Enter");
+    await settle();
+    deck = await stored(created);
+    const custom = (deck.theme.colors as { custom?: Record<string, string> }).custom ?? {};
+    const still = deck.slides[0]!.elements.find((element: any) => element.type === "text");
+    if (custom["Smoke red"] !== "#1F7A3D" || still?.typography?.color !== "token:colors.custom.Smoke red") {
+      throw new Error("design: changing the named colour did not carry to the title by reference");
+    }
+    record.namedColor = { name: "Smoke red", value: custom["Smoke red"], titleColor: still.typography.color };
+    await trustedClick(window, '[data-testid="color-studio"] button[aria-label="Close colours"]');
+
     // ---- an equation, from the rail, retyped in the inspector
     await key("Escape");
     await press("tool-equation");

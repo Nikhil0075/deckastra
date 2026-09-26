@@ -144,6 +144,7 @@ export const MENU_COMMANDS = [
   "redo",
   "present",
   "version-history",
+  "colors",
   "mode-design",
   "mode-ai",
   "mode-motion",

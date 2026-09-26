@@ -3802,6 +3802,67 @@ Measured 2026-09-26, development build:
 - **The PPTX:** the uploaded family named on the title, a gradient `p:bg`, and
   the equation as a PNG picture described by its LaTeX.
 
+### Colours are managed, named and referenced (2026-09-26)
+
+A person could not change a theme colour, make a colour of their own or name
+one, although the schema had a slot for it all along (`theme.colors.custom`).
+Now:
+
+- **The Colours panel** (`ColorStudioPanel.tsx`) is a non-modal drawer, so the
+  slide stays live beside it. Open it from any colour picker ("Edit colours…"),
+  from the inspector's Colours section, or from the View > Colours… menu item.
+  It has four tabs:
+  - **Theme:** the roles, with contrast against what each is read on.
+  - **Named:** the person's own colours.
+  - **In deck:** loose hex values, each with a use count, "Name it" and
+    "replace everywhere".
+  - **Charts:** the series palette.
+- **One colour field, everywhere** (`ColorField` in `inspector/controls.tsx`).
+  It is a picker, not a dropdown: theme swatches, named colours, the deck's
+  own colours, a hex field, the system picker and an eyedropper. "Save as a
+  named colour" is on the spot. Text, fills, outlines, backgrounds, gradient
+  stops, icons, equations, chart series, table fills and diagram colours all
+  use it. Its accessible name is still "`<label>`: `<colour name>`", and
+  colours are still `option`s named by colour, so tests and the harness select
+  by name.
+- **A named colour's name is its token key**: `token:colors.custom.Brand red`.
+  Everything that uses it follows it, including exports, because the scene
+  resolves tokens before any adapter sees a colour. Names may not contain a
+  dot, since that would split the token path.
+- **Renaming and deleting rewrite every reference in the same patch**
+  (`lib/colors.ts`). A reference left behind is an E202, and worse, a slide
+  that silently draws the fallback. Deleting gives each use the colour it had,
+  as a hex, so nothing changes appearance. Naming a loose colour turns every
+  use of it into the reference, so one Undo reverses it.
+- **A colour is found by where it sits, not what it looks like**: a `color`
+  property, or an item of `palette`, `chartSeries` or `series`. A slide whose
+  text says "#1E4BD2" is words, and replacing it would edit what someone
+  wrote.
+- **A run of text can have its own colour.** The canvas editor's toolbar has
+  a text-colour button. The run travels through the DOM as `data-color`, read
+  back by `readEditable` and never from computed CSS, so a named colour stays
+  a reference. An empty `data-color` means "the box's colour". Paste admits
+  only a hex or a `token:colors.*` value. `textChanged` counts a colour-only
+  edit as a change; before this, recolouring words committed nothing.
+- **Charts** can take their own palette ("Own colours" copies the theme's
+  series as `token:colors.chartSeries.N` references, so nothing changes until
+  an entry does). **Tables** colour the heading and a whole row or column.
+  **Diagrams** colour a box's fill and border, every box at once, and a
+  connection. `lib/nested.ts` writes paths through id-addressed and index-only
+  arrays.
+- **A diagram box with its own fill gets a readable label**
+  (`renderer/diagram.ts` `readableOn`). A themed box draws exactly as before,
+  so no baseline moved.
+- **The agents know named colours.** The Ask agent's prompt says to refer to
+  one by name, and the MCP outline lists them. The prompt had also been
+  describing tokens as `{"token": …}` objects, which the schema refuses; it now
+  gives the string form.
+
+The `design` smoke step makes a named colour in the panel, colours the title
+with it and changes the colour once. It then checks, from the store, that the
+title still holds the reference. `python-pptx` reads the title's run in the
+changed colour.
+
 ### Validation is a product surface
 
 `RULES` in `src/validate.ts` is the catalog (doc 02 §42). Codes are stable because the editor, agents, exporters and the MCP surface all reference the same rule. Messages must be actionable and name the offending id.

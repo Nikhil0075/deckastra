@@ -51,6 +51,12 @@ export interface DocumentOutline {
   title?: string;
   slideCount: number;
   themeId?: string;
+  /**
+   * The deck's named colours (`theme.colors.custom`), name to value. Listed so
+   * an agent asked for "brand red" refers to `token:colors.custom.Brand red`
+   * rather than copying a hex that stops following the name.
+   */
+  namedColors?: Record<string, string>;
   slides: SlideOutline[];
   /**
    * What the Critic could not resolve, if a generation run left any.
@@ -136,6 +142,8 @@ export function outlineDocument(
 
   if (raw.metadata?.title) outline.title = String(raw.metadata.title);
   if (raw.theme?.id) outline.themeId = String(raw.theme.id);
+  const custom = raw.theme?.colors?.custom;
+  if (custom && typeof custom === "object" && Object.keys(custom).length) outline.namedColors = { ...custom };
 
   const issues = raw.extensions?.["deckastra.unresolvedIssues"];
   if (issues) outline.unresolvedIssues = issues;

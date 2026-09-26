@@ -1,5 +1,8 @@
 import type { PatchOperation, PresentationDocument, TableElement } from "@deckastra/presentation-schema";
-import { setPropertyDeep } from "@deckastra/presentation-core";
+import { resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
+import { useState } from "react";
+
+import { setAtOperations } from "../../lib/nested";
 
 import {
   addColumnOperations,
@@ -11,8 +14,8 @@ import {
   setCellOperations,
   setHeaderOperations,
 } from "../../lib/table-data";
-import { Button, IconButton, Section, Segmented } from "../../ui";
-import { CellInput, Hint } from "./controls";
+import { Button, IconButton, Section, Segmented, Select } from "../../ui";
+import { CellInput, ColorField, Hint } from "./controls";
 
 /**
  * A table's cells, rows and columns, edited by hand (manual-authoring review
@@ -116,6 +119,76 @@ export function TableSection({
         onChange={(v) => edit(setPropertyDeep(document, element.id, "headerRow", v === "on"), "Toggle heading row")}
         items={[{ value: "on", label: "Show", disabled }, { value: "off", label: "Hide", disabled }]}
       />
+      <TableColors document={document} element={element} edit={edit} disabled={disabled} />
     </Section>
+  );
+}
+
+/** The solid colour of a cell's fill, when it has one. */
+function solidOf(fill: unknown): string | undefined {
+  const paint = fill as { type?: string; color?: string } | undefined;
+  return paint?.type === "solid" ? paint.color : undefined;
+}
+
+/**
+ * A table's colours (colour wizard, 2026-09-26): the heading row's fill, and a
+ * fill for a whole row or column, which is how a total or a recommended option
+ * is picked out. A row or column is written onto each of its cells in one patch,
+ * so one Undo takes the highlight off again.
+ */
+function TableColors({ document, element, edit, disabled }: { document: PresentationDocument; element: TableElement; edit: Edit; disabled: boolean }) {
+  const [target, setTarget] = useState("row:0");
+  const [kind, index] = target.split(":") as ["row" | "column", string];
+  const at = Number(index);
+  const path = resolveElementById(document, element.id)?.path;
+
+  const cells: { row: number; column: number }[] =
+    kind === "row"
+      ? element.columns.map((_, column) => ({ row: at, column }))
+      : element.rows.map((_, row) => ({ row, column: at }));
+  const fills = cells.map(({ row, column }) => solidOf(element.rows[row]?.cells[column]?.style?.fill));
+  const shared = fills.every((fill) => fill === fills[0]) ? fills[0] : undefined;
+
+  const paint = (color: string | undefined) => {
+    if (!path) return;
+    const operations = cells.flatMap(({ row, column }) =>
+      element.rows[row]?.cells[column]
+        ? setAtOperations(element, path, ["rows", { at: row }, "cells", { at: column }, "style", "fill"], color ? { type: "solid", color } : undefined)
+        : [],
+    );
+    edit(operations, color ? `Colour ${kind} ${at + 1}` : `Clear ${kind} ${at + 1} colour`);
+  };
+
+  return (
+    <>
+      <ColorField
+        label="Heading fill"
+        value={solidOf(element.tableStyle?.headerFill)}
+        theme={document.theme}
+        allowNone
+        disabled={disabled}
+        data-testid="table-heading-fill"
+        onChange={(color) => edit(setPropertyDeep(document, element.id, "tableStyle.headerFill", color ? { type: "solid", color } : undefined), "Colour table heading")}
+      />
+      <Select
+        label="Highlight"
+        value={target}
+        disabled={disabled}
+        options={[
+          ...element.rows.map((row, rowIndex) => ({ value: `row:${rowIndex}`, label: `Row ${rowIndex + 1}${row.cells[0] ? ` · ${cellText(row.cells[0]).slice(0, 18)}` : ""}` })),
+          ...element.columns.map((column, columnIndex) => ({ value: `column:${columnIndex}`, label: `Column ${column.label || columnIndex + 1}` })),
+        ]}
+        onChange={setTarget}
+      />
+      <ColorField
+        label={`${kind === "row" ? "Row" : "Column"} ${at + 1} fill`}
+        value={shared}
+        theme={document.theme}
+        allowNone
+        disabled={disabled}
+        data-testid="table-highlight-fill"
+        onChange={paint}
+      />
+    </>
   );
 }
