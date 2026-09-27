@@ -197,10 +197,22 @@ export function fixAllOperations(
   measurer?: TextMeasurer,
 ): PatchOperation[] {
   const layout = findings.filter((finding) => finding.fix && finding.code !== "A102");
-  const first = fixOperations(document, safeFixes(layout), measurer);
-  const moved = first.length ? applyPatch(document, first).document : document;
-  const keys = new Set(findings.filter((finding) => finding.code === "A102").map((finding) => `${finding.slideId}:${finding.elementId}`));
   const slides = new Set(findings.map((finding) => finding.slideId));
+  // Moves are judged pair by pair, so three boxes stacked on one spot can be
+  // moved onto each other; check again after each pass, a few times at most.
+  const first: PatchOperation[] = [];
+  let moved = document;
+  let pending = layout;
+  for (let pass = 0; pass < 5 && pending.length; pass += 1) {
+    const operations = fixOperations(moved, safeFixes(pending), measurer);
+    if (!operations.length) break;
+    first.push(...operations);
+    moved = applyPatch(moved, operations).document;
+    pending = designCheck(moved, buildDocumentScene(moved, measurer ? { measurer } : {})).filter(
+      (finding) => finding.fix && finding.code !== "A102" && slides.has(finding.slideId),
+    );
+  }
+  const keys = new Set(findings.filter((finding) => finding.code === "A102").map((finding) => `${finding.slideId}:${finding.elementId}`));
   const again = designCheck(moved, buildDocumentScene(moved, measurer ? { measurer } : {})).filter(
     (finding) => finding.code === "A102" && slides.has(finding.slideId) && (keys.has(`${finding.slideId}:${finding.elementId}`) || layout.some((l) => l.elementId === finding.elementId)),
   );

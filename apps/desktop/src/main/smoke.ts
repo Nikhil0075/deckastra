@@ -3996,6 +3996,102 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
     record.namedColor = { name: "Smoke red", value: custom["Smoke red"], titleColor: still.typography.color };
     await trustedClick(window, '[data-testid="color-studio"] button[aria-label="Close colours"]');
 
+    // ---- design review, 2026-09-27: pop-ups over the slide, Design Check,
+    // object styles and a row that keeps its spacing, each through the window.
+
+    // A pop-up opened from the right panel lies over everything, inside the
+    // window, rather than clipped by the panel it was opened from.
+    await trustedClick(window, '[data-testid="text-color"] .dk-colorfield__trigger');
+    const popup = await page<{ body: boolean; inside: boolean; onTop: boolean } | null>(`(() => {
+      const panel = [...document.querySelectorAll(".dk-popover")].find((p) => !p.hidden);
+      if (!panel) return null;
+      const r = panel.getBoundingClientRect();
+      const corners = [[r.left + 4, r.top + 4], [r.right - 4, r.top + 4], [r.left + 4, r.bottom - 4], [r.right - 4, r.bottom - 4]];
+      return {
+        body: panel.parentElement === document.body,
+        inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
+        onTop: corners.every(([x, y]) => panel.contains(document.elementFromPoint(x, y))),
+      };
+    })()`);
+    if (!popup?.body || !popup.inside || !popup.onTop) throw new Error(`design: the colour pop-up is not over everything: ${JSON.stringify(popup)}`);
+    record.popupOverlays = popup;
+    await key("Escape");
+
+    // Two more rectangles land where the first one is. Design Check finds the
+    // collisions and Fix all moves them apart, in one patch.
+    await key("Escape");
+    for (let i = 0; i < 2; i += 1) {
+      if (!(await page<boolean>(ADD_RECTANGLE))) throw new Error("design: the Add library did not add a rectangle");
+      await settle();
+    }
+    await press("tool-check");
+    await need("Design Check did not open", `document.querySelector('[data-testid="design-check"]')`, 5_000);
+    await need("Design Check did not find the overlapping rectangles", `document.querySelectorAll('[data-testid="design-check"] li[data-code="W110"]').length > 0`, 10_000);
+    const overlaps = await page<number>(`document.querySelectorAll('[data-testid="design-check"] li[data-code="W110"]').length`);
+    await press("check-fix-all");
+    await settle();
+    await need("Fix all left an overlap", `document.querySelectorAll('[data-testid="design-check"] li[data-code="W110"]').length === 0`, 10_000);
+    record.designCheck = { overlapsFound: overlaps, afterFixAll: 0 };
+    await trustedClick(window, 'button[aria-label="Close check"]');
+
+    // A style saved from one rectangle, applied to another, then updated from
+    // the first: the second follows, in the stored deck.
+    deck = await stored(created);
+    const rects = deck.slides[0]!.elements.filter((element: any) => element.type === "shape");
+    if (rects.length < 3) throw new Error(`design: expected three rectangles, found ${rects.length}`);
+    const [first, second] = [rects[0]!.id as string, rects[1]!.id as string];
+    // Chosen from the Layers panel: after Fix all the boxes are wherever the
+    // fixes put them, and a list is how a keyboard user picks one anyway.
+    await press("tool-layers");
+    await need("the Layers panel did not open", `document.querySelector('[data-testid="layers-panel"]')`, 5_000);
+    const pick = (id: string) => trustedClick(window, `[data-layer-id="${id}"]`);
+    await pick(first);
+    await openSection(/^Object style/);
+    await press("style-save-open");
+    await trustedClick(window, '[data-testid="style-name"]');
+    await window.webContents.insertText("Smoke card");
+    await press("style-save");
+    await settle();
+    await pick(second);
+    await openSection(/^Object style/);
+    await press("style-apply");
+    await pressText('[role="option"]', /^Smoke card/);
+    await settle();
+    await pick(first);
+    await openSection(/^Fill & outline/);
+    await trustedClick(window, '[data-testid="fill-paint"] .dk-colorfield__trigger');
+    await trustedClick(window, '.dk-popover [role="option"].dk-swatch:not(.dk-swatch--none):not([aria-selected="true"])');
+    await settle();
+    await openSection(/^Object style/);
+    await need("changing the fill did not show the style as changed", `document.querySelector('[data-testid="style-update"]')`, 5_000);
+    await press("style-update");
+    await settle();
+    deck = await stored(created);
+    const byId = (id: string) => deck.slides[0]!.elements.find((element: any) => element.id === id);
+    if (byId(first)?.styleRef !== "Smoke card" || byId(second)?.styleRef !== "Smoke card") throw new Error("design: the style is not named on both rectangles");
+    if (JSON.stringify(byId(first)?.style?.fill) !== JSON.stringify(byId(second)?.style?.fill)) {
+      throw new Error("design: updating the style did not carry the new fill to the other rectangle");
+    }
+    record.objectStyle = { name: "Smoke card", fill: byId(second)?.style?.fill };
+
+    // Everything on the slide as a row that keeps its spacing, then undone.
+    await key("Escape");
+    await trustedClick(window, "[data-editor-canvas]");
+    await key("A", ["control"]);
+    await openSection(/^Layout/);
+    await press("layout-horizontal");
+    await settle();
+    deck = await stored(created);
+    const row = deck.slides[0]!.elements.find((element: any) => element.type === "group" && element.containerLayout?.type === "horizontal");
+    if (!row) throw new Error("design: Row did not make a laid-out group");
+    record.row = { children: row.children.length, gap: row.containerLayout.gap };
+    await press("undo");
+    await settle();
+    if ((await stored(created)).slides[0]!.elements.some((element: any) => element.type === "group")) throw new Error("design: one Undo did not take the row apart");
+    const heading = (await stored(created)).slides[0]!.elements.find((element: any) => element.type === "text");
+    if (heading) await pick(heading.id);
+    await trustedClick(window, 'button[aria-label="Close layers"]');
+
     // ---- an equation, from the rail, retyped in the inspector
     await key("Escape");
     await press("tool-equation");

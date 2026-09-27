@@ -103,6 +103,12 @@ it("judges contrast again after moving text off the card it was on", () => {
   expect(check(after).filter((f) => f.code === "W110" || f.code === "A102")).toEqual([]);
 });
 
+it("keeps fixing until three boxes stacked on one spot are all clear", () => {
+  const document = deck([text(600, 300, 300, 80), text(600, 300, 300, 80), text(600, 300, 300, 80)]);
+  const after = applyPatch(document, fixAllOperations(document, check(document))).document;
+  expect(check(after).filter((f) => f.code === "W110")).toEqual([]);
+});
+
 it("lists findings, fixes one on press, and goes to the object", () => {
   const document = structuredClone(loadFixture("technical")) as PresentationDocument;
   const slide = document.slides.find((candidate) => candidate.elements.some((element) => element.type === "diagram"))!;

@@ -29,6 +29,7 @@ export function LayersList({ editor }: { editor: EditorApi }) {
               )}
               style={{ paddingLeft: 8 + depth * 14 }}
               aria-pressed={isSelected}
+              data-layer-id={element.id}
               onClick={(event) =>
                 setSelection((current) => ({
                   ...current,

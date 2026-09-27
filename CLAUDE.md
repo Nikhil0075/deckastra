@@ -3917,6 +3917,112 @@ kept under `.artifacts/concepts/` (ignored by git).
 - **The harness adds a rectangle through the library** (`ADD_RECTANGLE` in
   `smoke.ts`), the way a person now does. `tool-rect` no longer exists.
 
+### The Design tab, round 2 (design review, 2026-09-27)
+
+A second review scored the tab 8/10 and found it a good property editor and
+a weak design assistant. Each part below is one commit. Concepts are in
+`.artifacts/concepts/design-tab-next/` (git-ignored).
+
+- **Pop-ups float above everything** (`ui/floating.ts`). `Popover`, `Menu`
+  and `Select` used to be absolutely positioned inside their trigger. The
+  scrolling inspector clipped them, so the colour, shape and icon pickers
+  looked as though they went under the slide. They are now portalled to
+  `<body>` and placed from the trigger's rectangle: below or above, clamped to
+  the window, capped to the room there is. Tab past either end closes the
+  panel and returns to the trigger, because a portalled panel sits at the end
+  of `<body>`. No CSS may target a pop-up through an ancestor any more.
+- **Design Check** (`renderer/src/layout-check.ts`, `lib/design-check.ts`,
+  `DesignCheckPanel.tsx`) replaced the Check panel.
+  - **What it finds:** collisions between siblings (W110), objects outside
+    the safe area (W104), text below a readable size (W216), diagrams using a
+    corner of their frame (W217), contrast against the fill actually painted
+    behind the text (A102), overflow (W103), alt text and reading order.
+  - **Why it is separate from `validateScene`:** it is canvas advice, and the
+    Critic and export reports should not carry it.
+  - **Fixes are changes, not operations,** so several combine into one patch.
+    Fix all repeats until nothing moves: three boxes on one spot are moved
+    pair by pair and can land on each other on the first pass. It then judges
+    colour on the moved slide.
+  - **"It's intended"** is recorded on the object (`metadata.designCheckIgnore`).
+- **Several objects at once** (`MultiSection.tsx`, `lib/multi-edit.ts`). The
+  shared value, or "Mixed", and one patch for every selected object that has
+  the property. A control says when it reaches only some of the selection.
+  `ColorField` and `NumberField` take `mixed`: a typed value is committed
+  even when it equals `value`, because it equals only some of them.
+- **Object styles** (`theme.objectStyles`, `element.styleRef`,
+  `lib/object-styles.ts`).
+  - **Applied by copying:** the style's values are written onto the element,
+    so no renderer or exporter changed and the document is complete without
+    the definition. A text box keeps its own family and size when a style
+    sets neither, because the schema requires both.
+  - **Every action is one patch:** update rewrites every user of the style,
+    and rename and delete rewrite every `styleRef`.
+  - **A theme change keeps the deck's own named colours and styles.**
+    `applyThemeOperations` used to replace `/theme` whole, which left every
+    `token:colors.custom.*` pointing at nothing.
+- **Rows, columns and grids** (`lib/layout-actions.ts`, `LayoutSection.tsx`)
+  are editor surface over `containerLayout`.
+  - A grid divides its own width into equal columns, so its width is decided
+    from the widest child before it is placed.
+  - Removing a layout writes each child where it was drawn.
+- **The theme editor** (`ThemeCustomise.tsx`, `lib/theme-customise.ts`)
+  writes the theme, and the viewport's safe area, in one patch per change. It
+  covers fonts, a modular type scale, spacing and corners, charts, diagrams,
+  a new `theme.table` that the scene build reads beneath a table's own style,
+  and a logo.
+  - **The logo** is a locked picture on every slide, marked
+    `metadata.brandLogo`, so every exporter carries it.
+  - **The first chart write brings `series`,** which `ChartThemeSchema`
+    requires.
+  - **The gallery previews** the current slide in the chosen preset, but only
+    for a preset other than the deck's: previewing what is already on screen
+    says nothing.
+- **Icons are native in PowerPoint** (`export-pptx/src/drawn.ts` `iconShape`).
+  They are freeform outlines and ellipses grouped under the element's name.
+  Arcs are flattened and reported as `approximated`; an unknown icon is still
+  the reported placeholder. `lib/export-fidelity.ts` says what each kind of
+  object becomes in PowerPoint; change a row there when the exporter changes.
+- **Colour roles and modes.**
+  - **Roles:** a named colour can hold a token (`"token:colors.accent"`), and
+    `resolveValue` follows a chain of up to 8 references. A loop falls back
+    rather than drawing a token string.
+  - **Modes:** `theme.modes` holds colour overrides by name, and
+    `slide.colorMode` picks one. The scene build resolves one theme per mode,
+    so canvas, thumbnails, present mode, Design Check and exports all agree.
+    Deleting a mode clears its slides in the same patch.
+- **The icon library** is 200 icons in 10 categories.
+  - **Source:** the curated set plus Lucide, generated into
+    `renderer/src/icon-library.ts` by `scripts/build-icon-library.mjs` from the
+    `lucide-static` development dependency. The curated drawing wins a shared
+    name.
+  - **Licence:** Lucide is copied content rather than a bundled package, so
+    `notices.mjs` lists it under `VENDORED` and its licence text ships.
+- **Brand icons** (`theme.icons`, `icon.set: "brand"`, `lib/svg-icon.ts`).
+  - **What survives an SVG:** only its geometry, as an allowlist. Transforms,
+    gradients, pictures, text, scripts and DOCTYPEs are refused with the
+    reason.
+  - **Filled shapes** draw filled on the slide and in PowerPoint.
+  - **They travel with the theme** into every deck that uses it and into a
+    saved workspace theme.
+- **Recent and favourites follow the person.** They are kept by the service
+  at `GET/PUT /v1/me/preferences/library`, with an allowlisted key, a 16 KB
+  cap and the `user_preferences` table. The browser's copy is the offline
+  cache. `readPreference` and `writePreference` are optional on
+  `WorkspaceClient`, so a surface without a service keeps them locally.
+- **The `design` acceptance step checks five things in the window:**
+  - the pop-up is on top and inside the window;
+  - three stacked rectangles give three W110s, and Fix all clears them;
+  - a style saved, applied and updated carries to the second rectangle in
+    the store;
+  - the row is made, then undone.
+
+  Objects are picked from the Layers panel (`data-layer-id`), because after
+  Fix all they are wherever the fixes put them.
+- **A checkout run can refuse to start its service** with "built from
+  different migrations" when `dist/build-manifest.json` is left over from an
+  earlier packaging. After adding a migration, run `npm run manifest` in
+  `apps/desktop`.
+
 ### Validation is a product surface
 
 `RULES` in `src/validate.ts` is the catalog (doc 02 §42). Codes are stable because the editor, agents, exporters and the MCP surface all reference the same rule. Messages must be actionable and name the offending id.
