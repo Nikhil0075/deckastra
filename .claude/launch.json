@@ -6,6 +6,17 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:web"],
       "port": 3000
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "deckastra_api.main:app", "--port", "8001", "--app-dir", "apps/api"],
+      "env": {
+        "DATABASE_URL": "sqlite:///.artifacts/preview/preview.db",
+        "DECKASTRA_ASSET_DIR": ".artifacts/preview/assets",
+        "DECKASTRA_EXPORT_DIR": ".artifacts/preview/exports"
+      },
+      "port": 8001
     }
   ]
 }
