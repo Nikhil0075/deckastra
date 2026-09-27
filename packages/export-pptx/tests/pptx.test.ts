@@ -966,3 +966,45 @@ describe("icons are editable shapes (design review, 2026-09-27)", () => {
     expect(icon.map((warning) => warning.action)).toContain("dropped");
   });
 });
+
+describe("shapes PowerPoint has no preset for", () => {
+  function withShape(shape: string, extra: Record<string, unknown> = {}): PresentationDocument {
+    const document = structuredClone(TECHNICAL);
+    (document.slides[0]!.elements as unknown[]).push({
+      id: "el_01JSHAPESHAPESHAPESHAPESHA",
+      type: "shape",
+      shape,
+      transform: { x: 200, y: 200, width: 400, height: 300 },
+      style: { fill: { type: "solid", color: "#F2545B" } },
+      ...extra,
+    });
+    return document;
+  }
+  const shapeXml = (bytes: Uint8Array) => {
+    const slide = [...unzip(bytes).entries()].find(([path]) => path === "ppt/slides/slide1.xml")![1];
+    const start = slide.indexOf('name="deckastra-el_01JSHAPESHAPESHAPESHAPESHA"');
+    return slide.slice(slide.lastIndexOf("<p:sp>", start), slide.indexOf("</p:sp>", start));
+  };
+
+  it("draws a custom path as its own outline, not a rectangle", () => {
+    const blob = "M 0.5 0 C 0.9 0 1 0.3 1 0.5 C 1 0.8 0.7 1 0.5 1 C 0.2 1 0 0.8 0 0.5 C 0 0.2 0.2 0 0.5 0 Z";
+    const { bytes, result } = buildPptx(inputFor(withShape("customPath", { pathData: blob })));
+    const shape = shapeXml(bytes);
+    expect(shape).toContain("<a:custGeom>");
+    expect(shape).toContain("<a:cubicBezTo>");
+    expect(shape).not.toContain('prst="rect"');
+    expect(result.report.warnings.filter((w) => w.elementId === "el_01JSHAPESHAPESHAPESHAPESHA")).toEqual([]);
+  });
+
+  it("draws a pill and a speech bubble by their outline too", () => {
+    for (const kind of ["pill", "speechBubble"]) {
+      expect(shapeXml(buildPptx(inputFor(withShape(kind))).bytes)).toContain("<a:custGeom>");
+    }
+  });
+
+  it("still reports a kind from a newer schema as the rectangle it becomes", () => {
+    const { bytes, result } = buildPptx(inputFor(withShape("hyperbolicWidget")));
+    expect(shapeXml(bytes)).toContain('prst="rect"');
+    expect(result.report.warnings.some((w) => w.elementId === "el_01JSHAPESHAPESHAPESHAPESHA" && w.action === "approximated")).toBe(true);
+  });
+});

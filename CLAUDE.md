@@ -4031,6 +4031,15 @@ a weak design assistant. Each part below is one commit. Concepts are in
   safe area is shrunk to fit inside it (a move alone returned 0 and the check
   said nothing). A diagram using a corner of its frame gets "Fit the frame".
   Missing alt text asks for the words in place ("Describe it…").
+- **An overlap fix never trades one finding for another.** When moving an
+  object clear would take it outside the safe area, the fix makes it narrower
+  (or shorter) on the overlapping side instead. Otherwise Fix all moved a
+  too-wide title out of the margin, moved the picture back into it, and never
+  settled. Found building a real slide, not by a test.
+- **PowerPoint draws a custom path, a pill, a polygon and a speech bubble by
+  their outline** (`pathGeometry`, `a:custGeom` from the scene's resolved
+  path). They used to arrive as rectangles, so a coral blob became a coral
+  box. An unknown kind from a newer schema is still a reported rectangle.
 - **An uploaded SVG is checked whole, including `<defs>`.** A gradient,
   pattern, mask, clip path, filter or script anywhere is refused, and so is
   any `url(...)` paint. Skipping `<defs>` let the commonest gradient through.

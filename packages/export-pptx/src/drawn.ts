@@ -302,6 +302,17 @@ function customGeometry(segments: Segment[], box: { x: number; y: number; width:
   );
 }
 
+/**
+ * `a:custGeom` for a shape the scene resolved to a path in its own box (a
+ * custom path, or a kind with no preset). Undefined when the path has nothing
+ * drawable, so the caller keeps its rectangle and its warning.
+ */
+export function pathGeometry(d: string, width: number, height: number, units: Units): { xml: string; flattenedArcs: boolean } | undefined {
+  const segments = parsePath(d);
+  if (!segments.some((segment) => segment.op !== "M" && segment.op !== "Z")) return undefined;
+  return { xml: customGeometry(segments, { x: 0, y: 0, width: Math.max(1, width), height: Math.max(1, height) }, 1, units, true), flattenedArcs: /[Aa]/.test(d) };
+}
+
 // ------------------------------------------------------------------ writers
 
 interface Writer {

@@ -109,6 +109,19 @@ it("keeps fixing until three boxes stacked on one spot are all clear", () => {
   expect(check(after).filter((f) => f.code === "W110")).toEqual([]);
 });
 
+it("narrows a box too wide for its gap rather than moving it out of the safe area", () => {
+  // A title beside a picture that also pokes past the right margin: moving
+  // the title clear pushes it off the left margin, and moving the picture
+  // inside pushes it back into the title. Fix all must settle.
+  const title = text(140, 300, 880, 330);
+  const picture = card(960, 170, 900, 700, "#F2545B");
+  const document = deck([picture, title]);
+  const overlap = check(document).find((f) => f.code === "W110")!;
+  expect(overlap.fix?.label).toBe("Make it narrower");
+  const after = applyPatch(document, fixAllOperations(document, check(document))).document;
+  expect(check(after).filter((f) => f.code === "W110" || f.code === "W104")).toEqual([]);
+});
+
 it("shrinks an object larger than the safe area to fit inside it", () => {
   fixAndUndo(deck([card(0, 0, 1920, 1080, "#EEEEEE")]), "W104");
 });

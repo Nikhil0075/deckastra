@@ -13,9 +13,16 @@ import type { DegradationLedger } from "@deckastra/export-core";
 
 import { alpha, hex, rotation, shapeName, xml, type Units } from "./units";
 import { fitPicture } from "./media";
-import { chartShape, diagramShape, iconShape, tableShape } from "./drawn";
+import { chartShape, diagramShape, iconShape, pathGeometry, tableShape } from "./drawn";
 
 /** Deckastra shape kinds that map to a PPTX preset geometry. */
+/**
+ * Kinds this schema knows that DrawingML has no preset for. They are drawn
+ * from the scene's resolved path; an unknown kind from a newer schema is not,
+ * because the renderer itself only guessed a rectangle for it.
+ */
+const DRAWN_KINDS = new Set(["customPath", "pill", "polygon", "speechBubble"]);
+
 const PRESET_GEOMETRY: Record<string, string> = {
   rectangle: "rect",
   roundedRectangle: "roundRect",
@@ -380,11 +387,21 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
   const kind = payload.kind === "shape" ? shapeKindOf(node, context) : "rectangle";
   const preset = PRESET_GEOMETRY[kind];
 
-  if (!preset) {
-    // Doc 04 §33.2: a custom path maps to `custGeom`. Converting an arbitrary
-    // SVG path to DrawingML's path grammar is a real piece of work and gets it
-    // subtly wrong on curves, so the honest MVP answer is a rectangle plus a
-    // warning rather than a shape that is nearly right.
+  // Doc 04 §33.2: a custom path maps to `custGeom`, drawn from the path the
+  // scene already resolved into the shape's own box, so it is the outline on
+  // screen and stays editable. Arcs are flattened, and say so.
+  const custom = !preset && payload.kind === "shape" && DRAWN_KINDS.has(kind) ? pathGeometry(payload.pathData, node.localBounds.width, node.localBounds.height, units) : undefined;
+  if (custom?.flattenedArcs) {
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: `shape:${kind}`,
+      action: "approximated",
+      message: `"${kind}"'s curves are drawn as short straight segments; it is still an editable shape.`,
+    });
+  }
+  if (!preset && !custom) {
     context.ledger.record({
       severity: "warning",
       slideId: context.scene.slideId,
@@ -415,7 +432,7 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
   return (
     `<p:sp>${nonVisual(node, context.nextId(), context.nameOverrides)}` +
     `<p:spPr>${transform(node, units)}` +
-    `<a:prstGeom prst="${geometry}">${radius}</a:prstGeom>` +
+    (custom ? custom.xml : `<a:prstGeom prst="${geometry}">${radius}</a:prstGeom>`) +
     `${fillFor(node)}${strokeFor(node, units)}${effectsFor(node, units)}</p:spPr>${label}</p:sp>`
   );
 }

@@ -134,9 +134,21 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
       }
       const ignore: FindingFix = { label: "It's intended", changes: [ignoreChange(document, id, issue.code)] };
       switch (detail.kind) {
-        case "overlap":
-          push({ ...base, fix: { label: "Move it clear", changes: [{ elementId: id, move: { dx: detail.dx, dy: detail.dy } }] }, alternative: ignore });
+        case "overlap": {
+          // A move that would carry the object out of the safe area only
+          // trades one finding for another, and Fix all then goes back and
+          // forth between them. A box that is simply too wide for its gap is
+          // made narrower on the side that overlaps instead.
+          const narrowed = narrowInstead(document, id, detail.dx, detail.dy);
+          push({
+            ...base,
+            fix: narrowed
+              ? { label: detail.dx ? "Make it narrower" : "Make it shorter", changes: [{ elementId: id, frame: narrowed }] }
+              : { label: "Move it clear", changes: [{ elementId: id, move: { dx: detail.dx, dy: detail.dy } }] },
+            alternative: ignore,
+          });
           break;
+        }
         case "safeArea":
           push({
             ...base,
@@ -308,6 +320,38 @@ export function fixOperations(document: PresentationDocument, fixes: readonly Fi
 }
 
 // ------------------------------------------------------------------ helpers
+
+/**
+ * The box an overlapping object should have instead of being moved, when the
+ * move would take it outside the safe area: the overlapping side pulled in by
+ * the overlap. Only for top-level, unrotated objects that keep at least 40% of
+ * their size; anything else is moved as before.
+ */
+function narrowInstead(
+  document: PresentationDocument,
+  elementId: string,
+  dx: number,
+  dy: number,
+): { x: number; y: number; width: number; height: number } | undefined {
+  const found = resolveElementById(document, elementId);
+  if (!found || found.ancestors.length || found.element.transform.rotation) return undefined;
+  const box = found.element.transform;
+  const safe = document.viewport.safeArea ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const moved = { x: box.x + dx, y: box.y + dy };
+  const leaves =
+    moved.x < safe.left ||
+    moved.y < safe.top ||
+    moved.x + box.width > document.viewport.width - safe.right ||
+    moved.y + box.height > document.viewport.height - safe.bottom;
+  if (!leaves) return undefined;
+  if (dx && box.width - Math.abs(dx) >= box.width * 0.4) {
+    return { x: dx > 0 ? box.x + dx : box.x, y: box.y, width: box.width - Math.abs(dx), height: box.height };
+  }
+  if (dy && box.height - Math.abs(dy) >= box.height * 0.4) {
+    return { x: box.x, y: dy > 0 ? box.y + dy : box.y, width: box.width, height: box.height - Math.abs(dy) };
+  }
+  return undefined;
+}
 
 /** Scale an object uniformly so its box fits `area`, then move it inside. */
 function fitIntoOperations(document: PresentationDocument, elementId: string, area: { x: number; y: number; width: number; height: number }): PatchOperation[] {
