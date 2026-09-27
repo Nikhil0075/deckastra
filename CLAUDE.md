@@ -4018,6 +4018,22 @@ a weak design assistant. Each part below is one commit. Concepts are in
 
   Objects are picked from the Layers panel (`data-layer-id`), because after
   Fix all they are wherever the fixes put them.
+- **Contrast is measured against every layer under the text** (the review's
+  gaps, 2026-09-27). `layout-check.ts` composites the slide background and
+  each filled object beneath the text's centre, bottom up: a translucent fill
+  blends, an opaque one replaces, a gradient counts at its **weakest stop**.
+  Table headings, cells and banding, and chart labels on their bars, are
+  judged the same way. A picture beneath text is **W218**, "cannot be
+  measured", never a guessed ratio. Its fix, a card behind the text, is
+  offered and never applied by Fix all, because it changes how the slide
+  looks.
+- **A finding carries a fix where one exists.** An object larger than the
+  safe area is shrunk to fit inside it (a move alone returned 0 and the check
+  said nothing). A diagram using a corner of its frame gets "Fit the frame".
+  Missing alt text asks for the words in place ("Describe it…").
+- **An uploaded SVG is checked whole, including `<defs>`.** A gradient,
+  pattern, mask, clip path, filter or script anywhere is refused, and so is
+  any `url(...)` paint. Skipping `<defs>` let the commonest gradient through.
 - **A checkout run can refuse to start its service** with "built from
   different migrations" when `dist/build-manifest.json` is left over from an
   earlier packaging. After adding a migration, run `npm run manifest` in

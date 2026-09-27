@@ -155,6 +155,7 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   // again: the applied font size after fit, and where a diagram's boxes landed.
   W216: { severity: "warning", summary: "Text is smaller than the minimum readable size" },
   W217: { severity: "warning", summary: "Diagram uses little of its frame or shrinks its labels" },
+  W218: { severity: "warning", summary: "Text over a picture; its contrast cannot be measured" },
 };
 
 /**
@@ -183,6 +184,7 @@ export const REQUIRES_RENDER_CONTEXT = [
   "W215",
   "W216",
   "W217",
+  "W218",
   "W250",
 ] as const;
 

@@ -109,6 +109,62 @@ it("keeps fixing until three boxes stacked on one spot are all clear", () => {
   expect(check(after).filter((f) => f.code === "W110")).toEqual([]);
 });
 
+it("shrinks an object larger than the safe area to fit inside it", () => {
+  fixAndUndo(deck([card(0, 0, 1920, 1080, "#EEEEEE")]), "W104");
+});
+
+it("fits a diagram's frame to its boxes", () => {
+  const document = structuredClone(loadFixture("technical")) as PresentationDocument;
+  const slide = document.slides.find((s) => s.elements.some((e) => e.type === "diagram"))!;
+  const diagram = slide.elements.find((e) => e.type === "diagram")!;
+  diagram.transform = { ...diagram.transform, width: diagram.transform.width * 4, height: diagram.transform.height * 4 };
+  document.slides = [slide];
+  const finding = check(document).find((f) => f.code === "W217" && f.elementId === diagram.id)!;
+  expect(finding.fix?.label).toBe("Fit the frame to the diagram");
+  const after = applyPatch(document, fixOperations(document, [finding.fix!])).document;
+  expect(check(after).filter((f) => f.code === "W217" && f.elementId === diagram.id)).toEqual([]);
+});
+
+it("offers a card behind text on a picture, and never adds one by itself", () => {
+  const picture = { id: id(), type: "image", transform: { x: 100, y: 100, width: 900, height: 600 }, assetId: "ast_01JB8Z9K2QW4RN7F3X01006800", altText: "A photograph" } as unknown as PresentationElement;
+  const words = text(240, 300, 300, 60, { color: "#111111", fontSize: 32 });
+  const document = deck([picture, words]);
+  const finding = check(document).find((f) => f.code === "W218")!;
+  expect(finding.elementId).toBe(words.id);
+  expect(safeFixes([finding])).toEqual([]);
+  expect(fixAllOperations(document, check(document)).some((op) => op.op === "add")).toBe(false);
+  const after = applyPatch(document, fixOperations(document, [finding.fix!])).document;
+  const elements = after.slides[0]!.elements;
+  expect(elements.map((e) => e.id).indexOf(words.id)).toBe(2);
+  expect(check(after).filter((f) => f.code === "W218")).toEqual([]);
+});
+
+it("asks for a picture's description and writes it where the picture keeps one", () => {
+  const picture = { id: id(), type: "image", transform: { x: 200, y: 200, width: 600, height: 400 }, assetId: "ast_01JB8Z9K2QW4RN7F3X01006800" } as unknown as PresentationElement;
+  const document = deck([picture]);
+  const onApply = vi.fn();
+  render(<DesignCheckPanel document={document} slideId={document.slides[0]!.id} findings={check(document)} apply={onApply} onSelect={() => {}} />);
+  fireEvent.click(screen.getByTestId("check-prompt-open"));
+  fireEvent.change(screen.getByTestId("check-prompt"), { target: { value: "Revenue doubled in Q3" } });
+  fireEvent.click(screen.getByTestId("check-prompt-save"));
+  expect(onApply).toHaveBeenCalledTimes(1);
+  const operations = onApply.mock.calls[0]![0];
+  const after = applyPatch(document, operations).document;
+  expect((after.slides[0]!.elements[0] as { altText?: string }).altText).toBe("Revenue doubled in Q3");
+});
+
+it("fixes a table's heading colour where the heading keeps it", () => {
+  const document = structuredClone(loadFixture("technical")) as PresentationDocument;
+  const slide = document.slides.find((s) => s.elements.some((e) => e.type === "table"))!;
+  const table = slide.elements.find((e) => e.type === "table")! as PresentationElement & { tableStyle?: Record<string, unknown> };
+  table.tableStyle = { ...(table.tableStyle ?? {}), headerFill: { type: "solid", color: "#F4EFE3" }, headerColor: "#FFFFFF" };
+  document.slides = [slide];
+  const finding = check(document).find((f) => f.code === "A102" && f.elementId === table.id && f.fix)!;
+  expect((finding.fix!.changes[0] as { property: string }).property).toBe("tableStyle.headerColor");
+  const after = applyPatch(document, fixOperations(document, [finding.fix!])).document;
+  expect(check(after).filter((f) => f.code === "A102" && f.elementId === table.id && (f.fix?.changes[0] as { property?: string } | undefined)?.property === "tableStyle.headerColor")).toEqual([]);
+});
+
 it("lists findings, fixes one on press, and goes to the object", () => {
   const document = structuredClone(loadFixture("technical")) as PresentationDocument;
   const slide = document.slides.find((candidate) => candidate.elements.some((element) => element.type === "diagram"))!;

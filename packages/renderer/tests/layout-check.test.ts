@@ -101,3 +101,53 @@ describe("checkLayout", () => {
     }
   });
 });
+
+describe("contrast that can be trusted", () => {
+  const pale = (y = 240) => text(240, y, 300, 60, { typography: { color: "#FFFFFF", fontSize: 20 } });
+
+  it("judges text on a gradient at its weakest stop", () => {
+    const card = box(200, 200, 600, 300, "#000000", { style: { fill: { type: "linearGradient", angle: 90, stops: [{ offset: 0, color: "#111111" }, { offset: 1, color: "#F4EFE3" }] } } });
+    const label = pale();
+    const [issue] = checkLayout(slideWith([card, label])).filter((i) => i.code === "A102");
+    expect(issue?.elementId).toBe(label.id);
+    expect(issue?.message).toMatch(/weakest part of the gradient/);
+    expect(issue?.detail).toMatchObject({ behind: "#F4EFE3" });
+  });
+
+  it("blends a translucent card with what is beneath it", () => {
+    // A barely-there blue over white is nearly white: white text on it fails,
+    // where the opaque blue it names would have passed.
+    const card = box(200, 200, 600, 300, "#1E4BD21A");
+    expect(checkLayout(slideWith([card, pale()])).filter((i) => i.code === "A102")).toHaveLength(1);
+    const solid = box(200, 200, 600, 300, "#1E4BD2");
+    expect(checkLayout(slideWith([solid, pale()])).filter((i) => i.code === "A102")).toEqual([]);
+  });
+
+  it("says a picture makes contrast unmeasurable, and a solid card makes it measurable again", () => {
+    const picture = { id: id(), type: "image", transform: { x: 100, y: 100, width: 900, height: 600 }, assetId: "ast_01JB8Z9K2QW4RN7F3X01006800", altText: "A photograph" } as unknown as PresentationElement;
+    const words = pale(300);
+    const unknown = checkLayout(slideWith([picture, words]));
+    expect(unknown.filter((i) => i.code === "W218").map((i) => i.elementId)).toEqual([words.id]);
+    expect(unknown.filter((i) => i.code === "A102")).toEqual([]);
+    const backed = checkLayout(slideWith([picture, box(220, 280, 400, 120, "#1E4BD2"), pale(300)]));
+    expect(backed.filter((i) => i.code === "W218" || i.code === "A102")).toEqual([]);
+  });
+
+  it("checks a table's heading on its heading fill", () => {
+    const document = structuredClone(loadFixture("technical")) as PresentationDocument;
+    const slide = document.slides.find((s) => s.elements.some((e) => e.type === "table"))!;
+    const table = slide.elements.find((e) => e.type === "table")! as PresentationElement & { tableStyle?: Record<string, unknown> };
+    table.tableStyle = { ...(table.tableStyle ?? {}), headerFill: { type: "solid", color: "#F4EFE3" }, headerColor: "#FFFFFF" };
+    const scene = buildDocumentScene(document).slides.find((s) => s.slideId === slide.id)!;
+    const found = checkLayout(scene).filter((i) => i.code === "A102" && i.elementId === table.id);
+    expect(found.map((i) => (i.detail as { target: string }).target)).toContain("tableHeader");
+  });
+
+  it("reports an object larger than the safe area, which cannot be moved inside it", () => {
+    const huge = box(0, 0, 1920, 1080, "#EEEEEE");
+    const [issue] = checkLayout(slideWith([huge])).filter((i) => i.code === "W104");
+    expect(issue?.message).toMatch(/larger than the slide's safe area/);
+    expect(issue?.detail).toMatchObject({ kind: "safeArea", dx: 0, dy: 0 });
+    expect((issue?.detail as { scale: number }).scale).toBeLessThan(1);
+  });
+});

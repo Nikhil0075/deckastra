@@ -50,6 +50,12 @@ it("refuses what it cannot draw faithfully, and says why", () => {
     [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text>Hi</text></svg>`, /text/],
     [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><script>1</script></svg>`, /script/],
     [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"></svg>`, /no shapes/],
+    // Declared where nothing is drawn and used by reference: the common case.
+    [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><linearGradient id="g"><stop offset="0" stop-color="red"/></linearGradient></defs><path d="M2 2H22V22H2Z" fill="url(#g)"/></svg>`, /gradient/],
+    [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><pattern id="p"/></defs><path d="M2 2H22V22H2Z"/></svg>`, /pattern/],
+    [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><script>1</script></defs><path d="M2 2H22V22H2Z"/></svg>`, /script/],
+    [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 2H22V22H2Z" style="fill: url(#elsewhere)"/></svg>`, /gradient or pattern/],
+    [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><clipPath id="c"><rect width="4" height="4"/></clipPath></defs><path d="M2 2H22V22H2Z" clip-path="url(#c)"/></svg>`, /clips/],
     [`<html><body/></html>`, /not an SVG|not a readable/],
     [`<!DOCTYPE svg [<!ENTITY x "y">]><svg xmlns="http://www.w3.org/2000/svg"/>`, /document type/],
   ];

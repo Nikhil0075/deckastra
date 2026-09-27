@@ -3096,3 +3096,9 @@
   align-self: center;
   font-size: 10px;
 }
+
+.dk-check__prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}

@@ -194,9 +194,9 @@ describe("the render pass", () => {
   it("owns every rule the catalog marks as needing a render", () => {
     // If a code is declared render-context but nothing here can produce it, the
     // catalog is lying about what gets checked.
-    // W110, W216 and W217 come from `checkLayout` (layout-check.test.ts proves
+    // W110, W216, W217 and W218 come from `checkLayout` (layout-check.test.ts proves
     // each is produced), the editor's Design Check rather than this pass.
-    const implemented = new Set(["W102", "W103", "W104", "W110", "W111", "W210", "W211", "W212", "W213", "W214", "W215", "W216", "W217", "W250"]);
+    const implemented = new Set(["W102", "W103", "W104", "W110", "W111", "W210", "W211", "W212", "W213", "W214", "W215", "W216", "W217", "W218", "W250"]);
     for (const code of REQUIRES_RENDER_CONTEXT) expect(implemented.has(code)).toBe(true);
   });
 

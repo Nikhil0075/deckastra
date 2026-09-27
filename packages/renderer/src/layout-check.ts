@@ -23,10 +23,11 @@ export interface LayoutIssue extends SemanticIssue {
   /** What a one-click fix needs, in slide coordinates. */
   detail?:
     | { kind: "overlap"; otherId: string; dx: number; dy: number }
-    | { kind: "safeArea"; dx: number; dy: number }
+    | { kind: "safeArea"; dx: number; dy: number; scale?: number; safe?: { x: number; y: number; width: number; height: number } }
     | { kind: "smallText"; size: number; minimum: number }
-    | { kind: "contrast"; ratio: number; required: number; behind: string; foreground: string; target: "text" | "label" }
-    | { kind: "diagram"; coverage: number; labelSize: number };
+    | { kind: "contrast"; ratio: number; required: number; behind: string; foreground: string; target: "text" | "label" | "tableHeader" | "tableBody" | "chart" }
+    | { kind: "contrastUnknown"; reason: "picture" }
+    | { kind: "diagram"; coverage: number; labelSize: number; used: { x: number; y: number; width: number; height: number } };
 }
 
 export interface LayoutCheckOptions {
@@ -55,17 +56,25 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
   const safe = safeRect(slide);
   for (const node of slide.nodes) {
     if (node.flags.hidden || node.semanticRole === "decoration" || node.semanticRole === "background") continue;
+    // An object bigger than the safe area cannot be moved inside it; it is
+    // still outside, so it is still reported, with the scale that would fit.
+    const tooBig = node.bounds.width > safe.width + 0.5 || node.bounds.height > safe.height + 0.5;
     const dx = shiftInto(node.bounds.x, node.bounds.width, safe.x, safe.width);
     const dy = shiftInto(node.bounds.y, node.bounds.height, safe.y, safe.height);
-    if (dx === 0 && dy === 0) continue;
+    if (dx === 0 && dy === 0 && !tooBig) continue;
+    const scale = tooBig ? Math.min(safe.width / node.bounds.width, safe.height / node.bounds.height) : 1;
     issues.push({
       code: "W104",
       severity: "warning",
       slideId: slide.slideId,
       elementId: node.id,
-      message: slide.safeArea ? "This object reaches outside the slide's safe area." : "This object reaches past the edge of the slide.",
-      suggestedFix: "Move it inside.",
-      detail: { kind: "safeArea", dx, dy },
+      message: tooBig
+        ? `This object is larger than the slide's ${slide.safeArea ? "safe area" : "edges"}, so part of it is always outside.`
+        : slide.safeArea
+          ? "This object reaches outside the slide's safe area."
+          : "This object reaches past the edge of the slide.",
+      suggestedFix: tooBig ? "Shrink it to fit inside." : "Move it inside.",
+      detail: tooBig ? { kind: "safeArea", dx: 0, dy: 0, scale: Math.floor(scale * 1000) / 1000, safe } : { kind: "safeArea", dx, dy },
     });
   }
 
@@ -118,6 +127,8 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
   };
   visitSiblings(slide.nodes, false);
 
+  const contrastReported = new Set<string>();
+  const pictureReported = new Set<string>();
   for (const node of all) {
     const payload = node.renderPayload;
 
@@ -137,33 +148,86 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
       }
     }
 
-    // --- contrast against what is actually painted behind (A102)
-    const text =
-      payload.kind === "text"
-        ? { color: payload.typography.color, size: payload.metrics.appliedFontSize, weight: payload.typography.fontWeight, target: "text" as const }
-        : payload.kind === "shape" && payload.label?.length && hasWords(payload.label)
-          ? { color: payload.labelTypography?.color, size: Number(payload.labelTypography?.fontSize ?? 24), weight: payload.labelTypography?.fontWeight, target: "label" as const }
-          : undefined;
-    if (text?.color) {
-      const behind = text.target === "label" ? solid(node.resolvedStyle.fill) : (solid(node.resolvedStyle.fill) ?? paintedBehind(node, all, paintIndex) ?? solid(slide.background?.color));
-      const from = parseColor(String(text.color));
-      const to = parseColor(behind);
-      if (from && to && behind) {
-        const ratio = contrastRatio(from, to);
-        const bold = Number(text.weight ?? 400) >= 700;
-        const large = text.size >= LARGE_TEXT_PX || (bold && text.size >= LARGE_TEXT_BOLD_PX);
-        const required = large ? CONTRAST_LARGE : CONTRAST_NORMAL;
-        if (ratio < required) {
+    // --- contrast against what is actually painted behind (A102), or a
+    // plain statement that it cannot be measured (W218). Every layer under
+    // the text is composited: translucent fills blend, a gradient counts at
+    // its weakest stop, and a picture makes the answer unknowable rather than
+    // guessed.
+    const judge = (
+      target: "text" | "label" | "tableHeader" | "tableBody" | "chart",
+      color: unknown,
+      size: number,
+      weight: unknown,
+      backdrop: Backdrop,
+    ) => {
+      if (backdrop === "picture") {
+        if (!pictureReported.has(node.id)) {
+          pictureReported.add(node.id);
           issues.push({
-            code: "A102",
-            severity: "error",
+            code: "W218",
+            severity: "warning",
             slideId: slide.slideId,
             elementId: node.id,
-            message: `${text.target === "label" ? "This shape's label" : "This text"} is ${ratio.toFixed(2)}:1 against the colour behind it; ${required}:1 is needed at ${Math.round(text.size)}px.`,
-            suggestedFix: "Use a text colour that reads on it.",
-            detail: { kind: "contrast", ratio, required, behind, foreground: String(text.color), target: text.target },
+            message: `${targetName(target)} sits on a picture, so its contrast cannot be measured. Check it by eye, or put a solid or translucent shape behind it.`,
+            suggestedFix: "Check it by eye, or add a backing shape.",
+            detail: { kind: "contrastUnknown", reason: "picture" },
           });
         }
+        return;
+      }
+      const fg = parseColor(String(color ?? ""));
+      if (!fg || backdrop.length === 0) return;
+      const alpha = colorAlpha(String(color));
+      let worst: { ratio: number; behind: Rgb } | undefined;
+      for (const behind of backdrop) {
+        const seen = alpha < 1 ? mix(fg, behind, alpha) : fg;
+        const ratio = contrastRatio(seen, behind);
+        if (!worst || ratio < worst.ratio) worst = { ratio, behind };
+      }
+      if (!worst) return;
+      const bold = Number(weight ?? 400) >= 700;
+      const large = size >= LARGE_TEXT_PX || (bold && size >= LARGE_TEXT_BOLD_PX);
+      const required = large ? CONTRAST_LARGE : CONTRAST_NORMAL;
+      if (worst.ratio >= required) return;
+      const key = `${node.id}:${target}`;
+      if (contrastReported.has(key)) return;
+      contrastReported.add(key);
+      const gradient = backdrop.length > 1;
+      issues.push({
+        code: "A102",
+        severity: "error",
+        slideId: slide.slideId,
+        elementId: node.id,
+        message: `${targetName(target)} is ${worst.ratio.toFixed(2)}:1 against ${gradient ? "the weakest part of the gradient" : "the colour"} behind it; ${required}:1 is needed at ${Math.round(size)}px.`,
+        suggestedFix: "Use a text colour that reads on it.",
+        detail: { kind: "contrast", ratio: worst.ratio, required, behind: toHex(worst.behind), foreground: String(color), target },
+      });
+    };
+
+    const centre = { x: node.bounds.x + node.bounds.width / 2, y: node.bounds.y + node.bounds.height / 2 };
+    if (payload.kind === "text" && hasWords(payload.blocks)) {
+      judge("text", payload.typography.color, payload.metrics.appliedFontSize, payload.typography.fontWeight, backdropAt(slide, all, paintIndex, node, centre, true));
+    } else if (payload.kind === "shape" && payload.label?.length && hasWords(payload.label)) {
+      judge("label", payload.labelTypography?.color, Number(payload.labelTypography?.fontSize ?? 24), payload.labelTypography?.fontWeight, backdropAt(slide, all, paintIndex, node, centre, true));
+    } else if (payload.kind === "table") {
+      const behindTable = backdropAt(slide, all, paintIndex, node, centre, true);
+      payload.rows.forEach((row, rowIndex) => {
+        const header = payload.headerRow && rowIndex === 0;
+        row.cells.forEach((cell, columnIndex) => {
+          if (!cell.text.trim()) return;
+          const band = !header && ((payload.banding === "rows" && rowIndex % 2 === 1) || (payload.banding === "columns" && columnIndex % 2 === 1));
+          const own = cell.fill ?? (header ? payload.headerFill : band ? payload.bandColor : undefined);
+          const backdrop = own ? over(behindTable, own) : behindTable;
+          const typography = header ? payload.headerTypography : payload.typography;
+          judge(header ? "tableHeader" : "tableBody", typography.color, Number(typography.fontSize ?? 20), typography.fontWeight, backdrop);
+        });
+      });
+    } else if (payload.kind === "chart" && !payload.notice) {
+      const behindChart = backdropAt(slide, all, paintIndex, node, centre, true);
+      for (const text of payload.texts) {
+        // A data label sits on its bar when a bar holds its anchor.
+        const bar = payload.rects.find((rect) => text.x >= rect.x && text.x <= rect.x + rect.width && text.y >= rect.y && text.y <= rect.y + rect.height);
+        judge("chart", text.fill, text.fontSize, text.weight, bar ? over(behindChart, bar.fill) : behindChart);
       }
     }
 
@@ -187,7 +251,7 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
               ? `This diagram's boxes fill ${Math.round(coverage * 100)}% of its frame, so it reads small on the slide.`
               : `This diagram's labels are ${round1(labelSize)}px, below ${round1(minimum)}px.`,
           suggestedFix: coverage < DIAGRAM_MIN_COVERAGE ? "Fit the frame to the diagram." : "Give the diagram more room or fewer boxes.",
-          detail: { kind: "diagram", coverage, labelSize },
+          detail: { kind: "diagram", coverage, labelSize, used: { x: minX, y: minY, width: maxX - minX, height: maxY - minY } },
         });
       }
     }
@@ -273,44 +337,116 @@ function shiftInto(start: number, size: number, rangeStart: number, rangeSize: n
 }
 
 /**
- * The fill of the topmost filled object painted before `node` whose box holds
- * the middle of it. A gradient or a picture is not a colour and answers
- * undefined, which skips the check rather than guessing.
+ * What is painted under a point, as the colours text there could sit on:
+ * one colour for a flat backdrop, several for a gradient (each stop), or
+ * "picture" when a picture shows through and no colour can be claimed.
+ *
+ * Built bottom up from the slide background through every filled object
+ * painted before `node` whose box holds the point, then `node`'s own fill when
+ * `includeOwn`. A translucent layer blends over what is beneath it; an opaque
+ * one replaces it, which is also how a solid card over a photograph makes the
+ * text on it measurable again.
  */
-function paintedBehind(node: SceneNode, all: SceneNode[], paintIndex: Map<string, number>): string | undefined {
+type Backdrop = Rgb[] | "picture";
+
+function backdropAt(
+  slide: SlideScene,
+  all: SceneNode[],
+  paintIndex: Map<string, number>,
+  node: SceneNode,
+  point: { x: number; y: number },
+  includeOwn: boolean,
+): Backdrop {
+  let result: Backdrop = slideBackdrop(slide);
   const index = paintIndex.get(node.id) ?? 0;
-  const cx = node.bounds.x + node.bounds.width / 2;
-  const cy = node.bounds.y + node.bounds.height / 2;
-  let best: { index: number; fill: string | undefined; image: boolean } | undefined;
-  for (const other of all) {
-    if (other.id === node.id) continue;
-    const at = paintIndex.get(other.id) ?? 0;
-    if (at >= index) continue;
-    const b = other.bounds;
-    if (cx < b.x || cy < b.y || cx > b.x + b.width || cy > b.y + b.height) continue;
-    const image = other.renderPayload.kind === "image";
-    const fill = image ? undefined : other.resolvedStyle.fill;
-    if (!image && !fill) continue;
-    if (!best || at > best.index) best = { index: at, fill, image };
-  }
-  if (!best || best.image) return undefined;
-  return solid(best.fill);
+  const layers = all
+    .filter((other) => other.id !== node.id && (paintIndex.get(other.id) ?? 0) < index && !other.flags.hidden)
+    .filter((other) => point.x >= other.bounds.x && point.y >= other.bounds.y && point.x <= other.bounds.x + other.bounds.width && point.y <= other.bounds.y + other.bounds.height)
+    .sort((a, b) => (paintIndex.get(a.id) ?? 0) - (paintIndex.get(b.id) ?? 0));
+  if (includeOwn) layers.push(node);
+  for (const layer of layers) result = paint(result, layer);
+  return result;
 }
 
-function solid(value: string | undefined): string | undefined {
-  if (!value) return undefined;
+function slideBackdrop(slide: SlideScene): Backdrop {
+  const background = slide.background;
+  let result: Backdrop = [parseColor(background?.color) ?? { r: 255, g: 255, b: 255 }];
+  if (background?.gradientStops) result = gradientOver(result, background.gradientStops.stops, 1);
+  if (background?.assetId) result = "picture";
+  if (background?.overlay) result = over(result, background.overlay);
+  return result;
+}
+
+function paint(under: Backdrop, layer: SceneNode): Backdrop {
+  const kind = layer.renderPayload.kind;
+  const opacity = layer.resolvedStyle.opacity ?? 1;
+  if (kind === "image") return "picture";
+  if (layer.resolvedStyle.gradient) return gradientOver(under, layer.resolvedStyle.gradient.stops, opacity);
+  const fill = layer.resolvedStyle.fill;
+  if (!fill || /url\(/i.test(fill)) return under;
+  return over(under, fill, opacity);
+}
+
+/** A colour laid over a backdrop, at its own alpha times `opacity`. */
+function over(under: Backdrop, color: string, opacity = 1): Backdrop {
+  const rgb = parseColor(color);
+  if (!rgb) return under;
+  const alpha = colorAlpha(color) * opacity;
+  if (alpha >= 0.98) return [rgb];
+  if (under === "picture") return "picture";
+  return under.map((behind) => mix(rgb, behind, alpha));
+}
+
+/** Every stop of a gradient over every colour beneath it, each at its own alpha. */
+function gradientOver(under: Backdrop, stops: ReadonlyArray<{ color: string }>, opacity: number): Backdrop {
+  const out: Rgb[] = [];
+  for (const stop of stops) {
+    const layered = over(under, stop.color, opacity);
+    if (layered === "picture") return "picture";
+    out.push(...layered);
+  }
+  return out.slice(0, 16);
+}
+
+type Rgb = { r: number; g: number; b: number };
+
+function mix(top: Rgb, bottom: Rgb, alpha: number): Rgb {
+  return {
+    r: top.r * alpha + bottom.r * (1 - alpha),
+    g: top.g * alpha + bottom.g * (1 - alpha),
+    b: top.b * alpha + bottom.b * (1 - alpha),
+  };
+}
+
+function colorAlpha(value: string): number {
   const text = value.trim();
-  if (/gradient|url\(/i.test(text)) return undefined;
-  // A translucent fill shows what is behind it; only an opaque one is the colour.
   const hex = /^#([0-9a-f]{8})$/i.exec(text);
-  if (hex && parseInt(hex[1]!.slice(6), 16) < 250) return undefined;
+  if (hex) return parseInt(hex[1]!.slice(6), 16) / 255;
+  const short = /^#([0-9a-f]{4})$/i.exec(text);
+  if (short) return parseInt(short[1]![3]! + short[1]![3]!, 16) / 255;
   const rgba = /^rgba\(([^)]+)\)$/i.exec(text);
   if (rgba) {
-    const alpha = Number(rgba[1]!.split(/[\s,/]+/).filter(Boolean)[3] ?? 1);
-    if (alpha < 0.98) return undefined;
+    const part = rgba[1]!.split(/[\s,/]+/).filter(Boolean)[3];
+    if (part !== undefined) return part.endsWith("%") ? Number(part.slice(0, -1)) / 100 : Number(part);
   }
-  return parseColor(text) ? text : undefined;
+  return 1;
 }
+
+function toHex({ r, g, b }: Rgb): string {
+  const two = (value: number) => Math.round(Math.max(0, Math.min(255, value))).toString(16).padStart(2, "0");
+  return `#${two(r)}${two(g)}${two(b)}`.toUpperCase();
+}
+
+function targetName(target: "text" | "label" | "tableHeader" | "tableBody" | "chart"): string {
+  return {
+    text: "This text",
+    label: "This shape's label",
+    tableHeader: "This table's heading text",
+    tableBody: "Text in this table",
+    chart: "A label in this chart",
+  }[target];
+}
+
 
 function hasWords(blocks: ReadonlyArray<{ spans: ReadonlyArray<{ text: string }> }>): boolean {
   return blocks.some((block) => block.spans.some((span) => span.text.trim().length > 0));

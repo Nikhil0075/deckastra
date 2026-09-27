@@ -1,4 +1,5 @@
 import type { PatchOperation, PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
+import { newId } from "@deckastra/presentation-schema";
 import { resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
 import {
   buildDocumentScene,
@@ -11,7 +12,8 @@ import {
 } from "@deckastra/renderer";
 import { applyPatch } from "@deckastra/transactions";
 
-import { altTextFor, auditAccessibility, needsAltText } from "./accessibility";
+import { altTextFor, altTextProperty, auditAccessibility, needsAltText } from "./accessibility";
+import { resizeOperations } from "./resize-operations";
 import { resolveColorValue } from "./colors";
 
 /**
@@ -36,7 +38,13 @@ export type FindingChange =
   | { elementId: string; property: string; value: unknown }
   | { elementId: string; move: { dx: number; dy: number } }
   /** Make a text box as tall as its words, measured when the fix is applied. */
-  | { elementId: string; growToContent: true };
+  | { elementId: string; growToContent: true }
+  /** Scale an object down to fit a rectangle, and move it inside it. */
+  | { elementId: string; fitInto: { x: number; y: number; width: number; height: number } }
+  /** Give an object a new box outright (a diagram's frame fitted to its boxes). */
+  | { elementId: string; frame: { x: number; y: number; width: number; height: number } }
+  /** Put an opaque card, in the theme's surface colour, behind a text box. */
+  | { elementId: string; cardBehind: true };
 
 export interface FindingFix {
   label: string;
@@ -55,6 +63,11 @@ export interface DesignFinding {
   fix?: FindingFix;
   /** A second choice, where there is a real one (move it, or it is intended). */
   alternative?: FindingFix;
+  /**
+   * A fix that needs words from the person: the panel asks, and writes what
+   * they type to `property` on the object (a picture's description).
+   */
+  prompt?: { label: string; placeholder: string; property: string };
 }
 
 /**
@@ -69,6 +82,7 @@ const TITLES: Record<string, string> = {
   W110: "Objects overlap",
   W216: "Text too small",
   W217: "Diagram too small in its frame",
+  W218: "Contrast cannot be measured",
   A101: "No alternative text",
   A102: "Low contrast",
   A103: "Reading order",
@@ -124,7 +138,13 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
           push({ ...base, fix: { label: "Move it clear", changes: [{ elementId: id, move: { dx: detail.dx, dy: detail.dy } }] }, alternative: ignore });
           break;
         case "safeArea":
-          push({ ...base, fix: { label: "Move it inside", changes: [{ elementId: id, move: { dx: detail.dx, dy: detail.dy } }] }, alternative: ignore });
+          push({
+            ...base,
+            fix: detail.scale && detail.safe
+              ? { label: "Shrink it to fit inside", changes: [{ elementId: id, fitInto: detail.safe }] }
+              : { label: "Move it inside", changes: [{ elementId: id, move: { dx: detail.dx, dy: detail.dy } }] },
+            alternative: ignore,
+          });
           break;
         case "smallText":
           push({
@@ -135,15 +155,42 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
           break;
         case "contrast": {
           const choice = readableToken(document, detail.behind);
+          // Where the colour lives depends on what the text is: a text box's
+          // or a label's own typography, a table's heading colour. Body text
+          // in a table and chart labels take the theme's colours, which the
+          // Theme panel's Customise view changes for the whole deck.
+          const property =
+            detail.target === "text" || detail.target === "label" ? "typography.color" : detail.target === "tableHeader" ? "tableStyle.headerColor" : undefined;
           push({
             ...base,
-            fix: choice ? { label: `Use ${choice.name} text`, changes: [{ elementId: id, property: "typography.color", value: choice.value }] } : undefined,
+            fix: choice && property ? { label: `Use ${choice.name} text`, changes: [{ elementId: id, property, value: choice.value }] } : undefined,
+            alternative: property ? undefined : ignore,
+            message: property ? base.message : `${base.message} Change it for the whole deck under Theme, Customise.`,
           });
           break;
         }
-        case "diagram":
-          push({ ...base, alternative: ignore });
+        case "contrastUnknown":
+          push({
+            ...base,
+            fix: { label: "Put a card behind it", changes: [{ elementId: id, cardBehind: true }] },
+            alternative: { label: "Checked by eye", changes: [ignoreChange(document, id, issue.code)] },
+          });
           break;
+        case "diagram": {
+          const element = resolveElementById(document, id)?.element;
+          const pad = 24;
+          const frame =
+            element && detail.coverage < 0.25
+              ? {
+                  x: Math.round(element.transform.x + detail.used.x - pad),
+                  y: Math.round(element.transform.y + detail.used.y - pad),
+                  width: Math.round(detail.used.width + pad * 2),
+                  height: Math.round(detail.used.height + pad * 2),
+                }
+              : undefined;
+          push({ ...base, fix: frame ? { label: "Fit the frame to the diagram", changes: [{ elementId: id, frame }] } : undefined, alternative: ignore });
+          break;
+        }
       }
     }
 
@@ -157,6 +204,7 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
         slideId: slide.slideId,
         elementId: element.id,
         message: `${nameOf(document, element.id)} has no alternative text, so a screen reader announces nothing.`,
+        prompt: { label: "Describe it", placeholder: "What does this show? The finding, not the shape.", property: altTextProperty(element) },
         alternative: { label: "It's decoration", changes: [{ elementId: element.id, property: "semanticRole", value: "decoration" }] },
       });
     }
@@ -180,9 +228,13 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
   return findings;
 }
 
-/** Every fix that needs no judgement: moves, sizes, colours, fit. Never "it's intended". */
+/**
+ * Every fix that needs no judgement: moves, sizes, colours, fit. Never "it's
+ * intended", and never a card behind text on a picture: adding an object to a
+ * slide is a design decision, offered one at a time rather than in bulk.
+ */
 export function safeFixes(findings: readonly DesignFinding[]): FindingFix[] {
-  return findings.flatMap((finding) => (finding.fix ? [finding.fix] : []));
+  return findings.flatMap((finding) => (finding.fix && finding.code !== "W218" ? [finding.fix] : []));
 }
 
 /**
@@ -233,6 +285,14 @@ export function fixOperations(document: PresentationDocument, fixes: readonly Fi
       const next: PatchOperation[] =
         "growToContent" in change
           ? growOperations(working, change.elementId, measurer)
+          : "fitInto" in change
+          ? fitIntoOperations(working, change.elementId, change.fitInto)
+          : "frame" in change
+          ? (["x", "y", "width", "height"] as const).flatMap((key) =>
+              found.element.transform[key] === change.frame[key] ? [] : setPropertyDeep(working, change.elementId, `transform.${key}`, change.frame[key]),
+            )
+          : "cardBehind" in change
+          ? cardBehindOperations(working, change.elementId)
           : "move" in change
           ? [
               ...setPropertyDeep(working, change.elementId, "transform.x", Math.round(found.element.transform.x + change.move.dx)),
@@ -248,6 +308,45 @@ export function fixOperations(document: PresentationDocument, fixes: readonly Fi
 }
 
 // ------------------------------------------------------------------ helpers
+
+/** Scale an object uniformly so its box fits `area`, then move it inside. */
+function fitIntoOperations(document: PresentationDocument, elementId: string, area: { x: number; y: number; width: number; height: number }): PatchOperation[] {
+  const found = resolveElementById(document, elementId);
+  if (!found) return [];
+  const box = found.element.transform;
+  const scale = Math.min(1, area.width / box.width, area.height / box.height);
+  const width = Math.floor(box.width * scale);
+  const height = Math.floor(box.height * scale);
+  const x = Math.round(Math.min(Math.max(box.x, area.x), area.x + area.width - width));
+  const y = Math.round(Math.min(Math.max(box.y, area.y), area.y + area.height - height));
+  return resizeOperations(document, elementId, { ...box, x, y, width, height });
+}
+
+/**
+ * An opaque card behind a text box that sits on a picture: the one change that
+ * makes its contrast both readable and measurable. In the theme's surface
+ * colour, a little larger than the text, directly beneath it in the stack.
+ */
+function cardBehindOperations(document: PresentationDocument, elementId: string): PatchOperation[] {
+  const found = resolveElementById(document, elementId);
+  if (!found) return [];
+  const siblings = found.ancestors.length
+    ? ((found.ancestors[found.ancestors.length - 1] as { children?: PresentationElement[] }).children ?? [])
+    : found.slide.elements;
+  const index = siblings.findIndex((element) => element.id === elementId);
+  const pad = 16;
+  const box = found.element.transform;
+  const card = {
+    id: newId("el"),
+    type: "shape",
+    shape: "rectangle",
+    name: "Card behind text",
+    transform: { x: box.x - pad, y: box.y - pad, width: box.width + pad * 2, height: box.height + pad * 2, ...(box.rotation ? { rotation: box.rotation } : {}) },
+    style: { fill: { type: "solid", color: "token:colors.surface" }, cornerRadius: 12 },
+  } as unknown as PresentationElement;
+  const parent = found.path.slice(0, found.path.lastIndexOf("/"));
+  return [{ op: "add", path: `${parent}/${Math.max(0, index)}`, value: card }];
+}
 
 const shrink = (elementId: string): FindingFix => ({ label: "Shrink text to fit", changes: [{ elementId, property: "fit", value: "shrinkToFit" }] });
 const grow = (elementId: string): FindingFix => ({ label: "Make the box taller", changes: [{ elementId, growToContent: true }] });

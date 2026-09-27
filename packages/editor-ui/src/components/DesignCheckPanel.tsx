@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react";
 import type { PatchOperation, PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
 import type { TextMeasurer } from "@deckastra/renderer";
+import { setPropertyDeep } from "@deckastra/presentation-core";
 
 import { fixAllOperations, fixOperations, safeFixes, type DesignFinding, type FindingFix } from "../lib/design-check";
 import { pptxFidelity } from "../lib/export-fidelity";
 import { readingOrder } from "../lib/accessibility";
-import { Button, Segmented, StatusChip } from "../ui";
+import { Button, Segmented, StatusChip, TextField } from "../ui";
 
 /**
  * Design Check (design review, 2026-09-27): what on this slide, or this deck,
@@ -82,6 +83,12 @@ export function DesignCheckPanel({
                 </span>
                 <span className="dk-check__message">{finding.message}</span>
               </button>
+              {finding.prompt && finding.elementId ? (
+                <PromptFix
+                  prompt={finding.prompt}
+                  onSave={(value) => apply(setPropertyDeep(document, finding.elementId!, finding.prompt!.property, value), `${finding.prompt!.label}`)}
+                />
+              ) : null}
               {finding.fix || finding.alternative ? (
                 <span className="dk-check__actions">
                   {finding.fix ? (
@@ -136,6 +143,53 @@ export function DesignCheckPanel({
         </details>
       ) : null}
     </section>
+  );
+}
+
+/** A fix that needs the person's words: asked for in place, written on Save. */
+function PromptFix({ prompt, onSave }: { prompt: NonNullable<DesignFinding["prompt"]>; onSave: (value: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  if (!open) {
+    return (
+      <span className="dk-check__actions">
+        <Button size="sm" variant="primary" onClick={() => setOpen(true)} data-testid="check-prompt-open">
+          {prompt.label}…
+        </Button>
+      </span>
+    );
+  }
+  const save = () => {
+    const text = value.trim();
+    if (!text) return;
+    onSave(text);
+    setOpen(false);
+    setValue("");
+  };
+  return (
+    <span className="dk-check__prompt">
+      <TextField
+        label={prompt.label}
+        hideLabel
+        value={value}
+        placeholder={prompt.placeholder}
+        autoFocus
+        data-testid="check-prompt"
+        onChange={setValue}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") save();
+          if (event.key === "Escape") setOpen(false);
+        }}
+      />
+      <span className="dk-check__actions">
+        <Button size="sm" variant="primary" disabled={!value.trim()} onClick={save} data-testid="check-prompt-save">
+          Save
+        </Button>
+        <Button size="sm" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </span>
+    </span>
   );
 }
 

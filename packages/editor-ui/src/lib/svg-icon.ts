@@ -31,7 +31,13 @@ const REFUSED: Record<string, string> = {
   use: "it reuses shapes by reference; expand them first",
   foreignobject: "it contains HTML",
   script: "it contains a script",
+  mask: "it uses a mask",
+  clippath: "it clips shapes to other shapes",
+  filter: "it uses a filter effect",
 };
+
+/** Attributes that make a shape draw with something other than its own geometry and one colour. */
+const REFERENCING = ["fill", "stroke", "clip-path", "mask", "filter"];
 
 export type SvgIconResult = { ok: true; icon: BrandIcon } | { ok: false; reason: string };
 
@@ -47,6 +53,22 @@ export function parseSvgIcon(text: string): SvgIconResult {
     return { ok: false, reason: "This is not a readable SVG file." };
   }
   if (!root || root.localName.toLowerCase() !== "svg") return { ok: false, reason: "This is not an SVG file." };
+
+  // The whole file, not only what is drawn: a gradient or pattern is usually
+  // declared in <defs> and used by reference, so refusing it only where it
+  // appears in the drawing lets the common case through.
+  for (const element of Array.from(root.getElementsByTagName("*"))) {
+    const name = element.localName.toLowerCase();
+    if (REFUSED[name]) return { ok: false, reason: `This SVG cannot be used as an icon: ${REFUSED[name]}.` };
+    for (const attribute of REFERENCING) {
+      const direct = element.getAttribute(attribute) ?? "";
+      const styled = element.getAttribute("style")?.match(new RegExp(`(?:^|;)\\s*${attribute}\\s*:\\s*([^;]+)`))?.[1] ?? "";
+      if (/url\(/i.test(direct) || /url\(/i.test(styled)) {
+        const what = attribute === "fill" || attribute === "stroke" ? "a gradient or pattern" : attribute === "clip-path" ? "clipping" : `a ${attribute}`;
+        return { ok: false, reason: `This SVG cannot be used as an icon: it uses ${what}. Use flat colours only.` };
+      }
+    }
+  }
 
   const box = viewBoxOf(root);
   if (!box) return { ok: false, reason: "The SVG has no size (no viewBox, width or height)." };
