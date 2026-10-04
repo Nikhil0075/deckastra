@@ -89,6 +89,7 @@ jobs:
           gcloud config set project "$GCP_PROJECT" --configuration=deckastra
           gcloud config set auth/credential_file_override "$GOOGLE_GHA_CREDS_PATH" --configuration=deckastra
       - name: Build immutable images
+        # Credential files created by the auth action must never enter build source.
         run: >-
           gcloud builds submit --project="$GCP_PROJECT" --configuration=deckastra
           --suppress-logs

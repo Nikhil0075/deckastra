@@ -1,4 +1,6 @@
 .git
+gha-creds-*.json
+**/gha-creds-*.json
 .gitignore
 .gcloudignore
 #!include:.dockerignore
