@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!requirements.txt
+!policy.py
+!server.py
+!cloudbuild.yaml

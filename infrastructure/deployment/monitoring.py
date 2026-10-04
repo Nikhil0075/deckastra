@@ -32,6 +32,29 @@ def configure(cloud, email):
             "comparison": "COMPARISON_GT", "thresholdValue": 4, "duration": "0s",
             "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM", "crossSeriesReducer": "REDUCE_SUM", "groupByFields": []}],
             "trigger": {"count": 1}}}], "alertStrategy": {"autoClose": "1800s"}})
+    if cloud.exists("run", "services", "describe", "deckastra-budget-stop", f"--region={cloud.region}"):
+        metric = "deckastra_ai_budget_stop_failure"
+        if not cloud.exists("logging", "metrics", "describe", metric):
+            cloud.run("logging", "metrics", "create", metric,
+                      "--description=Failure to disable an AI API after a billing budget breach",
+                      '--log-filter=resource.type="cloud_run_revision" AND resource.labels.service_name="deckastra-budget-stop" '
+                      'AND (jsonPayload.event="ai_budget_stop_failed" OR '
+                      '(jsonPayload.event="ai_budget_shutdown_complete" AND jsonPayload.success=false))')
+        ensure("alertPolicies", "alertPolicies", "Deckastra AI budget shutdown failed", {
+            "combiner": "OR", "enabled": True, "notificationChannels": [channel["name"]],
+            "conditions": [{"displayName": "AI shutdown reported a failure", "conditionThreshold": {
+                "filter": f'resource.type="cloud_run_revision" AND metric.type="logging.googleapis.com/user/{metric}"',
+                "comparison": "COMPARISON_GT", "thresholdValue": 0, "duration": "0s",
+                "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM"}],
+                "trigger": {"count": 1}}}], "alertStrategy": {"autoClose": "1800s"}})
+        ensure("alertPolicies", "alertPolicies", "Deckastra AI budget notifications delayed", {
+            "combiner": "OR", "enabled": True, "notificationChannels": [channel["name"]],
+            "conditions": [{"displayName": "Budget notification unacknowledged for fifteen minutes", "conditionThreshold": {
+                "filter": 'resource.type="pubsub_subscription" AND resource.label.subscription_id="deckastra-budget-stop" '
+                          'AND metric.type="pubsub.googleapis.com/subscription/oldest_unacked_message_age"',
+                "comparison": "COMPARISON_GT", "thresholdValue": 900, "duration": "300s",
+                "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_MAX"}],
+                "trigger": {"count": 1}}}], "alertStrategy": {"autoClose": "1800s"}})
     cloud.run("services", "enable", "clouderrorreporting.googleapis.com")
     print(f"{cloud.project}: HTTPS readiness check, outage/server-error alerts and Error Reporting enabled.")
 

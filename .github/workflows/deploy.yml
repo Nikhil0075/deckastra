@@ -46,7 +46,7 @@ jobs:
       - name: Backend checks against PostgreSQL
         env:
           POSTGRES_TEST_URL: postgresql+psycopg://deckastra:ci_only@localhost:5432/deckastra
-        run: python -m pytest apps/api/tests agents/tests -q -m 'not slow'
+        run: python -m pytest apps/api/tests agents/tests infrastructure/deployment/tests -q -m 'not slow'
   deploy:
     needs: validate
     if: github.event_name != 'pull_request'

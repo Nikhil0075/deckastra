@@ -1,0 +1,9 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/deckastra/budget-stop:${_TAG}', '.']
+images: ['${_REGION}-docker.pkg.dev/$PROJECT_ID/deckastra/budget-stop:${_TAG}']
+substitutions:
+  _REGION: asia-south1
+  _TAG: v1
+options:
+  logging: CLOUD_LOGGING_ONLY
