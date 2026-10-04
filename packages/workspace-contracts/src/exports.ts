@@ -51,4 +51,10 @@ export interface ExportRequest {
    * service refuses with 409 rather than exporting a deck the caller never saw.
    */
   expected_version_id?: string;
+  /**
+   * The language to export (integration plan 01 §3.10): one of the deck's
+   * overlays, or absent for its own. The service refuses a language the deck
+   * does not have rather than exporting the original under its name.
+   */
+  locale?: string;
 }

@@ -19,7 +19,9 @@ import {
   type ExportOptions,
   type ExportReport,
 } from "@deckastra/export-core";
-import type { PresentationDocument } from "@deckastra/presentation-schema";
+import { sameLanguage, sourceLocale, type PresentationDocument } from "@deckastra/presentation-schema";
+import { localeOperations } from "@deckastra/presentation-core";
+import { applyPatch } from "@deckastra/transactions";
 import type { SlideScene } from "@deckastra/renderer";
 import { buildPdf } from "@deckastra/export-pdf";
 import { buildPptx } from "@deckastra/export-pptx";
@@ -27,6 +29,7 @@ import { buildPptx } from "@deckastra/export-pptx";
 import { RenderPool, captureEquations, renderDeadlineFor, renderPdfScene } from "./render";
 import { buildBrowserScene } from "./text-measurement";
 import { fontsNotEmbedded, pageFontCss } from "./fonts";
+import { fontFilesInCss, repairPdfText } from "./pdf-unicode";
 import { AssetLibrary, type InlineAsset } from "./assets";
 
 export type ExportKind = "pdf" | "pptx";
@@ -72,6 +75,18 @@ export async function runExport(
 ): Promise<ExportOutcome> {
   onProgress({ progress: 0, stage: "resolving", message: "Resolving slides" });
 
+  // The language to export (integration plan 01 §3.10): the deck with that
+  // language's overlay applied, through the one applier, before anything is
+  // measured — a Hindi headline shrinks to fit as Hindi, not as English.
+  const locale = (job.options as { locale?: unknown }).locale;
+  // Named after the deck's own title: a translated one in another script
+  // would be all but stripped by `safeName`, and the tag says the language.
+  const title = job.document.metadata.title;
+  if (typeof locale === "string" && locale && !sameLanguage(locale, sourceLocale(job.document))) {
+    if (!job.document.locales?.[locale]) throw new Error(`This deck has no ${locale} translation to export.`);
+    job = { ...job, document: applyPatch(job.document, localeOperations(job.document, locale)).document };
+  }
+
   const owned = pool ?? new RenderPool();
   const library = new AssetLibrary(job.assets);
   try {
@@ -99,9 +114,10 @@ export async function runExport(
       // PDF reaches its pictures through the render page as `data:` URLs; PPTX
       // embeds them as parts, so it needs the bytes. Same library, two shapes.
       images: library.images(),
+      audio: library.audio(),
     };
 
-    const filename = `${safeName(job.document.metadata.title)}.${job.kind}`;
+    const filename = `${safeName(title)}${typeof locale === "string" && locale ? `-${safeName(locale)}` : ""}.${job.kind}`;
 
     if (job.kind === "pptx") {
       onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
@@ -137,10 +153,27 @@ export async function runExport(
 
     const artifact = await buildPdf(input, async ({ slideIds, atTime }) => {
       const rendered = await renderPdfScene(scene, slideIds, atTime, page, library, fontCss);
+      // Chromium names only the glyphs a font's cmap names; the rest of a
+      // Hindi or Arabic page copies out as U+0000. `repairPdfText` adds the
+      // characters the fonts' own substitutions say those glyphs are.
+      const repaired = await repairPdfText(rendered.bytes, fontFilesInCss(fontCss), rendered.paragraphs);
       // The warnings come back now, because whether a picture decoded is only
       // known once the browser has tried — see `DocumentRenderResult`.
-      return { bytes: rendered.bytes, warnings: rendered.warnings };
+      return { bytes: repaired.bytes, warnings: rendered.warnings };
     });
+
+    // A PDF cannot carry sound (integration plan 01 §3.10). Said once per slide
+    // that has narration or sounds, so nobody hands out a "narrated" PDF.
+    for (const slide of job.document.slides) {
+      if (!ids.includes(slide.id) || !(slide.narration?.cues.length || slide.soundCues?.length)) continue;
+      artifact.result.report.warnings.push({
+        severity: "info",
+        slideId: slide.id,
+        feature: "audio",
+        action: "dropped",
+        message: "A PDF cannot carry sound, so this slide's narration and sounds are not in the file. Export to PowerPoint to keep them.",
+      });
+    }
 
     onProgress({ progress: 1, stage: "done", message: "Done" });
     return {

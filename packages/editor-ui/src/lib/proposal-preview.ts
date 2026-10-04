@@ -9,9 +9,10 @@
  * document the editor holds.
  */
 
-import type { PatchOperation, PresentationDocument } from "@deckastra/presentation-schema";
+import { splitPath, type PatchOperation, type PresentationDocument } from "@deckastra/presentation-schema";
 import { applyPatch } from "@deckastra/transactions";
 
+import { localizeDocument } from "./locale-lens";
 import { compareSlides, deckWideDiffers } from "./version-history";
 
 export interface ProposalPreview {
@@ -26,6 +27,15 @@ export interface ProposalPreview {
   /** Theme, metadata or anything else outside the slides differs. */
   deckWide: boolean;
   /**
+   * The language the pictures are drawn in (integration plan 01): a translation
+   * is shown in the language it translates into, so Before and After differ by
+   * exactly the words it proposes; anything else in the language on screen.
+   */
+  locale: string | null;
+  /** The decks as drawn: `before` and `after`, each shown in `locale`. */
+  shownBefore: PresentationDocument;
+  shownAfter: PresentationDocument | null;
+  /**
    * What the change cites: the provenance records it adds, by reference. The
    * only sources a proposal can truthfully claim to be grounded in are the ones
    * it writes into the deck; a run's whole research set would claim more.
@@ -33,10 +43,32 @@ export interface ProposalPreview {
   groundedIn: string[];
 }
 
+/**
+ * The language a change writes, when it writes only one language's overlay —
+ * a translation, or a person's edit made while that language was showing.
+ */
+export function proposalLocale(operations: readonly PatchOperation[]): string | null {
+  let found: string | null = null;
+  for (const operation of operations) {
+    const segments = splitPath(operation.path);
+    if (segments[0] !== "locales") return null;
+    let tag: string | undefined = segments[1];
+    if (!tag && operation.op === "add" && "value" in operation && operation.value && typeof operation.value === "object") {
+      const keys = Object.keys(operation.value as object);
+      tag = keys.length === 1 ? keys[0] : undefined;
+    }
+    if (!tag || (found && found !== tag)) return null;
+    found = tag;
+  }
+  return found;
+}
+
 export function previewProposal(
   before: PresentationDocument,
   operations: readonly PatchOperation[],
+  showing: string | null = null,
 ): ProposalPreview {
+  const locale = proposalLocale(operations) ?? showing;
   let after: PresentationDocument;
   try {
     after = applyPatch(before, operations).document;
@@ -48,11 +80,17 @@ export function previewProposal(
       removedSlideIds: [],
       deckWide: false,
       groundedIn: [],
+      locale,
+      shownBefore: localizeDocument(before, locale),
+      shownAfter: null,
     };
   }
+  const shownBefore = localizeDocument(before, locale);
+  const shownAfter = localizeDocument(after, locale);
 
   // Read from the after-deck's side: "added" there is new, "removed" is gone.
-  const comparison = compareSlides(after, before);
+  // Compared as drawn, so a translation marks the slides whose words it changes.
+  const comparison = compareSlides(shownAfter, shownBefore);
   const known = new Set((before.provenance ?? []).map((record) => record.id));
   const groundedIn = [
     ...new Set(
@@ -70,9 +108,18 @@ export function previewProposal(
       .filter((entry) => entry.change === "changed" || entry.change === "added")
       .map((entry) => entry.slideId),
     removedSlideIds: comparison.filter((entry) => entry.change === "removed").map((entry) => entry.slideId),
-    deckWide: deckWideDiffers(after, before),
+    // An overlay lives outside the slides, so a translation is "deck-wide" by
+    // structure; what a person sees change is the slides, and that is reported.
+    deckWide: proposalLocale(operations) ? deckWideDiffers(shownAfter, shownBefore) && !onlyLocales(operations) : deckWideDiffers(after, before),
     groundedIn,
+    locale,
+    shownBefore,
+    shownAfter,
   };
+}
+
+function onlyLocales(operations: readonly PatchOperation[]): boolean {
+  return operations.every((operation) => splitPath(operation.path)[0] === "locales");
 }
 
 /**

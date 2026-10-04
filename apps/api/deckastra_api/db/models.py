@@ -805,6 +805,12 @@ class WorkspaceQuota(Base, TimestampMixin):
     used_generations: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     used_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    #: Characters sent to a speech service this period (integration plan 01 §3.8).
+    #: Speech is billed by the character, and a twenty-language deck re-voiced
+    #: after every edit is the shape that cost takes.
+    monthly_speech_characters: Mapped[int | None] = mapped_column(Integer)
+    used_speech_characters: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
     #: Storage is a level, not a flow, so it is counted from the assets rather
     #: than reset with the month.
     used_storage_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -853,6 +859,18 @@ class Asset(Base, TimestampMixin):
     bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
+    #: For audio: how long it plays, read from the file's own container rather
+    #: than from what anyone said about it (integration plan 01 §3.8). A narrated
+    #: deck advances on this number, so a guessed one cuts a narrator off.
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    #: For audio: 256 peaks, 0..1, computed once when the file arrives, so the
+    #: timeline draws a waveform without decoding anything (plan 01 §3.6).
+    waveform_peaks: Mapped[list[float] | None] = mapped_column(JsonColumn)
+    tags: Mapped[list[str] | None] = mapped_column(JsonColumn)
+    description: Mapped[str | None] = mapped_column(Text)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    dhash64: Mapped[str | None] = mapped_column(String(16))
+    metadata_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     #: How many live documents cite this asset. Recomputed rather than
     #: incremented: an increment missed once is wrong forever, and the documents

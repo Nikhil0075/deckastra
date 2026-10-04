@@ -219,6 +219,28 @@ def put_local(key: str, data: bytes, content_type: str) -> ObjectMetadata:
     return ObjectMetadata(bytes=len(data), content_type=meta["content_type"], etag=meta["etag"])
 
 
+def put(key: str, data: bytes, content_type: str) -> ObjectMetadata:
+    """Store bytes the *service* produced, whichever backend holds assets.
+
+    Uploads never come through here — a client PUTs those straight to the store
+    with a presigned URL. This is for files the service makes itself: a narration
+    take synthesized on the server (integration plan 01 §3.8) has no client to
+    upload it, and a function that wrote only locally would be the desktop
+    working and the cloud silently not.
+    """
+    if local_root() is not None:
+        return put_local(key, data, content_type)
+    try:
+        result = _client().put_object(Bucket=bucket(), Key=key, Body=data, ContentType=content_type)
+    except Exception as error:
+        raise ObjectStorageError("The object could not be stored.") from error
+    return ObjectMetadata(
+        bytes=len(data),
+        content_type=content_type.split(";", 1)[0].strip().lower(),
+        etag=str(result.get("ETag") or "").strip('"') or None,
+    )
+
+
 def read(key: str) -> tuple[bytes, str]:
     """The bytes and content type of a stored object, whichever backend holds it.
 

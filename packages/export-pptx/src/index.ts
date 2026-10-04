@@ -19,9 +19,15 @@
  * client finding the gap first.
  */
 
-import type { PresentationDocument } from "@deckastra/presentation-schema";
-import type { SlideScene } from "@deckastra/renderer";
-import { compileTimeline } from "@deckastra/animation-engine";
+import { sourceLocale, type PresentationDocument } from "@deckastra/presentation-schema";
+import { librarySoundDurationMs, librarySoundWav, type SlideScene } from "@deckastra/renderer";
+import {
+  compileNarratedPlayback,
+  compileTimeline,
+  type CompiledTimeline,
+  type NarrationCueInput,
+  type SoundCueInput,
+} from "@deckastra/animation-engine";
 import type { AnimationTrack } from "@deckastra/presentation-schema";
 import {
   DegradationLedger,
@@ -56,8 +62,8 @@ import {
 } from "./parts";
 import { gradientFill, shapeFor, type ShapeContext } from "./shapes";
 import { MediaRegistry } from "./media";
-import { timingFor, transitionFor } from "./timing";
-import { hex, unitsFor } from "./units";
+import { timingFor, transitionFor, type AudioPlay } from "./timing";
+import { hex, unitsFor, xml } from "./units";
 import { createZip, type ZipEntry } from "./zip";
 
 /**
@@ -138,7 +144,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
     // Per slide, because a relationship id is unique within one `.rels` part.
     media.startSlide();
 
-    const { xmlBody, shapeIds } = shapesFor(scene, units, ledger, elementsById, media, intrinsic);
+    const { xmlBody, shapeIds, nextShapeId } = shapesFor(scene, units, ledger, elementsById, media, intrinsic);
 
     const timeline = compileTimeline(scene, (scene.animations ?? []) as AnimationTrack[], {
       // Full motion: PowerPoint has its own reduced-motion handling, and
@@ -147,7 +153,9 @@ export function buildPptx(input: ExportInput): PptxArtifact {
       userMotionPreference: "full",
     });
 
-    const timing = timingFor({ timeline, slideId, ledger, shapeIds });
+    const sound = audioFor(scene, timeline, document, input.audio, media, units, ledger, nextShapeId);
+
+    const timing = timingFor({ timeline, slideId, ledger, shapeIds, audio: sound.plays });
     const transition = transitionFor(
       scene.transition?.type,
       scene.transition?.durationMs,
@@ -161,7 +169,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
 
     entries.push({
       path: `ppt/slides/slide${index + 1}.xml`,
-      data: slidePart(xmlBody, background, transition + timing),
+      data: slidePart(xmlBody + sound.xml, background, transition + timing),
     });
     entries.push({
       path: `ppt/slides/_rels/slide${index + 1}.xml.rels`,
@@ -172,6 +180,18 @@ export function buildPptx(input: ExportInput): PptxArtifact {
   });
 
   const hasNotes = notesPerSlide.some(Boolean);
+
+  // A narrated deck advances on its own in present mode. PowerPoint plays each
+  // step's narration when the step is reached, and the presenter still clicks.
+  if ((document as { playback?: { mode?: string } }).playback?.mode === "narrated") {
+    ledger.record({
+      severity: "info",
+      slideId: "",
+      feature: "narrated playback",
+      action: "approximated",
+      message: "PowerPoint plays each step's narration when the step is reached; the deck does not advance by itself.",
+    });
+  }
 
   notesPerSlide.forEach((notes, index) => {
     if (!notes) return;
@@ -257,7 +277,7 @@ function shapesFor(
   elementsById: Map<string, { type: string; shape?: string }>,
   media: MediaRegistry,
   intrinsic: ReadonlyMap<string, { width: number; height: number }>,
-): { xmlBody: string; shapeIds: Map<string, number> } {
+): { xmlBody: string; shapeIds: Map<string, number>; nextShapeId: () => number } {
   const shapeIds = new Map<string, number>();
   // PowerPoint reserves id 1 for the slide's own group; shapes start at 2.
   let counter = 2;
@@ -296,7 +316,120 @@ function shapesFor(
     parts.push(xmlBody);
   }
 
-  return { xmlBody: parts.join(""), shapeIds };
+  return { xmlBody: parts.join(""), shapeIds, nextShapeId: () => counter++ };
+}
+
+/**
+ * The slide's narration and sounds as PowerPoint audio objects (integration
+ * plan 01 §3.10), each played by the click step it belongs to.
+ *
+ * The narration is the take in the language this document is in — the
+ * exporter receives the deck already shown in the requested language, so its
+ * `metadata.language` is that language. Timing comes from the same compiled
+ * schedule present mode plays: a recording starts with its step, after the
+ * recordings before it in that step.
+ *
+ * Objects sit just off the slide's right edge, so nothing is drawn of them in
+ * the show; PowerPoint finds them by shape id from the timing tree.
+ */
+function audioFor(
+  scene: SlideScene,
+  timeline: CompiledTimeline,
+  document: PresentationDocument,
+  audio: ReadonlyMap<string, { bytes: Uint8Array; contentType: string }> | undefined,
+  media: MediaRegistry,
+  units: ReturnType<typeof unitsFor>,
+  ledger: DegradationLedger,
+  nextShapeId: () => number,
+): { xml: string; plays: AudioPlay[] } {
+  const cues = (scene.narration?.cues ?? []) as NarrationCueInput[];
+  const sounds = (scene.soundCues ?? []) as SoundCueInput[];
+  if (!cues.length && !sounds.length) return { xml: "", plays: [] };
+
+  const durations = new Map((document.assets ?? []).map((asset) => [asset.id, asset.durationMs ?? 0]));
+  const schedule = compileNarratedPlayback(timeline, cues, sounds, {
+    locale: sourceLocale(document),
+    soundDurationMs: (source) => ("library" in source ? librarySoundDurationMs(source.library) : (durations.get(source.assetId) ?? 0)),
+  });
+
+  for (const segment of schedule.segments) {
+    for (const cueId of segment.missing) {
+      ledger.record({
+        severity: "info",
+        slideId: scene.slideId,
+        feature: `narration:${cueId}`,
+        action: "dropped",
+        message: `A narration line has no recording in ${schedule.locale}, so it is silent in the file.`,
+      });
+    }
+  }
+
+  const items: { key: string; name: string; media?: { bytes: Uint8Array; contentType: string }; segment: number; delayMs: number; durationMs: number; volume: number }[] = [];
+  let line = 0;
+  for (const segment of schedule.segments) {
+    for (const clip of segment.narration) {
+      line += 1;
+      items.push({
+        key: clip.assetId,
+        name: `Narration ${line}`,
+        media: audio?.get(clip.assetId),
+        segment: segment.index,
+        delayMs: clip.startMs - segment.startMs,
+        durationMs: clip.endMs - clip.startMs,
+        volume: clip.gainDb ? Math.min(1, 10 ** (clip.gainDb / 20)) : 1,
+      });
+    }
+  }
+  for (const sound of schedule.sounds) {
+    const library = "library" in sound.source ? sound.source.library : undefined;
+    const wav = library ? librarySoundWav(library) : undefined;
+    items.push({
+      key: library ? `library:${library}` : (sound.source as { assetId: string }).assetId,
+      name: library ? `Sound: ${library}` : "Sound",
+      media: library ? (wav ? { bytes: wav, contentType: "audio/wav" } : undefined) : audio?.get((sound.source as { assetId: string }).assetId),
+      segment: sound.segment,
+      delayMs: sound.atMs - (schedule.segments[sound.segment]?.startMs ?? 0),
+      durationMs: Math.max(1, sound.durationMs),
+      volume: sound.volume,
+    });
+  }
+
+  const shapes: string[] = [];
+  const plays: AudioPlay[] = [];
+  const placedIds = new Map<string, number>();
+  for (const item of items) {
+    let shapeId = placedIds.get(item.key);
+    if (shapeId === undefined) {
+      const claim = media.placeAudio(item.key, item.media);
+      if ("refused" in claim) {
+        ledger.record({
+          severity: "warning",
+          slideId: scene.slideId,
+          feature: `audio:${item.key}`,
+          action: "dropped",
+          message: `${item.name} is not in the file, because ${claim.refused}.`,
+        });
+        continue;
+      }
+      shapeId = nextShapeId();
+      placedIds.set(item.key, shapeId);
+      const x = scene.width + 24 + (placedIds.size - 1) * 40;
+      shapes.push(
+        "<p:pic><p:nvPicPr>" +
+          `<p:cNvPr id="${shapeId}" name="${xml(item.name)}"><a:hlinkClick r:id="" action="ppaction://media"/></p:cNvPr>` +
+          '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
+          `<p:nvPr><a:audioFile r:link="${claim.placed.audioRelationshipId}"/>` +
+          '<p:extLst><p:ext uri="{DAA4B4D4-6D71-4841-9C94-3DA51E9BB16C}">' +
+          `<p14:media xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" r:embed="${claim.placed.mediaRelationshipId}"/>` +
+          "</p:ext></p:extLst></p:nvPr></p:nvPicPr>" +
+          `<p:blipFill><a:blip r:embed="${claim.placed.iconRelationshipId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+          `<p:spPr><a:xfrm><a:off x="${units.px(x)}" y="${units.px(24)}"/><a:ext cx="${units.px(32)}" cy="${units.px(32)}"/></a:xfrm>` +
+          '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>',
+      );
+    }
+    plays.push({ shapeId, segment: item.segment, delayMs: item.delayMs, durationMs: item.durationMs, volume: item.volume });
+  }
+  return { xml: shapes.join(""), plays };
 }
 
 /**

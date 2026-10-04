@@ -1,0 +1,975 @@
+{
+  "schemaVersion": "1.1.0",
+  "id": "doc_01JB8Z9K2QW4RN7F3X04004000",
+  "metadata": {
+    "title": "Multilingual Narrated Deck",
+    "language": "en",
+    "presentationType": "training",
+    "audience": "The locale, narration and sound test suites",
+    "objective": "Exercise overlays, per-step narration, sound cues and narrated playback"
+  },
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "unit": "px",
+    "aspectRatio": "16:9",
+    "safeArea": {
+      "top": 80,
+      "right": 120,
+      "bottom": 80,
+      "left": 120
+    }
+  },
+  "theme": {
+    "id": "thm_01JB8Z9K2QW4RN7F3X04000000",
+    "name": "Neo Technical",
+    "description": "Dark editorial layout with luminous technical accents.",
+    "mode": "dark",
+    "colors": {
+      "background": "#0B0F14",
+      "surface": "#121821",
+      "surfaceAlt": "#1A222E",
+      "overlay": "#000000B3",
+      "foreground": "#E8EEF5",
+      "foregroundMuted": "#9FB0C3",
+      "foregroundSubtle": "#6B7C90",
+      "accent": "#4CC2FF",
+      "accentForeground": "#04121C",
+      "accentMuted": "#1E5F80",
+      "secondary": "#A78BFA",
+      "secondaryForeground": "#150C2E",
+      "border": "#243141",
+      "borderStrong": "#35485D",
+      "divider": "#1C2530",
+      "success": "#3DDC97",
+      "warning": "#F2C14E",
+      "danger": "#FF6B6B",
+      "info": "#4CC2FF",
+      "chartSeries": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "chartPositive": "#3DDC97",
+      "chartNegative": "#FF6B6B",
+      "chartNeutral": "#6B7C90"
+    },
+    "typography": {
+      "display": {
+        "fontFamily": "Inter",
+        "fontSize": 96,
+        "fontWeight": 700,
+        "lineHeight": 1.05,
+        "letterSpacing": -2
+      },
+      "h1": {
+        "fontFamily": "Inter",
+        "fontSize": 64,
+        "fontWeight": 700,
+        "lineHeight": 1.1,
+        "letterSpacing": -1
+      },
+      "h2": {
+        "fontFamily": "Inter",
+        "fontSize": 44,
+        "fontWeight": 600,
+        "lineHeight": 1.15
+      },
+      "h3": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 600,
+        "lineHeight": 1.2
+      },
+      "body": {
+        "fontFamily": "Inter",
+        "fontSize": 24,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "bodySmall": {
+        "fontFamily": "Inter",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.45
+      },
+      "caption": {
+        "fontFamily": "Inter",
+        "fontSize": 16,
+        "fontWeight": 400,
+        "lineHeight": 1.4
+      },
+      "quote": {
+        "fontFamily": "Inter",
+        "fontSize": 32,
+        "fontWeight": 400,
+        "fontStyle": "italic",
+        "lineHeight": 1.35
+      },
+      "code": {
+        "fontFamily": "JetBrains Mono",
+        "fontSize": 20,
+        "fontWeight": 400,
+        "lineHeight": 1.5
+      },
+      "metric": {
+        "fontFamily": "Inter",
+        "fontSize": 88,
+        "fontWeight": 700,
+        "lineHeight": 1,
+        "fontFeatures": [
+          "tnum"
+        ]
+      },
+      "scaleRatio": 1.25
+    },
+    "spacing": {
+      "base": 8,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 32,
+      "xl": 64,
+      "xxl": 96,
+      "slideMargin": {
+        "top": 80,
+        "right": 120,
+        "bottom": 80,
+        "left": 120
+      }
+    },
+    "radii": {
+      "none": 0,
+      "sm": 4,
+      "md": 12,
+      "lg": 24,
+      "full": 9999
+    },
+    "shadows": {
+      "none": [],
+      "sm": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 1,
+          "blur": 3,
+          "color": "#00000059"
+        }
+      ],
+      "md": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 6,
+          "blur": 18,
+          "color": "#00000073"
+        }
+      ],
+      "lg": [
+        {
+          "type": "drop",
+          "offsetX": 0,
+          "offsetY": 18,
+          "blur": 48,
+          "color": "#00000099"
+        }
+      ]
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": 24,
+      "margin": 120,
+      "baseUnit": 8,
+      "baselineGrid": 8
+    },
+    "chart": {
+      "series": [
+        "#4CC2FF",
+        "#A78BFA",
+        "#3DDC97",
+        "#F2C14E",
+        "#FF6B6B",
+        "#7DD3FC"
+      ],
+      "gridlineColor": "#1C2530",
+      "axisColor": "#6B7C90",
+      "showGridlines": true,
+      "barCornerRadius": 4,
+      "lineWidth": 3,
+      "pointSize": 6
+    },
+    "diagram": {
+      "nodeFill": {
+        "type": "solid",
+        "color": "token:colors.surface"
+      },
+      "nodeStroke": {
+        "paint": {
+          "type": "solid",
+          "color": "token:colors.border"
+        },
+        "width": 1
+      },
+      "nodeRadius": 12,
+      "nodePadding": {
+        "top": 16,
+        "right": 20,
+        "bottom": 16,
+        "left": 20
+      },
+      "roleStyles": {
+        "service": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          }
+        },
+        "datastore": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surfaceAlt"
+          }
+        },
+        "external": {
+          "fill": {
+            "type": "none"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.borderStrong"
+            },
+            "width": 1,
+            "dash": [
+              6,
+              4
+            ]
+          }
+        }
+      }
+    },
+    "imagery": {
+      "treatment": "none",
+      "defaultCornerRadius": 12
+    },
+    "motion": {
+      "personality": "technical",
+      "defaultEntrance": "fadeUp",
+      "defaultDurationMs": 400,
+      "defaultEasing": "emphasized",
+      "staggerMs": 70,
+      "reducedMotionFallback": "fade",
+      "maxSlideDurationMs": 2500
+    },
+    "contrastPairs": [
+      {
+        "foreground": "colors.foreground",
+        "background": "colors.background",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.accentForeground",
+        "background": "colors.accent",
+        "minimumRatio": 4.5
+      },
+      {
+        "foreground": "colors.foregroundMuted",
+        "background": "colors.background",
+        "minimumRatio": 3
+      }
+    ],
+    "brandRules": [
+      {
+        "id": "type-sizes",
+        "kind": "must-not",
+        "scope": "typography",
+        "statement": "Use no more than three type sizes on a single slide.",
+        "check": {
+          "type": "maxFontSizesPerSlide",
+          "value": 3
+        }
+      },
+      {
+        "id": "no-literals",
+        "kind": "should",
+        "scope": "color",
+        "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+        "check": {
+          "type": "forbiddenColorLiterals",
+          "value": true
+        }
+      },
+      {
+        "id": "whitespace",
+        "kind": "should",
+        "scope": "layout",
+        "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+      }
+    ]
+  },
+  "slides": [
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X04000500",
+      "name": "Title",
+      "keyMessage": "One deck, every language the room speaks",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04000100",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 360,
+            "width": 1600,
+            "height": 180
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "One deck, every language"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 96,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          },
+          "fit": "shrinkToFit"
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04000200",
+          "type": "text",
+          "semanticRole": "subtitle",
+          "transform": {
+            "x": 120,
+            "y": 580,
+            "width": 1400,
+            "height": 80
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000400",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Translated words, the same layout"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.body.fontFamily",
+            "fontSize": 36,
+            "color": "token:colors.foregroundSubtle"
+          }
+        }
+      ],
+      "speakerNotes": "Welcome everyone.\nThis deck is narrated in English and Hindi."
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X04001400",
+      "name": "Three steps",
+      "keyMessage": "Write, translate, narrate",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04000600",
+          "type": "text",
+          "semanticRole": "headline",
+          "transform": {
+            "x": 120,
+            "y": 140,
+            "width": 1600,
+            "height": 120
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000700",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "How it works"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.display.fontFamily",
+            "fontSize": 72,
+            "fontWeight": 700,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04000800",
+          "type": "text",
+          "semanticRole": "body",
+          "transform": {
+            "x": 120,
+            "y": 360,
+            "width": 1400,
+            "height": 100
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001100",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Write it once"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.body.fontFamily",
+            "fontSize": 48,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04000900",
+          "type": "text",
+          "semanticRole": "body",
+          "transform": {
+            "x": 120,
+            "y": 500,
+            "width": 1400,
+            "height": 100
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001200",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Translate the words"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.body.fontFamily",
+            "fontSize": 48,
+            "color": "token:colors.foreground"
+          }
+        },
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04001000",
+          "type": "text",
+          "semanticRole": "body",
+          "transform": {
+            "x": 120,
+            "y": 640,
+            "width": 1400,
+            "height": 100
+          },
+          "content": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "Narrate every step"
+                  }
+                ]
+              }
+            ]
+          },
+          "typography": {
+            "fontFamily": "token:typography.body.fontFamily",
+            "fontSize": 48,
+            "color": "token:colors.foreground"
+          }
+        }
+      ],
+      "animations": [
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X04002700",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X04000800",
+          "trigger": {
+            "type": "click"
+          },
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X04002800",
+              "preset": "fade",
+              "startMs": 0,
+              "durationMs": 400
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X04002900",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X04000900",
+          "trigger": {
+            "type": "click"
+          },
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X04003000",
+              "preset": "fade",
+              "startMs": 0,
+              "durationMs": 400
+            }
+          ]
+        },
+        {
+          "id": "anm_01JB8Z9K2QW4RN7F3X04003100",
+          "targetId": "el_01JB8Z9K2QW4RN7F3X04001000",
+          "trigger": {
+            "type": "click"
+          },
+          "clips": [
+            {
+              "id": "clp_01JB8Z9K2QW4RN7F3X04003200",
+              "preset": "fade",
+              "startMs": 0,
+              "durationMs": 400
+            }
+          ]
+        }
+      ],
+      "narration": {
+        "cues": [
+          {
+            "id": "nar_01JB8Z9K2QW4RN7F3X04001500",
+            "step": 0,
+            "text": "Three ideas make this work.",
+            "takes": {
+              "en": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04001900",
+                "durationMs": 2100,
+                "voice": "recorded",
+                "textHash": "fnv1a64:84c0989245437228"
+              },
+              "hi-IN": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002300",
+                "durationMs": 2500,
+                "voice": "hi-IN-Chirp3-HD-Aoede",
+                "textHash": "fnv1a64:1cfe156287f4e82c"
+              }
+            }
+          },
+          {
+            "id": "nar_01JB8Z9K2QW4RN7F3X04001600",
+            "step": 1,
+            "text": "First, you write the deck once.",
+            "takes": {
+              "en": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002000",
+                "durationMs": 2400,
+                "voice": "recorded",
+                "textHash": "fnv1a64:4fd46d846a610f58"
+              },
+              "hi-IN": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002400",
+                "durationMs": 2700,
+                "voice": "hi-IN-Chirp3-HD-Aoede",
+                "textHash": "fnv1a64:51521d3617bf150e"
+              }
+            }
+          },
+          {
+            "id": "nar_01JB8Z9K2QW4RN7F3X04001700",
+            "step": 2,
+            "text": "Then the words are translated, and the layout stays.",
+            "takes": {
+              "en": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002100",
+                "durationMs": 3300,
+                "voice": "recorded",
+                "textHash": "fnv1a64:bd4e8b1de8c1935c"
+              },
+              "hi-IN": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002500",
+                "durationMs": 3900,
+                "voice": "hi-IN-Chirp3-HD-Aoede",
+                "textHash": "fnv1a64:f95ca8343d5f2130"
+              }
+            }
+          },
+          {
+            "id": "nar_01JB8Z9K2QW4RN7F3X04001800",
+            "step": 3,
+            "text": "Finally, every click step has its own narration.",
+            "takes": {
+              "en": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002200",
+                "durationMs": 3000,
+                "voice": "recorded",
+                "textHash": "fnv1a64:63e6e66d056b4e33"
+              },
+              "hi-IN": {
+                "assetId": "ast_01JB8Z9K2QW4RN7F3X04002600",
+                "durationMs": 3600,
+                "voice": "hi-IN-Chirp3-HD-Aoede",
+                "textHash": "fnv1a64:e925b5a438ae4ebd"
+              }
+            }
+          }
+        ]
+      },
+      "soundCues": [
+        {
+          "id": "snd_01JB8Z9K2QW4RN7F3X04003300",
+          "label": "Pop on each reveal",
+          "source": {
+            "library": "pop"
+          },
+          "trigger": {
+            "type": "click"
+          },
+          "startMs": 0,
+          "volume": 0.6
+        }
+      ],
+      "transition": {
+        "type": "fade",
+        "durationMs": 400
+      }
+    },
+    {
+      "id": "sld_01JB8Z9K2QW4RN7F3X04003900",
+      "name": "Languages",
+      "elements": [
+        {
+          "id": "el_01JB8Z9K2QW4RN7F3X04003400",
+          "type": "table",
+          "transform": {
+            "x": 120,
+            "y": 240,
+            "width": 1200,
+            "height": 300
+          },
+          "columns": [
+            {
+              "id": "col_01JB8Z9K2QW4RN7F3X04003500",
+              "label": "Language"
+            },
+            {
+              "id": "col_01JB8Z9K2QW4RN7F3X04003600",
+              "label": "Status"
+            }
+          ],
+          "rows": [
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X04003700",
+              "cells": [
+                {
+                  "content": "Hindi"
+                },
+                {
+                  "content": "Reviewed"
+                }
+              ]
+            },
+            {
+              "id": "row_01JB8Z9K2QW4RN7F3X04003800",
+              "cells": [
+                {
+                  "content": "Arabic"
+                },
+                {
+                  "content": "Draft"
+                }
+              ]
+            }
+          ],
+          "headerRow": true
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04001900",
+      "type": "audio",
+      "storageKey": "fixtures/audio/en-step-0.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 2100,
+      "fileName": "en-step-0.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002000",
+      "type": "audio",
+      "storageKey": "fixtures/audio/en-step-1.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 2400,
+      "fileName": "en-step-1.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002100",
+      "type": "audio",
+      "storageKey": "fixtures/audio/en-step-2.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 3300,
+      "fileName": "en-step-2.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002200",
+      "type": "audio",
+      "storageKey": "fixtures/audio/en-step-3.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 3000,
+      "fileName": "en-step-3.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002300",
+      "type": "audio",
+      "storageKey": "fixtures/audio/hi-step-0.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 2500,
+      "fileName": "hi-step-0.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002400",
+      "type": "audio",
+      "storageKey": "fixtures/audio/hi-step-1.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 2700,
+      "fileName": "hi-step-1.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002500",
+      "type": "audio",
+      "storageKey": "fixtures/audio/hi-step-2.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 3900,
+      "fileName": "hi-step-2.ogg"
+    },
+    {
+      "id": "ast_01JB8Z9K2QW4RN7F3X04002600",
+      "type": "audio",
+      "storageKey": "fixtures/audio/hi-step-3.ogg",
+      "mimeType": "audio/ogg",
+      "durationMs": 3600,
+      "fileName": "hi-step-3.ogg"
+    }
+  ],
+  "components": [],
+  "dataSources": [],
+  "variables": {},
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "playback": {
+    "mode": "narrated",
+    "gapMs": 400
+  },
+  "locales": {
+    "hi-IN": {
+      "locale": "hi-IN",
+      "status": "reviewed",
+      "entries": {
+        "/metadata/title": {
+          "value": "बहुभाषी वर्णित डेक",
+          "sourceHash": "fnv1a64:62af30e7919b25c6",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "एक डेक, हर भाषा"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:532ce3cd1c714db3",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000200/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000400",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "अनूदित शब्द, वही लेआउट"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:2fcbab18f29a243d",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/speakerNotes": {
+          "value": "सभी का स्वागत है।\nयह डेक अंग्रेज़ी और हिंदी में वर्णित है।",
+          "sourceHash": "fnv1a64:a9580c0f8ccbd218",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/elements/id:el_01JB8Z9K2QW4RN7F3X04000600/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000700",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "यह कैसे काम करता है"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:0ab07cd80274cf50",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/elements/id:el_01JB8Z9K2QW4RN7F3X04000800/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001100",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "एक बार लिखें"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:ba20123b24797f2e",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/elements/id:el_01JB8Z9K2QW4RN7F3X04000900/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001200",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "शब्दों का अनुवाद करें"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:37a5282b040c898b",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/elements/id:el_01JB8Z9K2QW4RN7F3X04001000/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04001300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "हर चरण का वर्णन करें"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:45ad4f11576ddab7",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/narration/cues/id:nar_01JB8Z9K2QW4RN7F3X04001500/text": {
+          "value": "तीन विचार इसे संभव बनाते हैं।",
+          "sourceHash": "fnv1a64:84c0989245437228",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/narration/cues/id:nar_01JB8Z9K2QW4RN7F3X04001600/text": {
+          "value": "पहले, आप डेक एक बार लिखते हैं।",
+          "sourceHash": "fnv1a64:4fd46d846a610f58",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/narration/cues/id:nar_01JB8Z9K2QW4RN7F3X04001700/text": {
+          "value": "फिर शब्दों का अनुवाद होता है, और लेआउट वही रहता है।",
+          "sourceHash": "fnv1a64:bd4e8b1de8c1935c",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04001400/narration/cues/id:nar_01JB8Z9K2QW4RN7F3X04001800/text": {
+          "value": "अंत में, हर क्लिक चरण का अपना वर्णन होता है।",
+          "sourceHash": "fnv1a64:63e6e66d056b4e33",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04003900/elements/id:el_01JB8Z9K2QW4RN7F3X04003400/columns/id:col_01JB8Z9K2QW4RN7F3X04003500/label": {
+          "value": "भाषा",
+          "sourceHash": "fnv1a64:efcf950b3cc4fc3b",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04003900/elements/id:el_01JB8Z9K2QW4RN7F3X04003400/columns/id:col_01JB8Z9K2QW4RN7F3X04003600/label": {
+          "value": "स्थिति",
+          "sourceHash": "fnv1a64:ad3e3c8146fc920f",
+          "origin": "human"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04003900/elements/id:el_01JB8Z9K2QW4RN7F3X04003400/rows/id:row_01JB8Z9K2QW4RN7F3X04003700/cells/0/content": {
+          "value": "हिंदी",
+          "sourceHash": "fnv1a64:b6b268120592dc53",
+          "origin": "human"
+        }
+      }
+    },
+    "ar": {
+      "locale": "ar",
+      "status": "draft",
+      "direction": "rtl",
+      "entries": {
+        "/metadata/title": {
+          "value": "عرض متعدد اللغات",
+          "sourceHash": "fnv1a64:62af30e7919b25c6",
+          "origin": "machine"
+        },
+        "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/content": {
+          "value": {
+            "version": 1,
+            "blocks": [
+              {
+                "id": "blk_01JB8Z9K2QW4RN7F3X04000300",
+                "type": "paragraph",
+                "spans": [
+                  {
+                    "text": "عرض واحد، كل لغة"
+                  }
+                ]
+              }
+            ]
+          },
+          "sourceHash": "fnv1a64:532ce3cd1c714db3",
+          "origin": "machine"
+        }
+      }
+    }
+  }
+}

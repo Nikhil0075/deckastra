@@ -145,6 +145,18 @@ const PATHS = {
   trash: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9" />,
   duplicate: <path d="M5.5 5.5h8v8h-8ZM10.5 5.5v-3h-8v8h3" />,
   external: <path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v4h-9v-9h4" />,
+  /* Languages, narration and sound (integration plan 01). Same primitives:
+     circles, lines, one triangle. */
+  language: (
+    <>
+      <circle cx="8" cy="8" r="5.5" />
+      <path d="M2.5 8h11M8 2.5c-2 2-2 9 0 11M8 2.5c2 2 2 9 0 11" />
+    </>
+  ),
+  mic: <path d="M6 3a2 2 0 0 1 4 0v4.5a2 2 0 0 1-4 0ZM3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2M5.5 14h5" />,
+  sound: <path d="M2.5 6h2.5L8.5 3v10L5 10H2.5ZM11 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6 6 0 0 1 0 9" />,
+  mute: <path d="M2.5 6h2.5L8.5 3v10L5 10H2.5ZM10.5 6l3.5 4M14 6l-3.5 4" />,
+  narration: <path d="M2.5 3h7v5.5H5.5L3 11V8.5h-.5ZM11.5 5.5v4M13.5 4v7" />,
   /* Half a disc: light and dark, the chrome theme's switch. */
   theme: (
     <>

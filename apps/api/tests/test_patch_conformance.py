@@ -89,6 +89,7 @@ def cases(document: dict) -> list[tuple[str, list[dict]]]:
     slide = document["slides"][0]["id"]
     other = document["slides"][2]["id"]
     element = document["slides"][0]["elements"][0]["id"]
+    locale_entry = f"~1slides~1id:{slide}~1elements~1id:{element}~1content"
 
     return [
         ("replace a scalar", [{"op": "replace", "path": f"/slides/id:{slide}/keyMessage", "value": "x"}]),
@@ -156,6 +157,42 @@ def cases(document: dict) -> list[tuple[str, list[dict]]]:
                 },
                 {"op": "replace", "path": f"/slides/id:{slide}/transition/sharedElements", "value": []},
                 {"op": "remove", "path": f"/slides/id:{other}"},
+            ],
+        ),
+        (
+            # Language overlays (integration plan 01 §3.1): entries are keyed by a
+            # whole slot path, escaped into one segment, and a person editing a
+            # translation in place edits rich text *inside* an entry. Both are
+            # shapes neither applier had seen before.
+            "locale overlay: add, then edit rich text inside an entry",
+            [
+                {"op": "add", "path": "/locales", "value": {"hi-IN": {"locale": "hi-IN", "status": "draft", "entries": {}}}},
+                {
+                    "op": "add",
+                    "path": f"/locales/hi-IN/entries/{locale_entry}",
+                    "value": {
+                        "value": {"version": 1, "blocks": [{"id": "blk_X", "type": "paragraph", "spans": [{"text": "नमस्ते"}]}]},
+                        "sourceHash": "fnv1a64:0000000000000000",
+                        "origin": "human",
+                    },
+                },
+                {"op": "replace", "path": f"/locales/hi-IN/entries/{locale_entry}/value/blocks/0/spans/0/text", "value": "नमस्ते दुनिया"},
+                {"op": "add", "path": f"/locales/hi-IN/entries/{locale_entry}/value/blocks/0/spans/-", "value": {"text": "!", "bold": True}},
+                {"op": "replace", "path": "/locales/hi-IN/status", "value": "reviewed"},
+            ],
+        ),
+        (
+            "narration cue with a take per language",
+            [
+                {
+                    "op": "add",
+                    "path": f"/slides/id:{slide}/narration",
+                    "value": {"cues": [{"id": "nar_X", "step": 0, "text": "Hello", "takes": {"en": {"assetId": "ast_X", "durationMs": 900, "textHash": "h"}}}]},
+                },
+                {"op": "add", "path": f"/slides/id:{slide}/narration/cues/id:nar_X/takes/hi-IN", "value": {"assetId": "ast_Y", "durationMs": 1100, "textHash": "h2"}},
+                {"op": "replace", "path": f"/slides/id:{slide}/narration/cues/id:nar_X/takes/en/durationMs", "value": 950},
+                {"op": "add", "path": f"/slides/id:{slide}/soundCues", "value": [{"id": "snd_X", "source": {"library": "pop"}, "trigger": {"type": "click"}, "startMs": 0}]},
+                {"op": "remove", "path": f"/slides/id:{slide}/narration/cues/id:nar_X/takes/en"},
             ],
         ),
     ]

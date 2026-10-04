@@ -31,6 +31,25 @@ class RiskAssessment:
         return self.behavior != "autoApply"
 
 
+def _locale_slot_paths(segments: list[str], value: Any) -> list[str]:
+    """The slot paths an operation under `/locales` writes."""
+    if len(segments) >= 4 and segments[2] == "entries":
+        return [segments[3]]
+
+    def entries_of(overlay: Any) -> list[str]:
+        if isinstance(overlay, dict) and isinstance(overlay.get("entries"), dict):
+            return list(overlay["entries"].keys())
+        return []
+
+    if len(segments) == 2:
+        return entries_of(value)
+    if len(segments) == 1 and isinstance(value, dict):
+        return [path for overlay in value.values() for path in entries_of(overlay)]
+    if len(segments) == 3 and segments[2] == "entries" and isinstance(value, dict):
+        return list(value.keys())
+    return []
+
+
 def assess_risk(operations: list[dict[str, Any]]) -> RiskAssessment:
     """
     low     <= 3 ops on one slide, no deletions, no theme/viewport change
@@ -56,6 +75,14 @@ def assess_risk(operations: list[dict[str, Any]]) -> RiskAssessment:
             if operation.get("op") == "remove" and len(segments) == 2:
                 removes_slide = True
                 reasons.append("Deletes a slide")
+
+        # A translation touches the slides whose words it replaces (integration
+        # plan 01 §3.1); mirrors `localeSlotPathsIn` in TypeScript.
+        if root == "locales":
+            for slot in _locale_slot_paths(segments, operation.get("value")):
+                slot_segments = split_path(slot)
+                if slot_segments and slot_segments[0] == "slides" and len(slot_segments) >= 2:
+                    touched_slides.add(slot_segments[1])
 
         if operation.get("op") == "remove":
             has_deletion = True

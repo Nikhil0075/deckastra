@@ -29,7 +29,7 @@ import json
 from typing import Any
 
 from ..contracts import AuthorPlan
-from ..envelope import Source, envelope
+from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
 
@@ -71,6 +71,20 @@ well.
   the style's values in its own `style`/`typography` too: to "make it a Card",
   copy the style's values onto the element and set `styleRef` to the name.
   Values alone are drawn; `styleRef` alone changes nothing on screen.
+- Translating never replaces the deck's own words. A language is an overlay at
+  `/locales/<tag>` (`{"locale", "status": "draft", "entries": {}}`), and a
+  translation is an entry keyed by the text slot's whole path — for example
+  `/slides/id:<slide>/elements/id:<el>/content` — escaped as one segment in the
+  operation's path (`/` becomes `~1`): `{"op": "add", "path":
+  "/locales/hi-IN/entries/~1slides~1id:<slide>~1elements~1id:<el>~1content",
+  "value": {"value": <same shape as the slot>, "sourceHash": "-", "origin":
+  "agent:editor"}}` (the server fills in `sourceHash`). Keep numbers, links and `{{placeholders}}` exactly.
+  Escape a slot path only when it is a segment of the operation path. In an
+  overlay's `entries` JSON object, keys are unescaped whole slot paths starting
+  with `/slides/`, never `~1slides~1...`. Keep translations in draft status.
+- Narration lines are `/slides/id:<slide>/narration/cues` (`{"id": "nar_new1",
+  "step": <click step, 0 is arrival>, "text": "..."}`). Write the script only;
+  recordings are made by the person or the app's voice, never by you.
 - A slide's background is `/slides/id:<slide>/background`.
 - A slide transition is `/slides/id:<slide>/transition`, e.g.
   `{"type": "morph", "durationMs": 700, "easing": "standard",
@@ -140,7 +154,7 @@ def author(
     viewport = document.get("viewport") or {}
     parts = [
         "The person asked:",
-        envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+        user_brief(str(request.get("instruction", ""))),
         f"Viewport: {viewport.get('width', 1920)}x{viewport.get('height', 1080)}.",
         f"The slide on screen: {focus_id or '(none)'}.",
         f"Selected elements: {', '.join(selected) if selected else '(none)'}.",

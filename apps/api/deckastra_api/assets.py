@@ -81,6 +81,8 @@ def register(
     size_bytes: int = 0,
     width: int | None = None,
     height: int | None = None,
+    duration_ms: int | None = None,
+    waveform_peaks: list[float] | None = None,
 ) -> Asset:
     """Record a file the workspace now owns.
 
@@ -120,6 +122,8 @@ def register(
         bytes=max(0, size_bytes),
         width=width,
         height=height,
+        duration_ms=duration_ms,
+        waveform_peaks=waveform_peaks,
         reference_count=0,
     )
     session.add(asset)
@@ -169,8 +173,34 @@ MAX_RENDER_ASSET_BYTES = 8 * 1024 * 1024
 MAX_RENDER_TOTAL_BYTES = 32 * 1024 * 1024
 
 
+def audio_for_export(document: dict[str, Any], locale: str | None) -> set[str]:
+    """The audio an export in `locale` plays: that language's takes and the slides' sounds.
+
+    Every other language's recordings are cited by the document and must not be
+    sent: a deck narrated in twenty languages would otherwise hand a render the
+    whole lot to embed one.
+    """
+    language = locale or (document.get("metadata") or {}).get("language") or "en"
+    wanted: set[str] = set()
+    for slide in document.get("slides") or []:
+        for cue in ((slide.get("narration") or {}).get("cues") or []):
+            take = (cue.get("takes") or {}).get(language)
+            if isinstance(take, dict) and isinstance(take.get("assetId"), str):
+                wanted.add(take["assetId"])
+        for sound in slide.get("soundCues") or []:
+            asset_id = (sound.get("source") or {}).get("assetId")
+            if isinstance(asset_id, str):
+                wanted.add(asset_id)
+    return wanted
+
+
 def inline_for_render(
-    session: Session, *, presentation_id: str, document: dict[str, Any], still: bool = True
+    session: Session,
+    *,
+    presentation_id: str,
+    document: dict[str, Any],
+    still: bool = True,
+    audio: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """The pictures a headless render needs, as bytes it can embed.
 
@@ -232,9 +262,15 @@ def inline_for_render(
 
         entry: dict[str, Any] = {"assetId": row.id, "storageKey": row.storage_key}
         kind = (row.content_type or "").split(";", 1)[0].strip().lower()
+        if row.kind == "audio" or kind.startswith("audio/"):
+            # Sound reaches only an export that plays it, and only the files it
+            # plays (integration plan 01 §3.10). Not a "problem": a picture
+            # render simply has no use for a recording.
+            if not audio or row.id not in audio:
+                continue
         # Fonts travel the same way as pictures: a deck's uploaded face has to
         # reach a render host that cannot fetch it (Design tab review, 2026-09-26).
-        if not kind.startswith("image/") and not _is_font(kind):
+        if not kind.startswith("image/") and not _is_font(kind) and not kind.startswith("audio/"):
             entry["problem"] = f"it is stored as {kind or 'an unknown type'}, which this renderer cannot embed"
         elif row.bytes > MAX_RENDER_ASSET_BYTES:
             entry["problem"] = (
@@ -522,6 +558,10 @@ def describe(asset: Asset) -> dict[str, Any]:
         "bytes": asset.bytes,
         "width": asset.width,
         "height": asset.height,
+        # Audio (integration plan 01 §3.6, §3.8): the length a narrated deck
+        # advances on, and the peaks its timeline lane draws.
+        "duration_ms": asset.duration_ms,
+        "waveform_peaks": asset.waveform_peaks,
         "reference_count": asset.reference_count,
         "deleted_at": asset.deleted_at.isoformat() if asset.deleted_at else None,
         "created_at": asset.created_at.isoformat() if asset.created_at else None,

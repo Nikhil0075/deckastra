@@ -12,7 +12,7 @@
  * published them. Only the Latin and Latin Extended files are kept for export.
  */
 
-export type FontGroup = "Sans" | "Serif" | "Display" | "Mono" | "Handwriting";
+export type FontGroup = "Sans" | "Serif" | "Display" | "Mono" | "Handwriting" | "World scripts";
 
 export interface BundledFont {
   /** The name a deck uses. */
@@ -22,6 +22,13 @@ export interface BundledFont {
   group: FontGroup;
   /** The package stylesheet, relative to `node_modules`. */
   css: string;
+  /**
+   * Subsets beyond Latin that an export embeds, named as Fontsource names them
+   * in its stylesheet comments ("devanagari", "arabic"). A face drawn for a
+   * script is the point of shipping it, so a PDF of a Hindi deck must carry the
+   * Devanagari file and not only the Latin one (integration plan 01 §3.9).
+   */
+  subsets?: readonly string[];
 }
 
 export const BUNDLED_FONTS: readonly BundledFont[] = [
@@ -41,6 +48,27 @@ export const BUNDLED_FONTS: readonly BundledFont[] = [
   { family: "JetBrains Mono", face: "JetBrains Mono Variable", group: "Mono", css: "@fontsource-variable/jetbrains-mono/wght.css" },
   { family: "IBM Plex Mono", face: "IBM Plex Mono", group: "Mono", css: "@fontsource/ibm-plex-mono/index.css" },
   { family: "Caveat", face: "Caveat Variable", group: "Handwriting", css: "@fontsource-variable/caveat/wght.css" },
+  // World scripts (integration plan 01 §3.9). Noto covers each script with
+  // metrics designed to sit beside Latin faces; Mukta, Hind and Baloo 2 are the
+  // Devanagari display and text faces Indian decks are commonly set in. CJK is
+  // not here on purpose: those faces are tens of megabytes and arrive as
+  // language packs rather than in every installer.
+  { family: "Noto Sans Devanagari", face: "Noto Sans Devanagari Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-devanagari/wght.css", subsets: ["devanagari"] },
+  { family: "Noto Serif Devanagari", face: "Noto Serif Devanagari Variable", group: "World scripts", css: "@fontsource-variable/noto-serif-devanagari/wght.css", subsets: ["devanagari"] },
+  { family: "Mukta", face: "Mukta", group: "World scripts", css: "@fontsource/mukta/index.css", subsets: ["devanagari"] },
+  { family: "Hind", face: "Hind", group: "World scripts", css: "@fontsource/hind/index.css", subsets: ["devanagari"] },
+  { family: "Baloo 2", face: "Baloo 2 Variable", group: "World scripts", css: "@fontsource-variable/baloo-2/wght.css", subsets: ["devanagari"] },
+  { family: "Noto Sans Bengali", face: "Noto Sans Bengali Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-bengali/wght.css", subsets: ["bengali"] },
+  { family: "Noto Sans Tamil", face: "Noto Sans Tamil Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-tamil/wght.css", subsets: ["tamil"] },
+  { family: "Noto Sans Telugu", face: "Noto Sans Telugu Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-telugu/wght.css", subsets: ["telugu"] },
+  { family: "Noto Sans Kannada", face: "Noto Sans Kannada Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-kannada/wght.css", subsets: ["kannada"] },
+  { family: "Noto Sans Malayalam", face: "Noto Sans Malayalam Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-malayalam/wght.css", subsets: ["malayalam"] },
+  { family: "Noto Sans Gujarati", face: "Noto Sans Gujarati Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-gujarati/wght.css", subsets: ["gujarati"] },
+  { family: "Noto Sans Gurmukhi", face: "Noto Sans Gurmukhi Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-gurmukhi/wght.css", subsets: ["gurmukhi"] },
+  { family: "Noto Sans Oriya", face: "Noto Sans Oriya Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-oriya/wght.css", subsets: ["oriya"] },
+  { family: "Noto Sans Arabic", face: "Noto Sans Arabic Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-arabic/wght.css", subsets: ["arabic"] },
+  { family: "Noto Naskh Arabic", face: "Noto Naskh Arabic Variable", group: "World scripts", css: "@fontsource-variable/noto-naskh-arabic/wght.css", subsets: ["arabic"] },
+  { family: "Noto Sans Hebrew", face: "Noto Sans Hebrew Variable", group: "World scripts", css: "@fontsource-variable/noto-sans-hebrew/wght.css", subsets: ["hebrew"] },
 ];
 
 /** Common system families, offered after the bundled ones and marked as depending on the machine. */

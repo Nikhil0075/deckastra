@@ -31,3 +31,5 @@ export * from "./semantic";
 export * from "./accessibility";
 export * from "./layout-check";
 export * from "./digest";
+export * from "./script-rules";
+export * from "./sound-library";

@@ -40,12 +40,14 @@ PLANS: dict[str, dict[str, int | None]] = {
         "monthly_tokens": 2_000_000,
         "storage_bytes": 500 * 1024 * 1024,
         "max_repositories": 1,
+        "monthly_speech_characters": 200_000,
     },
     "pro": {
         "monthly_generations": 500,
         "monthly_tokens": 50_000_000,
         "storage_bytes": 20 * 1024 * 1024 * 1024,
         "max_repositories": 20,
+        "monthly_speech_characters": 5_000_000,
     },
     "unlimited": {
         # For self-hosting and for the development database. Explicitly a plan
@@ -54,6 +56,7 @@ PLANS: dict[str, dict[str, int | None]] = {
         "monthly_tokens": None,
         "storage_bytes": None,
         "max_repositories": None,
+        "monthly_speech_characters": None,
     },
 }
 
@@ -96,6 +99,7 @@ class Usage:
     storage_bytes: tuple[int, int | None]
     repositories: tuple[int, int | None]
     resets_at: datetime
+    speech_characters: tuple[int, int | None] = (0, None)
 
     def as_dict(self) -> dict[str, Any]:
         def pair(used: int, allowed: int | None) -> dict[str, Any]:
@@ -113,6 +117,7 @@ class Usage:
             "tokens": pair(*self.tokens),
             "storage_bytes": pair(*self.storage_bytes),
             "repositories": pair(*self.repositories),
+            "speech_characters": pair(*self.speech_characters),
             "resets_at": self.resets_at.isoformat(),
         }
 
@@ -160,6 +165,7 @@ def ensure(session: Session, workspace_id: str, *, plan: str = "free") -> Worksp
         quota.period_start = _now()
         quota.used_generations = 0
         quota.used_tokens = 0
+        quota.used_speech_characters = 0
         session.flush()
 
     return quota
@@ -218,6 +224,35 @@ def record_tokens(session: Session, workspace_id: str, *, tokens: int) -> Worksp
     review has spent them whether or not it ever becomes a deck."""
     quota = ensure(session, workspace_id)
     quota.used_tokens += max(0, tokens)
+    session.flush()
+    return quota
+
+
+def check_speech(session: Session, workspace_id: str, characters: int) -> WorkspaceQuota:
+    """Refuse a synthesis that would pass the period's character allowance.
+
+    Unlike tokens, the size of the request is known before it is sent, so this
+    refuses the request that *would* cross the line rather than the one after.
+    """
+    quota = ensure(session, workspace_id)
+    allowed = quota.monthly_speech_characters
+    used = quota.used_speech_characters or 0
+    if allowed is not None and used + max(0, characters) > allowed:
+        raise QuotaExceeded(
+            f"Narrating this would use {characters:,} characters of speech, and this workspace has "
+            f"{max(0, allowed - used):,} left this period. It resets on {_readable(_resets_at(quota))}.",
+            limit="speech_characters",
+            used=used,
+            allowed=allowed,
+            resets_at=_resets_at(quota).isoformat(),
+        )
+    return quota
+
+
+def record_speech(session: Session, workspace_id: str, *, characters: int) -> WorkspaceQuota:
+    """Charge what was actually synthesized; a cache hit costs nothing and is not charged."""
+    quota = ensure(session, workspace_id)
+    quota.used_speech_characters = (quota.used_speech_characters or 0) + max(0, characters)
     session.flush()
     return quota
 
@@ -308,6 +343,7 @@ def usage(session: Session, workspace_id: str) -> Usage:
         storage_bytes=(quota.used_storage_bytes, quota.storage_bytes),
         repositories=(repositories, quota.max_repositories),
         resets_at=_resets_at(quota),
+        speech_characters=(quota.used_speech_characters or 0, quota.monthly_speech_characters),
     )
 
 

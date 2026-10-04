@@ -83,6 +83,12 @@ export interface ExportInput {
    * maths is truer to the slide than the source text would be.
    */
   images?: ReadonlyMap<string, ExportImage>;
+  /**
+   * The deck's audio, by asset id (integration plan 01 §3.10): narration takes
+   * and uploaded sounds. PPTX embeds them as media parts played on the click
+   * sequence; PDF cannot carry sound and reports that it did not.
+   */
+  audio?: ReadonlyMap<string, ExportImage>;
 }
 
 /** One picture, as an adapter that must embed it needs it. */

@@ -93,7 +93,7 @@ it("captures an equation for PowerPoint as a transparent picture of the maths", 
     if (at.a > 200 && at.r > 200 && at.b > 200 && at.g < 80) inked = true;
   }
   expect(inked).toBe(true);
-});
+}, 120_000); // a cold browser under a parallel suite takes longer than the 5s default
 
 it("exports a deck with an equation to both formats, and says what PowerPoint got", async () => {
   const { document } = deckWithEquation();

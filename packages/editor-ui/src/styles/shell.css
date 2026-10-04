@@ -548,6 +548,14 @@
   flex-direction: column;
   min-height: 0;
 }
+/* The panel scrolls; what is in it never shrinks to fit. Motion mode stacks
+   the host's motion panel and the narration sections in one column, and a
+   shrinking child let their contents spill over each other. */
+.dk-modepanel > .dk-modepanel,
+.dk-modepanel > .dk-section,
+.dk-panel > .dk-modepanel {
+  flex-shrink: 0;
+}
 
 .dk-inspector__head {
   display: flex;
@@ -692,6 +700,7 @@
 
 .dk-code {
   flex: 1;
+  min-height: 0;
 }
 .dk-code__head {
   display: flex;
@@ -714,15 +723,178 @@
 .dk-code__count {
   margin-left: auto;
 }
-.dk-code__body {
+.dk-code-editor {
   flex: 1;
-  margin: 0;
-  padding: var(--dk-space-3);
+  min-height: 240px;
+  overflow: hidden;
+  background: var(--dk-surface);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-code-editor .cm-editor {
+  height: 100%;
+  color: var(--dk-ink);
   background: var(--dk-surface);
   font-family: var(--dk-font-mono);
   font-size: var(--dk-text-xs);
+}
+.dk-code-editor .cm-scroller {
   line-height: 1.5;
-  white-space: pre;
+}
+.dk-code-editor .cm-scroller:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: -2px;
+}
+/* Syntax colours (JsonCodeEditor's TOKEN_HIGHLIGHT): each AA on the surface in
+   both themes, because the tokens are. */
+.dk-code-editor .dk-tok-key { color: var(--dk-blue); }
+.dk-code-editor .dk-tok-string { color: var(--dk-ochre); }
+.dk-code-editor .dk-tok-literal { color: var(--dk-red); }
+.dk-code-editor .dk-tok-punct { color: var(--dk-ink-muted); }
+.dk-code-editor .dk-tok-invalid { color: var(--dk-red); text-decoration: underline wavy; }
+.dk-code-editor .cm-content {
+  padding: var(--dk-space-3) 0;
+  caret-color: var(--dk-ink);
+}
+.dk-code-editor .cm-gutters {
+  color: var(--dk-ink-muted);
+  background: var(--dk-sunk);
+  border-right: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-code-editor .cm-activeLine,
+.dk-code-editor .cm-activeLineGutter {
+  background: var(--dk-sunk);
+}
+.dk-code-editor .cm-selectionBackground,
+.dk-code-editor .cm-focused .cm-selectionBackground,
+.dk-code-editor ::selection {
+  background: var(--dk-stage);
+}
+.dk-code-editor .cm-focused {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: calc(-1 * var(--dk-line-strong));
+}
+.dk-code-schema-help {
+  display: grid;
+  gap: var(--dk-space-1);
+  max-width: 320px;
+  padding: var(--dk-space-2);
+  color: var(--dk-ink);
+  background: var(--dk-surface);
+  border: var(--dk-line) solid var(--dk-rule);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-xs);
+}
+.dk-code-schema-help span {
+  color: var(--dk-ink-muted);
+}
+.dk-code__banner {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-ink);
+  background: var(--dk-yellow);
+  color: var(--dk-on-yellow);
+  font-size: var(--dk-text-xs);
+  line-height: 1.45;
+}
+.dk-code__banner-actions,
+.dk-code__applybar {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-code__applybar {
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-sunk);
+}
+.dk-code__diagnostic {
+  flex: 1;
+  min-width: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
+.dk-code__error {
+  color: var(--dk-red);
+}
+.dk-code__conflicts {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  font-size: var(--dk-text-xs);
+}
+.dk-code__conflict {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+}
+.dk-code__conflict code {
+  overflow: hidden;
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-code__issues {
+  display: grid;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding-left: var(--dk-space-4);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  line-height: 1.45;
+}
+.dk-code__issues code {
+  color: var(--dk-ink);
+  font-family: var(--dk-font-mono);
+}
+.dk-code-preview {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+}
+.dk-code-preview__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dk-space-2);
+}
+.dk-code-preview figure {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+}
+.dk-code-preview figcaption {
+  padding: var(--dk-space-1) var(--dk-space-2);
+  color: var(--dk-ink);
+  background: var(--dk-surface);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
+.dk-code-preview__gap {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  color: var(--dk-on-backdrop);
+  font-size: var(--dk-text-xs);
+}
+.dk-code-preview__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dk-space-2);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-code-preview__empty {
+  margin: 0;
 }
 
 /* --- Host-owned surfaces ----------------------------------------------------
@@ -1385,7 +1557,17 @@
   gap: var(--dk-space-3);
   padding: var(--dk-space-2) var(--dk-space-3);
 }
+/* The playhead's time against the slide's, as the concept reads it. */
+.dk-dock-motion__time {
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.dk-dock-motion__time-total {
+  color: var(--dk-ink-muted);
+}
 .dk-dock-motion__title {
+  color: var(--dk-ink-muted);
   font-size: var(--dk-text-xs);
   font-weight: 700;
   letter-spacing: var(--dk-tracking-label);
@@ -1399,11 +1581,6 @@
 }
 .dk-dock-motion__body {
   padding: 0 var(--dk-space-3) var(--dk-space-3);
-}
-.dk-dock-motion__scrub {
-  width: 100%;
-  margin-top: var(--dk-space-2);
-  accent-color: var(--dk-blue);
 }
 .dk-dock-motion__row {
   display: flex;
@@ -1489,89 +1666,202 @@
   color: var(--dk-red);
 }
 
+/* The motion timeline, laid out as the 2026-10-03 concept (.artifacts/concepts/
+   narration/concept.png): a wide label column with what each lane animates,
+   a ruler of seconds that is also the scrubber, filled bars with a diamond
+   trim handle, grid lines at the ticks, and an Audio group under the lanes.
+   `--dk-lane-gutter` is the label column plus its gap; the ruler, the lanes,
+   the grid and both playheads all measure from it. */
 .dk-ruler {
   display: flex;
-  margin-bottom: var(--dk-space-1);
+  margin-bottom: 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
 }
 .dk-ruler__gutter {
-  width: 96px;
+  width: var(--dk-lane-gutter);
   flex: none;
 }
 .dk-ruler__scale {
   position: relative;
   flex: 1;
-  height: 16px;
+  height: 30px;
 }
 .dk-ruler__tick {
   position: absolute;
+  bottom: 0;
+  width: var(--dk-line);
+  height: 8px;
+  background: var(--dk-rule);
+}
+/* Labels along the top, the playhead's knob along the bottom: they never meet. */
+.dk-ruler__tick-label {
+  position: absolute;
+  top: -22px;
+  left: 3px;
   color: var(--dk-ink-muted);
   font-family: var(--dk-font-mono);
   font-size: var(--dk-text-xs);
+  white-space: nowrap;
+}
+.dk-ruler__minor {
+  position: absolute;
+  bottom: 0;
+  width: var(--dk-line);
+  height: 4px;
+  background: var(--dk-rule-soft);
 }
 /* Where playback waits for the presenter. */
 .dk-ruler__segment {
   position: absolute;
   top: 0;
-  bottom: calc(-1 * var(--dk-space-1));
+  bottom: 0;
   width: var(--dk-line-strong);
   background: var(--dk-ink-muted);
+}
+/* The scrubber lies over the whole scale: drag anywhere on the ruler. Its
+   track is invisible; its thumb is the playhead's knob. */
+.dk-ruler__scrub {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: ew-resize;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.dk-ruler__scrub::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+.dk-ruler__scrub::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: 17px;
+  border: var(--dk-line-strong) solid var(--dk-surface);
+  background: var(--dk-blue);
+  transform: rotate(45deg);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dk-ruler__scrub::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: var(--dk-line-strong) solid var(--dk-surface);
+  background: var(--dk-blue);
+  transform: rotate(45deg);
+}
+.dk-ruler__scrub:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: -2px;
 }
 
 .dk-lanes {
   position: relative;
 }
+.dk-lanes__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.dk-lanes__grid > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--dk-line);
+  background: var(--dk-rule-soft);
+  opacity: 0.6;
+}
 .dk-lanes__row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--dk-space-2);
-  height: 26px;
+  height: 32px;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
 }
 .dk-lanes__label {
-  flex: 0 0 88px;
-  width: 88px;
+  flex: 0 0 calc(var(--dk-lane-gutter) - var(--dk-space-2));
+  width: calc(var(--dk-lane-gutter) - var(--dk-space-2));
   overflow: hidden;
-  color: var(--dk-ink-muted);
-  font-size: var(--dk-text-xs);
+  color: var(--dk-ink);
+  font-size: var(--dk-text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.dk-lanes__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  max-width: 100%;
+  min-width: 0;
+}
+.dk-lanes__name > svg {
+  flex: none;
+  color: var(--dk-ink-muted);
+}
+/* Micro-labels are uppercase and tracked, as everywhere in the chrome. */
+.dk-lanes__kind {
+  flex: none;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-lanes__kind + .dk-lanes__words::before {
+  content: "· ";
+  color: var(--dk-ink-muted);
+}
+.dk-lanes__words {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dk-lanes__track {
   position: relative;
   flex: 1;
-  height: 20px;
-  background: var(--dk-ground);
-  border: var(--dk-line) solid var(--dk-rule-soft);
+  height: 24px;
 }
 .dk-lanes__bar {
   position: absolute;
-  top: 1px;
-  height: 16px;
-  padding: 0 var(--dk-space-1);
+  top: 0;
+  height: 24px;
+  padding: 0 14px 0 var(--dk-space-2);
   overflow: hidden;
-  border: var(--dk-line) solid var(--dk-rule);
-  background: var(--dk-surface);
+  border-left: 3px solid var(--dk-blue);
+  /* A tint of the action colour, so a bar reads as something to grab without
+     shouting like the selected one does. */
+  background: color-mix(in srgb, var(--dk-blue) 16%, var(--dk-surface));
   color: var(--dk-ink);
-  font-size: var(--dk-text-xs);
-  line-height: 14px;
+  font-size: var(--dk-text-sm);
+  line-height: 24px;
   text-align: left;
   white-space: nowrap;
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
+.dk-lanes__bar-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dk-lanes__bar-label::first-letter {
+  text-transform: uppercase;
+}
 .dk-lanes__bar:focus-visible {
   outline: var(--dk-line-strong) solid var(--dk-blue);
   outline-offset: 1px;
 }
 .dk-lanes__bar--selected {
-  border-color: var(--dk-blue);
   background: var(--dk-blue);
   color: var(--dk-on-blue);
 }
 /* Doc 04 §25.3: an overlap is striped, never blended. */
 .dk-lanes__bar--conflict {
-  border-style: dashed;
-  border-color: var(--dk-red);
+  outline: var(--dk-line) dashed var(--dk-red);
+  outline-offset: -1px;
 }
 .dk-lanes__bar--dragging {
   opacity: 0.85;
@@ -1579,28 +1869,43 @@
 .dk-lanes__bar--trimming {
   cursor: ew-resize;
 }
-/* EDGE_PX in TimelineLanes.tsx: the trim edge a pointer-down is measured against. */
+/* EDGE_PX in TimelineLanes.tsx: the trim edge a pointer-down is measured
+   against. Drawn as the concept's diamond at the bar's end. */
 .dk-lanes__trim {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 8px;
+  width: 12px;
   cursor: ew-resize;
+}
+.dk-lanes__trim::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border: var(--dk-line) solid var(--dk-blue);
+  background: var(--dk-surface);
+  transform: rotate(45deg);
+}
+.dk-lanes__bar--selected .dk-lanes__trim::after {
+  border-color: var(--dk-on-blue);
 }
 .dk-lanes__keyframes {
   position: absolute;
   top: 0;
-  height: 20px;
+  height: 24px;
   pointer-events: none;
 }
 /* The layer above ignores the pointer so it never swallows a click meant for
    the bar; the handles opt back in. */
 .dk-lanes__handle {
   position: absolute;
-  top: 3px;
+  top: 5px;
   width: 6px;
-  height: 12px;
+  height: 14px;
   pointer-events: auto;
   border: var(--dk-line) solid var(--dk-blue);
   background: var(--dk-surface);
@@ -1620,8 +1925,10 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: var(--dk-line);
-  /* Ink, not red: red means danger or a finding, and a playhead is neither. */
+  width: var(--dk-line-strong);
+  /* The knob on the ruler is the control, in blue; the line through the lanes
+     is where it reads, in ink. Red means danger or a finding, and a playhead
+     is neither. */
   background: var(--dk-ink);
   pointer-events: none;
 }
@@ -2984,7 +3291,9 @@
    screen readers and in its tooltip (design review, 2026-09-26). Present keeps
    its label: it is the one action the bar exists for. */
 @media (max-width: 1500px) {
-  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip) .dk-btn__label {
+  /* The language code stays: like the agent chip, its words are its status
+     ("HI" is which language is on the canvas), and it is two letters. */
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip) .dk-btn__label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2992,7 +3301,7 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip) {
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip) {
     position: relative;
   }
 }
@@ -3101,4 +3410,293 @@
   display: flex;
   flex-direction: column;
   gap: var(--dk-space-1);
+}
+
+/* ------------------------------------------------------------ languages
+   The Languages panel in AI mode (integration plan 01 §3.2). */
+.dk-languages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+}
+.dk-languages__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-languages__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+}
+.dk-languages__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+}
+.dk-languages__name {
+  font-size: var(--dk-text-md);
+  font-weight: 600;
+  color: var(--dk-ink);
+}
+.dk-languages__bar {
+  height: 4px;
+  background: var(--dk-sunk);
+}
+.dk-languages__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--dk-blue);
+}
+.dk-languages__counts {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-languages__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+}
+.dk-languages__add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-languages__error {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+  color: var(--dk-red);
+}
+.dk-languages__review {
+  display: flex;
+  gap: var(--dk-space-2);
+}
+.dk-languages__review figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}
+.dk-languages__review figcaption {
+  font-size: var(--dk-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+  color: var(--dk-ink-muted);
+}
+
+/* ------------------------------------------------------------ narration
+   Narration and sound in Motion mode (integration plan 01 §3.3–§3.6). */
+.dk-narration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-narration__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  border-left: var(--dk-line-strong) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-narration__step-head,
+.dk-narration__cue-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+}
+/* Volume and the other-recording menu: what to do with a take once there is one. */
+.dk-narration__take {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+}
+.dk-narration__take > .dk-field {
+  flex: 0 1 120px;
+}
+.dk-narration__step-title {
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--dk-tracking-label);
+  color: var(--dk-ink-muted);
+}
+.dk-narration__cue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}
+.dk-narration__script {
+  width: 100%;
+  min-height: 48px;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--dk-text-sm);
+}
+.dk-narration__cue-actions {
+  display: inline-flex;
+  gap: var(--dk-space-1);
+  margin-left: auto;
+}
+.dk-narration__meter {
+  flex: 1;
+  height: 4px;
+  background: var(--dk-sunk);
+}
+.dk-narration__meter > span {
+  display: block;
+  height: 100%;
+  background: var(--dk-red);
+}
+.dk-narration__row,
+.dk-narration__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--dk-space-2);
+}
+.dk-narration__orphans {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}
+.dk-narration__orphan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+
+/* The presenter's narration script (integration plan 01 §3.4). */
+.dk-presenter__narration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+}
+.dk-presenter__script {
+  margin: 0;
+  font-size: var(--dk-text-md);
+  color: var(--dk-ink);
+}
+.dk-presenter__script-left {
+  color: var(--dk-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Audio lanes (integration plan 01 §3.6). Narration is placed by its step and
+   is not dragged; a line with no recording is drawn as a dashed outline. */
+.dk-lanes--audio {
+  margin-top: 0;
+}
+/* The group's heading row, as in the concept: the motion lanes above, the
+   sound of the slide below. */
+.dk-lanes__group {
+  position: relative;
+  height: 26px;
+  padding-left: var(--dk-space-1);
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  line-height: 26px;
+  text-transform: uppercase;
+}
+/* A narration card is three lines: step and length, the recording's shape,
+   then the words. */
+.dk-lanes__row--narration {
+  height: 64px;
+}
+.dk-lanes__track:has(> .dk-lanes__bar--narration) {
+  height: 58px;
+}
+.dk-lanes__bar--narration {
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  height: 58px;
+  padding: var(--dk-space-1) var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  line-height: 14px;
+}
+/* A line names its step and how long it speaks, then its words: the lane is
+   read for "which click waits on the voice", and the step answers that. */
+.dk-lanes__bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--dk-space-1);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  letter-spacing: 0.06em;
+}
+/* The step is a label; the length is a number, and "1.9S" is not one. */
+.dk-lanes__bar-head > :first-child {
+  text-transform: uppercase;
+}
+.dk-lanes__bar-head,
+.dk-lanes__bar-script {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dk-lanes__bar-script {
+  font-size: var(--dk-text-sm);
+}
+.dk-lanes__bar--missing {
+  border-style: dashed;
+  color: var(--dk-ink-muted);
+}
+/* Neutral, not the concept's amber: yellow means "waiting on a human" here,
+   and a sound is not waiting on anyone. */
+.dk-lanes__bar--sound {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  top: 2px;
+  height: 20px;
+  border: var(--dk-line) solid var(--dk-rule);
+  border-left-width: 3px;
+  background: var(--dk-sunk);
+  line-height: 18px;
+  font-size: var(--dk-text-xs);
+}
+.dk-lanes__wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 12px;
+  flex: none;
+}
+.dk-lanes__wave > span {
+  display: block;
+  width: 2px;
+  background: var(--dk-ink-muted);
+}
+/* A recording's shape, across the card between its step and its words. */
+.dk-lanes__wave--line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1px;
+  width: 100%;
+  height: 14px;
+}
+.dk-lanes__wave--line > span {
+  flex: 1 1 0;
+  width: auto;
+  max-width: 3px;
+  align-self: center;
 }

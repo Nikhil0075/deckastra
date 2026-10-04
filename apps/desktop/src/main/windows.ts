@@ -4,6 +4,10 @@ import { BrowserWindow, shell } from "electron";
 import { APP_ORIGIN } from "./protocol";
 import { guardClose } from "./close-guard";
 import { registerAppWindow } from "./ipc-guard";
+import { allowsMedia } from "./media-permission";
+
+/** Editor windows, by webContents id: the only ones that may use the microphone. */
+const editors = new Set<number>();
 
 /**
  * Window creation, and the security posture that goes with it.
@@ -53,6 +57,13 @@ export function createWindow(options: WindowOptions = {}): BrowserWindow {
     },
   });
 
+  // A presenter window is a view of a talk; only an editor records narration.
+  const editor = !(options.search ?? "").includes("presenter=1");
+  if (editor) {
+    const id = window.webContents.id;
+    editors.add(id);
+    window.on("closed", () => editors.delete(id));
+  }
   harden(window);
   // Privileged requests are answered only for windows this app opened (item 34).
   registerAppWindow(window);
@@ -84,10 +95,34 @@ function harden(window: BrowserWindow): void {
     if (!url.startsWith(`${APP_ORIGIN}/`)) event.preventDefault();
   });
 
-  // Camera, microphone, geolocation, notifications: none of them. A presentation
-  // editor that asks for the microphone is a presentation editor with a bug.
-  webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => {
-    callback(false);
+  // Camera, geolocation, notifications: none of them. The microphone, only to
+  // record narration in an editor's own main frame (integration plan 01 §3.5,
+  // `media-permission.ts`); everything else a page asks for is refused.
+  webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => {
+    const media = details as { mediaTypes?: string[]; requestingUrl?: string; isMainFrame?: boolean };
+    callback(
+      allowsMedia(
+        {
+          permission,
+          mediaTypes: media.mediaTypes,
+          requestingUrl: media.requestingUrl,
+          isMainFrame: media.isMainFrame,
+          fromEditorWindow: editors.has(contents.id),
+        },
+        APP_ORIGIN,
+      ),
+    );
   });
-  webContents.session.setPermissionCheckHandler(() => false);
+  webContents.session.setPermissionCheckHandler((contents, permission, requestingOrigin, details) =>
+    allowsMedia(
+      {
+        permission,
+        mediaTypes: (details as { mediaType?: string }).mediaType === "audio" ? ["audio"] : [],
+        requestingUrl: requestingOrigin,
+        isMainFrame: (details as { isMainFrame?: boolean }).isMainFrame,
+        fromEditorWindow: contents ? editors.has(contents.id) : false,
+      },
+      APP_ORIGIN,
+    ),
+  );
 }

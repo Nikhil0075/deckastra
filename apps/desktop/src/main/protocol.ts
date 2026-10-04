@@ -94,7 +94,10 @@ const CSP = [
   // proxy lives on this origin; a page that tried to reach any other host — or
   // the loopback port directly, if it somehow learned it — is refused here.
   "connect-src 'self'",
-  "media-src 'none'",
+  // Narration and sounds (integration plan 01 §3.4): recordings come through
+  // the service proxy on this origin, and a fresh recording or a decoded file
+  // plays from a blob. Never another host — the same rule as `connect-src`.
+  "media-src 'self' blob:",
   "object-src 'none'",
   "frame-src 'none'",
   "base-uri 'none'",

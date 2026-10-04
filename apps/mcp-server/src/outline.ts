@@ -1,4 +1,4 @@
-import type { PresentationDocument } from "@deckastra/presentation-schema";
+import { localeSlots, localeTextHash, sourceLocale, type PresentationDocument } from "@deckastra/presentation-schema";
 
 /**
  * A deck, small enough to read (milestone D2.2).
@@ -43,6 +43,19 @@ export interface SlideOutline {
   keyMessage?: string;
   elements: ElementOutline[];
   animationTrackCount: number;
+  /** Narration lines by click step (integration plan 01 §3.3), and which languages have recordings. */
+  narration?: { id: string; step: number; text: string; recordedIn: string[] }[];
+  soundCount?: number;
+}
+
+/** One language a deck has, and how far along it is (integration plan 01 §3.11). */
+export interface LanguageOutline {
+  locale: string;
+  source: boolean;
+  status?: string;
+  translated: number;
+  outdated: number;
+  missing: number;
 }
 
 export interface DocumentOutline {
@@ -64,6 +77,10 @@ export interface DocumentOutline {
    */
   objectStyles?: Record<string, number>;
   slides: SlideOutline[];
+  /** The deck's languages: its own, then each translation, with counts. */
+  languages?: LanguageOutline[];
+  /** "narrated" when the deck plays itself in present mode. */
+  playback?: string;
   /**
    * What the Critic could not resolve, if a generation run left any.
    *
@@ -142,6 +159,16 @@ export function outlineDocument(
       if (slide.name) summary.name = String(slide.name);
       if (slide.semanticIntent) summary.intent = String(slide.semanticIntent);
       if (slide.keyMessage) summary.keyMessage = String(slide.keyMessage);
+      const cues: any[] = Array.isArray(slide.narration?.cues) ? slide.narration.cues : [];
+      if (cues.length) {
+        summary.narration = cues.map((cue) => ({
+          id: String(cue.id),
+          step: Number(cue.step),
+          text: String(cue.text ?? "").slice(0, TEXT_LIMIT),
+          recordedIn: Object.keys(cue.takes ?? {}),
+        }));
+      }
+      if (Array.isArray(slide.soundCues) && slide.soundCues.length) summary.soundCount = slide.soundCues.length;
       return summary;
     }),
   };
@@ -164,10 +191,33 @@ export function outlineDocument(
     outline.objectStyles = uses;
   }
 
+  const overlays = raw.locales && typeof raw.locales === "object" ? Object.keys(raw.locales) : [];
+  if (overlays.length) outline.languages = languagesOf(document);
+  if (raw.playback?.mode) outline.playback = String(raw.playback.mode);
+
   const issues = raw.extensions?.["deckastra.unresolvedIssues"];
   if (issues) outline.unresolvedIssues = issues;
 
   return outline;
+}
+
+/** The deck's own language and each translation, counted the way the Languages panel counts. */
+export function languagesOf(document: PresentationDocument): LanguageOutline[] {
+  const slots = localeSlots(document).filter((slot) => /\p{L}/u.test(typeof slot.value === "string" ? slot.value : JSON.stringify(slot.value)));
+  const out: LanguageOutline[] = [{ locale: sourceLocale(document), source: true, translated: slots.length, outdated: 0, missing: 0 }];
+  for (const [locale, overlay] of Object.entries(document.locales ?? {})) {
+    let translated = 0;
+    let outdated = 0;
+    let missing = 0;
+    for (const slot of slots) {
+      const entry = overlay.entries[slot.path];
+      if (!entry) missing += 1;
+      else if (entry.sourceHash !== localeTextHash(slot.value)) outdated += 1;
+      else translated += 1;
+    }
+    out.push({ locale, source: false, status: overlay.status, translated, outdated, missing });
+  }
+  return out;
 }
 
 /** One slide in full, for when an agent is about to change it. */

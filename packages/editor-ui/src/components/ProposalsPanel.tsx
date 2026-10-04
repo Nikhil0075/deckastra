@@ -47,6 +47,10 @@ export interface ProposalsPanelProps {
   pollMs?: number;
   /** How many are waiting, for the section heading. */
   onCount?: (count: number) => void;
+  /** The language on screen (integration plan 01), so a picture matches the canvas. */
+  locale?: string | null;
+  /** Bumped by a caller that just made a proposal, so the list looks now rather than at the next tick. */
+  refreshToken?: number;
 }
 
 type Status =
@@ -63,6 +67,8 @@ export function ProposalsPanel({
   currentVersionId,
   pollMs = 10_000,
   onCount,
+  locale = null,
+  refreshToken = 0,
 }: ProposalsPanelProps) {
   const client = useWorkspaceClient();
   const [proposals, setProposals] = useState<PendingProposal[] | null>(null);
@@ -81,6 +87,10 @@ export function ProposalsPanel({
   useEffect(() => {
     onCount?.(proposals?.length ?? 0);
   }, [proposals, onCount]);
+
+  useEffect(() => {
+    if (refreshToken) void refresh();
+  }, [refreshToken, refresh]);
 
   useEffect(() => {
     mounted.current = true;
@@ -149,6 +159,7 @@ export function ProposalsPanel({
           proposal={proposal}
           presentationId={presentationId}
           document={document}
+          locale={locale}
           currentVersionId={currentVersionId}
           busy={status.kind === "working"}
           applying={status.kind === "working" && status.id === proposal.id}
@@ -200,6 +211,7 @@ function ProposalCard({
   proposal,
   presentationId,
   document,
+  locale,
   currentVersionId,
   busy,
   applying,
@@ -209,6 +221,7 @@ function ProposalCard({
   proposal: PendingProposal;
   presentationId: string;
   document: PresentationDocument;
+  locale: string | null;
   currentVersionId: () => string;
   busy: boolean;
   applying: boolean;
@@ -239,12 +252,13 @@ function ProposalCard({
   }, [client, presentationId, proposal.id]);
 
   const preview = useMemo(
-    () => (detail ? previewProposal(document, detail.operations) : null),
-    [detail, document],
+    () => (detail ? previewProposal(document, detail.operations, locale) : null),
+    [detail, document, locale],
   );
-  const beforeScene = useMemo(() => buildDocumentScene(document, { measurer }), [document, measurer]);
+  // Drawn in the language the change is about: a translation shows its words.
+  const beforeScene = useMemo(() => buildDocumentScene(preview?.shownBefore ?? document, { measurer }), [preview, document, measurer]);
   const afterScene = useMemo(
-    () => (preview?.after ? buildDocumentScene(preview.after, { measurer }) : null),
+    () => (preview?.shownAfter ? buildDocumentScene(preview.shownAfter, { measurer }) : null),
     [preview, measurer],
   );
   const resolveBefore = useAssetUrls(document);

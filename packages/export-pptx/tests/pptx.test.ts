@@ -397,6 +397,92 @@ describe("animation mapping", () => {
     expect(clickSlide).toContain('<p:cond delay="indefinite"/>');
   });
 
+  it("writes indefinite and alternating loop timing", () => {
+    const looping = structuredClone(ANIMATION);
+    const clip = looping.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = "float";
+    clip.repeat = -1;
+    clip.direction = "alternate";
+    const output = unzip(buildPptx(inputFor(looping)).bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('repeatCount="indefinite"');
+    expect(output).toContain('autoRev="1"');
+    expect(output).toContain("<p:animMotion");
+  });
+
+  it("writes exits as exits and hides the shape when they finish", () => {
+    const exiting = structuredClone(ANIMATION);
+    const clip = exiting.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = "fadeOut";
+    clip.fill = "forwards";
+    const output = unzip(buildPptx(inputFor(exiting)).bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="exit"');
+    expect(output).toContain('<p:animEffect transition="out" filter="fade">');
+    expect(output).toContain('<p:strVal val="hidden"/>');
+  });
+
+  it("serializes finite PowerPoint repeat counts in thousandths", () => {
+    const looping = structuredClone(ANIMATION);
+    const clip = looping.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = "spin";
+    clip.repeat = 2;
+    const output = unzip(buildPptx(inputFor(looping)).bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('repeatCount="3000"');
+    expect(output).toContain("<p:animRot");
+  });
+
+  it("maps supported emphasis effects as emphasis rather than entrances", () => {
+    const emphasized = structuredClone(ANIMATION);
+    emphasized.slides[0]!.animations![0]!.clips[0]!.preset = "pulse";
+    const built = buildPptx(inputFor(emphasized));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="emph"');
+    expect(output).toContain("<p:animScale");
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === "animation:pulse" &&
+        warning.message.includes("PowerPoint entrance effect"),
+      ),
+    ).toBe(false);
+  });
+
+  it("exports number counts at their final value without a false fade warning", () => {
+    const counting = structuredClone(ANIMATION);
+    counting.slides[0]!.animations![0]!.clips[0]!.preset = "numberCount";
+    const built = buildPptx(inputFor(counting));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    const timing = output.slice(output.indexOf("<p:timing>"));
+    expect(timing).not.toContain('<p:spTgt spid="2"/>');
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === "animation:numberCount" &&
+        warning.message.includes("PowerPoint entrance effect"),
+      ),
+    ).toBe(false);
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.message.includes("final value"),
+      ),
+    ).toBe(true);
+  });
+
+  it("collapses grapheme children to one native PowerPoint text build", () => {
+    const letters = structuredClone(ANIMATION);
+    const clip = letters.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = "byLetter";
+    clip.presetParams = { segmentCount: 24 };
+    const built = buildPptx(inputFor(letters));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect((output.match(/<p:iterate type="lt">/g) ?? []).length).toBe(1);
+    expect(output).toContain("<p:tmPct");
+    expect(output).toContain('<p:bldP spid="2" grpId="0"/>');
+    expect((output.match(/<p:spTgt spid="2"\/>/g) ?? []).length).toBe(2);
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === "animation:byLetter" && warning.message.includes("character-by-character"),
+      ),
+    ).toBe(true);
+  });
+
   it("gives a morph's paired objects one name across both slides", () => {
     // Morph pairs by name (doc 04 §33.3). Names derive from element ids, which
     // is stable across edits and — on its own — useless here: two paired
@@ -1006,5 +1092,97 @@ describe("shapes PowerPoint has no preset for", () => {
     const { bytes, result } = buildPptx(inputFor(withShape("hyperbolicWidget")));
     expect(shapeXml(bytes)).toContain('prst="rect"');
     expect(result.report.warnings.some((w) => w.elementId === "el_01JSHAPESHAPESHAPESHAPESHA" && w.action === "approximated")).toBe(true);
+  });
+});
+
+describe("narration and sound in PowerPoint (integration plan 01 §3.10)", () => {
+  /** A real WAV for each recording the fixture cites, so the package carries bytes. */
+  function withAudio(document: PresentationDocument): ExportInput {
+    const input = inputFor(document);
+    const wav = (seconds: number) => {
+      const rate = 8000;
+      const samples = Math.round(seconds * rate);
+      const bytes = new Uint8Array(44 + samples * 2);
+      const view = new DataView(bytes.buffer);
+      bytes.set(new TextEncoder().encode("RIFF"), 0);
+      view.setUint32(4, 36 + samples * 2, true);
+      bytes.set(new TextEncoder().encode("WAVEfmt "), 8);
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, rate, true);
+      view.setUint32(28, rate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      bytes.set(new TextEncoder().encode("data"), 36);
+      view.setUint32(40, samples * 2, true);
+      return bytes;
+    };
+    const audio = new Map(
+      document.assets
+        .filter((asset) => asset.type === "audio")
+        .map((asset) => [asset.id, { bytes: wav((asset.durationMs ?? 1000) / 1000), contentType: "audio/wav" }]),
+    );
+    return { ...input, audio };
+  }
+
+  it("embeds each step's recording and plays it on that step's click", () => {
+    const document = fixture("multilingual-narrated");
+    const files = unzip(buildPptx(withAudio(document)).bytes);
+    const slide = files.get("ppt/slides/slide2.xml")!;
+    const rels = files.get("ppt/slides/_rels/slide2.xml.rels")!;
+    // Four lines of narration and one pop sound: five audio objects.
+    expect(slide.match(/<a:audioFile /g)).toHaveLength(5);
+    expect(slide.match(/cmd="playFrom\(0\.0\)"/g)!.length).toBe(4 + 3); // four lines, a pop on each of three clicks
+    expect(slide.match(/<p:audio>/g)).toHaveLength(5);
+    // Every relationship the objects name exists, with the right type.
+    for (const id of slide.match(/r:(?:link|embed)="(rId\d+)"/g)!.map((match) => match.slice(match.indexOf('"') + 1, -1))) {
+      expect(rels).toContain(`Id="${id}"`);
+    }
+    expect(rels).toContain("relationships/audio");
+    expect(rels).toContain("2007/relationships/media");
+    const types = files.get("[Content_Types].xml")!;
+    expect(types).toContain('Extension="wav" ContentType="audio/wav"');
+    expect([...files.keys()].filter((path) => /^ppt\/media\/media\d+\.wav$/.test(path))).toHaveLength(5);
+  });
+
+  it("plays the language the file is in, and reports a line with no recording", () => {
+    const document = fixture("multilingual-narrated");
+    document.metadata.language = "fr";
+    const artifact = buildPptx(withAudio(document));
+    const slide = unzip(artifact.bytes).get("ppt/slides/slide2.xml")!;
+    // No French takes: only the library pop is left, and each line is named.
+    expect(slide.match(/<a:audioFile /g)).toHaveLength(1);
+    const silent = artifact.result.report.warnings.filter((entry) => entry.feature.startsWith("narration:"));
+    expect(silent).toHaveLength(4);
+  });
+
+  it("says that a narrated deck will not advance by itself", () => {
+    const artifact = buildPptx(withAudio(fixture("multilingual-narrated")));
+    expect(artifact.result.report.warnings.some((entry) => entry.feature === "narrated playback")).toBe(true);
+  });
+
+  it("embeds an MP3 take, which is what Google voices are now asked for", () => {
+    const document = fixture("multilingual-narrated");
+    const input = withAudio(document);
+    const first = document.assets.find((asset) => asset.type === "audio")!;
+    const audio = new Map(input.audio!);
+    // One MPEG-2 layer III frame header: what Google's MP3 output is made of.
+    audio.set(first.id, { bytes: new Uint8Array([0xff, 0xf3, 0x44, 0xc4, ...new Array(92).fill(0)]), contentType: "audio/mpeg" });
+    const artifact = buildPptx({ ...input, audio });
+    const files = unzip(artifact.bytes);
+    expect(files.get("[Content_Types].xml")!).toContain('Extension="mp3" ContentType="audio/mpeg"');
+    expect([...files.keys()].some((path) => /^ppt\/media\/media\d+\.mp3$/.test(path))).toBe(true);
+    expect(artifact.result.report.warnings.some((entry) => entry.feature === `audio:${first.id}`)).toBe(false);
+  });
+
+  it("refuses a format PowerPoint does not play, by name", () => {
+    const document = fixture("multilingual-narrated");
+    const input = withAudio(document);
+    const first = document.assets.find((asset) => asset.type === "audio")!;
+    const audio = new Map(input.audio!);
+    audio.set(first.id, { bytes: new Uint8Array([79, 103, 103, 83]), contentType: "audio/ogg" });
+    const artifact = buildPptx({ ...input, audio });
+    expect(artifact.result.report.warnings.some((entry) => entry.feature === `audio:${first.id}` && entry.action === "dropped")).toBe(true);
   });
 });

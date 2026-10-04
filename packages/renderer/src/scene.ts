@@ -1,7 +1,11 @@
 import {
   isGroup,
   isKnownElementType,
+  localeDirection,
+  localeScript,
+  sourceLocale,
   textContent,
+  type Script,
   type BackgroundDefinition,
   type CommonStyle,
   type PresentationDocument,
@@ -13,6 +17,7 @@ import {
 } from "@deckastra/presentation-schema";
 
 import { typesetEquation } from "./equation";
+import { applyScriptRules, italicAllowed, mirrorAlign } from "./script-rules";
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
 import { paintToCss, resolveTheme, resolveTypography, resolveValue, themeForMode, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
@@ -135,8 +140,8 @@ export interface SceneNode {
 }
 
 export type RenderPayload =
-  | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets }
-  | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets }
+  | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets; direction?: "rtl" }
+  | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets; direction?: "rtl" }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
   | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
@@ -224,6 +229,8 @@ export interface TextBlockPayload {
   indentLevel: number;
   spans: { text: string; bold?: boolean; italic?: boolean; underline?: boolean; code?: boolean; color?: string; link?: string; fontSizeScale?: number }[];
   align?: string;
+  /** A quote in a script with no italic: drawn upright rather than slanted. */
+  upright?: true;
 }
 
 export interface SceneBackground {
@@ -308,6 +315,14 @@ export interface SlideScene {
    */
   animations?: unknown[];
   /**
+   * The slide's narration cues and sound cues, passed through unresolved for the
+   * same reason as `animations` (integration plan 01 §3.4): present mode and the
+   * editor's audio lane compile them against the timeline, and they should not
+   * need the document to do it. Absent when the slide has none.
+   */
+  narration?: { cues: { id: string; step: number; text: string; takes?: Record<string, { assetId: string; durationMs: number; gainDb?: number; textHash?: string; voice?: string }> }[] };
+  soundCues?: { id: string; label?: string; source: { assetId: string } | { library: string }; trigger: { type: string; [key: string]: unknown }; startMs: number; volume?: number }[];
+  /**
    * What each requested font family actually resolved to (doc 04 §18.4).
    *
    * Part of the scene, not a side channel, because font availability changes the
@@ -317,12 +332,31 @@ export interface SlideScene {
   fonts: FontUsage[];
 }
 
+/** An audio file a deck cites, as present mode needs it to play one (plan 01 §3.4). */
+export interface SceneAudio {
+  storageKey: string;
+  mimeType?: string;
+  durationMs?: number;
+}
+
 export interface DocumentScene {
   documentId: string;
   title: string;
   viewport: { width: number; height: number };
   theme: ResolvedTheme;
   slides: SlideScene[];
+  /**
+   * The language this scene draws: `metadata.language` of the document it was
+   * built from, which a localized copy sets to the locale on show (plan 01 §3.1).
+   * Narration plays the take for this language.
+   */
+  locale: string;
+  /** Which way this language runs. Right-to-left mirrors text alignment. */
+  direction: "ltr" | "rtl";
+  /** Manual or narrated playback, carried for present mode. Absent means manual. */
+  playback?: { mode: "manual" | "narrated"; gapMs?: number };
+  /** Every audio file in the manifest, by asset id, so a take can be resolved to a URL. */
+  audio: Record<string, SceneAudio>;
   fonts: FontUsage[];
   /** Readable, not hashed: "Inter was missing" is the useful failure message. */
   fontDigest: string;
@@ -539,12 +573,18 @@ function textBlocks(theme: ResolvedTheme, content: unknown, align?: string): Tex
     return {
       id: block.id,
       type: block.type,
+      // A quote is drawn italic; one in a script that has no italic is not.
+      ...(block.type === "quote" && !italicAllowed((block.spans ?? []).map((span) => span.text).join(""))
+        ? { upright: true as const }
+        : {}),
       indentLevel: block.indentLevel ?? 0,
       align: block.style?.align ?? align,
       spans: (block.spans ?? []).map((span) => ({
         text: span.text,
         bold: span.bold as boolean | undefined,
-        italic: span.italic as boolean | undefined,
+        // A span in a script with no italic is drawn upright (`italicAllowed`),
+        // here in the scene so the canvas, the PDF and PowerPoint agree.
+        italic: span.italic && !italicAllowed(span.text) ? undefined : (span.italic as boolean | undefined),
         underline: span.underline as boolean | undefined,
         code: span.code as boolean | undefined,
         color: resolveValue<string>(theme, span.color),
@@ -566,6 +606,9 @@ interface BuildContext {
   elementsById: Map<string, PresentationElement>;
   /** Every family the slide asked for, so the scene can report what resolved. */
   fontFamilies: Set<string>;
+  /** The script the deck is shown in, for font fallback and typography rules. */
+  script?: Script;
+  direction: "ltr" | "rtl";
 }
 
 function buildNode(
@@ -719,7 +762,7 @@ function buildPayload(
         verticalAlign?: string;
       };
 
-      const typography = resolveTypography(theme, el.typography);
+      const typography = applyScriptRules(resolveTypography(theme, el.typography), ctx.script);
       const padding = el.padding;
       const innerWidth = width - (padding?.left ?? 0) - (padding?.right ?? 0);
       const innerHeight = height - (padding?.top ?? 0) - (padding?.bottom ?? 0);
@@ -740,12 +783,13 @@ function buildPayload(
 
       return {
         kind: "text",
-        blocks: textBlocks(theme, el.content, el.paragraph?.align),
+        blocks: directed(textBlocks(theme, el.content, el.paragraph?.align), ctx.direction),
         metrics,
         typography,
-        align: el.paragraph?.align,
+        align: mirrorAlign(el.paragraph?.align, ctx.direction),
         verticalAlign: el.verticalAlign,
         padding,
+        ...(ctx.direction === "rtl" ? { direction: "rtl" as const } : {}),
       };
     }
 
@@ -783,10 +827,11 @@ function buildPayload(
         radius,
         // Centred, as a shape's label is in every tool people have used: a
         // label that starts at the left edge of a circle looks like a mistake.
-        label: el.text ? textBlocks(theme, el.text, el.paragraph?.align ?? "center") : undefined,
-        labelTypography: labelTypography(theme, el.typography, paintToCss(theme, element.style?.fill)),
+        label: el.text ? directed(textBlocks(theme, el.text, el.paragraph?.align ?? "center"), ctx.direction) : undefined,
+        labelTypography: applyScriptRules(labelTypography(theme, el.typography, paintToCss(theme, element.style?.fill)), ctx.script),
         labelVerticalAlign: el.verticalAlign ?? "middle",
         labelPadding: el.textPadding,
+        ...(ctx.direction === "rtl" ? { direction: "rtl" as const } : {}),
       };
     }
 
@@ -913,7 +958,7 @@ function buildPayload(
     }
 
     case "table":
-      return buildTablePayload(element, theme);
+      return buildTablePayload(element, theme, ctx.script, ctx.direction);
 
     case "chart":
       return buildChartPayload(element as never, width, height, {
@@ -1021,7 +1066,7 @@ function chartTableRows(
   });
 }
 
-function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): TablePayload {
+function buildTablePayload(element: PresentationElement, theme: ResolvedTheme, script?: Script, direction: "ltr" | "rtl" = "ltr"): TablePayload {
   const el = element as unknown as {
     columns: { id: string; label?: string; align?: string; width?: number; format?: unknown }[];
     rows: {
@@ -1058,11 +1103,11 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
   const compact = style.compact === true;
   const size = deck.fontSize ?? (compact ? 18 : 20);
 
-  const typography = resolveTypography(theme, {
+  const typography = applyScriptRules(resolveTypography(theme, {
     fontFamily: "token:typography.bodySmall.fontFamily",
     fontSize: size,
     color: "token:colors.foreground",
-  });
+  }), script);
   const headerFill = style.headerFill ?? deck.headerFill;
 
   return {
@@ -1070,7 +1115,7 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
     columns: el.columns.map((column, index) => ({
       id: column.id,
       label: column.label,
-      align: column.align,
+      align: mirrorAlign(column.align, direction),
       width: el.columnWidths?.[index] ?? column.width,
     })),
     rows: el.rows.map((row) => ({
@@ -1085,7 +1130,7 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
           // A column that declares a format owns its cells' presentation, so a
           // table and a chart reading the same column agree on what "24.1K" is.
           text: numeric === undefined ? raw : formatNumber(numeric, format as never),
-          align: cell.align,
+          align: mirrorAlign(cell.align, direction),
           fill: cell.style?.fill ? paintToCss(theme, cell.style.fill) : undefined,
           colSpan: cell.colSpan,
           rowSpan: cell.rowSpan,
@@ -1095,12 +1140,12 @@ function buildTablePayload(element: PresentationElement, theme: ResolvedTheme): 
     headerRow: el.headerRow ?? true,
     headerColumn: el.headerColumn ?? false,
     typography,
-    headerTypography: resolveTypography(theme, {
+    headerTypography: applyScriptRules(resolveTypography(theme, {
       fontFamily: "token:typography.bodySmall.fontFamily",
       fontSize: size,
       fontWeight: 600,
       color: style.headerColor ?? deck.headerColor ?? "token:colors.foregroundMuted",
-    }),
+    }), script),
     padding: style.cellPadding ?? deck.cellPadding ?? {
       top: compact ? 6 : 10,
       right: compact ? 10 : 16,
@@ -1137,7 +1182,7 @@ function expandFontStacks(ctx: BuildContext): void {
     const family = record.fontFamily;
     if (typeof family === "string" && family !== "") {
       ctx.fontFamilies.add(family.split(",")[0]!.trim());
-      record.fontFamily = resolveFontStack(family);
+      record.fontFamily = resolveFontStack(family, ctx.script);
     }
 
     for (const child of Object.values(record)) visit(child, depth + 1);
@@ -1187,6 +1232,50 @@ function resolveGradient(theme: ResolvedTheme, paint: unknown): ResolvedGradient
       color: resolveValue<string>(theme, stop.color) ?? "transparent",
     })),
   };
+}
+
+/** Mirror each block's alignment for a right-to-left language; left as it is otherwise. */
+function directed(blocks: TextBlockPayload[], direction: "ltr" | "rtl"): TextBlockPayload[] {
+  if (direction !== "rtl") return blocks;
+  return blocks.map((block) => ({ ...block, align: mirrorAlign(block.align, direction) }));
+}
+
+/**
+ * The language a document draws in, and what follows from it: the script for
+ * font fallback and typography rules, and the direction. A Latin source deck
+ * gets no script at all, so its scene is the one it has always been.
+ */
+export function sceneLanguage(document: PresentationDocument): { locale: string; script?: Script; direction: "ltr" | "rtl" } {
+  const locale = sourceLocale(document);
+  const script = localeScript(locale);
+  const overlay = (document as { locales?: Record<string, { direction?: "ltr" | "rtl" }> }).locales?.[locale];
+  return {
+    locale,
+    ...(script === "latin" ? {} : { script }),
+    direction: overlay?.direction ?? localeDirection(locale),
+  };
+}
+
+/**
+ * A theme whose type families are swapped for a language's own (plan 01 §3.1):
+ * a brand set in a Latin face may name a Devanagari one for its Hindi slides.
+ * `heading` covers the display and heading styles, `body` the reading ones,
+ * `mono` code. Unchanged when the language names none.
+ */
+function themeForLanguage<T extends PresentationDocument["theme"]>(theme: T, fonts: { heading?: string; body?: string; mono?: string } | undefined): T {
+  if (!fonts || (!fonts.heading && !fonts.body && !fonts.mono)) return theme;
+  const typography = { ...(theme.typography as Record<string, unknown>) };
+  const set = (keys: readonly string[], family: string | undefined) => {
+    if (!family) return;
+    for (const key of keys) {
+      const style = typography[key];
+      if (style && typeof style === "object") typography[key] = { ...(style as object), fontFamily: family };
+    }
+  };
+  set(["display", "h1", "h2", "h3"], fonts.heading);
+  set(["body", "bodySmall", "caption", "quote", "metric"], fonts.body);
+  set(["code"], fonts.mono);
+  return { ...theme, typography } as T;
 }
 
 function comparePaths(a: number[], b: number[]): number {
@@ -1250,9 +1339,25 @@ export function buildSlideScene(
     counter: { value: 0 },
     elementsById,
     fontFamilies: new Set<string>(),
+    ...(() => {
+      const language = sceneLanguage(document);
+      return { ...(language.script ? { script: language.script } : {}), direction: language.direction };
+    })(),
   };
 
   const roots = slide.elements.map((element, i) => buildNode(element, IDENTITY, [], i, ctx));
+
+  // Mark animation targets after the element tree exists. Besides making the
+  // scene honest for diagnostics, this lets the React renderer mount its
+  // prepared paint-only effect layers without importing the animation engine.
+  for (const animation of slide.animations ?? []) {
+    const node = ctx.nodes.find((candidate) => candidate.id === animation.targetId);
+    if (!node) continue;
+    const properties = animation.clips.flatMap((clip) =>
+      clip.propertyTracks?.map((track) => track.property) ?? (clip.preset ? [`preset:${clip.preset}`] : []),
+    );
+    node.flags.animatedProperties = [...new Set([...node.flags.animatedProperties, ...properties])];
+  }
 
   const availability = options.fonts ?? detectFontAvailability();
   expandFontStacks(ctx);
@@ -1295,6 +1400,8 @@ export function buildSlideScene(
           : undefined,
     speakerNotesRich: slide.speakerNotes && typeof slide.speakerNotes !== "string" ? slide.speakerNotes : undefined,
     animations: slide.animations,
+    ...(slide.narration?.cues.length ? { narration: slide.narration as SlideScene["narration"] } : {}),
+    ...(slide.soundCues?.length ? { soundCues: slide.soundCues as SlideScene["soundCues"] } : {}),
     fonts: describeFontUsage([...ctx.fontFamilies], availability),
   };
 }
@@ -1304,7 +1411,10 @@ export function buildDocumentScene(
   options: BuildSceneOptions = {},
 ): DocumentScene {
   const watch = new Stopwatch();
-  const theme = resolveTheme(document.theme, options.parentTheme);
+  const language = sceneLanguage(document);
+  const languageFonts = (document as { locales?: Record<string, { fonts?: { heading?: string; body?: string; mono?: string } }> }).locales?.[language.locale]?.fonts;
+  const sourceTheme = themeForLanguage(document.theme, languageFonts);
+  const theme = resolveTheme(sourceTheme, options.parentTheme);
   watch.mark("theme");
 
   // A slide in a colour mode draws with that mode's colours; one resolved
@@ -1314,7 +1424,7 @@ export function buildDocumentScene(
     if (!mode || !(document.theme as { modes?: Record<string, unknown> }).modes?.[mode]) return theme;
     let resolved = byMode.get(mode);
     if (!resolved) {
-      resolved = themeForMode(document.theme, mode, options.parentTheme);
+      resolved = themeForMode(sourceTheme, mode, options.parentTheme);
       byMode.set(mode, resolved);
     }
     return resolved;
@@ -1333,12 +1443,27 @@ export function buildDocumentScene(
 
   if (options.timings) options.timings.push(...watch.report().phases);
 
+  const audio: Record<string, SceneAudio> = {};
+  for (const asset of document.assets ?? []) {
+    if (asset.type !== "audio") continue;
+    audio[asset.id] = {
+      storageKey: asset.storageKey,
+      ...(asset.mimeType ? { mimeType: asset.mimeType } : {}),
+      ...(typeof asset.durationMs === "number" ? { durationMs: asset.durationMs } : {}),
+    };
+  }
+  const playback = (document as { playback?: DocumentScene["playback"] }).playback;
+
   return {
     documentId: document.id,
     title: document.metadata.title,
     viewport: { width: document.viewport.width, height: document.viewport.height },
     theme,
     slides,
+    locale: language.locale,
+    direction: language.direction,
+    ...(playback ? { playback } : {}),
+    audio,
     fonts,
     fontDigest: fontDigest(fonts),
   };

@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, clipboard, dialog } from "electron";
 
 import {
   IPC,
@@ -78,6 +78,15 @@ if (smokeProfile) {
 
 registerAppScheme();
 
+// The narration acceptance step records through a microphone. Chromium's fake
+// device stands in for the hardware, and only for the harness: the app's own
+// permission handler (`media-permission.ts`) still decides whether the editor
+// may listen, which is the part worth checking.
+if (process.env.DECKASTRA_SMOKE_DIR && process.env.DECKASTRA_SMOKE_STEP === "narration") {
+  app.commandLine.appendSwitch("use-fake-device-for-media-stream");
+  app.commandLine.appendSwitch("use-fake-ui-for-media-stream");
+}
+
 /**
  * Refuse a second instance rather than racing it.
  *
@@ -143,6 +152,7 @@ async function refreshAttachment(): Promise<void> {
 
 /** What one save may write. Large enough for any export this product makes. */
 const MAX_SAVE_BYTES = 512 * 1024 * 1024;
+const MAX_CLIPBOARD_CHARACTERS = 8 * 1024 * 1024;
 
 function registerHandlers(): void {
   handleFromWindow(IPC.info, async (): Promise<DesktopInfo> => ({
@@ -266,6 +276,11 @@ function registerHandlers(): void {
     // day it is not.
     await writeFileSafely(filePath, bytes);
     return { saved: true, path: filePath };
+  });
+
+  handleFromWindow(IPC.clipboardWriteText, async (_window, payload): Promise<void> => {
+    const text = asText(asRecord(payload).text, "Clipboard text", MAX_CLIPBOARD_CHARACTERS);
+    clipboard.writeText(text);
   });
 
   // A send rather than a handle: `HostBridge.openPresenterWindow` is synchronous
@@ -664,4 +679,3 @@ app.on("second-instance", () => {
     existing.focus();
   }
 });
-

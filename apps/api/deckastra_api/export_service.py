@@ -171,6 +171,9 @@ def run_job(
         document=document,
         # PowerPoint plays an animated picture; a PDF can only hold one frame of it.
         still=job.kind != "pptx",
+        # PowerPoint carries sound; only the recordings in the exported language
+        # and the slides' own sounds (integration plan 01 §3.10). A PDF has none.
+        audio=asset_service.audio_for_export(document, (job.options_json or {}).get("locale")) if job.kind == "pptx" else set(),
     )
 
     try:
@@ -210,10 +213,30 @@ def run_job(
     job.filename = outcome["filename"]
     job.content_type = outcome["contentType"]
     job.bytes = int(outcome["bytes"])
-    job.report_json = outcome["report"]
+    job.report_json = {**outcome["report"], "warnings": [*outcome["report"].get("warnings", []), *translation_export_warnings(document, job.options_json or {})]}
     job.finished_at = _now()
     session.flush()
     return job
+
+
+def translation_export_warnings(document, options):
+    from . import locales
+    locale = options.get("locale")
+    if not locale or locales.same_language(locale, locales.source_locale(document)):
+        return []
+    entries = document.get("locales", {}).get(locale, {}).get("entries", {})
+    selected = options.get("slideIds")
+    counts = {}
+    hidden = {s["id"] for s in document["slides"] if s.get("hidden")}
+    for slot in locales.locale_slots(document):
+        if not slot.slide_id or not locales.worth_translating(slot.value):
+            continue
+        if selected is not None and slot.slide_id not in selected or slot.slide_id in hidden and not options.get("includeHidden", False):
+            continue
+        entry = entries.get(slot.path)
+        if not entry or entry.get("sourceHash") != locales.text_hash(slot.value):
+            counts[slot.slide_id] = counts.get(slot.slide_id, 0) + 1
+    return [{"severity": "warning", "slideId": sid, "feature": "translation", "action": "approximated", "message": f"{locale}: {count} missing or outdated translations; source-language text is used for those slots."} for sid, count in counts.items()]
 
 
 def recover_expired(session: Session) -> int:

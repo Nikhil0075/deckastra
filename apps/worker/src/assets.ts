@@ -72,6 +72,8 @@ const IMAGE_TYPE = /^image\/[a-z0-9][a-z0-9.+-]*$/;
  * it can fetch nothing else. Only the formats Chromium draws.
  */
 const FONT_TYPE = /^(font\/(ttf|otf|woff|woff2|sfnt)|application\/font-woff)$/;
+/** Audio a PPTX can carry (integration plan 01 §3.10); checked again by the adapter. */
+const AUDIO_TYPE = /^audio\/(wav|x-wav|wave|mpeg|mp3|mp4|x-m4a|ogg|webm)$/;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /** Bytes a base64 string decodes to, without decoding it. */
@@ -124,8 +126,8 @@ export class AssetLibrary {
       }
 
       const type = (asset.mimeType ?? "").split(";", 1)[0]!.trim().toLowerCase();
-      if (!IMAGE_TYPE.test(type) && !FONT_TYPE.test(type)) {
-        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image or a font`);
+      if (!IMAGE_TYPE.test(type) && !FONT_TYPE.test(type) && !AUDIO_TYPE.test(type)) {
+        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image, a font or audio`);
         continue;
       }
 
@@ -190,6 +192,22 @@ export class AssetLibrary {
         bytes: base64Bytes(entry.url.slice(comma + 1)),
         contentType: header,
       });
+    }
+    return byId;
+  }
+
+  /**
+   * The deck's audio as bytes (integration plan 01 §3.10): narration takes and
+   * uploaded sounds, for PPTX to embed. A render page never asks for these —
+   * nothing on a slide draws a sound.
+   */
+  audio(): ReadonlyMap<string, ExportImage> {
+    const byId = new Map<string, ExportImage>();
+    for (const [assetId, entry] of this.byId) {
+      const comma = entry.url.indexOf(",");
+      const header = entry.url.slice("data:".length, entry.url.indexOf(";base64"));
+      if (!header.startsWith("audio/")) continue;
+      byId.set(assetId, { bytes: base64Bytes(entry.url.slice(comma + 1)), contentType: header });
     }
     return byId;
   }

@@ -18,6 +18,8 @@
  *    regression, and someone spends an afternoon on it.
  */
 
+import type { Script } from "@deckastra/presentation-schema";
+
 export type FontCategory = "sans" | "serif" | "mono";
 
 export interface FontMetrics {
@@ -94,6 +96,25 @@ const CURATED: CuratedFont[] = [
   bundled("Source Serif 4", "serif", 0.5, 0.67, 1.25, ["Georgia", "Times New Roman"], "Source Serif 4 Variable"),
   bundled("Fraunces", "serif", 0.52, 0.7, 1.23, ["Georgia", "Times New Roman"], "Fraunces Variable"),
   bundled("IBM Plex Mono", "mono", 0.6, 0.7, 1.3, ["JetBrains Mono", "Consolas", "Menlo"]),
+  // World scripts (integration plan 01 §3.9). Metrics are for the Latin these
+  // faces also carry; text in their own script is measured by a browser, and
+  // the estimator says it is estimating (`metricsEstimated`).
+  bundled("Noto Sans Devanagari", "sans", 0.53, 0.71, 1.5, ["Mukta", "Nirmala UI", "Mangal"], "Noto Sans Devanagari Variable"),
+  bundled("Noto Serif Devanagari", "serif", 0.53, 0.7, 1.5, ["Noto Sans Devanagari", "Nirmala UI"], "Noto Serif Devanagari Variable"),
+  bundled("Mukta", "sans", 0.5, 0.7, 1.45, ["Noto Sans Devanagari", "Nirmala UI"]),
+  bundled("Hind", "sans", 0.51, 0.7, 1.45, ["Noto Sans Devanagari", "Nirmala UI"]),
+  bundled("Baloo 2", "sans", 0.52, 0.72, 1.4, ["Mukta", "Noto Sans Devanagari"], "Baloo 2 Variable"),
+  bundled("Noto Sans Bengali", "sans", 0.53, 0.71, 1.5, ["Nirmala UI", "Vrinda"], "Noto Sans Bengali Variable"),
+  bundled("Noto Sans Tamil", "sans", 0.55, 0.71, 1.5, ["Nirmala UI", "Latha"], "Noto Sans Tamil Variable"),
+  bundled("Noto Sans Telugu", "sans", 0.55, 0.71, 1.5, ["Nirmala UI", "Gautami"], "Noto Sans Telugu Variable"),
+  bundled("Noto Sans Kannada", "sans", 0.55, 0.71, 1.5, ["Nirmala UI", "Tunga"], "Noto Sans Kannada Variable"),
+  bundled("Noto Sans Malayalam", "sans", 0.56, 0.71, 1.5, ["Nirmala UI", "Kartika"], "Noto Sans Malayalam Variable"),
+  bundled("Noto Sans Gujarati", "sans", 0.53, 0.71, 1.5, ["Nirmala UI", "Shruti"], "Noto Sans Gujarati Variable"),
+  bundled("Noto Sans Gurmukhi", "sans", 0.53, 0.71, 1.5, ["Nirmala UI", "Raavi"], "Noto Sans Gurmukhi Variable"),
+  bundled("Noto Sans Oriya", "sans", 0.55, 0.71, 1.5, ["Nirmala UI", "Kalinga"], "Noto Sans Oriya Variable"),
+  bundled("Noto Sans Arabic", "sans", 0.5, 0.71, 1.5, ["Noto Naskh Arabic", "Segoe UI", "Tahoma"], "Noto Sans Arabic Variable"),
+  bundled("Noto Naskh Arabic", "serif", 0.5, 0.7, 1.55, ["Noto Sans Arabic", "Traditional Arabic", "Times New Roman"], "Noto Naskh Arabic Variable"),
+  bundled("Noto Sans Hebrew", "sans", 0.52, 0.71, 1.4, ["Segoe UI", "Arial"], "Noto Sans Hebrew Variable"),
   {
     family: "Söhne",
     category: "sans",
@@ -210,20 +231,50 @@ function guessCategory(family: string | undefined): FontCategory {
  * generic category appended, because a stack that ends in a specific name has no
  * answer when that name is also missing.
  */
-export function resolveFontStack(family: string | undefined): string {
-  if (!family) return GENERIC.sans;
+export function resolveFontStack(family: string | undefined, script?: Script): string {
+  const scriptChain = script ? (SCRIPT_FALLBACKS[script] ?? []) : [];
+  const quote = (name: string): string => (/[^A-Za-z0-9-]/.test(name) ? `"${name}"` : name);
+  if (!family) return [...scriptChain.map(quote), GENERIC.sans].join(", ");
 
   const requested = family.split(",")[0]!.trim().replace(/^["']|["']$/g, "");
   const known = BY_FAMILY.get(requested.toLowerCase());
   const category = known?.category ?? guessCategory(family);
   const chain = known ? known.fallbacks : [];
 
-  const quote = (name: string): string => (/[^A-Za-z0-9-]/.test(name) ? `"${name}"` : name);
-
-  // An installed copy first, then the one this product ships, then fallbacks.
+  // An installed copy first, then the one this product ships, then — for a deck
+  // shown in another script — the faces that draw that script, then the
+  // metric-matched fallbacks. The browser falls back per glyph, so a Latin
+  // heading keeps its brand face and its Devanagari draws in Noto rather than
+  // in whatever the operating system picks (integration plan 01 §3.9).
   const face = known?.face ? [known.face] : [];
-  return [quote(requested), ...face.map(quote), ...chain.map(quote), GENERIC[category]].join(", ");
+  const names = [requested, ...face, ...scriptChain, ...chain];
+  const unique = names.filter((name, index) => names.findIndex((other) => other.toLowerCase() === name.toLowerCase()) === index);
+  return [...unique.map(quote), GENERIC[category]].join(", ");
 }
+
+/**
+ * The faces that draw each script, shipped ones first (their registered names,
+ * so the bundled file is what matches), then what the operating systems carry.
+ * Latin has none: every face in the library already draws it.
+ */
+export const SCRIPT_FALLBACKS: Partial<Record<Script, readonly string[]>> = {
+  devanagari: ["Noto Sans Devanagari Variable", "Mukta", "Nirmala UI", "Mangal", "Kohinoor Devanagari"],
+  bengali: ["Noto Sans Bengali Variable", "Nirmala UI", "Vrinda", "Kohinoor Bangla"],
+  tamil: ["Noto Sans Tamil Variable", "Nirmala UI", "Latha", "Tamil Sangam MN"],
+  telugu: ["Noto Sans Telugu Variable", "Nirmala UI", "Gautami", "Kohinoor Telugu"],
+  kannada: ["Noto Sans Kannada Variable", "Nirmala UI", "Tunga", "Kannada Sangam MN"],
+  malayalam: ["Noto Sans Malayalam Variable", "Nirmala UI", "Kartika", "Malayalam Sangam MN"],
+  gujarati: ["Noto Sans Gujarati Variable", "Nirmala UI", "Shruti", "Gujarati Sangam MN"],
+  gurmukhi: ["Noto Sans Gurmukhi Variable", "Nirmala UI", "Raavi", "Gurmukhi MN"],
+  oriya: ["Noto Sans Oriya Variable", "Nirmala UI", "Kalinga", "Oriya Sangam MN"],
+  arabic: ["Noto Sans Arabic Variable", "Noto Naskh Arabic Variable", "Segoe UI", "Geeza Pro", "Tahoma"],
+  hebrew: ["Noto Sans Hebrew Variable", "Segoe UI", "Arial Hebrew", "Arial"],
+  // Language packs, named so a machine that has them uses them (plan 04 §7).
+  japanese: ["Noto Sans JP", "Yu Gothic", "Meiryo", "Hiragino Sans"],
+  korean: ["Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo"],
+  chinese: ["Noto Sans SC", "Microsoft YaHei", "PingFang SC"],
+  thai: ["Noto Sans Thai", "Leelawadee UI", "Thonburi"],
+};
 
 // ------------------------------------------------------------- availability
 

@@ -126,3 +126,29 @@ requires_object_store = pytest.mark.skipif(
         "docker compose -f infrastructure/docker/docker-compose.yml up -d minio"
     ),
 )
+
+
+#: What a developer's machine may carry after `scripts/setup-google-cloud.ps1
+#: -Persist`: live translation and voices. A test that inherited them would
+#: call Google — spending money, depending on a network, and asserting about
+#: whatever the service said that day. Every test starts without them; one
+#: that wants a provider sets it itself, as the Google contract tests do.
+_LIVE_PROVIDER_VARIABLES = (
+    "DECKASTRA_SPEECH",
+    "DECKASTRA_TRANSLATION",
+    "DECKASTRA_GOOGLE_CREDENTIALS",
+    "DECKASTRA_GOOGLE_ACCESS_TOKEN",
+    "DECKASTRA_GOOGLE_API_KEY",
+    "DECKASTRA_GOOGLE_GLOSSARY",
+    "DECKASTRA_GOOGLE_LOCATION",
+    "GOOGLE_CLOUD_PROJECT",
+)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_speech_or_translation(monkeypatch):
+    for name in _LIVE_PROVIDER_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    from deckastra_api import google_credentials
+
+    google_credentials.reset()

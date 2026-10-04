@@ -199,3 +199,28 @@ it("lists findings, fixes one on press, and goes to the object", () => {
   fireEvent.click(screen.getByText(/Reading order/));
   expect(screen.getByRole("list", { name: "Current slide reading order" })).toBeTruthy();
 });
+
+it("names narration on a click the slide no longer has (W323), and keeps it", () => {
+  const document = deck([text(200, 200, 600, 100)]);
+  document.slides[0]!.narration = {
+    cues: [
+      { id: id("nar"), step: 0, text: "Hello" },
+      { id: id("nar"), step: 2, text: "This click was deleted" },
+    ],
+  };
+  const findings = designCheck(document, buildDocumentScene(document));
+  const lost = findings.filter((finding) => finding.code === "W323");
+  expect(lost).toHaveLength(1);
+  expect(lost[0]!.message).toMatch(/click 2/);
+  expect(lost[0]!.fix).toBeUndefined();
+});
+
+it("offers a face that draws Hindi typed into a Latin font (W325), never applied by Fix all", () => {
+  const document = deck([text(200, 200, 900, 120, { fontFamily: "Inter" }, "नमस्ते दुनिया")]);
+  const findings = designCheck(document, buildDocumentScene(document));
+  const glyphs = findings.find((finding) => finding.code === "W325");
+  expect(glyphs?.fix?.label).toBe("Use Noto Sans Devanagari");
+  expect(safeFixes(findings).some((fix) => fix.label.startsWith("Use Noto"))).toBe(false);
+  const fixed = applyPatch(document, fixOperations(document, [glyphs!.fix!])).document;
+  expect(designCheck(fixed, buildDocumentScene(fixed)).some((finding) => finding.code === "W325")).toBe(false);
+});

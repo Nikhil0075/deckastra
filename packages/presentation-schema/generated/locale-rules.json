@@ -1,0 +1,73 @@
+{
+  "description": "Generated from @deckastra/presentation-schema src/locales.ts and src/sound-names.ts. Do not edit by hand: run \"npm run schema:emit\" instead.",
+  "localizablePathPatterns": [
+    "^\\/metadata\\/title$",
+    "^\\/slides\\/id:[^/]+\\/speakerNotes$",
+    "^\\/slides\\/id:[^/]+\\/narration\\/cues\\/id:[^/]+\\/text$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/(content|text|label|altText|transcript|metadata\\/altText)$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/chartStyle\\/axis[XY]\\/title$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/data\\/rows\\/\\d+\\/[^/]+$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/columns\\/id:[^/]+\\/label$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/rows\\/id:[^/]+\\/cells\\/\\d+\\/content$",
+    "^\\/slides\\/id:[^/]+\\/elements(?:\\/id:[^/]+\\/children)*\\/id:[^/]+\\/(nodes|edges|groups)\\/id:[^/]+\\/(label|sublabel)$"
+  ],
+  "soundLibrary": [
+    "whoosh-soft",
+    "whoosh-fast",
+    "swoosh-up",
+    "swoosh-down",
+    "transition-sweep",
+    "pop",
+    "pop-soft",
+    "bloop",
+    "click",
+    "click-soft",
+    "tick",
+    "keystroke",
+    "typing",
+    "chime",
+    "chime-high",
+    "ding",
+    "bell",
+    "sparkle",
+    "notify",
+    "success",
+    "level-up",
+    "coin",
+    "error-buzz",
+    "rise",
+    "fall",
+    "thud",
+    "knock",
+    "heartbeat",
+    "drum-roll",
+    "applause",
+    "camera-shutter"
+  ],
+  "hashSamples": [
+    {
+      "text": "",
+      "hash": "fnv1a64:cbf29ce484222325"
+    },
+    {
+      "text": "Hello",
+      "hash": "fnv1a64:63f0bfacf2c00f6b"
+    },
+    {
+      "text": "नमस्ते दुनिया",
+      "hash": "fnv1a64:e76a6f0b99b9438f"
+    },
+    {
+      "text": "مرحبا",
+      "hash": "fnv1a64:7306b4a71c439dbe"
+    },
+    {
+      "text": "Line one\nLine two",
+      "hash": "fnv1a64:b1a01a2bad08580f"
+    },
+    {
+      "text": "Café — 100%",
+      "hash": "fnv1a64:f14b39b3ae670f83"
+    }
+  ]
+}

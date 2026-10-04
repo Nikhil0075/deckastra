@@ -29,7 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import agent_service, backup, local_mode
+from . import agent_service, audio, backup, local_mode
 from . import object_storage, office_theme, quotas, sharing, store, telemetry, themes
 from .auth import (
     Principal,
@@ -163,6 +163,7 @@ def _account_context(session: Session, principal: Principal) -> dict[str, Any]:
             "sharing": not local_mode.enabled(),
             "checkpoints": agent_service.checkpoints_available(),
             "generation": generation_status(),
+            "assistant": __import__("deckastra_api.assistant_routes", fromlist=["capabilities"]).capabilities(),
         },
     }
 
@@ -184,7 +185,9 @@ def account_context(
 #: The settings a person's editor may keep here, and how large each may be.
 #: An allowlist rather than any key: this is a person's own storage, and a
 #: route that took any key and any size would be a place to put anything.
-PREFERENCE_KEYS = {"library"}
+#: `translation` holds a person's do-not-translate terms and preferred voices
+#: (integration plan 01 §3.7): brand names they want left alone in every deck.
+PREFERENCE_KEYS = {"library", "translation", "pronunciations", "speech"}
 PREFERENCE_MAX_BYTES = 16_384
 
 
@@ -588,6 +591,12 @@ class BeginAssetUpload(BaseModel):
     kind: Literal["image", "video", "audio", "font", "document"] = "image"
     width: int | None = Field(default=None, gt=0, le=100_000)
     height: int | None = Field(default=None, gt=0, le=100_000)
+    #: Audio only (integration plan 01 §3.5): what the browser decoded. Used when
+    #: the server cannot read the container itself (an .m4a, say); a WAV, Ogg or
+    #: MP3 is measured from its own bytes and this is ignored.
+    duration_ms: int | None = Field(default=None, gt=0, le=6 * 60 * 60 * 1000)
+    #: Audio only: 256 peaks, 0..1, for the timeline's waveform. Checked, never trusted.
+    waveform_peaks: list[float] | None = Field(default=None, min_length=256, max_length=256)
 
 
 class CompleteAssetUpload(BaseModel):
@@ -645,6 +654,8 @@ def begin_asset_upload(
         "kind": request.kind,
         "width": request.width,
         "height": request.height,
+        "duration_ms": request.duration_ms if request.kind == "audio" else None,
+        "waveform_peaks": audio.valid_peaks(request.waveform_peaks) if request.kind == "audio" and request.waveform_peaks else None,
     }
     try:
         url = object_storage.presigned_put(key, claims["content_type"], expires_seconds=UPLOAD_TOKEN_TTL)
@@ -773,6 +784,30 @@ def complete_asset_upload(
             logger.exception("Could not clean invalid upload %s", key)
         raise HTTPException(status_code=422, detail="Uploaded bytes or content type do not match the upload request.")
 
+    duration_ms: int | None = None
+    peaks: list[float] | None = None
+    if claims.get("kind") == "audio":
+        # Measured from the bytes when the container can be read — a narrated
+        # deck advances on this number, so the file's own answer beats anyone's
+        # description of it (integration plan 01 §3.8).
+        try:
+            data, _ = object_storage.read(key)
+        except object_storage.ObjectStorageError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        duration_ms = audio.duration_ms(data, expected_type) or claims.get("duration_ms")
+        if not duration_ms:
+            try:
+                object_storage.delete(key)
+            except object_storage.ObjectStorageError:
+                logger.exception("Could not clean unreadable audio %s", key)
+            raise HTTPException(status_code=422, detail="This audio file's length could not be read. Use WAV, MP3 or Ogg.")
+        peaks = audio.valid_peaks(claims.get("waveform_peaks"))
+        if peaks is None and audio.sniff(data) == "wav":
+            try:
+                peaks = audio.peaks(audio.wav_samples(data))
+            except audio.AudioError:
+                peaks = None
+
     try:
         asset = asset_service.register(
             session,
@@ -785,6 +820,8 @@ def complete_asset_upload(
             size_bytes=meta.bytes,
             width=claims.get("width"),
             height=claims.get("height"),
+            duration_ms=duration_ms,
+            waveform_peaks=peaks,
         )
     except quotas.QuotaExceeded as error:
         try:
@@ -792,6 +829,13 @@ def complete_asset_upload(
         except object_storage.ObjectStorageError:
             logger.exception("Could not clean quota-rejected upload %s", key)
         raise HTTPException(status_code=429, detail=error.as_detail()) from error
+
+    from .assistant_assets import fingerprints
+    try:
+        uploaded_bytes, _ = object_storage.read(key)
+        asset.sha256, asset.dhash64 = fingerprints(uploaded_bytes, expected_type)
+    except object_storage.ObjectStorageError as error:
+        raise HTTPException(status_code=409, detail="The uploaded asset could not be fingerprinted.") from error
 
     # The storage key, which `describe` deliberately withholds — a *list* has no
     # reason to hand out paths into a bucket. Completing your own upload does:

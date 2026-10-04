@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import export_service, store
+from . import export_service, locales, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import ExportJob
 from .db.session import get_session
@@ -42,6 +42,10 @@ class ExportRequest(BaseModel):
     #: between). Optional, because an agent exporting "the deck as it stands"
     #: means exactly the stored head.
     expected_version_id: str | None = Field(default=None, max_length=64)
+    #: The language to export (integration plan 01 §3.10): the deck's own when
+    #: absent, or one of its overlays. Recorded on the job, because an export is
+    #: of a version *in a language*, and a retry must not change which.
+    locale: str | None = Field(default=None, min_length=2, max_length=35)
 
 
 @router.post("/presentations/{presentation_id}/exports", status_code=status.HTTP_202_ACCEPTED)
@@ -77,6 +81,13 @@ def start_export(
             detail="The deck changed after it was saved for this export. Export again to include the latest version.",
         )
 
+    if request.locale is not None:
+        if not locales.valid_locale(request.locale):
+            raise HTTPException(status_code=422, detail=f"{request.locale!r} is not a language tag.")
+        own = locales.same_language(request.locale, locales.source_locale(loaded.document))
+        if not own and request.locale not in (loaded.document.get("locales") or {}):
+            raise HTTPException(status_code=422, detail=f"This deck has no {request.locale} translation to export.")
+
     try:
         job = export_service.create_job(
             session,
@@ -89,6 +100,7 @@ def start_export(
                 "includeHiddenSlides": request.include_hidden_slides,
                 "includeNotes": request.include_notes,
                 "atTime": request.at_time,
+                **({"locale": request.locale} if request.locale else {}),
             },
             idempotency_key=request.idempotency_key,
         )

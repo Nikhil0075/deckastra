@@ -1,12 +1,12 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { buildDocumentScene, type DocumentScene } from "@deckastra/renderer";
 import { ScaledSlide } from "@deckastra/renderer/react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { SharedDocument } from "@deckastra/workspace-contracts";
 
-import { PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
+import { deckLanguages, localizeDocument, PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
 
 /**
  * A deck opened from a share link (gap register doc 01 S2).
@@ -26,6 +26,12 @@ import { PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
  * **No sign-in prompt on failure.** A link that has expired, been revoked or was
  * never real all show the same thing, because telling a holder which it is
  * confirms that a deck exists behind the id they tried.
+ *
+ * **The language is the viewer's, and the link can suggest one** (integration
+ * plan 01 §3.1): `?lang=hi-IN` opens the Hindi overlay, and the picker switches
+ * between the deck's languages. It is applied to a copy here, exactly as the
+ * editor shows a language — nothing about it is stored, and a link without
+ * `lang` shows the deck as written.
  */
 
 type State =
@@ -39,6 +45,32 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   const [state, setState] = useState<State>({ phase: "loading" });
   const [presenting, setPresenting] = useState(false);
   const [selected, setSelected] = useState(0);
+  const [locale, setLocale] = useState<string | null>(null);
+
+  // `?lang=` is read once the deck has arrived, and only a language the deck
+  // has is honoured: a link naming one it lacks shows the deck as written.
+  useEffect(() => {
+    if (state.phase !== "ready" || typeof window === "undefined") return;
+    const asked = new URLSearchParams(window.location.search).get("lang");
+    const known = deckLanguages(state.deck.document).find((language) => !language.source && language.tag.toLowerCase() === asked?.toLowerCase());
+    setLocale(known?.tag ?? null);
+  }, [state]);
+
+  const chooseLocale = (tag: string | null) => {
+    setLocale(tag);
+    // Kept in the address so the link a viewer copies opens where they are.
+    const url = new URL(window.location.href);
+    if (tag) url.searchParams.set("lang", tag);
+    else url.searchParams.delete("lang");
+    window.history.replaceState(null, "", url);
+  };
+
+  // Pictures and recordings load through the share's own route: the token in
+  // the path authorises them, and only files this document cites are served.
+  const resolveAssetUrl = useCallback(
+    (assetId: string) => client.shares.assetUrl?.(token, assetId),
+    [client, token],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -60,10 +92,12 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   }, [client, token]);
 
   const measurer = useBrowserMeasurer();
+  const languages = useMemo(() => (state.phase === "ready" ? deckLanguages(state.deck.document) : []), [state]);
   const scene: DocumentScene | null = useMemo(() => {
     if (state.phase !== "ready") return null;
-    return buildDocumentScene(state.deck.document, { measurer });
-  }, [state, measurer]);
+    return buildDocumentScene(localizeDocument(state.deck.document, locale), { measurer });
+  }, [state, locale, measurer]);
+  const narrated = state.phase === "ready" && state.deck.document.playback?.mode === "narrated";
 
   if (state.phase === "loading") {
     return (
@@ -91,7 +125,9 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   }
 
   if (presenting && scene) {
-    return <PresentMode scene={scene} onExit={() => setPresenting(false)} initialSlide={selected} />;
+    return (
+      <PresentMode scene={scene} onExit={() => setPresenting(false)} initialSlide={selected} resolveAssetUrl={resolveAssetUrl} />
+    );
   }
 
   const current = scene?.slides[selected];
@@ -108,14 +144,33 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
           </p>
         </div>
         <div style={{ flex: 1 }} />
+        {languages.length > 1 ? (
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "var(--fg-muted)" }}>
+            Language
+            <select
+              value={locale ?? languages[0]!.tag}
+              onChange={(event) => chooseLocale(languages.find((language) => language.tag === event.target.value)?.source ? null : event.target.value)}
+              style={{ padding: "8px 10px", fontSize: 15, borderRadius: 8, border: "1px solid var(--border)" }}
+              data-testid="shared-language"
+            >
+              {languages.map((language) => (
+                <option key={language.tag} value={language.tag}>
+                  {language.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {/* Browsers refuse sound until someone clicks: presenting is that click,
+            so a narrated deck says plainly that it will speak. */}
         <button style={primary} onClick={() => setPresenting(true)}>
-          Present
+          {narrated ? "Play with sound" : "Present"}
         </button>
       </header>
 
       {current ? (
         <div style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "#000" }}>
-          <ScaledSlide scene={current} width={1040} mode="present" />
+          <ScaledSlide scene={current} width={1040} mode="present" resolveAssetUrl={resolveAssetUrl} />
         </div>
       ) : null}
 
@@ -147,7 +202,7 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
               lineHeight: 0,
             }}
           >
-            <ScaledSlide scene={slide} width={168} mode="present" />
+            <ScaledSlide scene={slide} width={168} mode="present" resolveAssetUrl={resolveAssetUrl} />
           </button>
         ))}
       </div>

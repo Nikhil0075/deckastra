@@ -110,7 +110,50 @@ def materialise(
         operations.append(operation)
 
     operations.extend(_manifest_entries(operations, document, images))
+    _stamp_translations(operations, document)
     return operations
+
+
+def _stamp_translations(operations: list[dict[str, Any]], document: dict[str, Any]) -> None:
+    """Give each translation entry the fingerprint of the words it translates.
+
+    A model cannot compute the hash (integration plan 01 §3.1), and one it made
+    up would mark a fresh translation outdated or an outdated one current. So
+    whatever it wrote is replaced with the hash of the slot's source text, read
+    from the deck as it stands — the same thing the editor does for a typed one.
+    """
+    from . import locales
+
+    def stamp(slot_path: str, entry: Any) -> None:
+        if not isinstance(entry, dict):
+            return
+        source = None
+        for slot in locales.locale_slots(document):
+            if slot.path == slot_path:
+                source = slot.value
+                break
+        entry["sourceHash"] = locales.text_hash(source)
+        entry.setdefault("origin", "agent:editor")
+
+    for operation in operations:
+        if operation.get("op") not in ("add", "replace"):
+            continue
+        segments = [part.replace("~1", "/").replace("~0", "~") for part in str(operation.get("path", "")).split("/")[1:]]
+        value = operation.get("value")
+        if not segments or segments[0] != "locales":
+            continue
+        if len(segments) == 4 and segments[2] == "entries":
+            stamp(segments[3], value)
+        elif len(segments) == 3 and segments[2] == "entries" and isinstance(value, dict):
+            for path, entry in value.items():
+                stamp(path, entry)
+        elif len(segments) == 2 and isinstance(value, dict):
+            for path, entry in (value.get("entries") or {}).items():
+                stamp(path, entry)
+        elif len(segments) == 1 and isinstance(value, dict):
+            for overlay in value.values():
+                for path, entry in ((overlay or {}).get("entries") or {}).items():
+                    stamp(path, entry)
 
 
 def _manifest_entries(

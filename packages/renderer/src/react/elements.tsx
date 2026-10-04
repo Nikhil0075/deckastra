@@ -36,10 +36,37 @@ function typographyToCss(t: TypographyStyle, overrideSize?: number): CSSProperti
   };
 }
 
-function Spans({ block, baseSize }: { block: TextBlockPayload; baseSize: number }): ReactNode {
+interface TextSubTargetCounter { line: number; word: number; glyph: number; numberSlotAssigned: boolean }
+
+function graphemes(text: string): string[] {
+  const Segmenter = (Intl as unknown as { Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(value: string): Iterable<{ segment: string }> } }).Segmenter;
+  return Segmenter ? [...new Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map((part) => part.segment) : Array.from(text);
+}
+
+function segmentedText(text: string, counter: TextSubTargetCounter): ReactNode {
+  const Segmenter = (Intl as unknown as { Segmenter?: new (locale?: string, options?: { granularity: "word" }) => { segment(value: string): Iterable<{ segment: string; isWordLike?: boolean }> } }).Segmenter;
+  const parts = Segmenter
+    ? [...new Segmenter(undefined, { granularity: "word" }).segment(text)]
+    : text.split(/(\s+)/).map((segment) => ({ segment, isWordLike: !/^\s+$/.test(segment) }));
+
+  return parts.map((part) => {
+    const glyphs = graphemes(part.segment).map((glyph) => {
+      const index = counter.glyph++;
+      return <span key={`g${index}`} data-sub-target={`glyph/${index}`}>{glyph}</span>;
+    });
+    if (!part.isWordLike) return glyphs;
+    const index = counter.word++;
+    return <span key={`w${index}`} data-sub-target={`word/${index}`}>{glyphs}</span>;
+  });
+}
+
+function Spans({ block, baseSize, counter, numberSlot, segmented }: { block: TextBlockPayload; baseSize: number; counter: TextSubTargetCounter; numberSlot: boolean; segmented: boolean }): ReactNode {
+  const line = counter.line++;
   return (
-    <>
+    <span data-sub-target={`line/${line}`}>
       {block.spans.map((span, i) => {
+        const isNumberSlot = numberSlot && !counter.numberSlotAssigned;
+        if (isNumberSlot) counter.numberSlotAssigned = true;
         const style: CSSProperties = {
           fontWeight: span.bold ? 700 : undefined,
           fontStyle: span.italic ? "italic" : undefined,
@@ -53,18 +80,18 @@ function Spans({ block, baseSize }: { block: TextBlockPayload; baseSize: number 
 
         if (span.link) {
           return (
-            <a key={i} href={span.link} style={style} rel="noreferrer noopener">
-              {span.text}
+            <a key={i} href={span.link} style={style} rel="noreferrer noopener" data-number-slot={isNumberSlot ? "" : undefined}>
+              {segmented ? segmentedText(span.text, counter) : span.text}
             </a>
           );
         }
         return (
-          <span key={i} style={style}>
-            {span.text}
+          <span key={i} style={style} data-number-slot={isNumberSlot ? "" : undefined}>
+            {segmented ? segmentedText(span.text, counter) : span.text}
           </span>
         );
       })}
-    </>
+    </span>
   );
 }
 
@@ -72,45 +99,51 @@ function TextBlocks({
   blocks,
   typography,
   appliedFontSize,
+  numberSlot = false,
+  segmented = true,
 }: {
   blocks: TextBlockPayload[];
   typography: TypographyStyle;
   appliedFontSize: number;
+  numberSlot?: boolean;
+  segmented?: boolean;
 }): ReactNode {
+  const counter: TextSubTargetCounter = { line: 0, word: 0, glyph: 0, numberSlotAssigned: false };
   return (
     <>
       {blocks.map((block) => {
+        const plainText = block.spans.map((span) => span.text).join("");
         const listed = block.type === "bullet" || block.type === "numbered";
         const style: CSSProperties = {
           margin: 0,
           textAlign: block.align as CSSProperties["textAlign"],
-          marginLeft: block.indentLevel ? block.indentLevel * 24 : undefined,
+          marginInlineStart: block.indentLevel ? block.indentLevel * 24 : undefined,
           // `text-wrap: balance` on headings prevents the single-orphan last line
           // that makes generated titles look unconsidered (doc 02 §12.3).
           textWrap: block.type === "heading" ? "balance" : undefined,
           listStyle: listed ? undefined : "none",
-          paddingLeft: listed ? 28 : 0,
+          paddingInlineStart: listed ? 28 : 0,
         };
 
         if (listed) {
           return (
-            <li key={block.id} style={{ ...style, listStyle: block.type === "numbered" ? "decimal" : "disc", marginLeft: 24 + (block.indentLevel ?? 0) * 24 }}>
-              <Spans block={block} baseSize={appliedFontSize} />
+            <li key={block.id} data-plain-text={plainText} style={{ ...style, listStyle: block.type === "numbered" ? "decimal" : "disc", marginInlineStart: 24 + (block.indentLevel ?? 0) * 24 }}>
+              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
             </li>
           );
         }
 
         if (block.type === "quote") {
           return (
-            <blockquote key={block.id} style={{ ...style, fontStyle: "italic" }}>
-              <Spans block={block} baseSize={appliedFontSize} />
+            <blockquote key={block.id} data-plain-text={plainText} style={{ ...style, fontStyle: block.upright ? "normal" : "italic" }}>
+              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
             </blockquote>
           );
         }
 
         return (
-          <p key={block.id} style={style}>
-            <Spans block={block} baseSize={appliedFontSize} />
+          <p key={block.id} data-plain-text={plainText} style={style}>
+            <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
           </p>
         );
       })}
@@ -125,9 +158,10 @@ export interface ElementProps {
    *  reading a URL out of the document. */
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
   children?: ReactNode;
+  segmented?: boolean;
 }
 
-export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNode {
+export function ElementContent({ node, resolveAssetUrl, segmented = true }: ElementProps): ReactNode {
   const payload = node.renderPayload;
   const { width, height } = node.localBounds;
 
@@ -142,6 +176,10 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
 
       return (
         <div
+          // A right-to-left language runs its lines from the right, and its
+          // bullets sit on the right too (integration plan 01 §3.9). Absent
+          // for every left-to-right deck, so their markup is unchanged.
+          dir={payload.direction}
           style={{
             width: "100%",
             height: "100%",
@@ -162,6 +200,10 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
             blocks={payload.blocks}
             typography={payload.typography}
             appliedFontSize={payload.metrics.appliedFontSize}
+            numberSlot={node.flags.animatedProperties.includes("preset:numberCount")}
+            // Static exports use contiguous runs unless a sampled effect needs
+            // glyph targets. Paint fragments impair PDF reading order/shaping.
+            segmented={segmented}
           />
         </div>
       );
@@ -215,6 +257,7 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
 
           {payload.label && payload.labelTypography ? (
             <div
+              dir={payload.direction}
               style={{
                 position: "absolute",
                 inset: 0,
@@ -236,6 +279,7 @@ export function ElementContent({ node, resolveAssetUrl }: ElementProps): ReactNo
                 blocks={payload.label}
                 typography={payload.labelTypography}
                 appliedFontSize={payload.labelTypography.fontSize}
+                segmented={segmented}
               />
             </div>
           ) : null}

@@ -72,6 +72,61 @@ describe("slide rendering", () => {
     expect(html).toContain('data-layer="content"');
   });
 
+  it("emits stable line, word and grapheme targets without splitting complex Unicode", () => {
+    const document = loadFixture("technical");
+    const text = document.slides[0]!.elements.find((element) => element.type === "text");
+    if (!text || text.type !== "text") throw new Error("fixture has no text");
+    const content = text.content as { blocks: { spans: { text: string }[] }[] };
+    content.blocks[0]!.spans = [{ text: "A👩‍🚀e\u0301 B" }];
+    const html = renderToStaticMarkup(<SlideView scene={buildDocumentScene(document).slides[0]!} />);
+    expect(html).toContain('data-sub-target="line/0"');
+    expect(html).toContain('data-sub-target="word/0"');
+    expect(html).toMatch(/data-sub-target="glyph\/\d+">👩‍🚀<\/span>/);
+    expect(html).toMatch(/data-sub-target="glyph\/\d+">é<\/span>/);
+  });
+
+  it("keeps static export runs contiguous unless a sampled text effect needs subtargets", () => {
+    const document = loadFixture("multilingual");
+    const slide = buildDocumentScene(document).slides[1]!; // click-reveal text
+    const contiguous = renderToStaticMarkup(<SlideView scene={slide} segmentText={false} />);
+    expect(contiguous).not.toContain('data-sub-target="glyph/');
+    const target = slide.nodes.find(node => node.type === "text")!;
+    const sampled = renderToStaticMarkup(<SlideView scene={slide} segmentText={false} textAnimationTargets={[target.id]} />);
+    expect(sampled).toContain('data-sub-target="glyph/');
+    expect(sampled).toContain(`data-element-id="${target.id}"`);
+  });
+
+  it("marks a styled inner text span as the number-count slot", () => {
+    const document = loadFixture("technical");
+    const text = document.slides[0]!.elements.find((element) => element.type === "text");
+    if (!text) throw new Error("fixture has no text");
+    document.slides[0]!.animations = [{
+      id: "trk_01JB8Z9K2QW4RN7F3X03999001",
+      targetId: text.id,
+      trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_01JB8Z9K2QW4RN7F3X03999002", preset: "numberCount", startMs: 0, durationMs: 420 }],
+    }];
+    const html = renderToStaticMarkup(<SlideView scene={buildDocumentScene(document).slides[0]!} />);
+    expect(html).toContain('data-number-slot=""');
+    expect(html).toMatch(/data-number-slot=""[^>]*>/);
+  });
+
+  it("mounts a dedicated translated sheen layer for shimmer", () => {
+    const document = loadFixture("technical");
+    const target = document.slides[0]!.elements[0]!;
+    document.slides[0]!.animations = [{
+      id: "trk_01JB8Z9K2QW4RN7F3X03999003",
+      targetId: target.id,
+      subTarget: "effect/shimmer",
+      trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_01JB8Z9K2QW4RN7F3X03999004", preset: "shimmer", startMs: 0, durationMs: 1_200, repeat: -1 }],
+    }];
+    const html = renderToStaticMarkup(<SlideView scene={buildDocumentScene(document).slides[0]!} />);
+    expect(html).toContain('data-sub-target="effect/shimmer"');
+    expect(html).toContain("linear-gradient(110deg");
+    expect(html).toContain("mix-blend-mode:screen");
+  });
+
   it("paints in zPath order via z-index", () => {
     const html = render(0);
     const zIndexes = [...html.matchAll(/z-index:(\d+)/g)].map((m) => Number(m[1]));

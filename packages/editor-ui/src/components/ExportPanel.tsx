@@ -1,5 +1,6 @@
 "use client";
 
+import { languageLabel } from "../lib/languages";
 import { useEffect, useRef, useState } from "react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { ExportJob, ExportReport, ExportWarning } from "@deckastra/workspace-contracts";
@@ -42,6 +43,8 @@ type State =
 export interface ExportSaveBarrier {
   saveNow: () => Promise<boolean>;
   currentVersionId: () => string;
+  /** The language on screen, which is the language exported (integration plan 01 §3.10). */
+  locale?: string | null;
 }
 
 export interface ExportPanelProps {
@@ -111,6 +114,7 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
           at_time: atTime,
           idempotency_key: crypto.randomUUID(),
           ...(expected ? { expected_version_id: expected } : {}),
+          ...(editor?.locale ? { locale: editor.locale } : {}),
         },
         { signal: controller.signal },
       );
@@ -182,6 +186,12 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
     // "EXPORT", which is how it tells it from the Share panel.
     <section className="dk-export">
       <h3 className="dk-label dk-export__heading">Export</h3>
+      {editor?.locale ? (
+        // Said before pressing: the file is in the language on screen.
+        <p className="dk-muted" data-testid="export-language">
+          In {languageLabel(editor.locale)}. Switch language in the bar to export another.
+        </p>
+      ) : null}
 
       <div className="dk-export__formats">
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("pdf")}>

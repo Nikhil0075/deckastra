@@ -12,6 +12,7 @@ import { History, applyPatch, type EditCommand } from "@deckastra/transactions";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { isWorkspaceError, type DocumentRead } from "@deckastra/workspace-contracts";
 import { closeApproved, registerCloseParticipant } from "./close-barrier";
+import { isOverlayLocale, localizeDocument, localizeWrite } from "./locale-lens";
 import { openRecoveryJournal, type EditorRecovery, type RecoveryCopy, type RecoveryJournal, type RecoveryPointerStore } from "./editor-recovery";
 import { reconcileDocuments, reconciliationPatch, type ConflictReview, type ConflictChoice } from "./reconcile";
 import {
@@ -62,7 +63,17 @@ export interface ApplyOptions {
 }
 
 export interface EditorApi {
+  /**
+   * The deck as it is on screen: the saved deck, or — while a language is
+   * showing — its localized copy (integration plan 01 §3.2). Every surface reads
+   * this one; `apply` routes what they write through the locale lens.
+   */
   document: PresentationDocument;
+  /** The saved deck, in its own language, whatever is showing. */
+  sourceDocument: PresentationDocument;
+  /** The language on screen; null is the deck's own. Editor state, never saved. */
+  locale: string | null;
+  setLocale: (locale: string | null) => void;
   /**
    * Adopt a document the server produced, for a change applied server-side.
    *
@@ -196,6 +207,31 @@ export function useEditor(input: UseEditorInput): EditorApi {
   const [externalChange, setExternalChange] = useState<ExternalChange | null>(null);
   const [restoredVersion, setRestoredVersion] = useState<RestoredVersion | null>(null);
   const [, forceRender] = useState(0);
+  // Which language is showing (plan 01 §3.2). Remembered per deck in this
+  // browser, like zoom would be: it is how this person is working, not a fact
+  // about the deck.
+  const localeKey = `deckastra.locale.${input.presentationId}`;
+  const [locale, setLocaleState] = useState<string | null>(() => {
+    try {
+      return globalThis.localStorage?.getItem(localeKey) || null;
+    } catch {
+      return null;
+    }
+  });
+  const localeRef = useRef(locale);
+  localeRef.current = locale;
+  const setLocale = useCallback(
+    (next: string | null) => {
+      setLocaleState(next);
+      try {
+        if (next) globalThis.localStorage?.setItem(localeKey, next);
+        else globalThis.localStorage?.removeItem(localeKey);
+      } catch {
+        // Not remembering which language was showing loses nothing that matters.
+      }
+    },
+    [localeKey],
+  );
 
   const history = useRef(new History()).current;
   const versionId = useRef(input.initialVersionId);
@@ -504,9 +540,21 @@ export function useEditor(input: UseEditorInput): EditorApi {
   }, [loadRecovered, refreshRecoveryCopies]);
 
   const apply = useCallback(
-    (operations: PatchOperation[], options: ApplyOptions) => {
+    (authored: PatchOperation[], options: ApplyOptions) => {
       if (recoveryBusy.current) return;
-      if (operations.length === 0) return;
+      if (authored.length === 0) return;
+
+      // Written against what is on screen; turned into a patch on the saved deck.
+      let operations = authored;
+      if (isOverlayLocale(documentRef.current, localeRef.current)) {
+        try {
+          operations = localizeWrite(documentRef.current, localeRef.current, authored);
+        } catch (error) {
+          setSave({ status: "error", message: error instanceof Error ? error.message : "That edit could not be applied." });
+          return;
+        }
+        if (operations.length === 0) return;
+      }
 
       let result;
       try {
@@ -652,7 +700,13 @@ export function useEditor(input: UseEditorInput): EditorApi {
     [flush, persistRecovery, runDrafts],
   );
 
-  const slide = document.slides[slideIndex];
+  // The deck on screen. A language the deck no longer has (removed elsewhere,
+  // or by an undo) shows the deck itself rather than nothing.
+  const view = useMemo(
+    () => (isOverlayLocale(document, locale) ? localizeDocument(document, locale) : document),
+    [document, locale],
+  );
+  const slide = view.slides[slideIndex];
 
   const nodes = useMemo<SelectableNode[]>(
     () => (slide ? buildSelectableNodes(slide) : []),
@@ -931,7 +985,10 @@ export function useEditor(input: UseEditorInput): EditorApi {
   }, [flush, history, persistRecovery]);
 
   return {
-    document,
+    document: view,
+    sourceDocument: document,
+    locale: isOverlayLocale(document, locale) ? locale : null,
+    setLocale,
     adoptDocument,
     currentVersionId: () => versionId.current,
     externalChange,

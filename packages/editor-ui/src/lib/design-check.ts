@@ -11,6 +11,8 @@ import {
   type TextMeasurer,
 } from "@deckastra/renderer";
 import { applyPatch } from "@deckastra/transactions";
+import { compileTimeline } from "@deckastra/animation-engine";
+import type { AnimationTrack } from "@deckastra/presentation-schema";
 
 import { altTextFor, altTextProperty, auditAccessibility, needsAltText } from "./accessibility";
 import { resizeOperations } from "./resize-operations";
@@ -58,6 +60,7 @@ export interface DesignFinding {
   severity: FindingSeverity;
   slideId: string;
   elementId?: string;
+  relatedElementId?: string;
   title: string;
   message: string;
   fix?: FindingFix;
@@ -86,6 +89,8 @@ const TITLES: Record<string, string> = {
   A101: "No alternative text",
   A102: "Low contrast",
   A103: "Reading order",
+  W323: "Narration on a click that is gone",
+  W325: "Font cannot draw this language",
   THEME: "Theme contrast",
 };
 
@@ -127,7 +132,7 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
     for (const issue of checkLayout(slide, minTextPx ? { minTextPx } : {})) {
       const id = issue.elementId;
       const detail = issue.detail;
-      const base = { code: issue.code, severity: issue.severity === "error" ? "error" : "warning", slideId: slide.slideId, elementId: id, message: issue.message } as const;
+      const base = { code: issue.code, severity: issue.severity === "error" ? "error" : "warning", slideId: slide.slideId, elementId: id, relatedElementId: detail?.kind === "overlap" ? detail.otherId : undefined, message: issue.message } as const;
       if (!id || !detail) {
         push(base);
         continue;
@@ -203,6 +208,20 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
           push({ ...base, fix: frame ? { label: "Fit the frame to the diagram", changes: [{ elementId: id, frame }] } : undefined, alternative: ignore });
           break;
         }
+        case "glyphs": {
+          // A face this build ships that draws the script (integration plan 01
+          // §3.9). Offered, never applied by Fix all on its own judgement of a
+          // brand: it is in `fix` because it is the change that makes the text
+          // print, and the person sees which family it names before pressing.
+          // A text box and a shape's label both keep their family at `typography.fontFamily`.
+          const family = detail.families[0];
+          push({
+            ...base,
+            fix: family ? { label: `Use ${family}`, changes: [{ elementId: id, property: "typography.fontFamily", value: family }] } : undefined,
+            alternative: ignore,
+          });
+          break;
+        }
       }
     }
 
@@ -223,6 +242,23 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
     for (const issue of checkAccessibility(slide)) {
       if (issue.code !== "A103") continue;
       push({ code: "A103", severity: "warning", slideId: slide.slideId, elementId: issue.elementId, message: issue.message });
+    }
+
+    // Narration on a click step the slide no longer has (W323, plan 01 §3.3):
+    // kept, and played nowhere. Judged against the compiled timeline, the same
+    // one present mode plays; Motion mode's narration panel offers the move.
+    const cues = bySlide.narration?.cues ?? [];
+    if (cues.length) {
+      const steps = compileTimeline(slide, (slide.animations ?? []) as AnimationTrack[]).segments.length;
+      const lost = cues.filter((cue) => cue.step >= steps);
+      if (lost.length) {
+        push({
+          code: "W323",
+          severity: "warning",
+          slideId: slide.slideId,
+          message: `${lost.length} narration line${lost.length === 1 ? "" : "s"} belong${lost.length === 1 ? "s" : ""} to click ${lost[0]!.step}, which this slide no longer has. ${lost.length === 1 ? "It is" : "They are"} kept and play nowhere; move ${lost.length === 1 ? "it" : "them"} in Motion › Narration.`,
+        });
+      }
     }
   }
 
@@ -246,7 +282,7 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
  * slide is a design decision, offered one at a time rather than in bulk.
  */
 export function safeFixes(findings: readonly DesignFinding[]): FindingFix[] {
-  return findings.flatMap((finding) => (finding.fix && finding.code !== "W218" ? [finding.fix] : []));
+  return findings.flatMap((finding) => (finding.fix && finding.code !== "W218" && finding.code !== "W325" ? [finding.fix] : []));
 }
 
 /**
@@ -259,8 +295,9 @@ export function fixAllOperations(
   document: PresentationDocument,
   findings: readonly DesignFinding[],
   measurer?: TextMeasurer,
+  excludedCodes: readonly string[] = [],
 ): PatchOperation[] {
-  const layout = findings.filter((finding) => finding.fix && finding.code !== "A102");
+  const layout = findings.filter((finding) => finding.fix && finding.code !== "A102" && !excludedCodes.includes(finding.code));
   const slides = new Set(findings.map((finding) => finding.slideId));
   // Moves are judged pair by pair, so three boxes stacked on one spot can be
   // moved onto each other; check again after each pass, a few times at most.
@@ -273,7 +310,7 @@ export function fixAllOperations(
     first.push(...operations);
     moved = applyPatch(moved, operations).document;
     pending = designCheck(moved, buildDocumentScene(moved, measurer ? { measurer } : {})).filter(
-      (finding) => finding.fix && finding.code !== "A102" && slides.has(finding.slideId),
+      (finding) => finding.fix && finding.code !== "A102" && !excludedCodes.includes(finding.code) && slides.has(finding.slideId),
     );
   }
   const keys = new Set(findings.filter((finding) => finding.code === "A102").map((finding) => `${finding.slideId}:${finding.elementId}`));

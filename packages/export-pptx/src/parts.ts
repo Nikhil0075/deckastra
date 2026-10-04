@@ -12,6 +12,7 @@
  * between this file and the specification it is transcribing.
  */
 
+import { MEDIA_CONTENT_TYPES } from "./media";
 import { SLIDE_HEIGHT_EMU, SLIDE_WIDTH_EMU, xml } from "./units";
 
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
@@ -59,7 +60,7 @@ export function contentTypes(
       .filter((extension) => extension !== "png" && extension !== "jpeg")
       .map(
         (extension) =>
-          `<Default Extension="${extension}" ContentType="image/${extension}"/>`,
+          `<Default Extension="${extension}" ContentType="${MEDIA_CONTENT_TYPES[extension] ?? `image/${extension}`}"/>`,
       )
       .join("") +
     '<Override PartName="/ppt/presentation.xml" ' +
@@ -169,7 +170,7 @@ export function solidBackground(colour: string): string {
 export function slideRelationships(
   hasNotes: boolean,
   notesIndex: number,
-  images: readonly { id: string; target: string }[] = [],
+  images: readonly { id: string; target: string; type?: string }[] = [],
 ): string {
   const notes = hasNotes
     ? '<Relationship Id="rId2" ' +
@@ -185,7 +186,7 @@ export function slideRelationships(
     .map(
       (image) =>
         `<Relationship Id="${image.id}" ` +
-        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ' +
+        `Type="${image.type ?? "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"}" ` +
         `Target="${image.target}"/>`,
     )
     .join("");

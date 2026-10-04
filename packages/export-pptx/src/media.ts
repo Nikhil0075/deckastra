@@ -39,6 +39,52 @@ export interface Placed {
   relationshipId: string;
 }
 
+/** What an audio object on a slide names: its file twice (two relationship types) and its icon. */
+export interface PlacedAudio {
+  /** `r:link` of `<a:audioFile>`: the classic audio relationship. */
+  audioRelationshipId: string;
+  /** `r:embed` of `<p14:media>`: the 2010 media relationship PowerPoint plays from. */
+  mediaRelationshipId: string;
+  /** The poster picture every `<p:pic>` must have. */
+  iconRelationshipId: string;
+}
+
+/** Audio PowerPoint plays everywhere it runs. Anything else is reported, not embedded. */
+const AUDIO_EXTENSIONS: Record<string, string> = {
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/mp4": "m4a",
+  "audio/x-m4a": "m4a",
+};
+
+/** Content types for the media extensions a package can hold. */
+export const MEDIA_CONTENT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  wav: "audio/wav",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+};
+
+/**
+ * The audio object's poster: a 1×1 transparent PNG. A `<p:pic>` must have a
+ * picture, and the object sits off the slide, so nothing is ever drawn of it.
+ */
+const ICON_PNG = Uint8Array.from(
+  atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="),
+  (char) => char.charCodeAt(0),
+);
+
+const RELATIONSHIP = {
+  image: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+  audio: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio",
+  media: "http://schemas.microsoft.com/office/2007/relationships/media",
+} as const;
+
 /**
  * The media parts of one package, and the per-slide relationships into them.
  *
@@ -49,7 +95,8 @@ export interface Placed {
 export class MediaRegistry {
   private readonly parts = new Map<string, MediaPart>();
   /** Per slide: asset id → relationship id, and the ordered rels to write. */
-  private slideRelationships: Array<{ id: string; target: string }> = [];
+  private slideRelationships: Array<{ id: string; target: string; type?: string }> = [];
+  private audioThisSlide = new Map<string, PlacedAudio>();
   private byAssetThisSlide = new Map<string, string>();
   private nextRelationship = 0;
 
@@ -69,6 +116,7 @@ export class MediaRegistry {
   startSlide(): void {
     this.slideRelationships = [];
     this.byAssetThisSlide = new Map();
+    this.audioThisSlide = new Map();
     this.nextRelationship = this.firstRelationship;
   }
 
@@ -120,8 +168,51 @@ export class MediaRegistry {
     return { placed: { relationshipId } };
   }
 
+  /**
+   * Claim a sound for the slide being built (integration plan 01 §3.10): its
+   * file as a media part, two relationships to it — PowerPoint reads the 2010
+   * media one and older readers the audio one — and the poster picture.
+   *
+   * `key` names the sound across the package (an asset id, or `library:pop`),
+   * so a pop on twelve slides is one file.
+   */
+  placeAudio(key: string, media: { bytes: Uint8Array; contentType: string } | undefined): { placed: PlacedAudio } | { refused: string } {
+    const existing = this.audioThisSlide.get(key);
+    if (existing) return { placed: existing };
+    if (!media) return { refused: "its bytes were not available to the exporter" };
+    const type = media.contentType.split(";", 1)[0]!.trim().toLowerCase();
+    const extension = AUDIO_EXTENSIONS[type];
+    if (!extension) return { refused: `PowerPoint does not reliably play ${type || "that audio format"}` };
+
+    let part = this.parts.get(`audio:${key}`);
+    if (!part) {
+      const count = [...this.parts.keys()].filter((name) => name.startsWith("audio:")).length;
+      part = { path: `ppt/media/media${count + 1}.${extension}`, bytes: media.bytes, extension };
+      this.parts.set(`audio:${key}`, part);
+    }
+    let icon = this.parts.get("audio-icon");
+    if (!icon) {
+      icon = { path: "ppt/media/audioIcon.png", bytes: ICON_PNG, extension: "png" };
+      this.parts.set("audio-icon", icon);
+    }
+    const target = `../media/${part.path.slice("ppt/media/".length)}`;
+    const placed: PlacedAudio = {
+      audioRelationshipId: this.relate(target, RELATIONSHIP.audio),
+      mediaRelationshipId: this.relate(target, RELATIONSHIP.media),
+      iconRelationshipId: this.relate(`../media/${icon.path.slice("ppt/media/".length)}`, RELATIONSHIP.image),
+    };
+    this.audioThisSlide.set(key, placed);
+    return { placed };
+  }
+
+  private relate(target: string, type: string): string {
+    const id = `rId${this.nextRelationship++}`;
+    this.slideRelationships.push({ id, target, type });
+    return id;
+  }
+
   /** The `<Relationship>` entries this slide needs, in allocation order. */
-  relationshipsForSlide(): Array<{ id: string; target: string }> {
+  relationshipsForSlide(): Array<{ id: string; target: string; type?: string }> {
     return [...this.slideRelationships];
   }
 
