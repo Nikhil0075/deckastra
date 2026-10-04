@@ -163,14 +163,14 @@ export function cloneSlide(
   document: PresentationDocument,
   slideId: string,
   options: { atIndex?: number } = {},
-): { operations: PatchOperation[]; slide: Slide } {
+): { operations: PatchOperation[]; slide: Slide; idMap: ReadonlyMap<string, string> } {
   const { slide, index } = requireSlide(document, slideId);
 
   // Fresh ids throughout. Reusing them would make the copy indistinguishable
   // from the original to every animation target, constraint and provenance
   // record in the document — duplicate ids are error E001 for exactly this
   // reason.
-  const copy = withFreshIds(slide);
+  const { slide: copy, idMap } = withFreshIdsAndMap(slide);
   copy.name = slide.name ? `${slide.name} copy` : undefined;
   if (!copy.name) delete copy.name;
 
@@ -178,6 +178,7 @@ export function cloneSlide(
   return {
     operations: [{ op: "add", path: `/slides/${clampIndex(at, document.slides.length)}`, value: copy }],
     slide: copy,
+    idMap,
   };
 }
 
@@ -189,6 +190,11 @@ export function cloneSlide(
  * neighbour's contents.
  */
 export function withFreshIds(slide: Slide): Slide {
+  return withFreshIdsAndMap(slide).slide;
+}
+
+/** Clone with the identity map needed by explicit shared-element transitions. */
+export function withFreshIdsAndMap(slide: Slide): { slide: Slide; idMap: ReadonlyMap<string, string> } {
   const copy = structuredClone(slide) as Slide;
   const remap = new Map<string, string>();
 
@@ -215,7 +221,7 @@ export function withFreshIds(slide: Slide): Slide {
   // this inline during the first pass would miss forward references.
   rewriteReferences(copy, remap);
 
-  return copy;
+  return { slide: copy, idMap: remap };
 }
 
 function rewriteReferences(slide: Slide, remap: ReadonlyMap<string, string>): void {

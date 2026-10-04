@@ -19,9 +19,9 @@
  * navigate before advancing the slide.
  *
  * **Reduced motion is applied here** (§27.2), not by a media query on one
- * keyframe. Resolution order is the viewer's explicit setting, then the OS, then
- * the document — a deck author cannot force motion onto someone who asked their
- * OS for less — and the caller is told which level was used.
+ * keyframe. Resolution order is the viewer's explicit setting, then the OS. The
+ * document's `reducedMotionFallback` says what to show *after* reduced motion is
+ * requested; it is not itself a request to reduce everybody's motion.
  *
  * **Conflicts are detected, not blended** (§25.3). Two clips animating the same
  * property of the same target over overlapping intervals is a warning and a
@@ -38,7 +38,7 @@ import type {
 } from "@deckastra/presentation-schema";
 import type { SlideScene, SceneNode } from "@deckastra/renderer";
 
-import { DEFAULT_EASING, parseSpring, round, sampleSpring } from "./easing";
+import { DEFAULT_EASING, easingAt, parseSpring, round, sampleSpring } from "./easing";
 import { durationForBounds, resolvePreset, type PresetContext } from "./presets";
 
 export type MotionLevel = "full" | "reduced" | "none";
@@ -46,6 +46,8 @@ export type MotionLevel = "full" | "reduced" | "none";
 /** Doc 04 §27.2: reduced motion is 0.6× duration and a 60ms stagger ceiling. */
 export const REDUCED_DURATION_SCALE = 0.6;
 export const REDUCED_MAX_STAGGER_MS = 60;
+/** Long enough to preserve before/after fill semantics, imperceptible as motion. */
+export const INSTANT_FALLBACK_MS = 1;
 
 /** Doc 04 §24.2. Overridable per theme via `motion.maxSlideDurationMs`. */
 export const DEFAULT_ENTRANCE_BUDGET_MS = 2_500;
@@ -73,6 +75,13 @@ export interface CompiledClip {
   subTarget?: string;
   startMs: number;
   endMs: number;
+  /** End used for navigation: every iteration when finite, one period when infinite. */
+  settledEndMs: number;
+  periodMs: number;
+  /** Total iterations, or `Infinity` for `repeat: -1`. */
+  iterations: number;
+  direction: "normal" | "reverse" | "alternate";
+  restOffset: number;
   /** The preset it came from, kept as provenance for the timeline UI. */
   preset?: string;
   /**
@@ -114,6 +123,9 @@ export interface CompiledTimeline {
   motionLevel: MotionLevel;
   /** Total length including every segment's wait time collapsed out. */
   durationMs: number;
+  /** End of finite content. Infinite ambient clips do not extend it. */
+  settledDurationMs: number;
+  hasInfiniteMotion: boolean;
   clips: CompiledClip[];
   segments: TimelineSegment[];
   markers: TimelineMarker[];
@@ -135,21 +147,18 @@ export interface CompileOptions {
 // -------------------------------------------------------------- motion level
 
 /**
- * Doc 04 §27.1: user explicit > OS > document > full.
+ * Doc 04 §27.1: user explicit > OS > full.
  *
- * The order is the point. A document that asks for `reducedMotionFallback: none`
- * must not be able to take motion away from a viewer who chose Full, and a
- * document that wants motion must not be able to give it to a viewer whose OS
- * asked for less.
+ * `documentPreference` remains in the signature for compatibility with callers
+ * that already pass the theme token. It deliberately does not choose the motion
+ * level: `fade` and `none` describe fallback rendering, not a viewer preference.
  */
 export function resolveMotionLevel(
-  documentPreference: string | undefined,
+  _documentPreference: string | undefined,
   options: CompileOptions,
 ): MotionLevel {
   if (options.userMotionPreference) return options.userMotionPreference;
   if (options.systemPrefersReducedMotion) return "reduced";
-  if (documentPreference === "none") return "none";
-  if (documentPreference === "fade") return "reduced";
   return "full";
 }
 
@@ -269,18 +278,23 @@ export function compileTimeline(
 
       for (const one of compiled) {
         clips.push(one);
-        cursor = Math.max(cursor, one.endMs);
+        cursor = Math.max(cursor, one.settledEndMs);
         const segment = segments[one.segment];
-        if (segment) segment.endMs = Math.max(segment.endMs, one.endMs);
+        if (segment) segment.endMs = Math.max(segment.endMs, one.settledEndMs);
       }
     }
   }
 
   detectConflicts(clips, warnings);
 
-  const durationMs = clips.reduce((longest, clip) => Math.max(longest, clip.endMs), 0);
+  const settledDurationMs = clips.reduce((longest, clip) => Math.max(longest, clip.settledEndMs), 0);
+  const hasInfiniteMotion = clips.some((clip) => clip.iterations === Infinity);
   const budgetMs = options.entranceBudgetMs ?? motion.budgetMs;
-  const entranceMs = segments[0] ? segments[0].endMs : 0;
+  // Ambient loops never make an entrance longer: they use a separate clock and
+  // can still be running after the finite entrance has settled.
+  const entranceMs = clips
+    .filter((clip) => clip.segment === 0 && clip.iterations !== Infinity)
+    .reduce((longest, clip) => Math.max(longest, clip.settledEndMs), 0);
 
   if (entranceMs > budgetMs) {
     warnings.push({
@@ -303,10 +317,45 @@ export function compileTimeline(
     });
   }
 
+  const loops = clips.filter((clip) => clip.iterations === Infinity);
+  if (loops.length > 2) {
+    warnings.push({
+      code: "W140",
+      message: `${loops.length} ambient loops run on this slide; keep at most two so the motion retains a clear focus.`,
+    });
+  }
+  for (const loop of loops) {
+    const costly = loop.properties.find((property) => !["x", "y", "scale", "scaleX", "scaleY", "rotation", "opacity"].includes(property.property));
+    if (costly) {
+      warnings.push({
+        code: "W141",
+        message: `The loop on ${loop.targetId} animates ${costly.property}; continuous motion is restricted to transforms and opacity.`,
+        targetId: loop.targetId,
+        clipId: loop.id,
+      });
+    }
+  }
+  const automaticTrackIds = new Set(
+    tracks
+      .filter((track) => ["slideEnter", "afterPrevious", "withPrevious", "timer"].includes(track.trigger.type))
+      .map((track) => track.id),
+  );
+  const longAutomatic = clips.some((clip) =>
+    automaticTrackIds.has(clip.trackId) && (clip.iterations === Infinity || clip.endMs - clip.startMs > 5_000),
+  );
+  if (longAutomatic) {
+    warnings.push({
+      code: "W142",
+      message: "Automatic motion continues beyond five seconds. Present mode provides Pause loops (L).",
+    });
+  }
+
   return {
     slideId: scene.slideId,
     motionLevel: level,
-    durationMs: round(durationMs),
+    durationMs: round(settledDurationMs),
+    settledDurationMs: round(settledDurationMs),
+    hasInfiniteMotion,
     clips,
     segments,
     markers: [],
@@ -363,37 +412,108 @@ function compileClip(context: ClipContext): CompiledClip[] {
   const start = triggerStart + clip.startMs + (clip.delayMs ?? 0);
   const authored = clip.durationMs || motion.defaultDurationMs || durationForBounds(node.bounds);
   const durationMs = level === "none" ? 0 : scaleDuration(authored, level);
+  const authoredIterations = clip.repeat === -1 ? Infinity : Math.max(1, (clip.repeat ?? 0) + 1);
+  const direction = clip.direction ?? "normal";
+  const restOffset = clip.restOffset ?? 0;
 
-  if (level === "none") {
-    // Doc 04 §27.2: elements appear in their final state instantly, and segments
-    // still advance so click-to-reveal keeps working. A zero-length clip that
-    // still holds its end value is exactly that.
-    return [
-      {
-        id: clip.id,
-        trackId: track.id,
-        targetId: track.targetId,
-        subTarget: track.subTarget,
-        startMs: round(start),
-        endMs: round(start),
-        preset: clip.preset,
-        fill: clip.fill ?? "both",
-        properties: endStateOnly(context),
-        segment,
-      },
-    ];
+  // A repeating clip is ambient motion. Reduced/no motion freezes it at the
+  // author-selected rest frame rather than substituting another moving preset.
+  if (authoredIterations !== 1 && level !== "full") {
+    const expansion = expandClip({ ...context, level: "full" }, 1);
+    const frozen = (
+      id: string,
+      targetId: string,
+      properties: PropertyTrack[],
+      subTarget?: string,
+    ): CompiledClip => ({
+      id,
+      trackId: track.id,
+      targetId,
+      subTarget,
+      startMs: round(start),
+      endMs: round(start),
+      settledEndMs: round(start),
+      periodMs: 0,
+      iterations: 1,
+      direction,
+      restOffset,
+      preset: clip.preset,
+      fill: clip.fill ?? "both",
+      properties: stateAtOffset(properties, restOffset, start, clip.easing ?? motion.defaultEasing),
+      segment,
+    });
+    const results = expansion.tracks.length
+      ? [frozen(clip.id, track.targetId, expansion.tracks, track.subTarget)]
+      : [];
+    for (const child of expansion.children) {
+      results.push(frozen(`${clip.id}:${child.subTarget ?? child.targetId}`, child.targetId, child.tracks, child.subTarget));
+    }
+    return results;
+  }
+
+  const requested = reducedMotionName(clip, level);
+  const category = clip.preset ? resolvePreset(clip.preset).preset.category : "entrance";
+  if (level === "reduced" && requested === "skip") return [];
+  if ((level === "none" || (level === "reduced" && requested === "instant")) && category !== "exit") {
+    // Entrance/emphasis/path content is already rendered at its stable state.
+    // Dropping the moving clip leaves that state visible and keeps click segment
+    // boundaries intact without adding even a nominal duration.
+    return [];
+  }
+  if (level === "none" || (level === "reduced" && requested === "instant")) {
+    // Preserve both ends over a single millisecond. An empty/zero-length clip
+    // cannot express an exit: backwards fill would either hide it before the
+    // click or forwards fill would leave it visible afterwards.
+    const expansion = expandClip({ ...context, level: "full" }, INSTANT_FALLBACK_MS);
+    const instant = (
+      id: string,
+      targetId: string,
+      properties: PropertyTrack[],
+      subTarget?: string,
+    ): CompiledClip => ({
+      id,
+      trackId: track.id,
+      targetId,
+      subTarget,
+      startMs: round(start),
+      endMs: round(start + INSTANT_FALLBACK_MS),
+      settledEndMs: round(start + INSTANT_FALLBACK_MS),
+      periodMs: INSTANT_FALLBACK_MS,
+      iterations: 1,
+      direction: "normal",
+      restOffset,
+      preset: clip.preset,
+      fill: clip.fill ?? "both",
+      properties: absolutise(properties, start, INSTANT_FALLBACK_MS, "linear"),
+      segment,
+    });
+    const results = expansion.tracks.length
+      ? [instant(clip.id, track.targetId, expansion.tracks, track.subTarget)]
+      : [];
+    for (const child of expansion.children) {
+      results.push(instant(`${clip.id}:${child.subTarget ?? child.targetId}`, child.targetId, child.tracks, child.subTarget));
+    }
+    return results;
   }
 
   const expansion = expandClip(context, durationMs);
   for (const warning of expansion.warnings) warnings.push(warning);
 
+  const finiteEnd = round(start + durationMs * (authoredIterations === Infinity ? 1 : authoredIterations));
   const own: CompiledClip = {
     id: clip.id,
     trackId: track.id,
     targetId: track.targetId,
     subTarget: track.subTarget,
     startMs: round(start),
-    endMs: round(start + durationMs),
+    endMs: authoredIterations === Infinity ? Infinity : finiteEnd,
+    // Finite repeats keep their segment alive through the last iteration.
+    // Indefinite motion is ambient and contributes no finite wait time.
+    settledEndMs: authoredIterations === Infinity ? round(start) : finiteEnd,
+    periodMs: round(durationMs),
+    iterations: authoredIterations,
+    direction,
+    restOffset,
     preset: clip.preset,
     fill: clip.fill ?? "both",
     properties: absolutise(expansion.tracks, start, durationMs, clip.easing ?? motion.defaultEasing),
@@ -405,14 +525,21 @@ function compileClip(context: ClipContext): CompiledClip[] {
   for (const child of expansion.children) {
     const delay = level === "reduced" ? Math.min(child.delayMs, REDUCED_MAX_STAGGER_MS) : child.delayMs;
     const childStart = start + delay;
+    const childFiniteEnd = round(childStart + durationMs * (authoredIterations === Infinity ? 1 : authoredIterations));
     results.push({
-      id: `${clip.id}:${child.targetId}`,
+      id: `${clip.id}:${child.subTarget ?? child.targetId}`,
       trackId: track.id,
       targetId: child.targetId,
       startMs: round(childStart),
-      endMs: round(childStart + durationMs),
+      endMs: authoredIterations === Infinity ? Infinity : childFiniteEnd,
+      settledEndMs: authoredIterations === Infinity ? round(childStart) : childFiniteEnd,
+      periodMs: round(durationMs),
+      iterations: authoredIterations,
+      direction,
+      restOffset,
       preset: clip.preset,
       fill: clip.fill ?? "both",
+      subTarget: child.subTarget,
       properties: absolutise(
         child.tracks,
         childStart,
@@ -426,13 +553,35 @@ function compileClip(context: ClipContext): CompiledClip[] {
   return results;
 }
 
+/** Collapse a preset/property-track expansion to one deterministic rest frame. */
+function stateAtOffset(tracks: PropertyTrack[], offset: number, atMs: number, defaultEasing: string): CompiledProperty[] {
+  const clamped = Math.max(0, Math.min(1, offset));
+  return tracks.map((property) => {
+    const frames = property.keyframes;
+    let value: unknown = frames[frames.length - 1]?.value ?? 1;
+    for (let index = 1; index < frames.length; index += 1) {
+      const to = frames[index]!;
+      if (clamped > to.offset) continue;
+      const from = frames[index - 1]!;
+      const span = to.offset - from.offset;
+      if (span <= 0) value = to.value;
+      else if (typeof from.value === "number" && typeof to.value === "number") {
+        const progress = easingAt(to.easing ?? defaultEasing, (clamped - from.offset) / span);
+        value = round(from.value + (to.value - from.value) * progress);
+      } else value = clamped < to.offset ? from.value : to.value;
+      break;
+    }
+    return { property: property.property, keyframes: [{ timeMs: atMs, value, easing: "linear" }] };
+  });
+}
+
 function scaleDuration(durationMs: number, level: MotionLevel): number {
   return level === "reduced" ? round(durationMs * REDUCED_DURATION_SCALE) : durationMs;
 }
 
 interface Expansion {
   tracks: PropertyTrack[];
-  children: { targetId: string; delayMs: number; tracks: PropertyTrack[] }[];
+  children: { targetId: string; subTarget?: string; delayMs: number; tracks: PropertyTrack[] }[];
   warnings: TimelineWarning[];
 }
 
@@ -489,6 +638,23 @@ function expandClip(context: ClipContext, durationMs: number): Expansion {
     });
   }
 
+  if (["byWord", "byLetter", "typewriter"].includes(preset.name)) {
+    const count = Math.max(0, Math.min(160, Math.floor(Number(clip.presetParams?.segmentCount) || 0)));
+    if (count > 0) {
+      const word = preset.name === "byWord";
+      return {
+        tracks: [],
+        children: Array.from({ length: count }, (_, index) => ({
+          targetId: track.targetId,
+          subTarget: `${word ? "word" : "glyph"}/${index}`,
+          delayMs: index * (word ? 55 : 24),
+          tracks: expansion.tracks,
+        })),
+        warnings,
+      };
+    }
+  }
+
   return { tracks: expansion.tracks, children: expansion.children ?? [], warnings };
 }
 
@@ -502,7 +668,8 @@ function reducedMotionName(clip: AnimationClip, level: MotionLevel): string {
   const preset = clip.preset ?? "fade";
   if (level !== "reduced") return preset;
 
-  if (clip.reducedMotionBehavior === "skip" || clip.reducedMotionBehavior === "instant") {
+  if (clip.reducedMotionBehavior === "skip") return "skip";
+  if (clip.reducedMotionBehavior === "instant") {
     return "instant";
   }
   if (clip.reducedMotionPreset) return clip.reducedMotionPreset;
@@ -518,27 +685,6 @@ function childrenOf(
   return direct
     .map((child) => nodes.get(child.id) ?? child)
     .map((child) => ({ id: child.id, bounds: child.bounds }));
-}
-
-/**
- * A zero-length clip holding only the end value.
- *
- * Used at motion level "none". Not an empty clip: doc 04 §27.3 is explicit that
- * reduced motion must never mean the content fails to appear, and an element
- * whose entrance was removed rather than collapsed starts at opacity 0 and stays
- * there.
- */
-function endStateOnly(context: ClipContext): CompiledProperty[] {
-  const expansion = expandClip(context, 1);
-  const at = round(context.triggerStart + context.clip.startMs + (context.clip.delayMs ?? 0));
-
-  return expansion.tracks.map((track) => {
-    const last = track.keyframes[track.keyframes.length - 1];
-    return {
-      property: track.property,
-      keyframes: [{ timeMs: at, value: last ? last.value : 1, easing: "linear" }],
-    };
-  });
 }
 
 /**

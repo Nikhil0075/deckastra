@@ -91,6 +91,7 @@ export const ElementTypeSchema = z.enum([
   "diagram",
   "table",
   "code",
+  "equation",
   "video",
   "audio",
   "webEmbed",

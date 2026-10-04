@@ -196,7 +196,10 @@ describe("the render pass", () => {
     // catalog is lying about what gets checked.
     // W110, W216, W217 and W218 come from `checkLayout` (layout-check.test.ts proves
     // each is produced), the editor's Design Check rather than this pass.
-    const implemented = new Set(["W102", "W103", "W104", "W110", "W111", "W210", "W211", "W212", "W213", "W214", "W215", "W216", "W217", "W218", "W250"]);
+    // W325 is `checkLayout` too (languages.test.tsx), and W323 — a narration cue on a
+    // step the timeline no longer has — is the editor's Design Check, which owns the
+    // compiled timeline (editor-ui design-check.test.ts).
+    const implemented = new Set(["W102", "W103", "W104", "W110", "W111", "W210", "W211", "W212", "W213", "W214", "W215", "W216", "W217", "W218", "W250", "W323", "W325"]);
     for (const code of REQUIRES_RENDER_CONTEXT) expect(implemented.has(code)).toBe(true);
   });
 

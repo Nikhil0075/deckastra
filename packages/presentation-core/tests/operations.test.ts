@@ -174,7 +174,7 @@ describe("cloning a slide", () => {
     // Reusing ids would make the copy indistinguishable from the original to
     // every animation target, constraint and provenance record — and duplicate
     // ids are error E001 for exactly that reason.
-    const { operations, slide } = cloneSlide(base, source.id);
+    const { operations, slide, idMap } = cloneSlide(base, source.id);
     const after = apply(base, operations);
 
     const originalIds = new Set([...walkElements(source.elements)].map(({ element }) => element.id));
@@ -182,6 +182,8 @@ describe("cloning a slide", () => {
 
     expect(copyIds.length).toBeGreaterThan(0);
     for (const id of copyIds) expect(originalIds.has(id)).toBe(false);
+    expect(idMap.size).toBeGreaterThanOrEqual(originalIds.size + 1); // every element plus the slide
+    for (const id of originalIds) expect(copyIds).toContain(idMap.get(id));
     expect(validateDocument(after).valid).toBe(true);
   });
 

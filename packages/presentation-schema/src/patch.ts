@@ -191,6 +191,21 @@ export interface RiskTierResult {
  * medium  one slide restructured, image replaced, slide added            -> pending + preview
  * high    > 3 slides touched, any slide deleted, theme or viewport change -> explicit approval
  */
+/** The slot paths an operation under `/locales` writes: one in its path, or every entry in an added overlay. */
+function localeSlotPathsIn(segments: readonly string[], value: unknown): string[] {
+  if (segments.length >= 4 && segments[2] === "entries") return [segments[3]!];
+  const entriesOf = (overlay: unknown): string[] =>
+    overlay && typeof overlay === "object" && (overlay as { entries?: unknown }).entries && typeof (overlay as { entries?: unknown }).entries === "object"
+      ? Object.keys((overlay as { entries: Record<string, unknown> }).entries)
+      : [];
+  if (segments.length === 2) return entriesOf(value);
+  if (segments.length === 1 && value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap(entriesOf);
+  }
+  if (segments.length === 3 && segments[2] === "entries" && value && typeof value === "object") return Object.keys(value);
+  return [];
+}
+
 export function computeRiskTier(operations: readonly PatchOperation[]): RiskTierResult {
   const reasons: string[] = [];
   const touchedSlides = new Set<string>();
@@ -212,6 +227,17 @@ export function computeRiskTier(operations: readonly PatchOperation[]): RiskTier
       if (op.op === "remove" && segments.length === 2) {
         removesSlide = true;
         reasons.push("Deletes a slide");
+      }
+    }
+
+    // A translation touches the slides whose words it replaces (integration plan
+    // 01 §3.1). Overlay entries live under `/locales`, outside `/slides`, and a
+    // forty-slide translation counted as touching no slide would auto-apply as a
+    // "small" change. Entries are found in the path or inside an added overlay.
+    if (root === "locales") {
+      for (const slot of localeSlotPathsIn(segments, "value" in op ? op.value : undefined)) {
+        const slotSegments = splitPath(slot);
+        if (slotSegments[0] === "slides" && slotSegments.length >= 2) touchedSlides.add(slotSegments[1]!);
       }
     }
 

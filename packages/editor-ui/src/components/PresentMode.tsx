@@ -14,6 +14,7 @@ import { cx } from "../ui/cx";
 import { SlideMotion, type SlideMotionHandle } from "./SlideMotion";
 import { SlideTransition } from "./SlideTransition";
 import { PresenterView } from "./PresenterView";
+import { NarrationDirector, type SpeakingNow } from "./NarrationDirector";
 
 /**
  * Present mode (Figma: "present mode", "present mode with notes").
@@ -94,6 +95,11 @@ export function PresentMode({
   // Doc 04 §26.3's `B`. One of the two keys every presenter reaches for, and the
   // one that has to work when something goes wrong on the laptop.
   const [blacked, setBlacked] = useState(false);
+  const [motionPaused, setMotionPaused] = useState(false);
+  // Narration (integration plan 01 §3.4): muted on the projector, and the line
+  // being spoken, which the presenter view shows as a script.
+  const [muted, setMuted] = useState(false);
+  const [speaking, setSpeaking] = useState<SpeakingNow | null>(null);
   // Whether the slide was entered forwards. Backwards means its final state,
   // never a replayed entrance (§26.3).
   const [enteredBackwards, setEnteredBackwards] = useState(false);
@@ -104,7 +110,7 @@ export function PresentMode({
   // Read by the channel's handlers, which outlive any one render.
   const indexRef = useRef(initialSlide);
   const slideCountRef = useRef(scene.slides.length);
-  const stateRef = useRef<PresentState>({ index: initialSlide, step: 0, blacked: false });
+  const stateRef = useRef<PresentState>({ index: initialSlide, step: 0, blacked: false, motionPaused: false, muted: false, speaking: null });
   const popout = useRef<PresenterWindow | null>(null);
   const motion = useRef<SlideMotionHandle>(null);
   const startedAt = useRef(Date.now());
@@ -123,7 +129,8 @@ export function PresentMode({
 
   indexRef.current = index;
   slideCountRef.current = scene.slides.length;
-  stateRef.current = { index, step, blacked };
+  const spoken = speaking ? { text: speaking.text, remainingMs: Math.round(speaking.remainingMs) } : null;
+  stateRef.current = { index, step, blacked, motionPaused, muted, speaking: spoken };
 
   const setIndexSynced = useCallback((next: number | ((current: number) => number)) => {
     setIndex((current) => {
@@ -191,6 +198,27 @@ export function PresentMode({
     else setBlacked((value) => !value);
   }, [presenterOnly]);
 
+  const toggleMute = useCallback(() => {
+    if (presenterOnly && channel.current) {
+      channel.current.command({ action: "mute" });
+      return;
+    }
+    setMuted((value) => !value);
+  }, [presenterOnly]);
+
+  const toggleMotion = useCallback(() => {
+    if (presenterOnly && channel.current) {
+      channel.current.command({ action: "motion" });
+      return;
+    }
+    setMotionPaused((value) => !value);
+  }, [presenterOnly]);
+
+  useEffect(() => {
+    if (motionPaused) motion.current?.pause();
+    else motion.current?.resume();
+  }, [motionPaused, index]);
+
   // ------------------------------------------------------------ preferences
 
   useEffect(() => {
@@ -227,6 +255,9 @@ export function PresentMode({
             setIndex(state.index);
             setStep(state.step);
             setBlacked(state.blacked);
+            setMotionPaused(state.motionPaused === true);
+            setMuted(state.muted === true);
+            setSpeaking(state.speaking ? { slideId: "", cueId: "", text: state.speaking.text, remainingMs: state.speaking.remainingMs } : null);
           }
         : undefined,
       // Audience side: carry out what the presenter asked for.
@@ -240,7 +271,9 @@ export function PresentMode({
             // would make the laptop skip the reveal it asked for.
             bus.postState(stateRef.current);
             if (command.action === "advance") commandRef.current(command.delta);
-            else setBlacked((value) => !value);
+            else if (command.action === "black") setBlacked((value) => !value);
+            else if (command.action === "mute") setMuted((value) => !value);
+            else setMotionPaused((value) => !value);
           },
     });
 
@@ -257,8 +290,11 @@ export function PresentMode({
   // The audience window reports its state after every change it makes.
   useEffect(() => {
     if (presenterOnly) return;
-    channel.current?.postState({ index, step, blacked });
-  }, [index, step, blacked, presenterOnly]);
+    channel.current?.postState({ index, step, blacked, motionPaused, muted, speaking: spoken });
+    // `spoken` changes as the remaining time counts down; posting it is what
+    // keeps the presenter's script line live.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, step, blacked, motionPaused, muted, spoken?.text, spoken?.remainingMs, presenterOnly]);
 
   // A new slide starts at its first reveal (or its last, entered backwards);
   // read it once the motion for that slide has mounted.
@@ -331,7 +367,18 @@ export function PresentMode({
           break;
         case "p":
         case "P":
-          if (!presenterOnly) setPresenter((v) => !v);
+          event.preventDefault();
+          setPresenter((value) => !value);
+          break;
+        case "l":
+        case "L":
+          event.preventDefault();
+          toggleMotion();
+          break;
+        case "m":
+        case "M":
+          event.preventDefault();
+          toggleMute();
           break;
         case "f":
         case "F":
@@ -344,7 +391,7 @@ export function PresentMode({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [advance, go, onExit, presenterOnly, setIndexSynced, slides.length, toggleBlack]);
+  }, [advance, go, onExit, presenterOnly, setIndexSynced, slides.length, toggleBlack, toggleMotion, toggleMute]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -443,12 +490,17 @@ export function PresentMode({
     );
   }
 
+  const hasAudio = slides.some((one) => one.narration?.cues.length || one.soundCues?.length);
   const presenterProps = {
     scene,
     index,
     step,
     steps,
     blacked,
+    muted,
+    speaking: speaking ? { text: speaking.text, remainingMs: speaking.remainingMs } : null,
+    hasAudio,
+    onMute: toggleMute,
     resolveAssetUrl,
     onAdvance: advance,
     onJump: setIndexSynced,
@@ -480,6 +532,11 @@ export function PresentMode({
       data-present-step={step}
       data-present-steps={steps}
       data-present-blacked={blacked ? "true" : "false"}
+      data-present-motion-paused={motionPaused ? "true" : "false"}
+      data-present-muted={muted ? "true" : "false"}
+      data-present-playback={scene.playback?.mode ?? "manual"}
+      data-present-locale={scene.locale}
+      data-present-speaking={speaking?.cueId ?? ""}
     >
       <div
         ref={containerRef}
@@ -526,7 +583,28 @@ export function PresentMode({
             rootSelector="[data-present-stage]"
             reducedMotion={reducedMotion}
             autoPlay={!enteredBackwards}
+            paused={motionPaused}
             handle={motion}
+          />
+        ) : null}
+
+        {/* The voice and sounds of the step on screen (plan 01 §3.4). Keyed on
+            the slide like the motion, and mounted under the same condition, so
+            a step's narration starts with its reveal and never before. */}
+        {scale > 0 && transition && hasAudio ? (
+          <NarrationDirector
+            key={`narration-${slide.slideId}`}
+            scene={scene}
+            slide={slide}
+            index={index}
+            step={step}
+            enteredBackwards={enteredBackwards}
+            paused={blacked}
+            muted={muted}
+            reducedMotion={reducedMotion}
+            resolveAssetUrl={resolveAssetUrl}
+            onAdvance={() => advanceHere(1)}
+            onSpeaking={setSpeaking}
           />
         ) : null}
 
@@ -543,8 +621,12 @@ export function PresentMode({
               {index + 1} / {slides.length}
             </span>
             <ControlButton icon="stop" label={blacked ? "Show slide (B)" : "Black screen (B)"} pressed={blacked} onClick={toggleBlack} />
+            <ControlButton icon={motionPaused ? "play" : "pause"} label={motionPaused ? "Resume loops (L)" : "Pause loops (L)"} pressed={motionPaused} onClick={toggleMotion} />
+            {hasAudio ? (
+              <ControlButton icon={muted ? "mute" : "sound"} label={muted ? "Unmute narration (M)" : "Mute narration (M)"} pressed={muted} onClick={toggleMute} />
+            ) : null}
             <ControlButton icon="list" label="Notes (N)" pressed={showNotes} onClick={() => setShowNotes((v) => !v)} />
-            <ControlButton icon="present" label="Presenter (P)" pressed={presenter} onClick={() => setPresenter((v) => !v)} />
+            <ControlButton icon="present" label="Presenter view (P)" pressed={presenter} onClick={() => setPresenter((v) => !v)} />
             <ControlButton icon="fit" label="Fullscreen (F)" onClick={() => void toggleFullscreen()} />
             {channelName ? (
               // Worded, not an icon: it is the one control a presenter looks for

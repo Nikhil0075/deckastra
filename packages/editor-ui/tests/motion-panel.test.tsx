@@ -157,7 +157,7 @@ it("edits and duplicates a stagger child through its source clip", async () => {
 });
 
 
-it("edits authored duration without repeatedly shrinking it under reduced motion", async () => {
+it("treats the theme fallback as a fallback, not as a request to reduce motion", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ version_id: "v1" }) })));
   const document = loadFixture("technical");
   delete document.theme.motion?.reducedMotionFallback;
@@ -175,7 +175,8 @@ it("edits authored duration without repeatedly shrinking it under reduced motion
   render(<Harness />, { wrapper: withWorkspaceClient() });
   await waitFor(() => expect(editor.recoveryReady).toBe(true));
   const before = compileTimeline(buildDocumentScene(editor.document).slides[0]!, slide.animations);
-  expect(before.clips[0]!.endMs).toBeLessThan(400);
+  expect(before.motionLevel).toBe("full");
+  expect(before.clips[0]!.endMs).toBe(400);
   fireEvent.click(screen.getByTitle(new RegExp(`0–${before.clips[0]!.endMs}ms`)));
   const duration = () => screen.getByLabelText("Duration") as HTMLInputElement;
   expect(duration().value).toBe("400");
@@ -187,4 +188,22 @@ it("edits authored duration without repeatedly shrinking it under reduced motion
   expect(editor.document.slides[0]!.animations![0]!.clips[0]!.durationMs).toBe(800);
   act(() => editor.undo());
   expect(duration().value).toBe("400");
+});
+
+it("keeps the default web authoring catalog frozen at the original ten presets", () => {
+  const document = loadFixture("technical");
+  const slide = document.slides[0]!;
+  render(<MotionPanel
+    document={document}
+    scene={buildDocumentScene(document).slides[0]!}
+    slideIndex={0}
+    selectedIds={[slide.elements[0]!.id]}
+    apply={() => undefined}
+  />);
+  const select = screen.getByLabelText("Add animation to the selection") as HTMLSelectElement;
+  expect([...select.options].slice(1).map((option) => option.value)).toEqual([
+    "fade", "slide", "scale", "blurReveal", "maskReveal", "staggerReveal",
+    "drawPath", "numberCount", "springIn", "sharedElementMorph",
+  ].filter((name) => name !== "sharedElementMorph"));
+  expect([...select.options].some((option) => option.value === "float")).toBe(false);
 });

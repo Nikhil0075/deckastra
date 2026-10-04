@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 
-import type { PresentationDocument } from "@deckastra/presentation-schema";
+import type { AnimationTrack, PresentationDocument } from "@deckastra/presentation-schema";
 import {
   DomAnimationAdapter,
   compileTimeline,
@@ -30,6 +30,7 @@ export function MotionPreview({
   playToken,
   engaged,
   onTime,
+  tracksOverride,
 }: {
   document: PresentationDocument;
   scene: SlideScene;
@@ -48,6 +49,7 @@ export function MotionPreview({
    */
   engaged: boolean;
   onTime: (timeMs: number) => void;
+  tracksOverride?: AnimationTrack[];
 }) {
   const adapter = useRef<DomAnimationAdapter | null>(null);
   const slide = doc.slides[slideIndex];
@@ -60,10 +62,10 @@ export function MotionPreview({
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    return compileTimeline(scene, slide?.animations ?? [], {
+    return compileTimeline(scene, tracksOverride ?? slide?.animations ?? [], {
       systemPrefersReducedMotion: Boolean(prefersReduced),
     });
-  }, [scene, slide]);
+  }, [scene, slide, tracksOverride]);
 
   // Whether the level actually resolved to something reduced is worth knowing at
   // the call site; recomputed rather than threaded because it is one comparison.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useChromeTheme } from "../lib/chrome-theme";
+import { scriptForDisplay } from "@deckastra/presentation-schema";
 import { useEffect, useRef, useState } from "react";
 import type { DocumentScene } from "@deckastra/renderer";
 import { ScaledSlide } from "@deckastra/renderer/react";
@@ -45,6 +46,12 @@ export interface PresenterViewProps {
   detached?: boolean;
   /** The current and next previews are slides too, and they have pictures. */
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+  /** Narration (integration plan 01 §3.4): muted on the projector, and the line being spoken. */
+  muted?: boolean;
+  speaking?: { text: string; remainingMs: number } | null;
+  /** Whether the deck has any narration or sound, so the control is offered at all. */
+  hasAudio?: boolean;
+  onMute?: () => void;
 }
 
 function useTick(intervalMs: number): number {
@@ -86,6 +93,10 @@ export function PresenterView({
   onExit,
   detached,
   resolveAssetUrl,
+  muted = false,
+  speaking = null,
+  hasAudio = false,
+  onMute,
 }: PresenterViewProps) {
   const now = useTick(1000);
   // The presenter view is often its own window, with its own copy of the store;
@@ -203,6 +214,20 @@ export function PresenterView({
             </div>
           </section>
 
+          {hasAudio ? (
+            <section className="dk-presenter__narration" aria-label="Narration" data-testid="presenter-narration">
+              <span className="dk-label">Narration</span>
+              {speaking ? (
+                <p className="dk-presenter__script" dir="auto">
+                  {scriptForDisplay(speaking.text)}
+                  <span className="dk-presenter__script-left"> · {Math.ceil(speaking.remainingMs / 1000)}s left</span>
+                </p>
+              ) : (
+                <p className="dk-presenter__script dk-presenter__notes-text--empty">{muted ? "Narration is muted." : "Nothing is being narrated."}</p>
+              )}
+            </section>
+          ) : null}
+
           <section className="dk-presenter__notes" aria-label="Speaker notes">
             <span className="dk-label">Speaker notes</span>
             <div className={cx("dk-presenter__notes-text", !slide.speakerNotes && "dk-presenter__notes-text--empty")}>
@@ -254,6 +279,11 @@ export function PresenterView({
             {onExit ? (
               <Button onClick={onExit} data-testid="presenter-end">
                 End
+              </Button>
+            ) : null}
+            {hasAudio && onMute ? (
+              <Button variant={muted ? "primary" : "secondary"} aria-pressed={muted} onClick={onMute} data-testid="presenter-mute">
+                {muted ? "Unmute" : "Mute"}
               </Button>
             ) : null}
             <Button

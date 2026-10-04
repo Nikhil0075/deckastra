@@ -21,6 +21,15 @@ import { ThemeDefinitionSchema } from "./theme";
 import { AssetReferenceSchema } from "./assets";
 import { DataSourceDefinitionSchema, ProvenanceRecordSchema } from "./data";
 import { ComponentDefinitionSchema, VariableDefinitionSchema } from "./components";
+import {
+  PlaybackSettingsSchema,
+  SlideNarrationSchema,
+  SoundCueSchema,
+  type PlaybackSettings,
+  type SlideNarration,
+  type SoundCue,
+} from "./narration";
+import { LocaleOverlaySchema, type LocaleOverlay } from "./locales";
 
 /** Slide and document (doc 02 §4–§7). */
 
@@ -153,6 +162,10 @@ export interface Slide {
   hidden?: boolean;
   /** A colour mode from `theme.modes`, drawn instead of the theme's own colours. */
   colorMode?: string;
+  /** Narration cues, one per click step (integration plan 01 §3.3). */
+  narration?: SlideNarration;
+  /** Sounds fired by the slide's timeline (plan 01 §3.5). */
+  soundCues?: SoundCue[];
   metadata?: Record<string, unknown>;
   extensions?: Record<string, unknown>;
   [key: string]: unknown;
@@ -183,6 +196,8 @@ export const SlideSchema: z.ZodType<Slide> = z.looseObject({
    * have draws the theme's own colours.
    */
   colorMode: z.string().min(1).max(40).optional(),
+  narration: SlideNarrationSchema.optional(),
+  soundCues: z.array(SoundCueSchema).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   extensions: z.record(z.string(), z.unknown()).optional(),
 }) as unknown as z.ZodType<Slide>;
@@ -216,6 +231,13 @@ export interface PresentationDocument {
   dataSources: z.infer<typeof DataSourceDefinitionSchema>[];
   variables: Record<string, z.infer<typeof VariableDefinitionSchema>>;
   provenance?: z.infer<typeof ProvenanceRecordSchema>[];
+  /**
+   * Translations of this deck's words, keyed by BCP-47 tag (plan 01 §3.1). An
+   * overlay replaces text and nothing else; which one is showing is editor state.
+   */
+  locales?: Record<string, LocaleOverlay>;
+  /** Manual or narrated playback (plan 01 §3.4). Absent means manual. */
+  playback?: PlaybackSettings;
   createdAt: string;
   /** Always >= createdAt. */
   updatedAt: string;
@@ -238,6 +260,8 @@ export const PresentationDocumentSchema: z.ZodType<PresentationDocument> = z.loo
   dataSources: z.array(DataSourceDefinitionSchema),
   variables: z.record(z.string(), VariableDefinitionSchema),
   provenance: z.array(ProvenanceRecordSchema).optional(),
+  locales: z.record(z.string(), LocaleOverlaySchema).optional(),
+  playback: PlaybackSettingsSchema.optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
   extensions: z.record(z.string(), z.unknown()).optional(),

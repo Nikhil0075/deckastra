@@ -48,6 +48,19 @@ describe("rule catalog", () => {
 });
 
 describe("structural rules", () => {
+  it("validates document byte limits without Node Buffer", () => {
+    const globals = globalThis as typeof globalThis & { Buffer?: unknown };
+    const previous = globals.Buffer;
+    Reflect.deleteProperty(globals, "Buffer");
+    let report: ValidationReport;
+    try {
+      report = validateDocument(baseDoc());
+    } finally {
+      globals.Buffer = previous;
+    }
+    expect(report!.valid).toBe(true);
+  });
+
   it("E001: rejects a duplicate id", () => {
     const doc = baseDoc();
     const slide = doc.slides[0]!;

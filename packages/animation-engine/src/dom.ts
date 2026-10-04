@@ -31,6 +31,8 @@ export interface TimelineEvent {
 export interface AnimationAdapter {
   play(): void;
   pause(): void;
+  pauseAmbient(): void;
+  resumeAmbient(): void;
   seek(timeMs: number): void;
   stop(): void;
   setPlaybackRate(rate: number): void;
@@ -84,6 +86,17 @@ export class DomAnimationAdapter implements AnimationAdapter {
   private readonly touched = new Set<string>();
   private promoted = false;
   private readonly unsubscribe: () => void;
+  private resumeAfterVisibility = false;
+  private readonly onVisibilityChange = () => {
+    if (typeof document === "undefined") return;
+    if (document.hidden) {
+      this.resumeAfterVisibility = this.engine.state.status === "playing";
+      if (this.resumeAfterVisibility) this.engine.pause();
+    } else if (this.resumeAfterVisibility) {
+      this.resumeAfterVisibility = false;
+      this.engine.play();
+    }
+  };
 
   constructor(
     private timeline: CompiledTimeline,
@@ -95,10 +108,11 @@ export class DomAnimationAdapter implements AnimationAdapter {
       onSample: (sample) => this.apply(sample),
       onSegmentEnd: (state) => this.fire("segment", state),
       onComplete: (state) => {
-        this.demote();
+        if (!this.timeline.hasInfiniteMotion) this.demote();
         this.fire("complete", state);
       },
     });
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", this.onVisibilityChange);
 
     // The pre-roll state. Without it every animated element is visible at its
     // resting position for one frame before the first sample lands, which reads
@@ -116,13 +130,26 @@ export class DomAnimationAdapter implements AnimationAdapter {
   }
 
   play(): void {
+    if (typeof document !== "undefined" && document.hidden) {
+      this.resumeAfterVisibility = true;
+      return;
+    }
     this.promote();
     this.engine.play();
     this.fire("start", this.engine.state);
   }
 
   pause(): void {
+    this.resumeAfterVisibility = false;
     this.engine.pause();
+  }
+
+  pauseAmbient(): void {
+    this.engine.pauseAmbient();
+  }
+
+  resumeAmbient(): void {
+    this.engine.resumeAmbient();
   }
 
   seek(timeMs: number): void {
@@ -130,6 +157,7 @@ export class DomAnimationAdapter implements AnimationAdapter {
   }
 
   stop(): void {
+    this.resumeAfterVisibility = false;
     this.engine.stop();
     this.demote();
     this.clear();
@@ -160,6 +188,7 @@ export class DomAnimationAdapter implements AnimationAdapter {
   }
 
   dispose(): void {
+    if (typeof document !== "undefined") document.removeEventListener("visibilitychange", this.onVisibilityChange);
     this.unsubscribe();
     this.engine.dispose();
     this.demote();
@@ -272,7 +301,17 @@ function formatNumber(value: number): string {
 function applyPathProgress(element: HTMLElement, progress: number): void {
   const paths = element.querySelectorAll<SVGPathElement | SVGLineElement>("path, line, polyline");
   for (const path of paths) {
-    const length = typeof path.getTotalLength === "function" ? path.getTotalLength() : 0;
+    // Chromium throws InvalidStateError for geometry inside a display:none or
+    // otherwise non-rendered SVG subtree. That can happen legitimately while
+    // an entrance is preparing its first frame; one icon must not abort the
+    // whole present-mode render. Once the node is rendered a later frame will
+    // measure and apply the dash normally.
+    let length = 0;
+    try {
+      length = typeof path.getTotalLength === "function" ? path.getTotalLength() : 0;
+    } catch {
+      continue;
+    }
     if (length === 0) continue;
     path.style.strokeDasharray = String(length);
     path.style.strokeDashoffset = String(length * (1 - progress));

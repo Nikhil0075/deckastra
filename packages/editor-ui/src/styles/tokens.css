@@ -84,6 +84,7 @@
   --dk-space-2: 8px;
   --dk-space-3: 12px;
   --dk-space-4: 16px;
+  --dk-lane-gutter: 196px; /* the timeline's label column plus its gap */
   --dk-space-5: 24px;
   --dk-space-6: 32px;
   --dk-space-8: 48px;

@@ -16,11 +16,13 @@ import { fileURLToPath } from "node:url";
 import {
   DEFAULT_VIEWPORT,
   SCHEMA_VERSION,
+  localeTextHash,
   plainText,
   serializeDocument,
   validateDocument,
   type PresentationDocument,
   type PresentationElement,
+  type RichTextDocument,
   type Slide,
   type ThemeDefinition,
 } from "../src/index";
@@ -914,12 +916,224 @@ function animationDeck(): PresentationDocument {
   });
 }
 
+// ----------------------------------------- fixture 4: multilingual and narrated
+
+/**
+ * One deck in three languages, narrated per click step (integration plan 01).
+ *
+ * Kept out of the renderer's digest and pixel gates on purpose: those record
+ * three decks on two platforms, and a fourth would need a Linux pixel baseline
+ * nobody can take from here. What this fixture is for is the document: overlays
+ * that apply, takes that match their scripts, sound cues and narrated playback,
+ * round-tripped and validated in both languages.
+ */
+function multilingualDeck(): PresentationDocument {
+  const id = makeIdFactory(4);
+  const theme = technicalTheme(id("thm"));
+
+  const titleId = id("el");
+  const subtitleId = id("el");
+  const titleBlock = id("blk");
+  const subtitleBlock = id("blk");
+  const notes = "Welcome everyone.\nThis deck is narrated in English and Hindi.";
+  const titleSlide: Slide = {
+    id: id("sld"),
+    name: "Title",
+    keyMessage: "One deck, every language the room speaks",
+    elements: [
+      {
+        id: titleId,
+        type: "text",
+        semanticRole: "headline",
+        transform: { x: 120, y: 360, width: 1600, height: 180 },
+        content: plainText("One deck, every language", titleBlock),
+        typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 96, fontWeight: 700, color: "token:colors.foreground" },
+        fit: "shrinkToFit",
+      },
+      {
+        id: subtitleId,
+        type: "text",
+        semanticRole: "subtitle",
+        transform: { x: 120, y: 580, width: 1400, height: 80 },
+        content: plainText("Translated words, the same layout", subtitleBlock),
+        typography: { fontFamily: "token:typography.body.fontFamily", fontSize: 36, color: "token:colors.foregroundSubtle" },
+      },
+    ],
+    speakerNotes: notes,
+  };
+
+  const headingId = id("el");
+  const headingBlock = id("blk");
+  const stepIds = [id("el"), id("el"), id("el")];
+  const stepBlocks = [id("blk"), id("blk"), id("blk")];
+  const stepTexts = ["Write it once", "Translate the words", "Narrate every step"];
+  const stepHindi = ["एक बार लिखें", "शब्दों का अनुवाद करें", "हर चरण का वर्णन करें"];
+  const revealSlideId = id("sld");
+  const cueIds = [id("nar"), id("nar"), id("nar"), id("nar")];
+  const cueTexts = [
+    "Three ideas make this work.",
+    "First, you write the deck once.",
+    "Then the words are translated, and the layout stays.",
+    "Finally, every click step has its own narration.",
+  ];
+  const hindiCues = [
+    "तीन विचार इसे संभव बनाते हैं।",
+    "पहले, आप डेक एक बार लिखते हैं।",
+    "फिर शब्दों का अनुवाद होता है, और लेआउट वही रहता है।",
+    "अंत में, हर क्लिक चरण का अपना वर्णन होता है।",
+  ];
+  const enTakes = [id("ast"), id("ast"), id("ast"), id("ast")];
+  const hiTakes = [id("ast"), id("ast"), id("ast"), id("ast")];
+  const durations = [2100, 2400, 3300, 3000];
+  const hiDurations = [2500, 2700, 3900, 3600];
+
+  const revealSlide: Slide = {
+    id: revealSlideId,
+    name: "Three steps",
+    keyMessage: "Write, translate, narrate",
+    elements: [
+      {
+        id: headingId,
+        type: "text",
+        semanticRole: "headline",
+        transform: { x: 120, y: 140, width: 1600, height: 120 },
+        content: plainText("How it works", headingBlock),
+        typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 72, fontWeight: 700, color: "token:colors.foreground" },
+      },
+      ...stepIds.map((stepId, index): PresentationElement => ({
+        id: stepId,
+        type: "text",
+        semanticRole: "body",
+        transform: { x: 120, y: 360 + index * 140, width: 1400, height: 100 },
+        content: plainText(stepTexts[index]!, stepBlocks[index]!),
+        typography: { fontFamily: "token:typography.body.fontFamily", fontSize: 48, color: "token:colors.foreground" },
+      })),
+    ],
+    animations: stepIds.map((stepId) => ({
+      id: id("anm"),
+      targetId: stepId,
+      trigger: { type: "click" as const },
+      clips: [{ id: id("clp"), preset: "fade", startMs: 0, durationMs: 400 }],
+    })),
+    narration: {
+      cues: cueIds.map((cueId, step) => ({
+        id: cueId,
+        step,
+        text: cueTexts[step]!,
+        takes: {
+          en: { assetId: enTakes[step]!, durationMs: durations[step]!, voice: "recorded", textHash: localeTextHash(cueTexts[step]!) },
+          "hi-IN": { assetId: hiTakes[step]!, durationMs: hiDurations[step]!, voice: "hi-IN-Chirp3-HD-Aoede", textHash: localeTextHash(hindiCues[step]!) },
+        },
+      })),
+    },
+    soundCues: [
+      { id: id("snd"), label: "Pop on each reveal", source: { library: "pop" }, trigger: { type: "click" }, startMs: 0, volume: 0.6 },
+    ],
+    transition: { type: "fade", durationMs: 400 },
+  };
+
+  const tableId = id("el");
+  const columnIds = [id("col"), id("col")];
+  const rowIds = [id("row"), id("row")];
+  const closingSlide: Slide = {
+    id: id("sld"),
+    name: "Languages",
+    elements: [
+      {
+        id: tableId,
+        type: "table",
+        transform: { x: 120, y: 240, width: 1200, height: 300 },
+        columns: [
+          { id: columnIds[0]!, label: "Language" },
+          { id: columnIds[1]!, label: "Status" },
+        ],
+        rows: [
+          { id: rowIds[0]!, cells: [{ content: "Hindi" }, { content: "Reviewed" }] },
+          { id: rowIds[1]!, cells: [{ content: "Arabic" }, { content: "Draft" }] },
+        ],
+        headerRow: true,
+      },
+    ],
+  };
+
+  const doc = buildDocument({
+    id: id("doc"),
+    title: "Multilingual Narrated Deck",
+    theme,
+    slides: [titleSlide, revealSlide, closingSlide],
+    assets: [
+      ...enTakes.map((assetId, step) => ({
+        id: assetId,
+        type: "audio" as const,
+        storageKey: `fixtures/audio/en-step-${step}.ogg`,
+        mimeType: "audio/ogg",
+        durationMs: durations[step]!,
+        fileName: `en-step-${step}.ogg`,
+      })),
+      ...hiTakes.map((assetId, step) => ({
+        id: assetId,
+        type: "audio" as const,
+        storageKey: `fixtures/audio/hi-step-${step}.ogg`,
+        mimeType: "audio/ogg",
+        durationMs: hiDurations[step]!,
+        fileName: `hi-step-${step}.ogg`,
+      })),
+    ],
+    metadata: {
+      presentationType: "training",
+      audience: "The locale, narration and sound test suites",
+      objective: "Exercise overlays, per-step narration, sound cues and narrated playback",
+    },
+  });
+
+  const entry = (value: RichTextDocument | string, source: string, origin = "human") => ({
+    value,
+    sourceHash: localeTextHash(source),
+    origin,
+  });
+  const el = (slideId: string, elementId: string) => `/slides/id:${slideId}/elements/id:${elementId}`;
+  doc.playback = { mode: "narrated", gapMs: 400 };
+  doc.locales = {
+    "hi-IN": {
+      locale: "hi-IN",
+      status: "reviewed",
+      entries: {
+        "/metadata/title": entry("बहुभाषी वर्णित डेक", "Multilingual Narrated Deck"),
+        [`${el(titleSlide.id, titleId)}/content`]: entry(plainText("एक डेक, हर भाषा", titleBlock), "One deck, every language"),
+        [`${el(titleSlide.id, subtitleId)}/content`]: entry(plainText("अनूदित शब्द, वही लेआउट", subtitleBlock), "Translated words, the same layout"),
+        [`/slides/id:${titleSlide.id}/speakerNotes`]: entry("सभी का स्वागत है।\nयह डेक अंग्रेज़ी और हिंदी में वर्णित है।", notes),
+        [`${el(revealSlideId, headingId)}/content`]: entry(plainText("यह कैसे काम करता है", headingBlock), "How it works"),
+        ...Object.fromEntries(
+          stepIds.map((stepId, index) => [`${el(revealSlideId, stepId)}/content`, entry(plainText(stepHindi[index]!, stepBlocks[index]!), stepTexts[index]!)]),
+        ),
+        ...Object.fromEntries(
+          cueIds.map((cueId, step) => [`/slides/id:${revealSlideId}/narration/cues/id:${cueId}/text`, entry(hindiCues[step]!, cueTexts[step]!)]),
+        ),
+        [`${el(closingSlide.id, tableId)}/columns/id:${columnIds[0]}/label`]: entry("भाषा", "Language"),
+        [`${el(closingSlide.id, tableId)}/columns/id:${columnIds[1]}/label`]: entry("स्थिति", "Status"),
+        [`${el(closingSlide.id, tableId)}/rows/id:${rowIds[0]}/cells/0/content`]: entry("हिंदी", "Hindi"),
+      },
+    },
+    ar: {
+      locale: "ar",
+      status: "draft",
+      direction: "rtl",
+      entries: {
+        "/metadata/title": entry("عرض متعدد اللغات", "Multilingual Narrated Deck", "machine"),
+        [`${el(titleSlide.id, titleId)}/content`]: entry(plainText("عرض واحد، كل لغة", titleBlock), "One deck, every language", "machine"),
+      },
+    },
+  };
+  return doc;
+}
+
 // ------------------------------------------------------------------- write
 
 const FIXTURES: { file: string; build: () => PresentationDocument }[] = [
   { file: "technical-deck.mydeck.json", build: technicalDeck },
   { file: "repository-context.mydeck.json", build: repositoryDeck },
   { file: "animation-test.mydeck.json", build: animationDeck },
+  { file: "multilingual-narrated.mydeck.json", build: multilingualDeck },
 ];
 
 function main(): void {

@@ -24,6 +24,7 @@
  */
 
 import { openRenderBrowser, type RenderBrowser, type RenderPage } from "./render-page";
+import type { PdfParagraph } from "./pdf-paragraphs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -31,7 +32,7 @@ import type { AnimationTrack, PresentationDocument } from "@deckastra/presentati
 import type { DocumentScene, SceneNode, SlideScene } from "@deckastra/renderer";
 import { SlideView } from "@deckastra/renderer/react";
 import { buildCriticReport, type CriticRenderReport } from "./critic-report";
-import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine";
+import { compileTimeline, finalSample, sampleAt, toStyle } from "@deckastra/animation-engine";
 import type { ExportImage, ExportWarning, FontSpec } from "@deckastra/export-core";
 import { equationImageKey } from "@deckastra/export-pptx";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
@@ -425,7 +426,14 @@ function pageStyles(slide: SlideScene): string {
     // The default for anything with no family of its own. The page's faces are
     // declared in its head from `data:` URLs (`fonts.ts`) and loaded before the
     // capture (`settle`), so two renders of one slide draw the same glyphs.
-    '*{font-family:"Inter Variable",Inter,ui-sans-serif,system-ui,sans-serif}'
+    //
+    // On `body`, inherited — never `*`. A universal rule sets every element's
+    // family directly, which beats inheritance: the text box's own family sat
+    // on its container while every paragraph and run inside it drew in Inter,
+    // so a deck set in Playfair exported in Inter and a Hindi deck's fallback
+    // to Noto Sans Devanagari was skipped for whatever the machine had
+    // (integration plan 01 §3.9, found by reading a Hindi PDF's fonts back).
+    'body{font-family:"Inter Variable",Inter,ui-sans-serif,system-ui,sans-serif}'
   );
 }
 
@@ -452,6 +460,7 @@ function motionStyles(
   slide: SlideScene,
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
+  textTargets?: Set<string>,
 ): string {
   const tracks = (slide.animations ?? []) as AnimationTrack[];
   if (tracks.length === 0) return "";
@@ -464,7 +473,7 @@ function motionStyles(
         ? 0
         : Math.max(0, Math.min(atTime, timeline.durationMs));
 
-  const sample = sampleAt(timeline, at);
+  const sample = atTime === "final" ? finalSample(timeline) : sampleAt(timeline, at);
   if (sample.size === 0) return "";
 
   if (atTime !== "final") {
@@ -487,7 +496,10 @@ function motionStyles(
       .map(([property, value]) => `${cssName(property)}:${value} !important`)
       .join(";");
     if (!declarations) continue;
-    rules.push(`[data-element-id="${cssEscape(target.targetId)}"]{${declarations}}`);
+    const element = `[data-element-id="${cssEscape(target.targetId)}"]`;
+    if (target.subTarget && /^(word|glyph|line)\//.test(target.subTarget)) textTargets?.add(target.targetId);
+    const selector = target.subTarget ? `${element} [data-sub-target="${cssEscape(target.subTarget)}"]` : element;
+    rules.push(`${selector}{${declarations}}`);
   }
 
   return rules.length > 0 ? `<style>${rules.join("")}</style>` : "";
@@ -518,7 +530,7 @@ export async function renderPdf(
   atTime: number | "final" | "initial",
   pool: RenderPool,
   assets?: InlineAsset[],
-): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
+): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[]; paragraphs: PdfParagraph[][] }> {
   const library = new AssetLibrary(assets);
   return pool.withPage(1, async (page) => {
     const fontCss = await pageFontCss(deck, library);
@@ -535,7 +547,7 @@ export async function renderPdfScene(
   page: RenderPage,
   library: AssetLibrary = new AssetLibrary(),
   fontCss = "",
-): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[] }> {
+): Promise<{ bytes: Uint8Array; warnings: ExportWarning[]; fontsUsed: FontSpec[]; paragraphs: PdfParagraph[][] }> {
   const wanted = new Set(slideIds);
   const slides = scene.slides.filter((slide) => wanted.has(slide.slideId));
   const warnings: ExportWarning[] = [];
@@ -546,8 +558,19 @@ export async function renderPdfScene(
 
   warnings.push(...library.problems(slides, await settle(page)));
 
+  const paragraphs = await page.evaluate(() => Array.from(document.querySelectorAll('[data-deckastra-slide]'), slide =>
+    Array.from(slide.querySelectorAll('[data-plain-text]')).filter(node => {
+      for (let current: Element | null = node; current && current !== slide; current = current.parentElement) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+      }
+      return true;
+    }).map(node => ({ kind: node.tagName === 'LI' ? 'LI' as const : node.tagName === 'BLOCKQUOTE' ? 'BlockQuote' as const : 'P' as const, text: node.getAttribute('data-plain-text') ?? '' })),
+  ));
+
   const first = slides[0];
   const bytes = await page.pdf({
+    tagged: true,
     // Doc 04 §34.3: without this the background is missing and the deck arrives
     // as dark text on white.
     printBackground: true,
@@ -560,7 +583,7 @@ export async function renderPdfScene(
     preferCSSPageSize: true,
   });
 
-  return { bytes: new Uint8Array(bytes), warnings, fontsUsed: fontManifest(slides) };
+  return { bytes: new Uint8Array(bytes), warnings, fontsUsed: fontManifest(slides), paragraphs };
 }
 
 /** Every slide as one paginated document. */
@@ -573,12 +596,14 @@ export function deckHtml(
 ): string {
   const pages = slides
     .map((slide) => {
+      const textTargets = new Set<string>();
+      const styles = motionStyles(slide, atTime, warnings, textTargets);
       const markup = renderToStaticMarkup(
-        createElement(SlideView, { scene: withoutFaces(slide), mode: "export" as const, resolveAssetUrl }),
+        createElement(SlideView, { scene: withoutFaces(slide), mode: "export" as const, resolveAssetUrl, segmentText: false, textAnimationTargets: [...textTargets] }),
       );
       return (
         `<section class="deckastra-page" style="width:${slide.width}px;height:${slide.height}px">` +
-        `${markup}${motionStyles(slide, atTime, warnings)}</section>`
+        `${markup}${styles}</section>`
       );
     })
     .join("");

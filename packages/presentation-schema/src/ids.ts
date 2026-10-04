@@ -37,6 +37,9 @@ export const ID_PREFIXES = {
   group: "grp",
   column: "col",
   row: "row",
+  /** Narration cues and sound cues (integration plan 01 §3.3, §3.5). */
+  narration: "nar",
+  sound: "snd",
 } as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];

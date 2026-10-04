@@ -36,6 +36,7 @@ export {
 export {
   PRESETS,
   PRESET_NAMES,
+  LEGACY_PRESET_NAMES,
   durationForBounds,
   resolvePreset,
   type PresetContext,
@@ -95,3 +96,10 @@ export * from "./timeline";
  * keeps its own clock — see `transition/types.ts`.
  */
 export * from "./transition";
+
+/**
+ * Narration and sound on the timeline (integration plan 01 §3.4): compiled once
+ * from the timeline's segments, then a pure function of time like everything
+ * above.
+ */
+export * from "./narration";

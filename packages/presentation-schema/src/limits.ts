@@ -18,6 +18,11 @@ export const LIMITS = {
   textCharactersPerElement: 20_000,
   /** Timeline usability. */
   animationClipsPerSlide: 200,
+  /** Each overlay roughly doubles the words in the file. */
+  localesPerDocument: 40,
+  /** A cue per click step; past this the slide is a lecture. */
+  narrationCuesPerSlide: 60,
+  soundCuesPerSlide: 60,
 } as const;
 
 export const WARN_AT = 0.8;

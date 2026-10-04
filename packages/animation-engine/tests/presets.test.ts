@@ -33,6 +33,7 @@ describe("every preset declares a reduced-motion fallback", () => {
     expect(preset.reducedMotion === "instant" || PRESET_NAMES.includes(preset.reducedMotion)).toBe(
       true,
     );
+    expect(["entrance", "emphasis", "loop", "exit", "path"]).toContain(preset.category);
   });
 
   it("a fallback is never a preset that leaves content invisible", () => {
@@ -50,6 +51,15 @@ describe("every preset declares a reduced-motion fallback", () => {
 
       const last = opacity.keyframes[opacity.keyframes.length - 1]!;
       expect(last.value).toBe(1);
+    }
+  });
+});
+
+describe("continuous preset restraint", () => {
+  it("limits loops to transform and opacity properties", () => {
+    const allowed = new Set(["x", "y", "scale", "scaleX", "scaleY", "rotation", "opacity"]);
+    for (const preset of Object.values(PRESETS).filter((candidate) => candidate.category === "loop")) {
+      for (const property of preset.expand(context).tracks) expect(allowed.has(property.property)).toBe(true);
     }
   });
 });
@@ -133,6 +143,26 @@ describe("the ten MVP presets expand as §24 describes", () => {
       params: { from: 10, to: 4_200 },
     });
     expect(tracks[0]!.keyframes.map((keyframe) => keyframe.value)).toEqual([10, 4_200]);
+  });
+
+  it("rotatingWord returns the whole text element to its visible resting state", () => {
+    const tracks = PRESETS.rotatingWord!.expand(context).tracks;
+    const opacity = tracks.find((track) => track.property === "opacity")!;
+    const y = tracks.find((track) => track.property === "y")!;
+    expect(opacity.keyframes[0]!.value).toBe(1);
+    expect(opacity.keyframes.at(-1)!.value).toBe(1);
+    expect(y.keyframes[0]!.value).toBe(0);
+    expect(y.keyframes.at(-1)!.value).toBe(0);
+  });
+
+  it("shimmer crosses the target instead of moving a nearly invisible fixed distance", () => {
+    const tracks = PRESETS.shimmer!.expand(context).tracks;
+    const x = tracks.find((track) => track.property === "x")!;
+    const opacity = tracks.find((track) => track.property === "opacity")!;
+    expect(Number(x.keyframes[0]!.value)).toBeLessThan(-100);
+    expect(Number(x.keyframes.at(-1)!.value)).toBeGreaterThan(100);
+    expect(opacity.keyframes[0]!.value).toBe(0);
+    expect(opacity.keyframes.at(-1)!.value).toBe(0);
   });
 
   it("springIn is sampled into keyframes, not left as a curve to simulate", () => {

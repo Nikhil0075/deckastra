@@ -83,6 +83,11 @@ export const AnimationClipSchema = z.looseObject({
   repeat: z.number().int().min(-1).optional(),
   direction: z.enum(["normal", "reverse", "alternate"]).optional(),
   /**
+   * Frame shown when continuous motion is suppressed (reduced motion, PDF,
+   * thumbnails). Expressed as an offset within one iteration.
+   */
+  restOffset: NormalizedSchema.optional(),
+  /**
    * How the clip's values behave outside its own span.
    *
    * **Absent means "both", not "forwards".** The CSS/WAAPI default is

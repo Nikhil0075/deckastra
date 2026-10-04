@@ -20,9 +20,10 @@ function load(file: string): PresentationDocument {
 }
 
 describe("seed fixtures", () => {
-  it("there are three of them", () => {
+  it("there are three seed decks and the multilingual one", () => {
     expect(fixtureFiles.sort()).toEqual([
       "animation-test.mydeck.json",
+      "multilingual-narrated.mydeck.json",
       "repository-context.mydeck.json",
       "technical-deck.mydeck.json",
     ]);

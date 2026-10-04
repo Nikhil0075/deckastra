@@ -54,6 +54,7 @@ export interface PresetExpansion {
 
 export interface PresetDefinition {
   name: string;
+  category: "entrance" | "emphasis" | "loop" | "exit" | "path";
   /**
    * What this becomes under reduced motion (doc 04 §27.3). `"instant"` means the
    * end state with no transition — correct for `drawPath` (show it drawn) and
@@ -106,6 +107,7 @@ function directionVector(direction: string): { x: number; y: number } {
 
 const fade: PresetDefinition = {
   name: "fade",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Appears by fading in.",
   params: [],
@@ -114,6 +116,7 @@ const fade: PresetDefinition = {
 
 const slide: PresetDefinition = {
   name: "slide",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Moves in from one side while fading in.",
   params: [
@@ -151,6 +154,7 @@ const slide: PresetDefinition = {
 
 const scale: PresetDefinition = {
   name: "scale",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Grows into place while fading in.",
   params: [
@@ -170,6 +174,7 @@ const scale: PresetDefinition = {
 
 const blurReveal: PresetDefinition = {
   name: "blurReveal",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Resolves from a blur while rising slightly.",
   params: [
@@ -193,6 +198,7 @@ const blurReveal: PresetDefinition = {
 
 const maskReveal: PresetDefinition = {
   name: "maskReveal",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Wipes into view behind a moving edge.",
   params: [
@@ -224,6 +230,7 @@ const maskReveal: PresetDefinition = {
 
 const staggerReveal: PresetDefinition = {
   name: "staggerReveal",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Reveals a group's children one after another.",
   params: [
@@ -266,6 +273,7 @@ const staggerReveal: PresetDefinition = {
 
 const drawPath: PresetDefinition = {
   name: "drawPath",
+  category: "path",
   // Not a fade. A path that fades in is a different statement from one that
   // draws; under reduced motion the honest answer is the finished path.
   reducedMotion: "instant",
@@ -288,6 +296,7 @@ const drawPath: PresetDefinition = {
 
 const numberCount: PresetDefinition = {
   name: "numberCount",
+  category: "entrance",
   // The final number, not a fade. A metric that fades in from nothing reads as a
   // loading state; a metric that is simply there reads as a fact.
   reducedMotion: "instant",
@@ -309,6 +318,7 @@ const numberCount: PresetDefinition = {
 
 const springIn: PresetDefinition = {
   name: "springIn",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Settles into place with a spring.",
   params: [
@@ -349,6 +359,7 @@ const springIn: PresetDefinition = {
 
 const sharedElementMorph: PresetDefinition = {
   name: "sharedElementMorph",
+  category: "entrance",
   reducedMotion: "fade",
   description: "Moves an element from where it was on the previous slide.",
   params: [
@@ -382,6 +393,123 @@ const sharedElementMorph: PresetDefinition = {
   },
 };
 
+// ------------------------------------------------------- emphasis and loops
+
+function simplePreset(
+  name: string,
+  category: PresetDefinition["category"],
+  description: string,
+  tracks: PropertyTrack[],
+  reducedMotion: string = category === "loop" ? "instant" : "fade",
+): PresetDefinition {
+  return { name, category, description, reducedMotion, params: [], expand: () => ({ tracks }) };
+}
+
+const pulse = simplePreset("pulse", "emphasis", "Briefly grows and settles.", [
+  track("scale", [{ offset: 0, value: 1 }, { offset: 0.5, value: 1.08 }, { offset: 1, value: 1 }]),
+]);
+const wiggle = simplePreset("wiggle", "emphasis", "Rocks gently from side to side.", [
+  track("rotation", [{ offset: 0, value: 0 }, { offset: 0.25, value: -4 }, { offset: 0.75, value: 4 }, { offset: 1, value: 0 }]),
+]);
+const pop = simplePreset("pop", "emphasis", "Pops forward and returns to rest.", [
+  track("scale", [{ offset: 0, value: 1 }, { offset: 0.4, value: 1.14 }, { offset: 1, value: 1 }]),
+  track("opacity", [{ offset: 0, value: 1 }, { offset: 0.4, value: 0.88 }, { offset: 1, value: 1 }]),
+]);
+const colorShift = simplePreset("colorShift", "emphasis", "Shifts to an accent colour and back.", [
+  track("fill", [{ offset: 0, value: "currentColor" }, { offset: 0.5, value: "var(--dk-accent, currentColor)" }, { offset: 1, value: "currentColor" }]),
+]);
+const underlineDraw = simplePreset("underlineDraw", "emphasis", "Draws the target stroke for emphasis.", [
+  track("pathProgress", [{ offset: 0, value: 0 }, { offset: 1, value: 1 }]),
+], "instant");
+const highlightSweep = simplePreset("highlightSweep", "emphasis", "Sweeps a lightweight highlight across the object.", [
+  track("x", [{ offset: 0, value: -12 }, { offset: 1, value: 12 }]),
+  track("opacity", [{ offset: 0, value: 0.72 }, { offset: 0.5, value: 1 }, { offset: 1, value: 0.72 }]),
+]);
+
+const float = simplePreset("float", "loop", "Drifts gently up and down.", [
+  track("y", [{ offset: 0, value: 0 }, { offset: 0.5, value: -10 }, { offset: 1, value: 0 }]),
+]);
+const breathe = simplePreset("breathe", "loop", "Breathes with a small scale and opacity change.", [
+  track("scale", [{ offset: 0, value: 1 }, { offset: 0.5, value: 1.035 }, { offset: 1, value: 1 }]),
+  track("opacity", [{ offset: 0, value: 0.94 }, { offset: 0.5, value: 1 }, { offset: 1, value: 0.94 }]),
+]);
+const spin = simplePreset("spin", "loop", "Turns slowly through one revolution.", [
+  track("rotation", [{ offset: 0, value: 0 }, { offset: 1, value: 360 }]),
+]);
+const glow = simplePreset("glow", "loop", "Pulses a prepared glow layer using opacity only.", [
+  track("opacity", [{ offset: 0, value: 0.78 }, { offset: 0.5, value: 1 }, { offset: 1, value: 0.78 }]),
+]);
+const shimmer: PresetDefinition = {
+  name: "shimmer",
+  category: "loop",
+  reducedMotion: "instant",
+  description: "Sweeps a prepared sheen layer across the object.",
+  params: [],
+  expand: ({ bounds }) => {
+    // Travel far enough for the sheen to enter and leave the object entirely.
+    // The old fixed ±24px movement was nearly static on cards and large text.
+    const travel = Math.max(48, round(bounds.width * 0.75));
+    return {
+      tracks: [
+        track("x", [{ offset: 0, value: -travel }, { offset: 1, value: travel }]),
+        track("opacity", [
+          { offset: 0, value: 0 },
+          { offset: 0.15, value: 0.7 },
+          { offset: 0.85, value: 0.7 },
+          { offset: 1, value: 0 },
+        ]),
+      ],
+    };
+  },
+};
+const orbit = simplePreset("orbit", "loop", "Moves in a small orbit around the resting position.", [
+  track("x", [{ offset: 0, value: 0 }, { offset: 0.25, value: 8 }, { offset: 0.5, value: 0 }, { offset: 0.75, value: -8 }, { offset: 1, value: 0 }]),
+  track("y", [{ offset: 0, value: -6 }, { offset: 0.25, value: 0 }, { offset: 0.5, value: 6 }, { offset: 0.75, value: 0 }, { offset: 1, value: -6 }]),
+]);
+const kenBurns = simplePreset("kenBurns", "loop", "Slowly pans and zooms a picture.", [
+  track("scale", [{ offset: 0, value: 1 }, { offset: 1, value: 1.08 }]),
+  track("x", [{ offset: 0, value: -8 }, { offset: 1, value: 8 }]),
+]);
+const gradientDrift = simplePreset("gradientDrift", "loop", "Drifts a prepared gradient layer.", [
+  track("x", [{ offset: 0, value: -16 }, { offset: 1, value: 16 }]),
+  track("opacity", [{ offset: 0, value: 0.92 }, { offset: 0.5, value: 1 }, { offset: 1, value: 0.92 }]),
+]);
+const marquee = simplePreset("marquee", "loop", "Moves content steadily across its lane.", [
+  track("x", [{ offset: 0, value: 0 }, { offset: 1, value: -120 }]),
+]);
+
+function exitPreset(name: string, source: PresetDefinition, description: string): PresetDefinition {
+  return {
+    name,
+    category: "exit",
+    reducedMotion: "instant",
+    description,
+    params: source.params,
+    expand: (context) => {
+      const expanded = source.expand(context);
+      const reverse = (tracks: PropertyTrack[]) => tracks.map((property) => ({
+        ...property,
+        keyframes: property.keyframes.map((frame) => ({ ...frame, offset: round(1 - frame.offset) })).reverse(),
+      }));
+      return {
+        ...expanded,
+        tracks: reverse(expanded.tracks),
+        children: expanded.children?.map((child) => ({ ...child, tracks: reverse(child.tracks) })),
+      };
+    },
+  };
+}
+
+const byWord = { ...fade, name: "byWord", category: "entrance" as const, description: "Reveals text one word at a time." };
+const byLetter = { ...fade, name: "byLetter", category: "entrance" as const, description: "Reveals text one grapheme at a time." };
+const typewriter = { ...fade, name: "typewriter", category: "entrance" as const, description: "Types text in grapheme by grapheme." };
+const rotatingWord = simplePreset("rotatingWord", "emphasis", "Rotates a changing word through the text slot.", [
+  track("y", [{ offset: 0, value: 0 }, { offset: 0.5, value: -8 }, { offset: 1, value: 0 }]),
+  // An emphasis must return to the authored resting state. Ending at zero made
+  // the entire text box disappear permanently and hid any child word effects.
+  track("opacity", [{ offset: 0, value: 1 }, { offset: 0.5, value: 0.45 }, { offset: 1, value: 1 }]),
+]);
+
 /** Every MVP preset, by name (doc 04 §24). */
 export const PRESETS: Record<string, PresetDefinition> = {
   fade,
@@ -394,9 +522,43 @@ export const PRESETS: Record<string, PresetDefinition> = {
   numberCount,
   springIn,
   sharedElementMorph,
+  pulse,
+  wiggle,
+  pop,
+  colorShift,
+  underlineDraw,
+  highlightSweep,
+  float,
+  breathe,
+  spin,
+  glow,
+  shimmer,
+  orbit,
+  kenBurns,
+  gradientDrift,
+  marquee,
+  byWord,
+  byLetter,
+  typewriter,
+  rotatingWord,
+  fadeOut: exitPreset("fadeOut", fade, "Fades out."),
+  slideOut: exitPreset("slideOut", slide, "Moves out of the slide."),
+  scaleOut: exitPreset("scaleOut", scale, "Shrinks out of view."),
+  blurOut: exitPreset("blurOut", blurReveal, "Blurs out of view."),
+  maskOut: exitPreset("maskOut", maskReveal, "Wipes out of view."),
+  staggerOut: exitPreset("staggerOut", staggerReveal, "Removes children one after another."),
+  drawPathOut: exitPreset("drawPathOut", drawPath, "Erases a drawn path."),
+  numberCountOut: exitPreset("numberCountOut", numberCount, "Counts away from the displayed number."),
+  springOut: exitPreset("springOut", springIn, "Springs away from rest."),
+  sharedElementMorphOut: exitPreset("sharedElementMorphOut", sharedElementMorph, "Moves out toward a paired element."),
 };
 
 export const PRESET_NAMES = Object.keys(PRESETS);
+/** The frozen catalog used by the web editor. */
+export const LEGACY_PRESET_NAMES = [
+  "fade", "slide", "scale", "blurReveal", "maskReveal", "staggerReveal",
+  "drawPath", "numberCount", "springIn", "sharedElementMorph",
+] as const;
 
 /**
  * Look a preset up, degrading to `fade` and saying so.

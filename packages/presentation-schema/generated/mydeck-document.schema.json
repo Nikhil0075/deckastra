@@ -1237,107 +1237,7 @@
                   "type": "string"
                 },
                 "trigger": {
-                  "oneOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "slideEnter"
-                        }
-                      },
-                      "required": [
-                        "type"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "afterPrevious"
-                        }
-                      },
-                      "required": [
-                        "type"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "withPrevious"
-                        }
-                      },
-                      "required": [
-                        "type"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "click"
-                        },
-                        "targetId": {
-                          "$ref": "#/$defs/__schema36"
-                        }
-                      },
-                      "required": [
-                        "type"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "hover"
-                        },
-                        "targetId": {
-                          "$ref": "#/$defs/__schema36"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "targetId"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "timer"
-                        },
-                        "delayMs": {
-                          "$ref": "#/$defs/__schema48"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "delayMs"
-                      ]
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "const": "marker"
-                        },
-                        "markerId": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "type",
-                        "markerId"
-                      ]
-                    }
-                  ]
+                  "$ref": "#/$defs/__schema86"
                 },
                 "clips": {
                   "type": "array",
@@ -1388,7 +1288,7 @@
                               "minItems": 1,
                               "type": "array",
                               "items": {
-                                "$ref": "#/$defs/__schema86"
+                                "$ref": "#/$defs/__schema87"
                               }
                             }
                           },
@@ -1422,6 +1322,9 @@
                           "reverse",
                           "alternate"
                         ]
+                      },
+                      "restOffset": {
+                        "$ref": "#/$defs/__schema34"
                       },
                       "fill": {
                         "type": "string",
@@ -1747,6 +1650,144 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 40
+          },
+          "narration": {
+            "type": "object",
+            "properties": {
+              "cues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^nar_[0-9A-HJKMNP-TV-Z]{26}$"
+                    },
+                    "step": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 200
+                    },
+                    "text": {
+                      "type": "string",
+                      "maxLength": 5000
+                    },
+                    "takes": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "assetId": {
+                            "$ref": "#/$defs/__schema36"
+                          },
+                          "durationMs": {
+                            "$ref": "#/$defs/__schema48"
+                          },
+                          "voice": {
+                            "type": "string",
+                            "maxLength": 120
+                          },
+                          "textHash": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "gainDb": {
+                            "type": "number",
+                            "minimum": -30,
+                            "maximum": 12,
+                            "$ref": "#/$defs/__schema0"
+                          },
+                          "sayAs": {
+                            "type": "string",
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "assetId",
+                          "durationMs",
+                          "textHash"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "step",
+                    "text"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "required": [
+              "cues"
+            ],
+            "additionalProperties": {}
+          },
+          "soundCues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^snd_[0-9A-HJKMNP-TV-Z]{26}$"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "assetId": {
+                          "$ref": "#/$defs/__schema36"
+                        }
+                      },
+                      "required": [
+                        "assetId"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "library": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        }
+                      },
+                      "required": [
+                        "library"
+                      ]
+                    }
+                  ]
+                },
+                "trigger": {
+                  "$ref": "#/$defs/__schema86"
+                },
+                "startMs": {
+                  "$ref": "#/$defs/__schema48"
+                },
+                "volume": {
+                  "$ref": "#/$defs/__schema34"
+                }
+              },
+              "required": [
+                "id",
+                "source",
+                "trigger",
+                "startMs"
+              ],
+              "additionalProperties": {}
+            }
           },
           "metadata": {
             "type": "object",
@@ -2075,6 +2116,7 @@
                       "diagram",
                       "table",
                       "code",
+                      "equation",
                       "video",
                       "audio",
                       "webEmbed",
@@ -2334,6 +2376,125 @@
         ],
         "additionalProperties": {}
       }
+    },
+    "locales": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "reviewed"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ltr",
+              "rtl"
+            ]
+          },
+          "fonts": {
+            "type": "object",
+            "properties": {
+              "heading": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "body": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "mono": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "additionalProperties": {}
+          },
+          "entries": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/__schema74"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "sourceHash": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "origin": {
+                  "type": "string",
+                  "pattern": "^(human|machine|stub|agent:[A-Za-z0-9_.:-]{1,64})$"
+                },
+                "reviewStatus": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "reviewed"
+                  ]
+                }
+              },
+              "required": [
+                "value",
+                "sourceHash",
+                "origin"
+              ],
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "locale",
+          "status",
+          "entries"
+        ],
+        "additionalProperties": {}
+      }
+    },
+    "playback": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "narrated"
+          ]
+        },
+        "gapMs": {
+          "maximum": 10000,
+          "$ref": "#/$defs/__schema48"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": {}
     },
     "createdAt": {
       "$ref": "#/$defs/__schema70"
@@ -6138,6 +6299,109 @@
       "additionalProperties": {}
     },
     "__schema86": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "slideEnter"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "afterPrevious"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "withPrevious"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "click"
+            },
+            "targetId": {
+              "$ref": "#/$defs/__schema36"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "hover"
+            },
+            "targetId": {
+              "$ref": "#/$defs/__schema36"
+            }
+          },
+          "required": [
+            "type",
+            "targetId"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "timer"
+            },
+            "delayMs": {
+              "$ref": "#/$defs/__schema48"
+            }
+          },
+          "required": [
+            "type",
+            "delayMs"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "marker"
+            },
+            "markerId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "markerId"
+          ]
+        }
+      ]
+    },
+    "__schema87": {
       "type": "object",
       "properties": {
         "offset": {

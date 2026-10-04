@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { createElement } from "react";
-import { compileTimeline, sampleAt, toStyle } from "@deckastra/animation-engine";
+import { compileTimeline, finalSample, toStyle } from "@deckastra/animation-engine";
 import type { AnimationTrack } from "@deckastra/presentation-schema";
 import type { Browser, Page } from "playwright";
 
@@ -105,7 +105,7 @@ async function shoot(fixture: (typeof FIXTURES)[number], slideIndex: number): Pr
   // Capture the same explicit final frame used by default headless exports.
   // Otherwise an entrance fixture can be entirely invisible and still pass.
   const timeline = compileTimeline(slide, (slide.animations ?? []) as AnimationTrack[], { userMotionPreference: "full" });
-  const styles = [...sampleAt(timeline, timeline.durationMs + 1).values()].map(target => ({
+  const styles = [...finalSample(timeline).values()].map(target => ({
     id: target.targetId, style: toStyle(target.values),
   }));
   await page!.evaluate(items => {

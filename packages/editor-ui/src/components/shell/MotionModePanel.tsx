@@ -48,16 +48,19 @@ export function MotionModePanel({
   presentationId,
   scene,
   resolveAssetUrl,
+  embedded = false,
 }: {
   editor: EditorApi;
   presentationId: string;
   scene: ReturnType<typeof buildDocumentScene>;
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+  /** Host extensions can append the established controls inside their panel. */
+  embedded?: boolean;
 }) {
   const slide = editor.document.slides[editor.slideIndex];
   if (!slide) return null;
   return (
-    <div className="dk-modepanel" data-testid="motion-panel">
+    <div className={embedded ? "dk-motion-legacy" : "dk-modepanel"} data-testid="motion-panel">
       <Section title={`Transition into slide ${editor.slideIndex + 1}`} defaultOpen>
         <TransitionEditor key={slide.id} editor={editor} scene={scene} resolveAssetUrl={resolveAssetUrl} />
       </Section>

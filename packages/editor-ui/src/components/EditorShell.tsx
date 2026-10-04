@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { isGroup, type PresentationElement, type ShapeKind } from "@deckastra/presentation-schema";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { isGroup, type AnimationTrack, type PresentationElement, type ShapeKind } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { useAssetUrls } from "../lib/asset-urls";
@@ -59,8 +59,9 @@ import { MotionPreview } from "./MotionPreview";
 import { Inspector, type ReorderDirection } from "./inspector/Inspector";
 import { AppBar } from "./shell/AppBar";
 import { CanvasStage } from "./shell/CanvasStage";
-import { AiPanel, CodePanel } from "./shell/ModePanels";
+import { AiPanel } from "./shell/ModePanels";
 import { MotionModePanel } from "./shell/MotionModePanel";
+import { NarrationPanel } from "./NarrationPanel";
 import { SlideStrip } from "./shell/SlideStrip";
 import { SpeakerNotes } from "./shell/SpeakerNotes";
 import { ToolRail } from "./shell/ToolRail";
@@ -79,6 +80,11 @@ import { DesignCheckPanel } from "./DesignCheckPanel";
 import { designCheck } from "../lib/design-check";
 import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
 import { Button, IconButton } from "../ui";
+import { languageLabel } from "../lib/languages";
+
+// CodeMirror is the heaviest mode-only dependency. Keep it out of the normal
+// design/AI/motion path and fetch it only when Code is actually opened.
+const CodePanel = lazy(() => import("./shell/CodePanel").then((module) => ({ default: module.CodePanel })));
 
 /**
  * The editor shell (Figma: MAIN SCREEN): top bar, insert rail, slide strip,
@@ -128,6 +134,23 @@ export interface EditorShellProps extends UseEditorInput {
    * pushes the editor past the bottom of the window.
    */
   notices?: ReactNode;
+  /** Optional richer authoring supplied by a host. The web editor passes none. */
+  motionAuthoring?: MotionAuthoringExtension;
+}
+
+export interface MotionAuthoringPanelProps {
+  editor: ReturnType<typeof useEditor>;
+  presentationId: string;
+  scene: ReturnType<typeof buildDocumentScene>;
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+  preview: (tracks?: AnimationTrack[]) => void;
+}
+
+export interface MotionAuthoringExtension {
+  Panel: ComponentType<MotionAuthoringPanelProps>;
+  /** Optional editor-only chrome drawn in slide coordinates. */
+  CanvasOverlay?: ComponentType<Omit<MotionAuthoringPanelProps, "preview">>;
+  presetNames: readonly string[];
 }
 
 export function EditorShell(props: EditorShellProps) {
@@ -135,6 +158,8 @@ export function EditorShell(props: EditorShellProps) {
   const { document: doc, slideIndex, selection, setSelection, apply, nodes } = editor;
 
   const client = useWorkspaceClient();
+  // Stable, so the Audio lanes' waveform effect does not re-run on every render.
+  const loadAudio = useCallback((storageKey: string) => client.assets.fetchBlob(storageKey), [client]);
   const [presenting, setPresenting] = useState(false);
   const [clipboard, setClipboard] = useState<ClipboardPayload | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
@@ -154,6 +179,8 @@ export function EditorShell(props: EditorShellProps) {
   }, []);
   const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("design");
+  // The Languages section in AI mode, opened from the bar's language menu.
+  const [languagesOpen, setLanguagesOpen] = useState(false);
   const [zoom, setZoom] = useState<Zoom>("fit");
   // The motion playhead. Editor state, not document state — where the author has
   // scrubbed to is exactly the kind of thing doc 02 §4.1 keeps out of the file.
@@ -162,6 +189,7 @@ export function EditorShell(props: EditorShellProps) {
   // Whether the author has asked to see the motion. Until they do the canvas
   // shows the slide at rest — see MotionPreview for why.
   const [scrubbing, setScrubbing] = useState(false);
+  const [previewTracks, setPreviewTracks] = useState<AnimationTrack[] | undefined>();
 
   const slide = doc.slides[slideIndex];
   const index = useMemo(() => buildIndex(nodes), [nodes]);
@@ -188,6 +216,7 @@ export function EditorShell(props: EditorShellProps) {
   const stopPreview = useCallback(() => {
     setScrubbing(false);
     setPlaying(0);
+    setPreviewTracks(undefined);
   }, []);
   useEffect(() => {
     if (mode !== "motion") stopPreview();
@@ -805,11 +834,42 @@ export function EditorShell(props: EditorShellProps) {
     <ColorStudioPanel editor={editor} open focus={colors.focus} onClose={() => setColors({ open: false })} />
   ) :
     mode === "ai" ? (
-      <AiPanel editor={editor} presentationId={props.presentationId} />
+      <AiPanel
+        editor={editor}
+        presentationId={props.presentationId}
+        resolveAssetUrl={resolveAssetUrl}
+        languagesOpen={languagesOpen}
+        onLanguagesOpen={setLanguagesOpen}
+      />
     ) : mode === "code" ? (
-      <CodePanel editor={editor} />
+      <Suspense fallback={<div className="dk-modepanel dk-code dk-muted">Opening JSON editor…</div>}>
+        <CodePanel editor={editor} />
+      </Suspense>
     ) : mode === "motion" ? (
-      <MotionModePanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />
+      <div className="dk-modepanel">
+      {/* Above whichever motion panel the host supplies: narration is what a
+          narrated slide is paced by, and below the transition and planning
+          sections it was a scroll away (integration plan 01 §3.3). */}
+      <NarrationPanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />
+      {props.motionAuthoring ? (
+        <props.motionAuthoring.Panel
+          editor={editor}
+          presentationId={props.presentationId}
+          scene={scene}
+          resolveAssetUrl={resolveAssetUrl}
+          preview={(tracks) => {
+            if (!tracks) {
+              stopPreview();
+              return;
+            }
+            setPreviewTracks(tracks);
+            setScrubbing(true);
+            setPlayheadMs(0);
+            setPlaying((count) => count + 1);
+          }}
+        />
+      ) : <MotionModePanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />}
+      </div>
     ) : (
       <Inspector
         editor={editor}
@@ -837,7 +897,7 @@ export function EditorShell(props: EditorShellProps) {
 
   return (
     <ColorStudioProvider value={colorStudio}>
-    <div className="dk-root dk-shell" data-editor-mode={mode}>
+    <div className="dk-root dk-shell" data-editor-mode={mode} data-presentation-id={props.presentationId} data-document-version={editor.currentVersionId()}>
       <AppBar
         editor={editor}
         presentationId={props.presentationId}
@@ -848,11 +908,28 @@ export function EditorShell(props: EditorShellProps) {
         extras={props.barExtras}
         panels={{ visibility: panels, onChange: setPanels }}
         onHistory={() => setHistoryOpen(true)}
+        onManageLanguages={() => {
+          setMode("ai");
+          setLanguagesOpen(true);
+        }}
       />
 
       <ConflictRecovery editor={editor} />
 
       {props.notices}
+      {editor.locale ? (
+        // Said while it is true: in a language, typing writes that language's
+        // words, and everything else is shared by every language (plan 01 §3.2).
+        <div className="dk-banner dk-banner--notice dk-banner--actions" role="status" data-testid="locale-banner">
+          <span dir="auto">
+            Showing {languageLabel(editor.locale)}. Typing changes the {languageLabel(editor.locale).split(" · ")[0]} words; moving,
+            resizing and styling change every language.
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => editor.setLocale(null)} data-testid="locale-banner-original">
+            Show original
+          </Button>
+        </div>
+      ) : null}
       {notice ? (
         <div className="dk-banner dk-banner--notice" role="status">
           {notice}
@@ -900,6 +977,7 @@ export function EditorShell(props: EditorShellProps) {
           playToken={playing}
           engaged={scrubbing}
           onTime={setPlayheadMs}
+          tracksOverride={previewTracks}
         />
       ) : null}
 
@@ -1001,7 +1079,19 @@ export function EditorShell(props: EditorShellProps) {
             }}
             onDrop={onDropFiles}
           >
-            <CanvasStage editor={editor} zoom={zoom} onZoom={setZoom} />
+            <CanvasStage
+              editor={editor}
+              zoom={zoom}
+              onZoom={setZoom}
+              overlay={mode === "motion" && props.motionAuthoring?.CanvasOverlay
+                ? <props.motionAuthoring.CanvasOverlay
+                    editor={editor}
+                    presentationId={props.presentationId}
+                    scene={scene}
+                    resolveAssetUrl={resolveAssetUrl}
+                  />
+                : undefined}
+            />
           </div>
 
           {/* Under the slide they belong to, as in the Figma frame: notes are
@@ -1028,6 +1118,9 @@ export function EditorShell(props: EditorShellProps) {
                   setScrubbing(true);
                   setPlaying((count) => count + 1);
                 }}
+                presetNames={props.motionAuthoring?.presetNames}
+                showAddAnimation={!props.motionAuthoring}
+                loadAudio={loadAudio}
               />
             </section>
           ) : null}

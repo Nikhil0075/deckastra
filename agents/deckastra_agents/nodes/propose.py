@@ -76,6 +76,20 @@ def propose(
         selected.get("creative_direction") or {},
         selected.get("motion_plan") or {},
     )
+    source_rows = list((selected.get("research") or {}).get("sources") or [])
+    if source_rows:
+        known = {source["id"] for source in source_rows}
+        slides = next((op["value"] for op in operations if op.get("path") == "/slides"), [])
+        for slide, planned in zip(slides, plan.get("slides", [])):
+            cited = list(planned.get("source_ids") or [])
+            slide.setdefault("extensions", {})["deckastra.sourceIds"] = [source_id for source_id in cited if source_id in known]
+            if any(source_id not in known for source_id in cited):
+                warnings.append("The writer cited an unavailable source; it was omitted from the persisted citations.")
+            if not cited:
+                warnings.append(f"Slide {slide.get('name', slide['id'])} has no supporting source; verify factual claims.")
+        extensions = dict((state.get("document") or {}).get("extensions") or {})
+        extensions["deckastra.sources"] = source_rows
+        operations.append({"op": "add", "path": "/extensions", "value": extensions})
 
     # Unresolved issues travel with the proposal so the editor can show them
     # against the slides they belong to (doc 03 §13's fallback, made visible).
@@ -97,7 +111,7 @@ def propose(
                 key = slides[int(key)]["id"]
             by_slide.setdefault(key, []).append({**issue, "slide_id": key})
 
-        extensions = dict((state.get("document") or {}).get("extensions") or {})
+        extensions = dict(next((op["value"] for op in operations if op.get("path") == "/extensions"), (state.get("document") or {}).get("extensions") or {}))
         extensions["deckastra.unresolvedIssues"] = by_slide
         operations = [
             *operations,

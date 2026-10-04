@@ -26,9 +26,16 @@ export const FIXTURE_NAMES = {
   repository: "repository-context.mydeck.json",
   /** Every MVP trigger, preset shape and reduced-motion path. */
   animation: "animation-test.mydeck.json",
+  /**
+   * Three languages, per-step narration, a sound cue and narrated playback
+   * (integration plan 01). Not one of the three seed decks the renderer's digest
+   * and pixel gates record, so `loadAllFixtures` leaves it out.
+   */
+  multilingual: "multilingual-narrated.mydeck.json",
 } as const;
 
 export type FixtureName = keyof typeof FIXTURE_NAMES;
+export type SeedFixtureName = Exclude<FixtureName, "multilingual">;
 
 /**
  * Load one seed fixture.
@@ -44,7 +51,7 @@ export function loadFixture(name: FixtureName): PresentationDocument {
   ) as PresentationDocument;
 }
 
-export function loadAllFixtures(): Record<FixtureName, PresentationDocument> {
+export function loadAllFixtures(): Record<SeedFixtureName, PresentationDocument> {
   return {
     technical: loadFixture("technical"),
     repository: loadFixture("repository"),

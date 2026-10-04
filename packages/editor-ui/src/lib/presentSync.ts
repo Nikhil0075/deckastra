@@ -26,12 +26,17 @@ export interface SyncMessage {
    */
   step?: number;
   blacked?: boolean;
+  motionPaused?: boolean;
+  /** Narration muted on the projector (integration plan 01 §3.4). */
+  muted?: boolean;
+  /** The line being narrated, for the presenter's script view. */
+  speaking?: { text: string; remainingMs: number } | null;
   /**
    * `command` (presenter → audience): an intent the audience window carries
    * out, because it owns the motion. "Next" from the laptop has to reveal the
    * next bullet on the projector, not jump the slide past it.
    */
-  action?: "advance" | "black";
+  action?: "advance" | "black" | "motion" | "mute";
   delta?: 1 | -1;
 }
 
@@ -40,9 +45,12 @@ export interface PresentState {
   index: number;
   step: number;
   blacked: boolean;
+  motionPaused?: boolean;
+  muted?: boolean;
+  speaking?: { text: string; remainingMs: number } | null;
 }
 
-export type PresentCommand = { action: "advance"; delta: 1 | -1 } | { action: "black" };
+export type PresentCommand = { action: "advance"; delta: 1 | -1 } | { action: "black" } | { action: "motion" } | { action: "mute" };
 
 /**
  * Clamp an index from the other window.
@@ -117,6 +125,15 @@ export class PresentChannel {
         index: clampIndex(message.index, this.handlers.slideCount()),
         step: typeof message.step === "number" && message.step >= 0 ? Math.trunc(message.step) : 0,
         blacked: message.blacked === true,
+        // Older audience windows do not send this field. Keep it absent so the
+        // protocol remains structurally backwards-compatible as well as safe.
+        ...(typeof message.motionPaused === "boolean" ? { motionPaused: message.motionPaused } : {}),
+        ...(typeof message.muted === "boolean" ? { muted: message.muted } : {}),
+        ...(message.speaking && typeof message.speaking.text === "string" && typeof message.speaking.remainingMs === "number"
+          ? { speaking: { text: message.speaking.text.slice(0, 2000), remainingMs: Math.max(0, message.speaking.remainingMs) } }
+          : message.speaking === null
+            ? { speaking: null }
+            : {}),
       });
       return;
     }
@@ -128,6 +145,10 @@ export class PresentChannel {
         this.handlers.onCommand?.({ action: "advance", delta: message.delta });
       } else if (message.action === "black") {
         this.handlers.onCommand?.({ action: "black" });
+      } else if (message.action === "motion") {
+        this.handlers.onCommand?.({ action: "motion" });
+      } else if (message.action === "mute") {
+        this.handlers.onCommand?.({ action: "mute" });
       }
       return;
     }

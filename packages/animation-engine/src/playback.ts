@@ -23,6 +23,8 @@ export type PlaybackStatus = "playing" | "paused" | "stopped";
 export interface PlaybackState {
   slideId: string;
   timeMs: number;
+  ambientTimeMs: number;
+  ambientPaused: boolean;
   status: PlaybackStatus;
   segmentIndex: number;
   totalDurationMs: number;
@@ -92,12 +94,17 @@ export interface PlaybackListener {
 
 export class PlaybackEngine {
   private timeMs = 0;
+  private ambientTimeMs = 0;
+  private ambientPaused = false;
   private status: PlaybackStatus = "stopped";
   private rate = 1;
   private segmentIndex = 0;
   private cancel: (() => void) | undefined;
   private lastTick = 0;
   private readonly listeners = new Set<PlaybackListener>();
+  private readonly segmentStartedAt = new Map<number, number>([[0, 0]]);
+  private readonly emittedBoundaries = new Set<number>();
+  private completed = false;
 
   constructor(
     private timeline: CompiledTimeline,
@@ -129,12 +136,13 @@ export class PlaybackEngine {
     return {
       slideId: this.timeline.slideId,
       timeMs: this.timeMs,
+      ambientTimeMs: this.ambientTimeMs,
+      ambientPaused: this.ambientPaused,
       status: this.status,
       segmentIndex: this.segmentIndex,
       totalDurationMs: this.timeline.durationMs,
       rate: this.rate,
       awaitingAdvance:
-        this.status !== "playing" &&
         segment !== undefined &&
         this.timeMs >= segment.endMs &&
         this.segmentIndex < this.timeline.segments.length - 1,
@@ -156,6 +164,19 @@ export class PlaybackEngine {
     this.emit();
   }
 
+  /** Freeze only ambient loops; finite entrances and reveals keep playing. */
+  pauseAmbient(): void {
+    if (this.ambientPaused) return;
+    this.ambientPaused = true;
+    this.emit();
+  }
+
+  resumeAmbient(): void {
+    if (!this.ambientPaused) return;
+    this.ambientPaused = false;
+    this.emit();
+  }
+
   /**
    * Jump to `timeMs`.
    *
@@ -166,6 +187,7 @@ export class PlaybackEngine {
    */
   seek(timeMs: number): void {
     this.timeMs = clamp(timeMs, 0, this.timeline.durationMs);
+    this.ambientTimeMs = this.timeMs;
     this.segmentIndex = this.segmentContaining(this.timeMs);
     this.emit();
   }
@@ -186,6 +208,12 @@ export class PlaybackEngine {
   }
 
   restart(): void {
+    this.ambientTimeMs = 0;
+    this.ambientPaused = false;
+    this.segmentStartedAt.clear();
+    this.segmentStartedAt.set(0, 0);
+    this.emittedBoundaries.clear();
+    this.completed = false;
     this.segmentIndex = 0;
     this.seek(0);
     this.play();
@@ -196,6 +224,8 @@ export class PlaybackEngine {
     this.cancel?.();
     this.cancel = undefined;
     this.timeMs = 0;
+    this.ambientTimeMs = 0;
+    this.ambientPaused = false;
     this.segmentIndex = 0;
     this.emit();
   }
@@ -218,7 +248,6 @@ export class PlaybackEngine {
       // Already in the last segment: finish it rather than doing nothing. A
       // presenter pressing → mid-entrance wants the entrance over with.
       if (this.timeMs < this.timeline.durationMs) {
-        this.pause();
         this.seek(this.timeline.durationMs);
       }
       return false;
@@ -227,6 +256,7 @@ export class PlaybackEngine {
     this.segmentIndex += 1;
     const segment = this.timeline.segments[this.segmentIndex]!;
     this.timeMs = segment.startMs;
+    this.segmentStartedAt.set(this.segmentIndex, this.ambientTimeMs);
     this.play();
     return true;
   }
@@ -255,6 +285,7 @@ export class PlaybackEngine {
     this.cancel = undefined;
     this.segmentIndex = Math.max(0, this.timeline.segments.length - 1);
     this.timeMs = this.timeline.durationMs;
+    this.ambientTimeMs = this.timeline.durationMs;
     this.broadcast(finalSample(this.timeline));
   }
 
@@ -273,6 +304,7 @@ export class PlaybackEngine {
       const now = this.clock.now();
       const elapsed = (now - this.lastTick) * this.rate;
       this.lastTick = now;
+      if (!this.ambientPaused) this.ambientTimeMs += elapsed;
 
       const segment = this.timeline.segments[this.segmentIndex];
       // The segment boundary is a hard stop, not a suggestion. Overshooting it by
@@ -285,13 +317,19 @@ export class PlaybackEngine {
       this.emit();
 
       if (next >= limit) {
-        this.status = "paused";
         const state = this.state;
-        for (const listener of this.listeners) listener.onSegmentEnd?.(state);
-        if (this.segmentIndex >= this.timeline.segments.length - 1) {
+        if (!this.emittedBoundaries.has(this.segmentIndex)) {
+          this.emittedBoundaries.add(this.segmentIndex);
+          for (const listener of this.listeners) listener.onSegmentEnd?.(state);
+        }
+        if (this.segmentIndex >= this.timeline.segments.length - 1 && !this.completed) {
+          this.completed = true;
           for (const listener of this.listeners) listener.onComplete?.(state);
         }
-        return;
+        if (!this.timeline.hasInfiniteMotion) {
+          this.status = "paused";
+          return;
+        }
       }
 
       this.tick();
@@ -299,7 +337,11 @@ export class PlaybackEngine {
   }
 
   private emit(): void {
-    this.broadcast(sampleAt(this.timeline, this.timeMs));
+    this.broadcast(sampleAt(this.timeline, this.timeMs, {
+      ambientTimeMs: this.ambientTimeMs,
+      activeSegment: this.segmentIndex,
+      segmentStartedAt: this.segmentStartedAt,
+    }));
   }
 
   private broadcast(sample: Sample): void {

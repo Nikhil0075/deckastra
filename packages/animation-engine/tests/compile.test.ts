@@ -159,11 +159,12 @@ describe("clicks split the timeline into segments", () => {
 
 describe("reduced motion", () => {
   it("resolves in the order §27.1 requires", () => {
-    // A viewer's explicit choice beats the OS, and the OS beats the document. A
-    // deck author cannot push motion onto someone who asked for less.
+    // A viewer's explicit choice beats the OS. The document token describes the
+    // fallback to use after reduction is requested; it is not a request itself.
     expect(resolveMotionLevel("none", { userMotionPreference: "full" })).toBe("full");
     expect(resolveMotionLevel(undefined, { systemPrefersReducedMotion: true })).toBe("reduced");
-    expect(resolveMotionLevel("none", {})).toBe("none");
+    expect(resolveMotionLevel("none", {})).toBe("full");
+    expect(resolveMotionLevel("fade", {})).toBe("full");
     expect(resolveMotionLevel(undefined, {})).toBe("full");
   });
 
@@ -217,7 +218,8 @@ describe("reduced motion", () => {
 
     expect(none.durationMs).toBe(0);
     const sample = sampleAt(none, 0);
-    expect(sample.get("el_a")!.values.opacity).toBe(1);
+    // No inline animation style means the renderer's stable/base state: visible.
+    expect(sample.get("el_a")).toBeUndefined();
   });
 
   it("at level none clicks still advance", () => {
@@ -345,5 +347,71 @@ describe("determinism", () => {
       track("anm_2", "el_b", { type: "afterPrevious" }, [{ preset: "blurReveal" }]),
     ];
     expect(compileTimeline(THREE, tracks)).toEqual(compileTimeline(THREE, tracks));
+  });
+});
+
+describe("text sub-target expansion", () => {
+  it("expands one authored track into stable grapheme clips", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_text", "el_a", { type: "slideEnter" }, [{
+        preset: "byLetter",
+        presetParams: { segmentCount: 3 },
+        durationMs: 240,
+      }]),
+    ]);
+
+    expect(timeline.clips.map((clip) => clip.subTarget)).toEqual(["glyph/0", "glyph/1", "glyph/2"]);
+    expect(new Set(timeline.clips.map((clip) => clip.trackId))).toEqual(new Set(["anm_text"]));
+  });
+});
+
+describe("repeat and loop compilation", () => {
+  it("treats repeat as additional iterations and keeps a finite settled boundary", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_1", "el_a", { type: "slideEnter" }, [{ durationMs: 400, repeat: 2 }]),
+    ]);
+    expect(timeline.clips[0]).toMatchObject({ periodMs: 400, iterations: 3, endMs: 1200, settledEndMs: 1200 });
+    expect(timeline.durationMs).toBe(1200);
+    expect(timeline.hasInfiniteMotion).toBe(false);
+  });
+
+  it("applies an exit's final state when its reduced fallback is instant", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_1", "el_b", { type: "slideEnter" }, [{ preset: "fade", durationMs: 400 }]),
+      track("anm_2", "el_a", { type: "click" }, [{ preset: "fadeOut", durationMs: 500, fill: "forwards" }]),
+    ], { systemPrefersReducedMotion: true });
+
+    const exit = timeline.clips.find((clip) => clip.preset === "fadeOut")!;
+    expect(exit.periodMs).toBe(1);
+    expect(sampleAt(timeline, exit.startMs).get("el_a")!.values.opacity).toBe(1);
+    expect(sampleAt(timeline, exit.endMs).get("el_a")!.values.opacity).toBe(0);
+  });
+
+  it("compiles an infinite loop without making navigation duration infinite", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_1", "el_a", { type: "slideEnter" }, [{ durationMs: 400, repeat: -1, direction: "alternate" }]),
+    ]);
+    expect(timeline.clips[0]!.endMs).toBe(Infinity);
+    expect(timeline.durationMs).toBe(0);
+    expect(timeline.budget).toMatchObject({ entranceMs: 0, exceeded: false });
+    expect(timeline.hasInfiniteMotion).toBe(true);
+    expect(timeline.clips[0]!.direction).toBe("alternate");
+  });
+
+  it("freezes a loop at restOffset under reduced motion", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_1", "el_a", { type: "slideEnter" }, [{ preset: "breathe", durationMs: 1000, repeat: -1, restOffset: 0.5 }]),
+    ], { systemPrefersReducedMotion: true });
+    expect(timeline.hasInfiniteMotion).toBe(false);
+    expect(sampleAt(timeline, 50).get("el_a")!.values.scale).toBe(1.035);
+  });
+
+  it("warns when restraint and compositor rules are exceeded", () => {
+    const timeline = compileTimeline(THREE, [
+      track("anm_1", "el_a", { type: "slideEnter" }, [{ preset: "float", repeat: -1 }]),
+      track("anm_2", "el_b", { type: "withPrevious" }, [{ preset: "breathe", repeat: -1 }]),
+      track("anm_3", "el_c", { type: "withPrevious" }, [{ preset: "spin", repeat: -1 }]),
+    ]);
+    expect(timeline.warnings.map((warning) => warning.code)).toEqual(expect.arrayContaining(["W140", "W142"]));
   });
 });

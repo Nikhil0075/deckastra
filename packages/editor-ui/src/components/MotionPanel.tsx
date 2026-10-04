@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 
 import type { PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
-import { newId, walkElements } from "@deckastra/presentation-schema";
+import { newId, scriptForDisplay, sourceLocale, textContent, walkElements } from "@deckastra/presentation-schema";
+import { updateSoundCueOperations } from "@deckastra/presentation-core";
 import {
-  PRESET_NAMES,
+  LEGACY_PRESET_NAMES,
   PRESETS,
   buildTimelineView,
   clipPatchOperations,
@@ -18,11 +19,18 @@ import {
   rippleAfterTrim,
   setKeyframeOperations,
   splitClip,
+  compileNarratedPlayback,
+  narrationBars,
   type CompiledTimeline,
+  type NarrationCueInput,
+  type SoundCueInput,
 } from "@deckastra/animation-engine";
-import type { SlideScene } from "@deckastra/renderer";
+import { librarySoundDurationMs, type SlideScene } from "@deckastra/renderer";
 
 import { TimelineLanes, type TimelineGesture } from "./TimelineLanes";
+import { IconButton, type IconName } from "../ui";
+import { AudioLanes } from "./AudioLanes";
+import { useRecordedPeaks } from "../lib/audio-peaks";
 
 /**
  * The motion panel and timeline (doc 04 §25).
@@ -48,6 +56,10 @@ export interface MotionPanelProps {
   onScrub?: (timeMs: number) => void;
   onPlay?: () => void;
   playheadMs?: number;
+  presetNames?: readonly string[];
+  showAddAnimation?: boolean;
+  /** Reads a recording's bytes, to draw its waveform on the Audio lanes. */
+  loadAudio?: (storageKey: string) => Promise<Blob>;
 }
 
 export function MotionPanel({
@@ -59,6 +71,9 @@ export function MotionPanel({
   onScrub,
   onPlay,
   playheadMs = 0,
+  presetNames = LEGACY_PRESET_NAMES,
+  showAddAnimation = true,
+  loadAudio,
 }: MotionPanelProps) {
   const slide = doc.slides[slideIndex];
   const [selectedClip, setSelectedClip] = useState<string | null>(null);
@@ -80,11 +95,87 @@ export function MotionPanel({
     }
     return map;
   }, [slide]);
+  // What each lane animates, as a glyph beside its name: the concept's lanes
+  // say "T TITLE · words", and a column of ids said nothing.
+  const icons = useMemo(() => {
+    const map = new Map<string, IconName>();
+    if (!slide) return map;
+    for (const { element } of walkElements(slide.elements)) map.set(element.id, ICON_FOR_TYPE[element.type] ?? "select");
+    return map;
+  }, [slide]);
 
-  const view = useMemo(
+  const motionView = useMemo(
     () => (timeline ? buildTimelineView(timeline, labels) : null),
     [timeline, labels],
   );
+
+  // The Audio lanes (integration plan 01 §3.6): narration placed by its step,
+  // sounds by their trigger, on the same clock as the motion lanes. A voice
+  // longer than the motion extends the timeline so it can be seen whole.
+  const audio = useMemo(() => {
+    const cues = (slide?.narration?.cues ?? []) as NarrationCueInput[];
+    const sounds = (slide?.soundCues ?? []) as SoundCueInput[];
+    if (!timeline || (!cues.length && !sounds.length)) return null;
+    const locale = sourceLocale(doc);
+    const schedule = compileNarratedPlayback(timeline, cues, sounds, {
+      locale,
+      soundDurationMs: (source) =>
+        "library" in source ? librarySoundDurationMs(source.library) : (doc.assets.find((asset) => asset.id === source.assetId)?.durationMs ?? 0),
+    });
+    const bars = narrationBars(timeline, cues, locale);
+    const occurrences = schedule.sounds.map((occurrence) => {
+      const cue = sounds.find((candidate) => candidate.id === occurrence.cueId)!;
+      const label =
+        cue.label ?? ("library" in cue.source ? cue.source.library : "Sound");
+      return { ...occurrence, label, startMs: cue.startMs };
+    });
+    const end = Math.max(
+      0,
+      ...bars.map((bar) => bar.startMs + bar.durationMs),
+      ...occurrences.map((sound) => sound.timelineAtMs + Math.max(120, sound.durationMs)),
+    );
+    // The words as a person reads them: pause markers are for the voice.
+    const scripts = Object.fromEntries(cues.map((cue) => [cue.id, scriptForDisplay(cue.text ?? "")]));
+    // Which file each bar would play: the take for the language on show, and a
+    // sound's own upload. Library sounds are drawn from their recipe instead.
+    const takes = Object.fromEntries(
+      cues.flatMap((cue) => {
+        const take = (cue.takes as Record<string, { assetId?: string }> | undefined)?.[locale];
+        return take?.assetId ? [[cue.id, take.assetId]] : [];
+      }),
+    ) as Record<string, string>;
+    const files = [
+      ...Object.values(takes),
+      ...sounds.flatMap((cue) => ("assetId" in cue.source && cue.source.assetId ? [cue.source.assetId] : [])),
+    ];
+    return { bars, occurrences, end, scripts, takes, files };
+  }, [timeline, slide, doc]);
+  const recordedPeaks = useRecordedPeaks(doc, audio?.files ?? [], loadAudio);
+
+  const view = useMemo(() => {
+    if (!motionView) return motionView;
+    // A voice longer than the motion extends the timeline, and the ruler's
+    // ticks are recomputed for the whole of it: ticks made for a 0.9s motion
+    // left a 5s narrated slide with one label, "0s".
+    const durationMs = audio && audio.end > motionView.durationMs ? Math.ceil(audio.end) : motionView.durationMs;
+    return { ...motionView, durationMs, ticks: rulerTicks(durationMs) };
+  }, [motionView, audio]);
+
+  const audioLanes = audio && view ? (
+    <AudioLanes
+      durationMs={Math.max(view.durationMs, audio.end)}
+      narration={audio.bars}
+      sounds={audio.occurrences}
+      scripts={audio.scripts}
+      takes={audio.takes}
+      recordedPeaks={recordedPeaks}
+      ticks={view?.ticks ?? []}
+      playheadMs={playheadMs}
+      onMoveSound={(cueId, startMs) =>
+        slide && apply(updateSoundCueOperations(doc, slide.id, cueId, { startMs }), "Move sound")
+      }
+    />
+  ) : null;
 
   /**
    * Overlaps, with something to press.
@@ -352,17 +443,18 @@ export function MotionPanel({
   return (
     <div className="dk-dock-motion">
       <div className="dk-dock-motion__head">
+        <IconButton icon="play" label="Play the slide's motion" size="sm" variant="secondary" onClick={onPlay} disabled={view.durationMs === 0} />
+        <span className="dk-dock-motion__time" aria-label="Playhead">
+          {formatClock(Math.min(playheadMs, view.durationMs))}
+          <span className="dk-dock-motion__time-total"> / {formatClock(view.durationMs)}</span>
+        </span>
         <strong className="dk-dock-motion__title">Motion</strong>
-
-        <button className="dk-btn dk-btn--secondary dk-btn--sm" onClick={onPlay} disabled={view.durationMs === 0}>
-          Preview
-        </button>
 
         <BudgetBar budget={view.budget} />
 
         <div className="dk-dock-motion__spacer" />
 
-        {selectedIds.length > 0 ? (
+        {selectedIds.length > 0 && showAddAnimation ? (
           <select
             className="dk-input dk-input--sm"
             aria-label="Add animation to the selection"
@@ -373,27 +465,30 @@ export function MotionPanel({
             }}
           >
             <option value="">Add animation…</option>
-            {PRESET_NAMES.filter((name) => name !== "sharedElementMorph").map((name) => (
+            {presetNames.filter((name) => name !== "sharedElementMorph").map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>
             ))}
           </select>
-        ) : (
+        ) : selectedIds.length === 0 ? (
           <span className="dk-muted">
             Select something to animate it
           </span>
-        )}
+        ) : null}
       </div>
 
       {view.lanes.length === 0 ? (
-        <p className="dk-muted dk-dock-motion__empty">
-          Nothing on this slide moves. That is the right default for most slides —
-          motion reads as emphasis.
-        </p>
+        <>
+          <p className="dk-muted dk-dock-motion__empty">
+            Nothing on this slide moves. That is the right default for most slides —
+            motion reads as emphasis.
+          </p>
+          {audioLanes}
+        </>
       ) : (
         <div className="dk-dock-motion__body">
-          <Ruler ticks={view.ticks} durationMs={view.durationMs} segments={view.segments} />
+          <Ruler ticks={view.ticks} durationMs={view.durationMs} segments={view.segments} playheadMs={playheadMs} onScrub={onScrub} />
 
           <TimelineLanes
             view={view}
@@ -407,21 +502,14 @@ export function MotionPanel({
                 : null
             }
             selectedClipId={selectedClip}
+            icons={icons}
             playheadMs={playheadMs}
             onSelect={setSelectedClip}
             onCommit={commitGesture}
             onScrub={onScrub}
           />
 
-          <input
-            type="range"
-            min={0}
-            max={Math.max(1, view.durationMs)}
-            value={Math.min(playheadMs, view.durationMs)}
-            onChange={(event) => onScrub?.(Number(event.target.value))}
-            aria-label="Scrub the slide timeline"
-            className="dk-dock-motion__scrub"
-          />
+          {audioLanes}
 
           {clip ? (
             <>
@@ -465,7 +553,7 @@ export function MotionPanel({
                   {notice}
                 </p>
               ) : null}
-              <ClipInspector clip={clip} durationMs={sourceClip?.durationMs ?? 0} startMs={sourceClip?.startMs ?? 0} delayMs={sourceClip?.delayMs ?? 0} onEdit={edit} />
+              <ClipInspector clip={clip} durationMs={sourceClip?.durationMs ?? 0} startMs={sourceClip?.startMs ?? 0} delayMs={sourceClip?.delayMs ?? 0} onEdit={edit} presetNames={presetNames} />
             </>
           ) : null}
 
@@ -546,14 +634,24 @@ function BudgetBar({ budget }: { budget: CompiledTimeline["budget"] }) {
   );
 }
 
+/**
+ * The ruler is also the scrubber, as in the concept: seconds along the top, the
+ * playhead's knob on it, and dragging anywhere on it moves the playhead. A real
+ * range input lies over the scale, so it keeps the keyboard and the accessible
+ * name the separate slider under the lanes used to carry.
+ */
 function Ruler({
   ticks,
   durationMs,
   segments,
+  playheadMs,
+  onScrub,
 }: {
   ticks: number[];
   durationMs: number;
   segments: CompiledTimeline["segments"];
+  playheadMs: number;
+  onScrub?: (timeMs: number) => void;
 }) {
   const scale = durationMs > 0 ? 100 / durationMs : 0;
 
@@ -562,13 +660,13 @@ function Ruler({
       <span className="dk-ruler__gutter" />
       <div className="dk-ruler__scale">
         {ticks.map((tick) => (
-          <span
-            key={tick}
-            className="dk-ruler__tick"
-            style={{ left: `${tick * scale}%` }}
-          >
-            {tick / 1000}s
+          <span key={tick} className="dk-ruler__tick" style={{ left: `${tick * scale}%` }}>
+            <span className="dk-ruler__tick-label">{formatTick(tick)}</span>
           </span>
+        ))}
+        {/* Halfway marks between labelled ticks, for reading a time by eye. */}
+        {ticks.slice(1).map((tick, index) => (
+          <span key={`m${tick}`} className="dk-ruler__minor" style={{ left: `${((ticks[index]! + tick) / 2) * scale}%` }} />
         ))}
         {/* Segment boundaries: where playback stops and waits for the presenter.
             Marked because a timeline that does not show them looks like it has an
@@ -583,10 +681,58 @@ function Ruler({
               style={{ left: `${segment.startMs * scale}%` }}
             />
           ))}
+        <input
+          type="range"
+          min={0}
+          max={Math.max(1, durationMs)}
+          value={Math.min(playheadMs, durationMs)}
+          onChange={(event) => onScrub?.(Number(event.target.value))}
+          aria-label="Scrub the slide timeline"
+          aria-valuetext={formatClock(Math.min(playheadMs, durationMs))}
+          className="dk-ruler__scrub"
+        />
       </div>
     </div>
   );
 }
+
+/** "0:01.2": minutes, seconds and a tenth, the way the concept reads time. */
+export function formatClock(ms: number): string {
+  const tenths = Math.max(0, Math.round(ms / 100));
+  const minutes = Math.floor(tenths / 600);
+  const seconds = Math.floor((tenths % 600) / 10);
+  return `${minutes}:${String(seconds).padStart(2, "0")}.${tenths % 10}`;
+}
+
+/**
+ * Ticks at a step a person reads at a glance: about eight across the
+ * timeline, on 0.1, 0.2, 0.25, 0.5, 1, 2, 5 or 10 seconds.
+ */
+export function rulerTicks(durationMs: number): number[] {
+  if (durationMs <= 0) return [0];
+  const step = [100, 200, 250, 500, 1000, 2000, 5000, 10000, 30000].find((one) => durationMs / one <= 8) ?? 60000;
+  const ticks: number[] = [];
+  for (let at = 0; at <= durationMs + 1e-6; at += step) ticks.push(at);
+  return ticks;
+}
+
+/** A tick's label: whole seconds bare ("2s"), anything finer to a tenth ("0.5s"). */
+export function formatTick(ms: number): string {
+  return ms % 1000 === 0 ? `${ms / 1000}s` : `${(ms / 1000).toFixed(ms % 100 === 0 ? 1 : 2)}s`;
+}
+
+const ICON_FOR_TYPE: Record<string, IconName> = {
+  text: "text",
+  shape: "rect",
+  image: "image",
+  chart: "chart",
+  diagram: "diagram",
+  table: "table",
+  code: "code",
+  equation: "equation",
+  icon: "theme",
+  group: "grid",
+};
 
 function ClipInspector({
   clip,
@@ -594,12 +740,14 @@ function ClipInspector({
   startMs,
   delayMs,
   onEdit,
+  presetNames,
 }: {
   clip: CompiledTimeline["clips"][number];
   durationMs: number;
   startMs: number;
   delayMs: number;
   onEdit: (kind: "preset" | "trim" | "easing" | "delete" | "trigger" | "startMs" | "delayMs" | "duplicate", value: unknown) => void;
+  presetNames: readonly string[];
 }) {
   const preset = clip.preset ? PRESETS[clip.preset] : undefined;
 
@@ -618,7 +766,7 @@ function ClipInspector({
             // author's motion (doc 02 §0.8).
             <option value={clip.preset}>{clip.preset} (unknown)</option>
           ) : null}
-          {PRESET_NAMES.map((name) => (
+          {(!clip.preset || presetNames.includes(clip.preset) ? presetNames : [clip.preset, ...presetNames]).map((name) => (
             <option key={name} value={name}>
               {name}
             </option>
@@ -778,9 +926,20 @@ function valueAtPlayhead(
   return before.value + (after.value - before.value) * progress;
 }
 
+/**
+ * What a lane is called: the object's name, else what it is and the first of
+ * its words ("text · Write it"). An id fragment told nobody which of three
+ * bullets a lane animated, and the words are what the person can see.
+ */
 function labelFor(element: PresentationElement): string {
   if (element.name) return element.name;
-  if (element.semanticRole) return element.semanticRole;
-  return element.id.slice(3, 11);
+  const kind = element.semanticRole ?? element.type;
+  const content = (element as { content?: unknown }).content;
+  const words =
+    typeof content === "string" || (typeof content === "object" && content !== null && "blocks" in content)
+      ? textContent(content as Parameters<typeof textContent>[0]).replace(/\s+/g, " ").trim()
+      : "";
+  if (words) return `${kind} · ${words.length > 28 ? `${words.slice(0, 27)}…` : words}`;
+  return element.semanticRole ? kind : `${element.type} ${element.id.slice(-4).toLowerCase()}`;
 }
 

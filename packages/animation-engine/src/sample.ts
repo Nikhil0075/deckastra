@@ -42,14 +42,25 @@ export function targetKey(targetId: string, subTarget?: string): string {
  * animating" from "this element is animating to its resting value", because the
  * first should have no inline styles at all and the second should.
  */
-export function sampleAt(timeline: CompiledTimeline, timeMs: number): Sample {
+export interface SampleOptions {
+  /** Ambient time keeps advancing while finite reveal time waits for a click. */
+  ambientTimeMs?: number;
+  /** Current click segment; loops in later segments stay in pre-roll. */
+  activeSegment?: number;
+  /** Ambient clock value captured when each segment became active. */
+  segmentStartedAt?: ReadonlyMap<number, number>;
+  /** Freeze every repeating clip at its authored static/rest frame. */
+  useRestFrame?: boolean;
+}
+
+export function sampleAt(timeline: CompiledTimeline, timeMs: number, options: SampleOptions = {}): Sample {
   const sample: Sample = new Map();
 
   // Document order is the tie-break: doc 04 §25.3 resolves an overlap in favour
   // of the later-defined clip, and `clips` is already in that order.
   for (const clip of timeline.clips) {
     for (const property of clip.properties) {
-      const value = valueAt(clip, property, timeMs);
+      const value = valueAt(clip, property, sampleTimeForClip(timeline, clip, timeMs, options));
       if (value === undefined) continue;
 
       const key = targetKey(clip.targetId, clip.subTarget);
@@ -68,6 +79,25 @@ export function sampleAt(timeline: CompiledTimeline, timeMs: number): Sample {
   }
 
   return sample;
+}
+
+function sampleTimeForClip(
+  timeline: CompiledTimeline,
+  clip: CompiledClip,
+  finiteTimeMs: number,
+  options: SampleOptions,
+): number {
+  if (options.useRestFrame && clip.iterations !== 1) {
+    return clip.startMs + clip.restOffset * clip.periodMs;
+  }
+  if (clip.iterations !== Infinity || options.ambientTimeMs === undefined) return finiteTimeMs;
+  const active = options.activeSegment ?? timeline.segments.length - 1;
+  if (clip.segment > active) return clip.startMs - 1;
+  if (clip.segment === 0) return options.ambientTimeMs;
+  const segment = timeline.segments[clip.segment];
+  const activatedAt = options.segmentStartedAt?.get(clip.segment);
+  if (!segment || activatedAt === undefined) return finiteTimeMs;
+  return segment.startMs + (options.ambientTimeMs - activatedAt);
 }
 
 /**
@@ -94,18 +124,47 @@ function valueAt(
   const keyframes = property.keyframes;
   if (keyframes.length === 0) return undefined;
 
-  const first = keyframes[0]!;
-  const last = keyframes[keyframes.length - 1]!;
+  const startValue = valueAtBase(property, clip.startMs + phaseAtStart(clip) * clip.periodMs);
+  const endValue = valueAtBase(property, clip.startMs + phaseAtEnd(clip) * clip.periodMs);
 
   if (timeMs < clip.startMs) {
     const holdsBefore = clip.fill === "backwards" || clip.fill === "both";
-    return holdsBefore ? first.value : undefined;
+    return holdsBefore ? startValue : undefined;
   }
-  if (timeMs <= first.timeMs) return first.value;
-  if (timeMs >= last.timeMs) {
+  if (clip.iterations !== Infinity && timeMs >= clip.endMs) {
     const holdsAfter = clip.fill === "forwards" || clip.fill === "both";
-    return holdsAfter ? last.value : undefined;
+    return holdsAfter ? endValue : undefined;
   }
+
+  if (clip.periodMs > 0 && (clip.iterations !== 1 || clip.direction === "reverse")) {
+    const elapsed = Math.max(0, timeMs - clip.startMs);
+    const cycle = Math.floor(elapsed / clip.periodMs);
+    const within = elapsed % clip.periodMs;
+    let phase = within / clip.periodMs;
+    if (clip.direction === "reverse" || (clip.direction === "alternate" && cycle % 2 === 1)) phase = 1 - phase;
+    return valueAtBase(property, clip.startMs + phase * clip.periodMs);
+  }
+
+  return valueAtBase(property, timeMs);
+}
+
+function phaseAtStart(clip: CompiledClip): number {
+  return clip.direction === "reverse" ? 1 : 0;
+}
+
+function phaseAtEnd(clip: CompiledClip): number {
+  if (clip.direction === "reverse") return 0;
+  if (clip.direction === "alternate" && Number.isFinite(clip.iterations) && clip.iterations % 2 === 0) return 0;
+  return 1;
+}
+
+function valueAtBase(property: CompiledProperty, timeMs: number): unknown {
+  const keyframes = property.keyframes;
+  if (keyframes.length === 0) return undefined;
+  const first = keyframes[0]!;
+  const last = keyframes[keyframes.length - 1]!;
+  if (timeMs <= first.timeMs) return first.value;
+  if (timeMs >= last.timeMs) return last.value;
 
   // Linear scan. The alternative is a binary search, and a clip has single-digit
   // keyframes except for a sampled spring, where it has about forty — still
@@ -218,5 +277,5 @@ function numberOr(value: unknown, fallback: number): number {
  * entrance backwards. Sampling past the end gives exactly that.
  */
 export function finalSample(timeline: CompiledTimeline): Sample {
-  return sampleAt(timeline, timeline.durationMs + 1);
+  return sampleAt(timeline, timeline.durationMs + 1, { useRestFrame: true });
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MIN_CLIP_MS, type TimelineView } from "@deckastra/animation-engine";
+import { Icon, type IconName } from "../ui";
 
 /**
  * The lanes, and the gestures on them (doc 04 §25.2).
@@ -77,6 +78,42 @@ export interface TimelineLanesProps {
    */
   keyframes?: ClipKeyframes | null;
   onScrub?: (timeMs: number) => void;
+  /** A glyph for what each lane animates, by element id. */
+  icons?: ReadonlyMap<string, IconName>;
+}
+
+/**
+ * A lane's name as the concept sets it: what kind of thing it is, small and
+ * spaced, then its own words. `labelFor` writes "kind · words"; a name the
+ * author gave is shown whole.
+ */
+export function LaneName({ label, icon }: { label: string; icon?: IconName }) {
+  const at = label.indexOf(" · ");
+  return (
+    <span className="dk-lanes__name">
+      {icon ? <Icon name={icon} size={14} aria-hidden /> : null}
+      {at > 0 ? (
+        <>
+          <span className="dk-lanes__kind">{label.slice(0, at)}</span>
+          <span className="dk-lanes__words" dir="auto">{label.slice(at + 3)}</span>
+        </>
+      ) : (
+        <span className="dk-lanes__words" dir="auto">{label}</span>
+      )}
+    </span>
+  );
+}
+
+/** Faint vertical lines at the ruler's ticks, behind every lane. */
+export function LaneGrid({ ticks, durationMs }: { ticks: readonly number[]; durationMs: number }) {
+  if (durationMs <= 0) return null;
+  return (
+    <div aria-hidden className="dk-lanes__grid">
+      {ticks.map((tick) => (
+        <span key={tick} style={{ left: `calc(var(--dk-lane-gutter) + (100% - var(--dk-lane-gutter)) * ${Math.min(1, tick / durationMs)})` }} />
+      ))}
+    </div>
+  );
 }
 
 export function TimelineLanes({
@@ -87,6 +124,7 @@ export function TimelineLanes({
   onCommit,
   onScrub,
   keyframes = null,
+  icons,
 }: TimelineLanesProps) {
   const [preview, setPreview] = useState<TimelineGesture | null>(null);
   /**
@@ -312,10 +350,11 @@ export function TimelineLanes({
 
   return (
     <div className="dk-lanes" ref={surface}>
+      <LaneGrid ticks={view.ticks} durationMs={view.durationMs} />
       {view.lanes.map((lane) => (
         <div key={lane.targetId} className="dk-lanes__row">
           <span className="dk-lanes__label" title={lane.label}>
-            {lane.label}
+            <LaneName label={lane.label} icon={icons?.get(lane.targetId)} />
           </span>
           <div className="dk-lanes__track" data-lane-track="">
             {lane.bars.map((bar) => {
@@ -369,7 +408,8 @@ export function TimelineLanes({
                     width: `${Math.max(1.5, durationMs * scale)}%`,
                   }}
                 >
-                  {bar.label}
+                  <span className="dk-lanes__bar-label">{bar.label}</span>
+                  {/* The diamond at the end is the trim handle, as in the concept. */}
                   <span aria-hidden className="dk-lanes__trim" />
 
                 </div>
@@ -459,8 +499,8 @@ export function TimelineLanes({
         // A length times a number, never a length times a length: the old
         // `P% * 0.01 * (100% - 96px)` was invalid CSS, so the browser dropped
         // `left` and the playhead sat at the lanes' left edge whatever the time.
-        // 96px is the label column (88px + the 8px gap), as in the ruler.
-        style={{ left: `calc(96px + (100% - 96px) * ${Math.min(1, Math.max(0, (playheadMs * scale) / 100))})` }}
+        // `--dk-lane-gutter` is the label column plus its gap, as in the ruler.
+        style={{ left: `calc(var(--dk-lane-gutter) + (100% - var(--dk-lane-gutter)) * ${Math.min(1, Math.max(0, (playheadMs * scale) / 100))})` }}
       />
     </div>
   );

@@ -1,0 +1,148 @@
+.dk-desktop-motion__styles,
+.dk-desktop-motion__gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dk-desktop-motion__style,
+.dk-desktop-motion__effect {
+  border: 1px solid var(--dk-border);
+  border-radius: 8px;
+  background: var(--dk-surface);
+  color: var(--dk-fg);
+  padding: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dk-desktop-motion__style:hover,
+.dk-desktop-motion__effect:hover,
+.dk-desktop-motion__effect:focus-visible {
+  border-color: var(--dk-accent);
+  background: var(--dk-sunk);
+}
+
+.dk-desktop-motion__style span,
+.dk-desktop-motion__effect small {
+  display: block;
+  margin-top: 3px;
+  color: var(--dk-fg-muted);
+}
+
+.dk-desktop-motion__effect-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 34px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--dk-sunk);
+}
+
+.dk-desktop-motion__effect-preview i {
+  width: 18px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--dk-blue);
+}
+
+.dk-desktop-motion__effect:hover .dk-desktop-motion__effect-preview i,
+.dk-desktop-motion__effect:focus-visible .dk-desktop-motion__effect-preview i {
+  animation: dk-motion-tile-enter 700ms var(--dk-ease) both;
+}
+
+.dk-desktop-motion__effect[data-category="emphasis"]:hover .dk-desktop-motion__effect-preview i,
+.dk-desktop-motion__effect[data-category="emphasis"]:focus-visible .dk-desktop-motion__effect-preview i {
+  animation-name: dk-motion-tile-emphasis;
+}
+
+.dk-desktop-motion__effect[data-category="loop"]:hover .dk-desktop-motion__effect-preview i,
+.dk-desktop-motion__effect[data-category="loop"]:focus-visible .dk-desktop-motion__effect-preview i {
+  animation: dk-motion-tile-loop 900ms ease-in-out infinite alternate;
+}
+
+.dk-desktop-motion__effect[data-preset="shimmer"] .dk-desktop-motion__effect-preview i {
+  width: 150%;
+  height: 100%;
+  border-radius: 0;
+  opacity: 0;
+  background: linear-gradient(110deg, transparent 38%, rgba(255,255,255,.88) 50%, transparent 62%);
+}
+
+.dk-desktop-motion__effect[data-preset="shimmer"]:hover .dk-desktop-motion__effect-preview i,
+.dk-desktop-motion__effect[data-preset="shimmer"]:focus-visible .dk-desktop-motion__effect-preview i {
+  animation: dk-motion-tile-shimmer 1.2s linear infinite;
+}
+
+.dk-desktop-motion__effect[data-category="exit"]:hover .dk-desktop-motion__effect-preview i,
+.dk-desktop-motion__effect[data-category="exit"]:focus-visible .dk-desktop-motion__effect-preview i {
+  animation-name: dk-motion-tile-exit;
+}
+
+@keyframes dk-motion-tile-enter {
+  from { opacity: 0; transform: translateY(7px) scale(.85); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dk-motion-tile-emphasis {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+@keyframes dk-motion-tile-loop {
+  from { transform: translateY(4px); }
+  to { transform: translateY(-4px); }
+}
+
+@keyframes dk-motion-tile-shimmer {
+  0% { opacity: 0; transform: translateX(-75%); }
+  15%, 85% { opacity: .75; }
+  100% { opacity: 0; transform: translateX(75%); }
+}
+
+@keyframes dk-motion-tile-exit {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-7px) scale(.85); }
+}
+
+.dk-motion-legacy {
+  border-top: 1px solid var(--dk-border);
+}
+
+.dk-desktop-motion__when {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dk-desktop-motion__when .dk-segmented__item {
+  min-height: var(--dk-control-sm);
+  height: auto;
+  padding-block: 5px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.dk-desktop-motion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.dk-desktop-motion__check {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dk-desktop-motion__check li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px;
+}

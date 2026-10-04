@@ -358,8 +358,9 @@ describe("the playhead", () => {
       <TimelineLanes view={view} selectedClipId={null} playheadMs={view.durationMs / 2} onSelect={() => {}} onCommit={() => {}} />,
     );
     const playhead = container.querySelector<HTMLElement>(".dk-lanes__playhead")!;
-    // A length plus a number times a length: valid for `left`.
-    expect(playhead.style.left).toBe("calc(96px + 0.5 * (100% - 96px))");
+    // A length plus a number times a length: valid for `left`. The gutter is
+    // the `--dk-lane-gutter` token the ruler and the grid measure from too.
+    expect(playhead.style.left.replace(/\s+/g, " ")).toMatch(/^calc\(var\(--dk-lane-gutter\) \+ (\(100% - var\(--dk-lane-gutter\)\) \* 0\.5|0\.5 \* \(100% - var\(--dk-lane-gutter\)\))\)$/);
 
     // jsdom does not type-check calc(), so it cannot show the old expression
     // failing; Chromium does, and the desktop motion step measures where the

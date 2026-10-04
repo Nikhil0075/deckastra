@@ -21,6 +21,15 @@ import {
   type Slide,
 } from "./document";
 import { isReadableSchemaVersion, parseSemVer } from "./version";
+import {
+  isLocalizablePath,
+  localeSlots,
+  localeTextHash,
+  sameLanguage,
+  sourceLocale,
+  type LocaleSlot,
+} from "./locales";
+import { SOUND_LIBRARY_NAMES } from "./sound-names";
 
 /**
  * Validation (doc 02 §34, §42).
@@ -94,6 +103,7 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   E108: { severity: "error", summary: "DataBinding.sourceId does not resolve" },
   E109: { severity: "error", summary: "AnchorReference.elementId does not resolve" },
   E110: { severity: "error", summary: "Chart table data reference points at a missing table" },
+  E111: { severity: "error", summary: "Narration take or sound cue assetId does not resolve to an audio asset" },
 
   // semantic
   E201: { severity: "error", summary: "Cycle among required constraints" },
@@ -156,6 +166,19 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   W216: { severity: "warning", summary: "Text is smaller than the minimum readable size" },
   W217: { severity: "warning", summary: "Diagram uses little of its frame or shrinks its labels" },
   W218: { severity: "warning", summary: "Text over a picture; its contrast cannot be measured" },
+
+  // Languages, narration and sound (integration plan 01 §3.1–§3.5). In their own
+  // range rather than among the patch codes (E30x), which name a different layer.
+  E320: { severity: "error", summary: "Locale overlay entry names a path that is not a text slot" },
+  E321: { severity: "error", summary: "Locale overlay entry value has the wrong shape for its slot" },
+  E322: { severity: "error", summary: "Locale overlay key disagrees with the overlay's own locale" },
+  W320: { severity: "warning", summary: "Locale overlay entry targets text that no longer exists; kept" },
+  W321: { severity: "warning", summary: "Locale overlay entry is outdated: its source text changed" },
+  W322: { severity: "warning", summary: "Narration take says a different script than the cue now has" },
+  W323: { severity: "warning", summary: "Narration cue names a click step the slide no longer has; kept" },
+  W324: { severity: "warning", summary: "Sound cue names a library sound this reader does not know" },
+  W325: { severity: "warning", summary: "Text uses glyphs the chosen font cannot draw in this language" },
+  W326: { severity: "warning", summary: "Overlay for the deck's own source language is ignored" },
 };
 
 /**
@@ -186,6 +209,8 @@ export const REQUIRES_RENDER_CONTEXT = [
   "W217",
   "W218",
   "W250",
+  // Glyph coverage needs fonts. (W323 is judged from the document: `clickStepCount`.)
+  "W325",
 ] as const;
 
 class IssueCollector {
@@ -246,6 +271,8 @@ export function validateDocument(input: unknown): ValidationReport {
   validateReferences(doc, c, { ids, elementsById, slidesById });
   validateAnimations(doc, c, elementsById);
   validateThemeTokens(doc, c);
+  validateLocales(doc, c);
+  validateNarrationAndSound(doc, c);
   validateLimits(doc, c);
 
   return {
@@ -410,6 +437,12 @@ function collectIds(doc: PresentationDocument, c: IssueCollector): IdIndex {
       for (const clip of track.clips) {
         claim(clip.id, `${slidePath(slide.id)}/animations/id:${track.id}/clips/id:${clip.id}`);
       }
+    }
+    for (const cue of slide.narration?.cues ?? []) {
+      claim(cue.id, `${slidePath(slide.id)}/narration/cues/id:${cue.id}`);
+    }
+    for (const cue of slide.soundCues ?? []) {
+      claim(cue.id, `${slidePath(slide.id)}/soundCues/id:${cue.id}`);
     }
   }
 
@@ -790,6 +823,160 @@ function validateThemeTokens(doc: PresentationDocument, c: IssueCollector): void
   }
 }
 
+/** One path segment, escaped the way `joinPath` escapes it. */
+function escapeSegment(segment: string): string {
+  return segment.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+/**
+ * Overlays (plan 01 §3.1). An entry outside the allowlist is an error, because
+ * applying it could write words into something that is not words. An entry
+ * whose target has gone is a warning and is kept: the element may come back on
+ * an undo, and deleting a translation someone paid for because of an edit
+ * elsewhere is the round-trip loss §0.8 forbids.
+ */
+function validateLocales(doc: PresentationDocument, c: IssueCollector): void {
+  const locales = doc.locales;
+  if (!locales) return;
+  const slots = new Map<string, LocaleSlot>(localeSlots(doc).map((slot) => [slot.path, slot]));
+  const source = sourceLocale(doc);
+
+  const count = checkLimit("localesPerDocument", Object.keys(locales).length);
+  if (count.level !== "ok") {
+    c.add(count.level === "error" ? "E009" : "W230", "/locales", `${count.value} languages against a limit of ${count.max}.`);
+  }
+
+  for (const [key, overlay] of Object.entries(locales)) {
+    const base = `/locales/${escapeSegment(key)}`;
+    if (overlay.locale !== key) {
+      c.add("E322", `${base}/locale`, `Overlay stored under "${key}" says it is "${overlay.locale}". The key is what the editor and exports ask for; make the two agree.`);
+    }
+    if (sameLanguage(key, source)) {
+      c.add("W326", base, `"${key}" is the deck's own language (metadata.language), so this overlay is never shown. Edit the source text instead.`);
+    }
+    for (const [path, entry] of Object.entries(overlay.entries)) {
+      const entryPath = `${base}/entries/${escapeSegment(path)}`;
+      if (!isLocalizablePath(path)) {
+        c.add("E320", entryPath, `"${path}" is not a text slot. An overlay can replace words only: content, labels, notes, alt text, narration scripts.`);
+        continue;
+      }
+      const slot = slots.get(path);
+      if (!slot) {
+        c.add("W320", entryPath, `The ${key} translation for "${path}" has nothing to translate any more. It is kept in case the text comes back.`);
+        continue;
+      }
+      const isString = typeof entry.value === "string";
+      if ((slot.kind === "rich" && isString) || (slot.kind === "string" && !isString)) {
+        c.add("E321", entryPath, `"${path}" holds ${slot.kind === "rich" ? "rich text" : "a plain string"}, and this translation is ${isString ? "a plain string" : "rich text"}.`);
+        continue;
+      }
+      if (entry.sourceHash !== localeTextHash(slot.value)) {
+        c.add("W321", entryPath, `The source text of "${path}" changed after it was translated to ${key}. Re-translate it, or review it and keep it.`, {
+          targetIds: slot.elementId ? [slot.elementId] : undefined,
+        });
+      }
+    }
+  }
+}
+
+/**
+ * How many click steps a slide has, arrival included: 1, plus one for each
+ * enabled animation track triggered by a click whose target is on the slide.
+ *
+ * The animation compiler's own rule (`compileTimeline` starts a segment for
+ * exactly those tracks, and skips a track whose target has gone), restated here
+ * because the schema cannot depend on the engine. A narration line on a step at
+ * or past this number plays nowhere (W323).
+ * `animation-engine/tests/click-steps.test.ts` holds the two to one answer.
+ */
+export function clickStepCount(slide: PresentationDocument["slides"][number]): number {
+  const present = new Set<string>();
+  const visit = (elements: readonly { id: string; children?: unknown }[]): void => {
+    for (const element of elements) {
+      present.add(element.id);
+      if (Array.isArray(element.children)) visit(element.children as { id: string }[]);
+    }
+  };
+  visit(slide.elements as { id: string; children?: unknown }[]);
+  let steps = 1;
+  for (const track of slide.animations ?? []) {
+    if (track.disabled) continue;
+    if (track.trigger.type === "click" && present.has(track.targetId)) steps += 1;
+  }
+  return steps;
+}
+
+/**
+ * Narration and sound (plan 01 §3.3, §3.5). A take or a sound naming an asset
+ * that is not an audio entry in the manifest cannot play anywhere, which is an
+ * error for the same reason an image's missing asset is (E102).
+ */
+function validateNarrationAndSound(doc: PresentationDocument, c: IssueCollector): void {
+  const audio = new Set(doc.assets.filter((asset) => asset.type === "audio").map((asset) => asset.id));
+  const library = new Set<string>(SOUND_LIBRARY_NAMES);
+  for (const slide of doc.slides) {
+    const cues = slide.narration?.cues ?? [];
+    const cueLimit = checkLimit("narrationCuesPerSlide", cues.length);
+    if (cueLimit.level !== "ok") {
+      c.add(cueLimit.level === "error" ? "E009" : "W230", `${slidePath(slide.id)}/narration`, `${cues.length} narration cues on this slide against a limit of ${cueLimit.max}.`);
+    }
+    // Judged here, from the document, so the Critic, exports and agents all
+    // see it — not only the editor's Design Check. The count is the
+    // compiler's own rule (`clickStepCount`), held to it by a test.
+    const steps = cues.length ? clickStepCount(slide) : 0;
+    for (const cue of cues) {
+      const cuePath = `${slidePath(slide.id)}/narration/cues/id:${cue.id}`;
+      if (cue.step >= steps) {
+        c.add(
+          "W323",
+          `${cuePath}/step`,
+          `This narration line belongs to click ${cue.step}, and the slide has ${steps - 1} click${steps === 2 ? "" : "s"} now. It is kept and plays nowhere; move it to a step the slide has.`,
+          { targetIds: [cue.id] },
+        );
+      }
+      for (const [locale, take] of Object.entries(cue.takes ?? {})) {
+        const takePath = `${cuePath}/takes/${escapeSegment(locale)}`;
+        if (!audio.has(take.assetId)) {
+          c.add("E111", `${takePath}/assetId`, `The ${locale} recording of this cue names "${take.assetId}", which is not an audio asset in this deck.`, { targetIds: [cue.id] });
+        }
+        if (take.textHash !== localeTextHash(scriptIn(doc, slide.id, cue, locale))) {
+          c.add("W322", takePath, `The ${locale} recording says an older script. Record or synthesize it again.`, { targetIds: [cue.id] });
+        }
+      }
+    }
+    const sounds = slide.soundCues ?? [];
+    const soundLimit = checkLimit("soundCuesPerSlide", sounds.length);
+    if (soundLimit.level !== "ok") {
+      c.add(soundLimit.level === "error" ? "E009" : "W230", `${slidePath(slide.id)}/soundCues`, `${sounds.length} sounds on this slide against a limit of ${soundLimit.max}.`);
+    }
+    for (const sound of sounds) {
+      const path = `${slidePath(slide.id)}/soundCues/id:${sound.id}`;
+      if ("assetId" in sound.source && !audio.has(sound.source.assetId)) {
+        c.add("E111", `${path}/source/assetId`, `Sound "${sound.label ?? sound.id}" names "${sound.source.assetId}", which is not an audio asset in this deck.`, { targetIds: [sound.id] });
+      }
+      if ("library" in sound.source && !library.has(sound.source.library)) {
+        c.add("W324", `${path}/source/library`, `"${sound.source.library}" is not a sound this reader has. It is kept, and plays as silence here.`, { targetIds: [sound.id] });
+      }
+    }
+  }
+}
+
+/** The script a cue has in one locale: the overlay's words if there are any, else the source. */
+export function narrationScriptIn(
+  doc: PresentationDocument,
+  slideId: string,
+  cue: { id: string; text: string },
+  locale: string,
+): string {
+  return scriptIn(doc, slideId, cue, locale);
+}
+
+function scriptIn(doc: PresentationDocument, slideId: string, cue: { id: string; text: string }, locale: string): string {
+  if (sameLanguage(locale, sourceLocale(doc))) return cue.text;
+  const entry = doc.locales?.[locale]?.entries[`/slides/id:${slideId}/narration/cues/id:${cue.id}/text`];
+  return typeof entry?.value === "string" ? entry.value : cue.text;
+}
+
 function validateLimits(doc: PresentationDocument, c: IssueCollector): void {
   const slideLimit = checkLimit("slidesPerDocument", doc.slides.length);
   if (slideLimit.level !== "ok") {
@@ -813,7 +1000,9 @@ function validateLimits(doc: PresentationDocument, c: IssueCollector): void {
     }
   }
 
-  const bytes = Buffer.byteLength(JSON.stringify(doc), "utf8");
+  // Validation runs in browser and Electron renderer processes as well as Node.
+  // TextEncoder is available in every supported runtime; Buffer is not.
+  const bytes = new TextEncoder().encode(JSON.stringify(doc)).byteLength;
   const sizeLimit = checkLimit("documentJsonBytes", bytes);
   if (sizeLimit.level !== "ok") {
     c.add(

@@ -24,6 +24,7 @@ import type { HostBridge, WorkspaceClient } from "@deckastra/workspace-contracts
 import type { AgentAccess, DesktopBridge, ServiceStatus } from "../shared/ipc";
 import { createDesktopClient } from "./client";
 import { desktopHost } from "./host";
+import { desktopMotionAuthoring } from "./motion/DesktopMotionStudio";
 
 /**
  * The desktop window.
@@ -277,6 +278,7 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             // A journal left by a close that could not save is replayed on the
             // next launch, not left as an anonymous copy (item 01).
             recoveryPointer="local"
+            motionAuthoring={desktopMotionAuthoring}
             notices={service.state !== "ready" ? <ServiceBanner status={service} bridge={bridge} onStatus={setService} /> : null}
             barExtras={agentControl}
           />

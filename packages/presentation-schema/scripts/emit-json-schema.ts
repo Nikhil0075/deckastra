@@ -23,6 +23,8 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import { THEME_PRESETS } from "../src/theme-presets";
+import { LOCALIZABLE_PATH_PATTERNS, localeTextHash } from "../src/locales";
+import { SOUND_LIBRARY_NAMES } from "../src/sound-names";
 import {
   PatchOperationSchema,
   PatchSchema,
@@ -140,6 +142,39 @@ function main(): void {
   } else {
     writeFileSync(presetsPath, presets, "utf8");
     console.log(`  wrote  theme-presets.json (${(presets.length / 1024).toFixed(1)} KB)`);
+  }
+
+  // The locale rules, for the Python translation and speech services: the
+  // allowlist of text slots as regex sources, the library sound names, and hash
+  // samples a Python test reproduces. One definition, generated downward; a
+  // translation written by Python against a different idea of "a slot" or of
+  // "the source changed" would be outdated the moment it landed.
+  const HASH_SAMPLES = ["", "Hello", "नमस्ते दुनिया", "مرحبا", "Line one\nLine two", "Café — 100%"];
+  const localeRules =
+    JSON.stringify(
+      {
+        description:
+          "Generated from @deckastra/presentation-schema src/locales.ts and src/sound-names.ts. Do not edit by hand: " +
+          'run "npm run schema:emit" instead.',
+        localizablePathPatterns: LOCALIZABLE_PATH_PATTERNS.map((pattern) => pattern.source),
+        soundLibrary: SOUND_LIBRARY_NAMES,
+        hashSamples: HASH_SAMPLES.map((text) => ({ text, hash: localeTextHash(text) })),
+      },
+      null,
+      2,
+    ) + "\n";
+  const rulesPath = join(OUT_DIR, "locale-rules.json");
+  if (check) {
+    const current = existsSync(rulesPath) ? readFileSync(rulesPath, "utf8") : "";
+    if (current !== localeRules) {
+      stale = true;
+      console.error("  DRIFT  locale-rules.json is out of date");
+    } else {
+      console.log("  ok     locale-rules.json");
+    }
+  } else {
+    writeFileSync(rulesPath, localeRules, "utf8");
+    console.log(`  wrote  locale-rules.json (${(localeRules.length / 1024).toFixed(1)} KB)`);
   }
 
   if (stale) {

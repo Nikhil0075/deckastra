@@ -350,3 +350,65 @@ describe("the playback engine", () => {
     engine.dispose();
   });
 });
+
+describe("loop sampling and ambient playback", () => {
+  it("samples normal, reverse and alternate iterations deterministically", () => {
+    const normal = compileTimeline(SCENE, [{
+      id: "anm_loop", targetId: "el_a", trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_loop", preset: "fade", startMs: 0, durationMs: 400, repeat: -1 }],
+    }]);
+    const alternate = compileTimeline(SCENE, [{
+      id: "anm_alt", targetId: "el_a", trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_alt", preset: "fade", startMs: 0, durationMs: 400, repeat: -1, direction: "alternate" }],
+    }]);
+    const reverse = compileTimeline(SCENE, [{
+      id: "anm_rev", targetId: "el_a", trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_rev", preset: "fade", startMs: 0, durationMs: 400, direction: "reverse" }],
+    }]);
+    const finiteAlternate = compileTimeline(SCENE, [{
+      id: "anm_finite_alt", targetId: "el_a", trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_finite_alt", preset: "fade", startMs: 0, durationMs: 400, repeat: 1, direction: "alternate" }],
+    }]);
+    expect(sampleAt(normal, 600_100)).toEqual(sampleAt(normal, 100));
+    expect(sampleAt(alternate, 100).get("el_a")!.values.opacity).toBe(sampleAt(alternate, 700).get("el_a")!.values.opacity);
+    expect(sampleAt(reverse, 0).get("el_a")!.values.opacity).toBe(1);
+    expect(sampleAt(reverse, 400).get("el_a")!.values.opacity).toBe(0);
+    expect(finiteAlternate.durationMs).toBe(800);
+    expect(sampleAt(finiteAlternate, 800).get("el_a")!.values.opacity).toBe(0);
+  });
+
+  it("keeps an active ambient loop moving while finite time waits for a click", () => {
+    const timeline = compileTimeline(SCENE, [
+      { id: "anm_loop", targetId: "el_a", trigger: { type: "slideEnter" }, clips: [{ id: "clp_loop", preset: "float", startMs: 0, durationMs: 400, repeat: -1 }] },
+      { id: "anm_click", targetId: "el_b", trigger: { type: "click" }, clips: [{ id: "clp_click", preset: "fade", startMs: 0, durationMs: 300 }] },
+    ]);
+    const clock = steppedClock(100);
+    const engine = new PlaybackEngine(timeline, clock);
+    let latest: Sample = new Map();
+    engine.subscribe({ onSample: (sample) => { latest = sample; } });
+    engine.play();
+    clock.step(5);
+    const first = latest.get("el_a")!.values.y;
+    expect(engine.state.timeMs).toBe(0);
+    expect(engine.state.awaitingAdvance).toBe(true);
+    clock.step();
+    expect(latest.get("el_a")!.values.y).not.toBe(first);
+    const ambient = engine.state.ambientTimeMs;
+    engine.pauseAmbient();
+    clock.step(3);
+    expect(engine.state.ambientTimeMs).toBe(ambient);
+    expect(engine.state.status).toBe("playing");
+    engine.resumeAmbient();
+    clock.step();
+    expect(engine.state.ambientTimeMs).toBeGreaterThan(ambient);
+    engine.dispose();
+  });
+
+  it("uses restOffset for final/static samples", () => {
+    const timeline = compileTimeline(SCENE, [{
+      id: "anm_rest", targetId: "el_a", trigger: { type: "slideEnter" },
+      clips: [{ id: "clp_rest", preset: "breathe", startMs: 0, durationMs: 1000, repeat: -1, restOffset: 0.5 }],
+    }]);
+    expect(finalSample(timeline).get("el_a")!.values.scale).toBe(1.035);
+  });
+});

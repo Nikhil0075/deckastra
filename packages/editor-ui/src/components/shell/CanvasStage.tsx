@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { checkFrameBudget } from "@deckastra/renderer";
 
 import { fitScale, formatZoom, resolveScale, stepZoom, type Zoom } from "../../lib/editor-layout";
@@ -13,6 +13,7 @@ export interface CanvasStageProps {
   editor: EditorApi;
   zoom: Zoom;
   onZoom: (zoom: Zoom) => void;
+  overlay?: ReactNode;
 }
 
 /**
@@ -23,7 +24,7 @@ export interface CanvasStageProps {
  * only when React happened to re-run the callback — so a window resized without
  * any other change kept the old width.
  */
-export function CanvasStage({ editor, zoom, onZoom }: CanvasStageProps) {
+export function CanvasStage({ editor, zoom, onZoom, overlay }: CanvasStageProps) {
   const stage = useRef<HTMLDivElement | null>(null);
   const [available, setAvailable] = useState<{ width: number; height: number } | null>(null);
   // Last drag's frame times. Shown rather than logged: doc 04 §31.5 is explicit
@@ -82,6 +83,7 @@ export function CanvasStage({ editor, zoom, onZoom }: CanvasStageProps) {
           <EditorCanvas
             editor={editor}
             width={width}
+            overlay={overlay}
             onFrameStats={(stats) => setFrames({ stats, verdict: checkFrameBudget(stats) })}
           />
         </div>

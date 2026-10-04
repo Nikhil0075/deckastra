@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type {
   PresentationDocument,
   Rect,
@@ -69,6 +69,8 @@ export interface EditorCanvasProps {
   width: number;
   showGuides?: boolean;
   gridEnabled?: boolean;
+  /** Host-provided editor chrome in logical slide coordinates. */
+  overlay?: ReactNode;
   /**
    * Called once per gesture with the measured frame times (doc 04 §31.1).
    *
@@ -107,6 +109,7 @@ export function EditorCanvas({
   width,
   showGuides = true,
   gridEnabled = false,
+  overlay,
   onFrameStats,
 }: EditorCanvasProps) {
   const { document: doc, slideIndex, selection, setSelection, apply, nodes } = editor;
@@ -729,7 +732,9 @@ export function EditorCanvas({
           mode="editor"
           showGuides={showGuides}
           resolveAssetUrl={resolveAssetUrl}
-        />
+        >
+          {overlay}
+        </SlideView>
       </div>
 
       {/* Chrome layer. Everything below is editor-only and is never mounted in

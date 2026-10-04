@@ -17,13 +17,16 @@
 
 // --- Surfaces a route mounts ------------------------------------------------
 export { EditorShell } from "./components/EditorShell";
-export type { EditorShellProps } from "./components/EditorShell";
+export type { EditorShellProps, MotionAuthoringExtension, MotionAuthoringPanelProps } from "./components/EditorShell";
 export { PresentMode } from "./components/PresentMode";
 export { GenerationFailed, QuotaReached } from "./components/EmptyState";
 export { AccountPicker } from "./components/AccountPicker";
 export { DeckList } from "./components/DeckList";
 export type { DeckListProps } from "./components/DeckList";
 export type { DeckListCommand, HostCommand, SubscribeHostCommands } from "./lib/host-commands";
+export { duplicateSlideWithMagicMoveAction } from "./lib/slide-actions";
+/** Building block for host motion extensions that supplement, rather than replace, the established controls. */
+export { MotionModePanel } from "./components/shell/MotionModePanel";
 export { RepositoryPanel } from "./components/RepositoryPanel";
 export { SourcesPanel } from "./components/SourcesPanel";
 
@@ -42,6 +45,8 @@ export type { ApplyOptions, EditorApi, SaveState, UseEditorInput } from "./lib/u
 // measurer than the editor's is a scene that disagrees with what the user sees.
 export { useBrowserMeasurer } from "./lib/measurer";
 export { useAssetUrls, assetKeysOf } from "./lib/asset-urls";
+export { localizeDocument } from "./lib/locale-lens";
+export { deckLanguages, languageLabel, type DeckLanguage } from "./lib/languages";
 
 // --- Host seams --------------------------------------------------------------
 // The two browser assumptions the desktop replaces. Both default to the browser

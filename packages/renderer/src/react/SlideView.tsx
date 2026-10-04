@@ -28,6 +28,10 @@ export interface SlideViewProps {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
+  /** Static PDF text uses contiguous runs; interactive rendering defaults to subtargets. */
+  segmentText?: boolean;
+  /** Elements whose sampled effect requires word/glyph targets even in a static export. */
+  textAnimationTargets?: readonly string[];
 }
 
 export function SlideView({
@@ -38,6 +42,8 @@ export function SlideView({
   className,
   style,
   children,
+  segmentText = true,
+  textAnimationTargets = [],
 }: SlideViewProps): ReactNode {
   const nodes = flattenScene(scene);
 
@@ -106,6 +112,7 @@ export function SlideView({
           zIndex={paintIndex.get(node.id) ?? 0}
           mode={mode}
           resolveAssetUrl={resolveAssetUrl}
+          segmentText={segmentText || textAnimationTargets.includes(node.id)}
         />
       ))}
 
@@ -151,11 +158,13 @@ const SceneNodeView = memo(function SceneNodeView({
   zIndex,
   mode,
   resolveAssetUrl,
+  segmentText,
 }: {
   node: SceneNode;
   zIndex: number;
   mode: RenderMode;
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+  segmentText: boolean;
 }): ReactNode {
   // `visible: false` is excluded from render AND from export, which is why a
   // fade-in must start from opacity 0 instead (doc 02 §8.2).
@@ -173,10 +182,30 @@ const SceneNodeView = memo(function SceneNodeView({
       {/* A group draws no content of its own — its children are separate scene
           nodes — but its wrapper still carries fill, stroke and radius, which is
           how a styled card renders at all. */}
-      <ElementContent node={node} resolveAssetUrl={resolveAssetUrl} />
+      <ElementContent node={node} resolveAssetUrl={resolveAssetUrl} segmented={segmentText} />
+      {node.flags.animatedProperties.length ? <MotionEffectLayers /> : null}
     </div>
   );
 });
+
+/**
+ * Prepared, paint-only layers for ambient effects. The runtime translates and
+ * fades these nodes; it never animates blur, layout or the element's contents.
+ */
+function MotionEffectLayers(): ReactNode {
+  const common: CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    opacity: 0,
+    borderRadius: "inherit",
+  };
+  return <>
+    <span data-sub-target="effect/glow" aria-hidden="true" style={{ ...common, boxShadow: "0 0 22px 7px currentColor" }} />
+    <span data-sub-target="effect/shimmer" aria-hidden="true" style={{ ...common, background: "linear-gradient(110deg, transparent 38%, rgba(255,255,255,.82) 50%, transparent 62%)", mixBlendMode: "screen" }} />
+    <span data-sub-target="effect/gradientDrift" aria-hidden="true" style={{ ...common, inset: "-8%", background: "linear-gradient(120deg, rgba(77,190,255,.2), rgba(190,90,255,.22), rgba(255,185,80,.18))", mixBlendMode: "screen" }} />
+  </>;
+}
 
 export interface ScaledSlideProps extends SlideViewProps {
   /** Rendered width in CSS pixels. Height follows from the slide aspect ratio. */

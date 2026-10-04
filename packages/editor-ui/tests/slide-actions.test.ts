@@ -17,6 +17,7 @@ import { applyPatch } from "@deckastra/transactions";
 import {
   deleteSlideAction,
   duplicateSlideAction,
+  duplicateSlideWithMagicMoveAction,
   moveSlideAction,
   slotForPointer,
   speakingEstimate,
@@ -79,6 +80,22 @@ describe("duplicateSlideAction", () => {
     expect(after.slides).toHaveLength(deck.slides.length + 1);
     expect(action.index).toBe(2);
     expect(after.slides[2]!.id).not.toBe(deck.slides[1]!.id);
+    expect(validateDocument(after).valid).toBe(true);
+  });
+});
+
+describe("duplicateSlideWithMagicMoveAction", () => {
+  it("adds one fresh-id slide with explicit leaf pairs and one undoable operation", () => {
+    const action = duplicateSlideWithMagicMoveAction(deck, 0)!;
+    expect(action.operations).toHaveLength(1);
+    const after = roundTrips(deck, action.operations);
+    const source = deck.slides[0]!;
+    const copy = after.slides[1]!;
+    expect(copy.id).not.toBe(source.id);
+    expect(copy.transition?.type).toBe("morph");
+    expect(copy.transition?.durationMs).toBe(600);
+    expect(copy.transition?.sharedElements?.length).toBeGreaterThan(0);
+    expect(new Set(copy.transition?.sharedElements?.map((pair) => pair.sourceElementId)).size).toBe(copy.transition?.sharedElements?.length);
     expect(validateDocument(after).valid).toBe(true);
   });
 });

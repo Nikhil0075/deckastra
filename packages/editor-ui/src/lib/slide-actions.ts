@@ -8,7 +8,7 @@
  * shell in jsdom.
  */
 
-import type { PatchOperation, PresentationDocument } from "@deckastra/presentation-schema";
+import type { PatchOperation, PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
 import { cloneSlide, deleteSlideOperations, misplacedMorphPairs, moveSlide } from "@deckastra/presentation-core";
 import { applyPatch } from "@deckastra/transactions";
 
@@ -32,6 +32,35 @@ export function duplicateSlideAction(document: PresentationDocument, index: numb
   if (!slide) return null;
   const { operations } = cloneSlide(document, slide.id, { atIndex: index + 1 });
   return { operations, label: "Duplicate slide", index: index + 1 };
+}
+
+/** Duplicate and create exact shared-element pairs without heuristic matching. */
+export function duplicateSlideWithMagicMoveAction(document: PresentationDocument, index: number): SlideAction | null {
+  const source = document.slides[index];
+  if (!source) return null;
+  const cloned = cloneSlide(document, source.id, { atIndex: index + 1 });
+  const leaves = (elements: PresentationElement[]): PresentationElement[] =>
+    elements.flatMap((element) => {
+      const children = element.type === "group"
+        ? (element as PresentationElement & { children?: PresentationElement[] }).children
+        : undefined;
+      return children?.length ? leaves(children) : [element];
+    });
+  const sharedElements = leaves(source.elements).flatMap((element) => {
+    const destinationElementId = cloned.idMap.get(element.id);
+    return destinationElementId ? [{ sourceElementId: element.id, destinationElementId }] : [];
+  });
+  cloned.slide.transition = {
+    type: "morph",
+    durationMs: 600,
+    easing: "easeInOut",
+    sharedElements,
+  };
+  return {
+    operations: cloned.operations,
+    label: "Duplicate and Magic Move",
+    index: index + 1,
+  };
 }
 
 // -------------------------------------------------------------------- delete

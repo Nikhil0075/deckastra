@@ -36,6 +36,8 @@ export interface SlideMotionHandle {
    * What the presenter view's "Step 3 of 4" is read from.
    */
   step(): number;
+  pause(): void;
+  resume(): void;
 }
 
 export function SlideMotion({
@@ -43,6 +45,7 @@ export function SlideMotion({
   rootSelector,
   reducedMotion,
   autoPlay = true,
+  paused = false,
   handle,
 }: {
   scene: SlideScene;
@@ -51,6 +54,8 @@ export function SlideMotion({
   reducedMotion: boolean;
   /** False when entering the slide backwards. */
   autoPlay?: boolean;
+  /** Freeze ambient motion immediately, including on a newly mounted slide. */
+  paused?: boolean;
   handle?: Ref<SlideMotionHandle>;
 }) {
   const adapter = useRef<DomAnimationAdapter | null>(null);
@@ -100,6 +105,12 @@ export function SlideMotion({
     };
   }, [timeline, rootSelector, autoPlay]);
 
+  useEffect(() => {
+    if (!autoPlay) return;
+    if (paused) adapter.current?.pauseAmbient();
+    else adapter.current?.resumeAmbient();
+  }, [autoPlay, paused]);
+
   useImperativeHandle(
     handle,
     () => ({
@@ -108,6 +119,8 @@ export function SlideMotion({
       showFinalState: () => adapter.current?.enterAtEnd(),
       hasMotion: () => timeline.clips.length > 0,
       step: () => adapter.current?.state.segmentIndex ?? 0,
+      pause: () => adapter.current?.pauseAmbient(),
+      resume: () => adapter.current?.resumeAmbient(),
     }),
     [timeline.clips.length],
   );

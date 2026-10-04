@@ -1,4 +1,5 @@
 import { deflateSync } from "node:zlib";
+import { runLanguages, runNarration } from "./smoke-languages";
 import { writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -60,7 +61,9 @@ export type SmokeStep =
   | "intelligence"
   | "authoring"
   | "design"
-  | "handoff";
+  | "handoff"
+  | "languages"
+  | "narration";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -108,7 +111,7 @@ function step(): SmokeStep {
 }
 
 /** Poll the rendered page until `predicate` holds, or give up and say so. */
-async function until(
+export async function until(
   window: BrowserWindow,
   expression: string,
   timeoutMs = 30_000,
@@ -302,6 +305,10 @@ export async function runSmoke(
       await runAuthoring(window, dir, record);
     } else if (current === "design") {
       await runDesign(window, dir, record);
+    } else if (current === "languages") {
+      await runLanguages(window, dir, record);
+    } else if (current === "narration") {
+      await runNarration(window, dir, record);
     } else if (current === "intelligence") {
       await runIntelligence(window, record);
     } else if (current === "close-verify") {
@@ -1993,119 +2000,183 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
 }
 
 /**
- * Motion mode, driven through what a person presses (editor Phase 7).
+ * Desktop motion milestone, driven through what a person presses.
  *
- * On the morph slide: the pairs are listed, switching to Fade removes them in
- * the store, and Undo puts the morph back exactly. On the first slide: a plan by
- * roles comes back measured against the entrance budget, Apply writes it as one
- * change, and Undo takes it back. The step ends by asserting the stored deck is
- * the one it started with.
+ * Applies a deck style, previews without writing, authors a loop, makes an
+ * explicit Magic Move copy, checks the established transition/planner controls,
+ * measures motion on screen, pauses loops in present mode, then undoes the three
+ * authored transactions and reloads the byte-identical saved deck.
  */
 async function runMotion(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
-  await until(window, `document.querySelector("[data-editor-canvas]")`);
+  if (!(await until(window, `document.querySelector("[data-editor-canvas]")`))) {
+    throw new Error("The editor never opened for the motion smoke step.");
+  }
   const page = (expression: string) => window.webContents.executeJavaScript(expression);
   const helpers = `
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const one = (id) => document.querySelector('[data-testid="' + id + '"]');
+    const exactButton = (label) => [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === label);
     const { presentationId } = await window.deckastra.currentPresentation();
-    const stored = async () => (await (await fetch("/__api/v1/presentations/" + presentationId)).json()).document;
+    const stored = async () => (await (await fetch('/__api/v1/presentations/' + presentationId)).json()).document;
     const content = (doc) => JSON.stringify({ ...doc, updatedAt: undefined });
     const settle = async () => {
       let quiet = 0;
       for (let i = 0; i < 300 && quiet < 5; i += 1) {
         await sleep(100);
-        quiet = one("save-status")?.getAttribute("data-save-status") === "saved" ? quiet + 1 : 0;
+        quiet = one('save-status')?.getAttribute('data-save-status') === 'saved' ? quiet + 1 : 0;
       }
-      if (quiet < 5) throw new Error("the editor never settled on saved");
+      if (quiet < 5) throw new Error('the editor never settled on saved');
     };
     const waitFor = async (predicate, what) => {
       for (let i = 0; i < 200; i += 1) {
         if (predicate()) return;
         await sleep(50);
       }
-      throw new Error("timed out waiting for " + what);
+      throw new Error('timed out waiting for ' + what);
     };
     const click = (id) => {
       const target = one(id);
-      if (!target || target.disabled) throw new Error("cannot press " + id);
+      if (!target || target.disabled) throw new Error('cannot press ' + id);
       target.click();
     };
-    const thumb = (index) => document.querySelectorAll('[data-testid="slide-thumb"]')[index];
   `;
 
-  const transition = (await page(`(async () => {
+  const styled = await page(`(async () => {
     ${helpers}
     const original = await stored();
-    const morphIndex = original.slides.findIndex((slide) => slide.transition?.type === "morph");
-    if (morphIndex < 0) throw new Error("this deck has no morph to edit (a pre-D4.1 profile?)");
-    window.__motionSmoke = { original: content(original), morphIndex };
-    click("mode-motion");
-    await waitFor(() => one("motion-panel"), "the motion panel");
-    // The playhead, measured in the browser that draws it. At time 0 it must
-    // stand on the lane track's left edge; an invalid calc() left it at the
-    // lanes' left edge, over the labels, at every time.
-    await waitFor(() => document.querySelector(".dk-lanes__playhead") && document.querySelector("[data-lane-track]"), "the lanes");
-    const playheadGap = Math.abs(
-      document.querySelector(".dk-lanes__playhead").getBoundingClientRect().left -
-        document.querySelector("[data-lane-track]").getBoundingClientRect().left,
-    );
-    if (playheadGap > 2) throw new Error("the playhead is " + playheadGap + "px from the start of the lanes at time 0");
-    thumb(morphIndex).click();
-    await waitFor(() => document.querySelectorAll('[data-testid="pair-row"]').length > 0, "the pairs");
-    const pairs = [...document.querySelectorAll('[data-testid="pair-row"]')].map((row) => row.getAttribute("data-origin"));
-    const pairsBefore = original.slides[morphIndex].transition.sharedElements?.length ?? 0;
-    return { morphIndex, pairs, pairsBefore };
-  })()`)) as { morphIndex: number; pairs: string[]; pairsBefore: number };
-  record.transition = transition;
-  if (transition.pairs.filter((origin) => origin === "manual").length !== transition.pairsBefore) {
-    throw new Error("The panel does not list the morph's stored pairs as manual.");
-  }
-  await capture(window, join(dir, "motion-transition.png"));
-
-  const edits = (await page(`(async () => {
-    ${helpers}
-    const { morphIndex } = window.__motionSmoke;
-    click("transition-kind-fade");
-    await settle();
-    const faded = (await stored()).slides[morphIndex].transition;
-    if (faded?.type !== "fade") throw new Error("the store has " + JSON.stringify(faded));
-    if (faded.sharedElements) throw new Error("the fade kept the morph's pairs");
-    const notice = document.querySelector('[data-testid="motion-panel"] [role="status"]')?.textContent ?? null;
-    click("undo");
-    await settle();
-    const back = await stored();
-    if (content(back) !== window.__motionSmoke.original) throw new Error("undo did not restore the morph exactly");
-
-    // Plan the first slide's entrances by roles.
-    thumb(0).click();
-    await waitFor(() => one("plan-submit") && !one("plan-submit").disabled, "the planner");
-    click("plan-submit");
-    await waitFor(() => one("plan-card"), "a plan");
-    const budget = one("plan-budget")?.textContent ?? null;
-    return { faded, notice, budget };
-  })()`)) as { faded: unknown; notice: string | null; budget: string | null };
-  record.edits = edits;
-  if (!/^Total \d+\.\ds — (within|over) the \d+\.\ds budget$|first frame/.test(edits.budget ?? "")) {
-    throw new Error(`The plan's budget line reads "${edits.budget}".`);
-  }
-  await capture(window, join(dir, "motion-plan.png"));
-
-  const applied = (await page(`(async () => {
-    ${helpers}
-    const before = await stored();
-    click("plan-apply");
+    window.__motionSmoke = { original: content(original), slideCount: original.slides.length };
+    click('mode-motion');
+    await waitFor(() => one('desktop-motion-studio'), 'the desktop motion studio');
+    const legacyControls = {
+      panel: Boolean(one('motion-panel')),
+      planner: Boolean(one('plan-submit')),
+      transitionPreview: [...document.querySelectorAll('h2,h3,summary,button')].some((node) => /Preview transition/i.test(node.textContent || '')),
+    };
+    click('motion-style-playful');
     await settle();
     const after = await stored();
-    const changed = JSON.stringify(after.slides[0].animations) !== JSON.stringify(before.slides[0].animations);
-    const tracks = (after.slides[0].animations ?? []).length;
-    click("undo");
+    return {
+      original: window.__motionSmoke.original,
+      changed: content(after) !== window.__motionSmoke.original,
+      animatedSlides: after.slides.filter((slide) => slide.animations?.length).length,
+      legacyControls,
+    };
+  })()`);
+  const styledResult = styled as { original: string; changed: boolean; animatedSlides: number; legacyControls: { panel: boolean; planner: boolean; transitionPreview: boolean } };
+  record.style = { changed: styledResult.changed, animatedSlides: styledResult.animatedSlides, legacyControls: styledResult.legacyControls };
+  if (!Object.values(styledResult.legacyControls).every(Boolean)) {
+    throw new Error("The desktop studio did not retain the transition preview and Plan by roles controls.");
+  }
+
+  await trustedClick(window, "[data-editor-canvas] [data-element-id]");
+  const preview = await page(`(async () => {
+    ${helpers}
+    await waitFor(() => one('effect-tile-byWord') || one('effect-tile-fade'), 'an entrance effect tile');
+    const before = content(await stored());
+    const tile = one('effect-tile-byWord') || one('effect-tile-fade');
+    tile.focus();
+    await sleep(250);
+    const active = Boolean(one('motion-preview-banner'));
+    tile.blur();
+    await sleep(50);
+    return { active, documentUnchanged: content(await stored()) === before };
+  })()`);
+  record.preview = preview;
+  if (!(preview as { active: boolean; documentUnchanged: boolean }).active || !(preview as { documentUnchanged: boolean }).documentUnchanged) {
+    throw new Error("Hover/focus preview either did not run or wrote into the deck.");
+  }
+
+  const authored = await page(`(async () => {
+    ${helpers}
+    const loopTab = exactButton('Loop');
+    if (!loopTab) throw new Error('the Loop gallery tab is missing');
+    loopTab.click();
+    await waitFor(() => one('effect-tile-shimmer'), 'the shimmer loop tile');
+    click('effect-tile-shimmer');
+    click('duplicate-magic-move');
+    await waitFor(() => document.querySelectorAll('[data-testid="pair-row"]').length > 0, 'the explicit Magic Move pair list');
+    await settle();
+    const after = await stored();
+    const copy = after.slides.find((slide) => slide.transition?.type === 'morph');
+    const loops = after.slides.flatMap((slide) => slide.animations ?? []).flatMap((track) => track.clips).filter((clip) => clip.repeat === -1).length;
+    const loopSlideIndex = after.slides.findIndex((slide) =>
+      (slide.animations ?? []).some((track) => track.clips.some((clip) => clip.repeat === -1))
+    );
+    const shimmerSlideIndex = after.slides.findIndex((slide) =>
+      (slide.animations ?? []).some((track) => track.clips.some((clip) => clip.preset === 'shimmer'))
+    );
+    return {
+      loops,
+      loopSlideIndex,
+      shimmerSlideIndex,
+      slideCount: after.slides.length,
+      transition: copy?.transition?.type,
+      pairs: copy?.transition?.sharedElements?.length ?? 0,
+      pairRows: document.querySelectorAll('[data-testid="pair-row"]').length,
+    };
+  })()`);
+  record.authored = authored;
+  const authoredResult = authored as { loops: number; loopSlideIndex: number; shimmerSlideIndex: number; slideCount: number; transition?: string; pairs: number; pairRows: number };
+  if (!authoredResult.loops || authoredResult.transition !== "morph" || !authoredResult.pairs || !authoredResult.pairRows) {
+    throw new Error("The loop or explicit Magic Move was not saved.");
+  }
+
+  await page(`document.querySelectorAll('[data-testid="slide-thumb"]')[${authoredResult.shimmerSlideIndex}]?.click()`);
+  await page(clickTestId("present"));
+  if (!(await until(window, `document.querySelector('[data-present-stage]')`))) throw new Error("Present mode did not open.");
+  await page(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', bubbles: true }))`);
+  if (!(await until(window, `document.querySelector('.dk-present__panel')`, 5_000))) {
+    throw new Error("P did not restore the presenter view shortcut.");
+  }
+  await page(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', bubbles: true }))`);
+  const movement = await page(`(async () => {
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    await sleep(900);
+    const nodes = [...document.querySelectorAll('[data-present-stage] [data-element-id], [data-present-stage] [data-sub-target="effect/shimmer"]')];
+    const frame = () => new Map(nodes.map((node) => {
+      const style = getComputedStyle(node);
+      const owner = node.closest('[data-element-id]')?.getAttribute('data-element-id');
+      const key = node.getAttribute('data-element-id') || ('sub:' + owner + ':' + node.getAttribute('data-sub-target'));
+      return [key, [style.translate, style.scale, style.rotate, style.opacity].join('|')];
+    }));
+    const before = frame();
+    await sleep(350);
+    const after = frame();
+    return [...before].filter(([id, value]) => after.get(id) !== value).map(([id]) => id);
+  })()`);
+  record.screenMovement = movement;
+  if (!(movement as string[]).length) throw new Error("No presented element changed between measured frames.");
+  if (!(movement as string[]).some((key) => key.endsWith(":effect/shimmer"))) throw new Error("The shimmer sheen did not move on screen.");
+  await page(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'L', bubbles: true }))`);
+  if (!(await until(window, `document.querySelector('[data-present-motion-paused="true"]')`, 5_000))) {
+    throw new Error("L did not pause ambient motion.");
+  }
+  record.paused = true;
+  await page(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+  await until(window, `document.querySelector('[data-editor-canvas]')`);
+
+  const restored = await page(`(async () => {
+    ${helpers}
+    for (let i = 0; i < 3; i += 1) click('undo');
     await settle();
     const final = await stored();
-    return { changed, tracks, restored: content(final) === window.__motionSmoke.original };
-  })()`)) as { changed: boolean; tracks: number; restored: boolean };
-  record.applied = applied;
-  if (!applied.tracks) throw new Error("Applying the plan left the slide with no tracks.");
-  if (!applied.restored) throw new Error("After undo, the stored deck is not the one the step started with.");
+    return { byteIdentical: content(final) === window.__motionSmoke.original, slides: final.slides.length };
+  })()`);
+  record.restored = restored;
+  if (!(restored as { byteIdentical: boolean }).byteIdentical) {
+    throw new Error("Undo did not return the deck to its byte-identical starting document.");
+  }
+
+  await window.webContents.reload();
+  if (!(await until(window, `document.querySelector('[data-editor-canvas]')`, 30_000))) throw new Error("The saved deck did not reopen.");
+  const reopened = await page(`(async () => {
+    const { presentationId } = await window.deckastra.currentPresentation();
+    const document = (await (await fetch('/__api/v1/presentations/' + presentationId)).json()).document;
+    return JSON.stringify({ ...document, updatedAt: undefined });
+  })()`);
+  record.reopened = reopened === styledResult.original;
+  if (!record.reopened) throw new Error("The reopened deck differs from the byte-identical saved document.");
+  await capture(window, join(dir, "motion.png"));
 }
 
 /**
@@ -3214,11 +3285,20 @@ function clickTestId(id: string): string {
  * Unlike HTMLElement.click(), this cannot activate a button hidden beneath a
  * modal or overlay and therefore provides evidence about the installed UI.
  */
-async function trustedClick(window: BrowserWindow, selector: string): Promise<void> {
-  const point = (await window.webContents.executeJavaScript(`(() => {
+export async function trustedClick(window: BrowserWindow, selector: string): Promise<void> {
+  // A background launcher may hide/minimize the initial window. Trusted UI
+  // acceptance requires a visible foreground page, including its head watcher.
+  if (window.isMinimized()) window.restore();
+  if (!window.isVisible()) window.show();
+  window.focus();
+  window.webContents.focus();
+  const point = (await window.webContents.executeJavaScript(`(async () => {
     const target = document.querySelector(${JSON.stringify(selector)});
     if (!target || target.disabled) return { error: "missing or disabled" };
     target.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // Scrolling can mount proposal thumbnails and move their action row. Let
+    // layout/focus refresh settle before measuring trusted pointer coordinates.
+    await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
     const rect = target.getBoundingClientRect();
     const style = getComputedStyle(target);
     if (!rect.width || !rect.height || style.visibility === "hidden" || style.display === "none") {
@@ -3236,8 +3316,6 @@ async function trustedClick(window: BrowserWindow, selector: string): Promise<vo
   if (point.error || point.x === undefined || point.y === undefined) {
     throw new Error(`Cannot press ${selector}: ${point.error ?? "no hit point"}.`);
   }
-  window.focus();
-  window.webContents.focus();
   window.webContents.sendInputEvent({ type: "mouseMove", x: point.x, y: point.y });
   window.webContents.sendInputEvent({ type: "mouseDown", x: point.x, y: point.y, button: "left", clickCount: 1 });
   window.webContents.sendInputEvent({ type: "mouseUp", x: point.x, y: point.y, button: "left", clickCount: 1 });
@@ -3427,7 +3505,7 @@ function memoryReport(): unknown {
   };
 }
 
-async function capture(window: BrowserWindow, file: string): Promise<void> {
+export async function capture(window: BrowserWindow, file: string): Promise<void> {
   // A settle beat before the shot: the scene builds from browser text metrics,
   // and capturing mid-measurement photographs a layout no user ever sees.
   await new Promise((resolve) => setTimeout(resolve, 1200));
