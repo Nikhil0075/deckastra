@@ -29,6 +29,14 @@ class GatewayClient:
             raise ModelUnavailable(str(detail)[:500])
         return reply.json()
 
+    def credits(self):
+        """The signed-in account's balance, from the hosted ledger.
+
+        The desktop's own database has a credits table too, and it describes
+        nothing: the account whose credits pay for AI lives in the cloud.
+        """
+        return self._call("/credits")
+
     def route(self, request):
         return "vertex"
 

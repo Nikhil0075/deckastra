@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from deckastra_agents.budgets import BudgetExceeded, RunBudget
 from deckastra_agents.router import ImageInput, ModelRequest, ModelTool, ModelUnavailable
 from deckastra_agents.vertex_router import configured_client
-from . import credits
+from . import credits, local_mode
 from .auth import Principal, current_principal
 from .db.session import get_session
 
@@ -22,6 +22,16 @@ router = APIRouter(prefix="/v1")
 
 @router.get("/account/credits")
 def balance(principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
+    # On the desktop the balance that pays for AI is the signed-in cloud
+    # account's, reached through the main process's private gateway. The local
+    # database's own ledger would answer for a singleton nobody bills, so it is
+    # not consulted there (roadmap 08 §1.5: credits are read, never computed).
+    if local_mode.enabled() and os.environ.get("DECKASTRA_GATEWAY_URL"):
+        from deckastra_agents.gateway_client import GatewayClient
+        try:
+            return GatewayClient().credits()
+        except ModelUnavailable as error:
+            raise HTTPException(503, str(error)) from error
     return credits.describe(credits.account(session, principal.user_id))
 
 

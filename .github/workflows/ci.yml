@@ -283,7 +283,7 @@ jobs:
       - name: Start production-shaped persistence services
         run: |
           docker compose -f infrastructure/docker/docker-compose.yml up -d --wait postgres minio
-          docker compose -f infrastructure/docker/docker-compose.yml up minio-init
+          docker compose -f infrastructure/docker/docker-compose.yml up --exit-code-from minio-init minio-init
 
       - name: Migrate source database
         env:
