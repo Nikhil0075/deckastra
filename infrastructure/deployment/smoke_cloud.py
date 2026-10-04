@@ -42,6 +42,8 @@ def main():
             made = http.post(url + "/v1/presentations", headers=headers, json={"title": "Disposable cloud check"})
             assert made.status_code == 201, f"Create status {made.status_code}: {made.text[:200]}"
             deck = made.json()
+            design = http.get(url + f"/v1/presentations/{deck['presentation_id']}/design-check", headers=headers)
+            assert design.status_code == 200 and isinstance(design.json()["findings"], list), f"Design Check status {design.status_code}"
             state.write_text(json.dumps({"uid": uid, "email": email, "presentation_id": deck["presentation_id"]}))
             export = http.post(url + f"/v1/presentations/{deck['presentation_id']}/exports", headers=headers, json={"kind": "pdf"})
             assert export.status_code == 202, f"Export create status {export.status_code}"
@@ -91,7 +93,7 @@ def main():
             state.write_text(json.dumps({"uid": uid, "email": email, "presentation_id": deck["presentation_id"], "deletion_receipt": receipt}))
             assert http.get(url + "/v1/account/credits", headers=headers).status_code == 401
             assert http.get(url + f"/v1/account/deletions/{receipt}").json()["status"] == "queued"
-            print("PASS: verified identity, auth, monthly credits, queued PDF and .mydeck export/import copy, private GCS downloads, CJK pack links, AI gate, account deletion queue and immediate bearer-token denial.")
+            print("PASS: verified identity, auth, monthly credits, deterministic Design Check, queued PDF and .mydeck export/import copy, private GCS downloads, CJK pack links, AI gate, account deletion queue and immediate bearer-token denial.")
     finally:
         cloud.rest("POST", f"https://identitytoolkit.googleapis.com/v1/projects/{cloud.project}/accounts:delete", {"localId": uid})
         print("Disposable Identity Platform user removed; database cleanup ids saved in ignored state.")

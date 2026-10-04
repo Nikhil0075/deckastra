@@ -15,6 +15,7 @@ COPY apps/mcp-server/package.json ./apps/mcp-server/package.json
 RUN npm ci --ignore-scripts && node node_modules/playwright/cli.js install --with-deps chromium && chmod -R a+rX /ms-playwright && npm cache clean --force
 COPY apps/api/requirements.txt ./apps/api/requirements.txt
 RUN pip install --no-cache-dir -r apps/api/requirements.txt
+COPY scripts/assistant-design-check.ts ./scripts/assistant-design-check.ts
 COPY apps/api/deckastra_api ./apps/api/deckastra_api
 COPY agents ./agents
 COPY integrations ./integrations
