@@ -1,0 +1,110 @@
+{
+ "task": "narration",
+ "request": {
+  "task": "narration",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+  "operation_key": "8ebf6501bc414a96b5e6b8abd621b501",
+  "scope": {
+   "kind": "slide",
+   "slide_ids": [
+    "sld_01JDM7WWDXS04VSY20CKR1XTWY"
+   ],
+   "element_ids": []
+  },
+  "instruction": "Write a short narration for each click step from the slide and notes."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41F1RS6NVWFAQKJD40HX91W",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "narration",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:05:03.655113",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41F1RS6NVWFAQKJD40HX91W",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "narration",
+  "status": "failed",
+  "result": null,
+  "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: No operations were written.",
+  "budget": {
+   "used_tokens": 12210,
+   "input_tokens": 11712,
+   "output_tokens": 498,
+   "structured_requests": [
+    {
+     "stage": "narration",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    },
+    {
+     "stage": "narration",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 46.54,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T18:05:03.655113",
+  "cancel_requested": false
+ },
+ "seconds": 47.25,
+ "first_poll_s": 0.391,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:05:03.673333+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:05:03.715555+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "narration",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:05:05.745708+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "narration",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:05:47.003515+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "failed",
+   "message": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: No operations were written.",
+   "at": "2026-10-03T18:05:50.285562+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EZQGVNMMETDX26T310GPV",
+ "proposals": []
+}

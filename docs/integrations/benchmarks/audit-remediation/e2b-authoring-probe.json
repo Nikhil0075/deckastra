@@ -1,0 +1,193 @@
+{
+  "provider": "local",
+  "deployment_signature": "bbd832db1c2a572295c065544abb4c562d09802106fcf028b613396022ea499c",
+  "dataset_sha256": "c3f4022728ed82a46b45dc17f6a1e4188f2ac400c7f12da85fe872d7b75fac77",
+  "tasks": {
+    "authoring": {
+      "qualification_contract": "assistant-v2-functional",
+      "review": {
+        "independent_of_system_author": false
+      },
+      "coverage": {
+        "distinct_slides": 2,
+        "feature_groups": 4
+      },
+      "task": "authoring",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c3f4022728ed82a46b45dc17f6a1e4188f2ac400c7f12da85fe872d7b75fac77",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "functional_first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 111.69995759997983,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "authoring-00",
+      "task": "authoring",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03000500",
+      "feature_groups": [
+        "shape",
+        "text"
+      ],
+      "temperature_class": "cold",
+      "error": "No validated change was produced. The requested content was left unchanged.",
+      "automatic_valid": false,
+      "seconds": 92.31031849991996,
+      "ram_mb": 1576.70703125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 11091,
+        "input_tokens": 10119,
+        "output_tokens": 972,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          },
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 92.31,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "authoring-01",
+      "task": "authoring",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03002300",
+      "feature_groups": [
+        "group",
+        "line",
+        "text"
+      ],
+      "temperature_class": "warm",
+      "error": "No validated change was produced. The requested content was left unchanged.",
+      "automatic_valid": false,
+      "seconds": 111.69995759997983,
+      "ram_mb": 1467.00390625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 14273,
+        "input_tokens": 9791,
+        "output_tokens": 4482,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          },
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 111.7,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ],
+  "runtime_diagnostics": {
+    "loaded_pack": "gemma4-e2b-q4",
+    "runtime_stderr_tail": [
+      "1.23.518.208 I slot print_timing: id  0 | task 979 | n_gen =    281, tg =  46.56 t/s, tg_3s =  43.97 t/s",
+      "1.26.536.920 I slot print_timing: id  0 | task 979 | n_gen =    430, tg =  47.49 t/s, tg_3s =  49.36 t/s",
+      "1.29.559.400 I slot print_timing: id  0 | task 979 | n_gen =    583, tg =  48.28 t/s, tg_3s =  50.62 t/s",
+      "1.32.562.417 I slot print_timing: id  0 | task 979 | n_gen =    735, tg =  48.74 t/s, tg_3s =  50.62 t/s",
+      "1.35.563.287 I slot print_timing: id  0 | task 979 | n_gen =    884, tg =  48.89 t/s, tg_3s =  49.65 t/s",
+      "1.38.576.066 I slot print_timing: id  0 | task 979 | n_gen =   1035, tg =  49.07 t/s, tg_3s =  50.12 t/s",
+      "1.41.578.410 I slot print_timing: id  0 | task 979 | n_gen =   1189, tg =  49.35 t/s, tg_3s =  51.29 t/s",
+      "1.44.594.777 I slot print_timing: id  0 | task 979 | n_gen =   1343, tg =  49.54 t/s, tg_3s =  51.05 t/s",
+      "1.47.595.575 I slot print_timing: id  0 | task 979 | n_gen =   1495, tg =  49.65 t/s, tg_3s =  50.65 t/s",
+      "1.50.613.927 I slot print_timing: id  0 | task 979 | n_gen =   1644, tg =  49.62 t/s, tg_3s =  49.36 t/s",
+      "1.53.617.480 I slot print_timing: id  0 | task 979 | n_gen =   1793, tg =  49.62 t/s, tg_3s =  49.61 t/s",
+      "1.56.619.584 I slot print_timing: id  0 | task 979 | n_gen =   1918, tg =  49.01 t/s, tg_3s =  41.64 t/s",
+      "1.59.626.587 I slot print_timing: id  0 | task 979 | n_gen =   2063, tg =  48.95 t/s, tg_3s =  48.22 t/s",
+      "2.02.644.821 I slot print_timing: id  0 | task 979 | n_gen =   2208, tg =  48.89 t/s, tg_3s =  48.04 t/s",
+      "2.05.663.602 I slot print_timing: id  0 | task 979 | n_gen =   2359, tg =  48.96 t/s, tg_3s =  50.02 t/s",
+      "2.08.669.292 I slot print_timing: id  0 | task 979 | n_gen =   2509, tg =  49.02 t/s, tg_3s =  49.91 t/s",
+      "2.11.683.083 I slot print_timing: id  0 | task 979 | n_gen =   2660, tg =  49.08 t/s, tg_3s =  50.10 t/s",
+      "2.14.687.288 I slot print_timing: id  0 | task 979 | n_gen =   2807, tg =  49.07 t/s, tg_3s =  48.93 t/s",
+      "2.17.704.788 I slot print_timing: id  0 | task 979 | n_gen =   2952, tg =  49.02 t/s, tg_3s =  48.05 t/s",
+      "2.20.704.943 I slot print_timing: id  0 | task 979 | n_gen =   3091, tg =  48.89 t/s, tg_3s =  46.33 t/s",
+      "2.23.715.174 I slot print_timing: id  0 | task 979 | n_gen =   3232, tg =  48.80 t/s, tg_3s =  46.84 t/s",
+      "2.26.215.644 I slot print_timing: id  0 | task 979 | prompt eval time =   11736.06 ms /  3072 tokens (    3.82 ms per token,   261.76 tokens per second)",
+      "2.26.215.665 I slot print_timing: id  0 | task 979 |        eval time =   68711.50 ms /  3339 tokens (   20.58 ms per token,    48.58 tokens per second)",
+      "2.26.215.667 I slot print_timing: id  0 | task 979 |       total time =   80447.56 ms /  6411 tokens",
+      "2.26.215.668 I slot print_timing: id  0 | task 979 |    graphs reused =       4289",
+      "2.26.230.829 I slot      release: id  0 | task 979 | stop processing: n_tokens = 8134, truncated = 0",
+      "2.27.124.870 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.959 (> 0.100 thold), f_keep = 0.589",
+      "2.27.125.450 I slot launch_slot_: id  0 | task 4323 | processing task, is_child = 0",
+      "2.31.091.775 I slot print_timing: id  0 | task 4323 | n_gen =    143, tg =  47.27 t/s, tg_3s =  47.60 t/s",
+      "2.34.101.246 I slot print_timing: id  0 | task 4323 | n_gen =    283, tg =  46.89 t/s, tg_3s =  46.52 t/s",
+      "2.37.103.679 I slot print_timing: id  0 | task 4323 | n_gen =    432, tg =  47.80 t/s, tg_3s =  49.63 t/s",
+      "2.40.119.260 I slot print_timing: id  0 | task 4323 | n_gen =    581, tg =  48.21 t/s, tg_3s =  49.41 t/s",
+      "2.43.130.284 I slot print_timing: id  0 | task 4323 | n_gen =    729, tg =  48.40 t/s, tg_3s =  49.15 t/s",
+      "2.46.147.943 I slot print_timing: id  0 | task 4323 | n_gen =    872, tg =  48.23 t/s, tg_3s =  47.39 t/s",
+      "2.49.151.854 I slot print_timing: id  0 | task 4323 | n_gen =   1020, tg =  48.38 t/s, tg_3s =  49.27 t/s",
+      "2.51.721.260 I slot print_timing: id  0 | task 4323 | prompt eval time =     962.10 ms /   204 tokens (    4.72 ms per token,   212.04 tokens per second)",
+      "2.51.721.271 I slot print_timing: id  0 | task 4323 |        eval time =   23633.63 ms /  1143 tokens (   20.69 ms per token,    48.32 tokens per second)",
+      "2.51.721.272 I slot print_timing: id  0 | task 4323 |       total time =   24595.73 ms /  1347 tokens",
+      "2.51.721.273 I slot print_timing: id  0 | task 4323 |    graphs reused =       5425",
+      "2.51.721.554 I slot      release: id  0 | task 4323 | stop processing: n_tokens = 6137, truncated = 0"
+    ],
+    "active_requests": 0
+  }
+}

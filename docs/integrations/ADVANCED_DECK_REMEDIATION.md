@@ -1,0 +1,46 @@
+# Advanced-deck remediation — 2026-10-04
+
+The [independent stress audit](ADVANCED_DECK_AUDIT.md) exposed workflow and evidence failures. Its original deck, scripts and run records remain unchanged. The old cleanup/narration qualification is withdrawn; the installed text routing map is empty. No new text-model quality pass is claimed.
+
+## Changes
+
+| Audit finding | Change and boundary |
+| --- | --- |
+| Narrow, self-reviewed qualification | New functional contract requires 20 cases, six distinct slides, five feature groups and review independent of the system author. Native Vertex also checks the accepted report, pinned model, thinking setting and location. Old reports cannot enable tasks. |
+| Model rewrites cleanup geometry | Reuse the editor's Fix all engine. Keep only changes introducing no new severe findings, with overlap pairs identified separately. Preserve the safe subset and display unresolved findings. No inference or paid reservation. |
+| Motion bypasses planner and changes geometry | Reuse the product motion planner with its 2.5-second entrance budget. Motion can change animation tracks only. Consistency is limited to text typography, capitalization and punctuation; geometry, chart data and metadata stay protected. |
+| Generation ignores attached sources and existing faults block it | Sources reach orchestration before research. Default generation appends slides; explicit replacement is labelled in the panel. Gate only generated slides and retain their citations/source records. Surface clarification. |
+| Unpayable tasks shown as available | Capabilities check media reservations and selected narration-script cost against remaining global/workspace capacity. Production paid jobs require an explicit workspace ceiling under the operator ceiling. Cost errors retain dollar precision. |
+| Uncertain reservations cannot be resolved | Add an operator reconciliation command requiring authoritative usage or confirmed-unsent evidence, reviewer identity and explanation. Preserve an evidence hash/audit and update the matching application reservation. No current holds were released. |
+| One missing image blocks alt text | Skip unavailable bytes with warnings. Keep other image inputs and chart data. Reject fabricated alt text for unavailable images and changes to existing image descriptions. |
+| Deck exceeds model context | Process deck-wide edit, consistency, translation, narration and alt-text jobs per slide. Prune unselected slides, locale entries and asset manifests from model input. Organise visual inputs in batches of eight. Provider, cancellation and budget failures stop further work. |
+| Internal repair prompts shown as errors | Persist internal failure diagnostics in checkpoints; expose concise user-facing failure messages. |
+| Partial translation demotes reviewed slides | Mark changed translation entries draft, retain other reviewed entries, and display partial review. Export warns for selected slides using missing/outdated source-language fallback. |
+| Model runtime survives parent | Windows Job Object kills supervised children after abrupt parent exit. Graceful shutdown and idle unloading also stop the owned process tree. |
+| Attribution removed by a low-risk edit | Preserve cited source IDs/records and source-attribution text. Require semantic proposal review for every model-authored document change. Display operation-derived summaries. |
+| Resized duplicate missed | `dhash64` candidates no longer require equal dimensions. Perceptual matches remain review candidates and are never deleted. |
+| Organisation copies filenames and writes directly | Supply available image pixels, reject filename tags, propose metadata for explicit approval, enforce asset/deck versions, audit changes and retain undo. |
+| Research goes nowhere and omits arithmetic | Reuse a completed research run as an attached generation source. Compute bounded CSV revenue arithmetic from numeric records, cite it, and label first-to-last growth separately from year-over-year growth. |
+| Generated images unplaced | Register the asset and propose placement on a requested slide, with a prompt-based description visibly requiring review. |
+| History downloads whole decks | List run summaries; fetch the complete result only when selected. |
+| Equation incorrectly treated as unknown | Include equation in the known-element enum and regenerate the schema. |
+
+## Evidence and limits
+
+The focused Python suite currently passes **76 tests, 1 skipped**: [test log](benchmarks/audit-fixes-tests.log). It includes the original 21-slide advanced fixture, native Design Check/Fix all and motion code, generation source/citation retention, slide-bounded requests, attribution/scope checks, metadata approval/conflict/undo, unavailable images, resized duplicates, CSV injection exclusion, proposal review, history payloads and a Windows force-terminated-parent lifecycle test. Model/provider responses are scripted in safety tests; these are regression tests, not independent model-quality reviews.
+
+The final shared UI checks pass **34 tests**, and the locale-core checks pass **12 tests**. Workspace type checks and the desktop production build pass. Logs: [UI](benchmarks/audit-fixes-ui.log), [locale core](benchmarks/audit-fixes-locales.log), [types](benchmarks/audit-fixes-typecheck.log), [desktop](benchmarks/audit-fixes-desktop.log). These checks do not establish model quality.
+
+The real 21-slide deck was also exercised through the packaged service's HTTP API in an isolated database. In the first run, cleanup returned queued progress in **0.259 seconds** and completed in **2.203 seconds**; motion returned queued progress in **0.089 seconds** and completed in **0.681 seconds**. Both used the editor engine, with zero model usage or paid reservations. Cleanup produced a proposal and seven residual findings; motion applied its bounded animation-only change under the existing server risk rules. Two history summaries occupied **1,052 bytes**, without result documents. [First packaged HTTP evidence](benchmarks/audit-remediation/frozen/evidence-first.json).
+
+The final locked-dependency frozen service build also passes: [build log](benchmarks/audit-fixes-sidecar.log). Its repeated HTTP check completes cleanup in **3.099 seconds** and motion in **1.704 seconds**, with queued progress in **0.159 seconds** and **0.464 seconds**, respectively. The same proposal/applied boundaries, history size and zero-paid-usage assertions pass. [Final packaged evidence](benchmarks/audit-remediation/frozen/evidence.json), [verification log](benchmarks/audit-remediation/frozen-verification.log). All owned verification servers and the local Gemma process stopped afterward. These are rebuilt desktop/service artifacts, not a newly published installer.
+
+The shared web panel was checked in Chromium against the real source API. Generation defaults to append and explicitly warns before replacing all 21 slides. Image generation is disabled with the minimum reservation and remaining amount visible. Starting cleanup on the faults slide displays its validated operation summary, residual findings and proposal-review controls. No browser page errors were recorded. [Browser evidence](benchmarks/audit-remediation/web/browser-evidence.json), [proposal screenshot](benchmarks/audit-remediation/web/assistant-cleanup.png), [budget screenshot](benchmarks/audit-remediation/web/assistant-budget.png). The in-app browser tool could not initialize and the agent-browser CLI was unavailable; this verification used the existing Playwright installation.
+
+The original engine Fix all cleared findings but could introduce a new overlap. On the faults slide, the assistant retains seven geometry/style operations that clear **three of ten findings**, leaving **seven** for review. Overlap resolution and other judgement-dependent residuals are still visible. This is an initial single-run measurement, not a p95 latency or complete visual-quality pass.
+
+A fresh **two-case local authoring smoke probe** failed to produce valid patches in both cases: **92.3 seconds cold**, **111.7 seconds warm**, zero functional first-attempt validity. It exercised two motion-fixture slides, not the newly selected stress-feature corpus, and had no independent reviews. It is retained as failure evidence, not qualification. [Raw probe](benchmarks/audit-remediation/e2b-authoring-probe.json), [log](benchmarks/audit-remediation/e2b-authoring-probe.log). Its supervised Gemma server exited when the benchmark finished.
+
+The operator ceiling remains **US$5**. The global ledger remains at **US$4.7505635** reconciled estimates plus **US$0.2013205** reserved uncertainty, leaving **US$0.048116** reservable. No paid calls or hold releases were made during this remediation. Usage estimates are not a Google billing invoice.
+
+Fresh representative model benchmarks and review independent of the system author remain necessary. The new corpus has not been independently scored; model narration, authoring, translation, research, vision and organisation are not newly qualified. Image placement still needs visual review. Web deployment performance and complete ten-slide draft latency remain unmeasured. Local-only mode permits experiments, while hybrid text tasks remain unavailable until the accepted evidence and paid reservation fit.

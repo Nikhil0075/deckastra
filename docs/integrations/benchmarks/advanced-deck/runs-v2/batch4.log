@@ -1,0 +1,21 @@
+
+######## organise-deck
+{"task": "organise", "create_status": 202, "seconds": 51.29}
+status: failed | error: The model's change was not used because its tags only repeated file names. The deck was not changed. Try again, or select less so the model has a smaller task.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', "failed:The model's change was not used because its tags only repeated file names. The d"]
+budget: {"used_tokens": 1570, "input_tokens": 973, "output_tokens": 597, "structured_requests": [{"stage": "organise", "contract": "MetadataPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 250000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 36.29, "startup_seconds": 14.35, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## research-sources
+{"task": "research", "create_status": 202, "seconds": 29.61}
+status: completed | error: 
+result keys: ['research', 'calculations', 'sources'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 1368, "input_tokens": 960, "output_tokens": 408, "structured_requests": [], "max_total_tokens": 250000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 12.07, "startup_seconds": 15.02, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## generate-5
+{"task": "generate", "create_status": 202, "seconds": 101.41}
+status: failed | error: The generated slides had layout or contrast problems (overlaps, overflowing text or unreadable colours), so none were proposed. Try again with fewer slides or shorter content.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'started:Reading the request', 'provider:Explicit local-only mode', 'completed:The request is to create a five-slide board update on FY26 regional revenue usin', 'started:Gathering context', 'completed:Read 23 slide(s) for context', 'started:Designing the narrative', 'provider:Explicit local-only mode', 'completed:5-slide narrative drafted', 'started:Proposing a visual direction', 'provider:Explicit local-only mode', 'completed:This direction uses structured layouts and accent tokens to clearly present comp', 'started:Reviewing layout choices', 'provider:Explicit local-only mode', 'completed:Layout choices look right', 'started:Preparing the change', 'completed:2 operation(s) ready for review', 'failed:The generated slides had layout or contrast problems (overlaps, overflowing text']
+budget: {"used_tokens": 7932, "input_tokens": 5445, "output_tokens": 2487, "structured_requests": [{"stage": "orchestrate", "contract": "OrchestratorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "story", "contract": "StoryPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "creative", "contract": "CreativeDirection", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "layout", "contract": "LayoutProposal", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 250000, "revisions": 0

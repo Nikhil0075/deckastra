@@ -1,0 +1,61 @@
+F..........FF.....................................                       [100%]
+================================== FAILURES ===================================
+______ test_advanced_cleanup_and_motion_reuse_engines_and_preserve_scope ______
+apps\api\deckastra_api\assistant_design.py:33: in check
+    raise ValueError("Design Check worker failed.")
+E   ValueError: Design Check worker failed.
+
+The above exception was the direct cause of the following exception:
+apps\api\tests\test_assistant.py:67: in test_advanced_cleanup_and_motion_reuse_engines_and_preserve_scope
+    fixed = assistant_tasks.compute({"task": "tidy", "scope": scope}, snapshot, None, RunBudget(), lambda e: None)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:179: in compute
+    return _compute(request, snapshot, client, budget, emit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:214: in _compute
+    before = assistant_design.check(document, action="fix_all", scope=request["scope"])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_design.py:36: in check
+    raise HTTPException(503, "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.") from exc
+E   fastapi.exceptions.HTTPException: 503: Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.
+_________ test_cleanup_uses_deterministic_fixes_without_model_calls[] _________
+apps\api\deckastra_api\assistant_design.py:33: in check
+    raise ValueError("Design Check worker failed.")
+E   ValueError: Design Check worker failed.
+
+The above exception was the direct cause of the following exception:
+apps\api\tests\test_assistant.py:249: in test_cleanup_uses_deterministic_fixes_without_model_calls
+    result = assistant_tasks.compute({**payload(deck), "instruction": "Fix layout findings"}, snapshot, None, RunBudget(), lambda event: None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:179: in compute
+    return _compute(request, snapshot, client, budget, emit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:214: in _compute
+    before = assistant_design.check(document, action="fix_all", scope=request["scope"])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_design.py:36: in check
+    raise HTTPException(503, "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.") from exc
+E   fastapi.exceptions.HTTPException: 503: Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.
+_______ test_cleanup_uses_deterministic_fixes_without_model_calls[None] _______
+apps\api\deckastra_api\assistant_design.py:33: in check
+    raise ValueError("Design Check worker failed.")
+E   ValueError: Design Check worker failed.
+
+The above exception was the direct cause of the following exception:
+apps\api\tests\test_assistant.py:249: in test_cleanup_uses_deterministic_fixes_without_model_calls
+    result = assistant_tasks.compute({**payload(deck), "instruction": "Fix layout findings"}, snapshot, None, RunBudget(), lambda event: None)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:179: in compute
+    return _compute(request, snapshot, client, budget, emit)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_tasks.py:214: in _compute
+    before = assistant_design.check(document, action="fix_all", scope=request["scope"])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps\api\deckastra_api\assistant_design.py:36: in check
+    raise HTTPException(503, "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.") from exc
+E   fastapi.exceptions.HTTPException: 503: Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.
+=========================== short test summary info ===========================
+FAILED apps/api/tests/test_assistant.py::test_advanced_cleanup_and_motion_reuse_engines_and_preserve_scope
+FAILED apps/api/tests/test_assistant.py::test_cleanup_uses_deterministic_fixes_without_model_calls[]
+FAILED apps/api/tests/test_assistant.py::test_cleanup_uses_deterministic_fixes_without_model_calls[None]
+3 failed, 47 passed in 75.78s (0:01:15)

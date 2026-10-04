@@ -1,0 +1,94 @@
+{
+ "task": "organise",
+ "request": {
+  "task": "organise",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M42EY8TPN1Z3BEX9420PHFC4",
+  "operation_key": "a994ffa07c3448309e09313524cb9963",
+  "scope": {
+   "kind": "deck",
+   "slide_ids": [],
+   "element_ids": []
+  },
+  "instruction": "Tag and describe the pictures used in this deck."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M42EYDB0HCV078B6PEXJAGC2",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-04T03:22:28.067510",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M42EYDB0HCV078B6PEXJAGC2",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "failed",
+  "result": null,
+  "error": "The model's change was not used because its tags only repeated file names. The deck was not changed. Try again, or select less so the model has a smaller task.",
+  "budget": {
+   "used_tokens": 1570,
+   "input_tokens": 973,
+   "output_tokens": 597,
+   "structured_requests": [
+    {
+     "stage": "organise",
+     "contract": "MetadataPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 250000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 36.29,
+   "startup_seconds": 14.35,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 4,
+  "created_at": "2026-10-04T03:22:28.067510",
+  "cancel_requested": false
+ },
+ "seconds": 51.29,
+ "first_poll_s": 0.283,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-04T03:22:28.085461+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-04T03:22:28.214530+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "organise",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-04T03:22:28.252680+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "failed",
+   "message": "The model's change was not used because its tags only repeated file names. The deck was not changed. Try again, or select less so the model has a smaller task.",
+   "at": "2026-10-04T03:23:18.899114+00:00"
+  }
+ ],
+ "head_after": "ver_01M42EY8TPN1Z3BEX9420PHFC4",
+ "proposals": []
+}

@@ -1,0 +1,131 @@
+{
+ "task": "generate",
+ "request": {
+  "task": "generate",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+  "operation_key": "ac470baf5ec9478bbbc41853ff01e78b",
+  "scope": {
+   "kind": "deck",
+   "slide_ids": [],
+   "element_ids": []
+  },
+  "slide_count": 5,
+  "source_asset_ids": [
+   "ast_01M41EBJFBPN9B3JV0P8VPQTSW",
+   "ast_01M41EBJFPCRWKB6TACCF5JEEX"
+  ],
+  "instruction": "Create a five-slide board update on FY26 regional revenue, using only the supplied sources."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41F9GE9KGK6D304VVC1XPWH",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "generate",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:09:17.258438",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41F9GE9KGK6D304VVC1XPWH",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "generate",
+  "status": "failed",
+  "result": null,
+  "error": "No operations were written.",
+  "budget": {
+   "used_tokens": 782,
+   "input_tokens": 626,
+   "output_tokens": 156,
+   "structured_requests": [
+    {
+     "stage": "orchestrate",
+     "contract": "OrchestratorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 13.73,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 6,
+  "created_at": "2026-10-03T18:09:17.258438",
+  "cancel_requested": false
+ },
+ "seconds": 14.48,
+ "first_poll_s": 0.203,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:09:17.281075+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:09:17.343522+00:00"
+  },
+  {
+   "sequence": 3,
+   "run_id": "asr_01M41F9GE9KGK6D304VVC1XPWH",
+   "stage": "orchestrate",
+   "status": "started",
+   "message": "Reading the request",
+   "agent_id": "orchestrator",
+   "artifact_refs": [],
+   "at": "2026-10-03T18:09:19.746722+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "orchestrate",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:09:19.770859+00:00"
+  },
+  {
+   "sequence": 5,
+   "run_id": "asr_01M41F9GE9KGK6D304VVC1XPWH",
+   "stage": "orchestrate",
+   "status": "completed",
+   "message": "Needs a clarification: Please provide the supplied sources so I can begin the research phase.",
+   "agent_id": "orchestrator",
+   "artifact_refs": [],
+   "at": "2026-10-03T18:09:31.079270+00:00"
+  },
+  {
+   "sequence": 6,
+   "status": "failed",
+   "message": "No operations were written.",
+   "at": "2026-10-03T18:09:31.098700+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EZQGVNMMETDX26T310GPV",
+ "proposals": [
+  {
+   "id": "txn_01M41F9DR6D8Q377BW2HD4RRSR",
+   "status": "pending",
+   "intent": "Create spoken narration",
+   "reason": null,
+   "risk_tier": "medium",
+   "agent_id": "assistant:speech",
+   "run_id": "asr_01M41F9CTXTEVQEBQADHND4ZTF",
+   "created_at": "2026-10-03T18:09:14.504736",
+   "expires_at": "2026-10-04T18:09:14.502721",
+   "operation_count": 6
+  }
+ ]
+}

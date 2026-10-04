@@ -1,0 +1,879 @@
+
+######## tidy-faults
+{"task": "tidy", "create_status": 202, "seconds": 2.41}
+status: completed | error: 
+result keys: ['summary', 'warnings', 'findings', 'provider', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: Prepared 7 deterministic layout adjustments.
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', "working:Applying the editor's deterministic design fixes", 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 2.06, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## tidy-deck
+{"task": "tidy", "create_status": 202, "seconds": 2.48}
+status: completed | error: 
+result keys: ['summary', 'warnings', 'findings', 'provider', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: Prepared 7 deterministic layout adjustments.
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', "working:Applying the editor's deterministic design fixes", 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 250000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 2.26, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## motion-steps
+{"task": "motion", "create_status": 202, "seconds": 1.6}
+status: completed | error: 
+result keys: ['summary', 'warnings', 'provider', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: Prepared motion for 1 slides with the product's 2.5-second entrance budget.
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 1.2, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## motion-click
+{"task": "motion", "create_status": 202, "seconds": 1.3}
+status: completed | error: 
+result keys: ['summary', 'warnings', 'provider', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: Prepared motion for 1 slides with the product's 2.5-second entrance budget.
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 0.96, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## alt-images
+{"task": "alt_text", "create_status": 202, "seconds": 180.65}
+status: failed | error: The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'failed:The assistant could not produce a validated result. Completed changes and usage ']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [{"stage": "vision", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "provider_error"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 180.35, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## edit-injection
+{"task": "edit", "create_status": 202, "seconds": 185.26}
+status: failed | error: The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'failed:The assistant could not produce a validated result. Completed changes and usage ']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [{"stage": "authoring", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "provider_error"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 180.36, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## consistency-3
+{"task": "consistency", "create_status": 202, "seconds": 287.88}
+status: failed | error: Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'working:Processing slide 1 of 3', 'failed:Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 285.68, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## translate-data-hi
+{"task": "translation", "create_status": 202, "seconds": 95.65}
+status: failed | error: The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:The assistant could not produce a validated result. Completed changes and usage ']
+budget: {"used_tokens": 4404, "input_tokens": 1868, "output_tokens": 2536, "structured_requests": [{"stage": "translation", "contract": "_TranslationBatch", "attempts": 1, "valid_first_attempt": false, "outcome": "invalid"}, {"stage": "translation", "contract": "_TranslationBatch", "attempts": 1, "valid_first_attempt": false, "outcome": "invalid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 94.1, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## narration-wall
+{"task": "narration", "create_status": 202, "seconds": 208.06}
+status: failed | error: The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:The assistant could not produce a validated result. Completed changes and usage ']
+budget: {"used_tokens": 10535, "input_tokens": 9676, "output_tokens": 859, "structured_requests": [{"stage": "narration", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "valid", "patch_valid": false}, {"stage": "narration", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "valid", "patch_valid": false}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 206.42, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## organise-deck
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: database is locked
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\batch2.py", line 27, in <module>
+    harness.run(task, **kw)
+    ~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\harness.py", line 103, in run
+    current = client.get(f"/v1/assistant/runs/{run_id}", headers=auth).json()
+              ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 483, in get
+    return super().get(
+           ~~~~~~~~~~~^
+        url,
+        ^^^^
+    ...<6 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1113, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 455, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 797, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 980, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1008, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1043, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1076, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 354, in handle_request
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 338, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 263, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\grants.py", line 105, in scope_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\db\session.py", line 102, in session_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\telemetry.py", line 222, in http_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "D:\Presentation_app\apps\api\deckastra_api\assistant_routes.py", line 374, in get_run
+    recover(session)
+    ~~~~~~~^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\assistant_routes.py", line 368, in recover
+    session.execute(update(AssistantRun).where(AssistantRun.status == "running", AssistantRun.lease_until < now()).values(status="interrupted", error="The worker stopped. Resume the saved checkpoint after checking usage.").execution_options(synchronize_session=False))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\bulk_persistence.py", line 1676, in orm_execute_statement
+    return super().orm_execute_statement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        session,
+        ^^^^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+[SQL: UPDATE assistant_runs SET status=?, error=? WHERE assistant_runs.status = ? AND assistant_runs.lease_until < ?]
+[parameters: ('interrupted', 'The worker stopped. Resume the saved checkpoint after checking usage.', 'running', '2026-10-03 20:21:35.638813')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+######## research-sources
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: database is locked
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\batch2.py", line 27, in <module>
+    harness.run(task, **kw)
+    ~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\harness.py", line 103, in run
+    current = client.get(f"/v1/assistant/runs/{run_id}", headers=auth).json()
+              ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 483, in get
+    return super().get(
+           ~~~~~~~~~~~^
+        url,
+        ^^^^
+    ...<6 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1113, in get
+    return self.request(
+           ~~~~~~~~~~~~^
+        "GET",
+        ^^^^^^
+    ...<7 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 455, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 797, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 980, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1008, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1043, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1076, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 354, in handle_request
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 338, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 263, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\grants.py", line 105, in scope_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\db\session.py", line 102, in session_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\telemetry.py", line 222, in http_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "D:\Presentation_app\apps\api\deckastra_api\assistant_routes.py", line 374, in get_run
+    recover(session)
+    ~~~~~~~^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\assistant_routes.py", line 368, in recover
+    session.execute(update(AssistantRun).where(AssistantRun.status == "running", AssistantRun.lease_until < now()).values(status="interrupted", error="The worker stopped. Resume the saved checkpoint after checking usage.").execution_options(synchronize_session=False))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    return self._execute_internal(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        statement,
+        ^^^^^^^^^^
+    ...<4 lines>...
+        _add_event=_add_event,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\bulk_persistence.py", line 1676, in orm_execute_statement
+    return super().orm_execute_statement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        session,
+        ^^^^^^^^
+    ...<4 lines>...
+        conn,
+        ^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+        statement, params or {}, execution_options=execution_options
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+[SQL: UPDATE assistant_runs SET status=?, error=? WHERE assistant_runs.status = ? AND assistant_runs.lease_until < ?]
+[parameters: ('interrupted', 'The worker stopped. Resume the saved checkpoint after checking usage.', 'running', '2026-10-03 20:23:14.487388')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+######## generate-5
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: database is locked
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\batch2.py", line 27, in <module>
+    harness.run(task, **kw)
+    ~~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\harness.py", line 97, in run
+    created = client.post("/v1/assistant/runs", headers=auth, json=body)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 556, in post
+    return super().post(
+           ~~~~~~~~~~~~^
+        url,
+        ^^^^
+    ...<10 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1204, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 455, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...<11 lines>...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 797, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 980, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1008, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1043, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\httpx2\_client.py", line 1076, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 354, in handle_request
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\testclient.py", line 351, in handle_request
+    portal.call(self.app, scope, receive, send)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 338, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\from_thread.py", line 263, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\grants.py", line 105, in scope_middleware
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\db\session.py", line 102, in session_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Presentation_app\apps\api\deckastra_api\telemetry.py", line 222, in http_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "D:\Presentation_app\apps\api\deckastra_api\assistant_routes.py", line 345, in create_run
+    session.flush()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\util\langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\unitofwork.py", line 465, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\unitofwork.py", line 641, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\persistence.py", line 94, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\orm\persistence.py", line 1234, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1988, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 2365, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\base.py", line 1969, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\ROG\AppData\Roaming\Python\Python313\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO assistant_runs (id, workspace_id, presentation_id, created_by, operation_key, status, request_json, scopes_json, error, cancel_requested, lease_until, owner_id, event_seq, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('asr_01M41Q0JB496AQ8Y34EX387B1N', 'wsp_01M41NVM8YW0EWK68A87GAB41F', 'doc_01JDS368EWNBW71G8VKNVMPCE8', 'usr_01M41NVM8YW0EWK68A87GAB41E', '1ced6d942cde4ac6a829edaefcaffbbe', 'queued', '{"task": "generate", "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8", "expected_version_id": "ver_01M41NWAV914BGEMECMDXD9MX2", "operation_key": " ... (404 characters truncated) ... ind": "pdf", "generation_mode": "append", "research_run_id": null, "motion_entrance": "fade", "motion_pacing": "measured", "motion_click_reveals": 0}', '["administer", "approve", "export", "manage", "read", "share", "write"]', None, 0, None, None, 0, '2026-10-03 20:24:12.901521')]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

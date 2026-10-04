@@ -1,0 +1,146 @@
+{
+ "task": "organise",
+ "request": {
+  "task": "organise",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+  "operation_key": "e7566193f7e749ce9be50169cfa5c4a3",
+  "scope": {
+   "kind": "deck",
+   "slide_ids": [],
+   "element_ids": []
+  },
+  "instruction": "Tag and describe the pictures used in this deck."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41F87X2MG6NE8DR272ZSG23",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:08:35.747392",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41F87X2MG6NE8DR272ZSG23",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "completed",
+  "result": {
+   "assets": [
+    {
+     "id": "ast_01JDZJD4WE9SS3HE57R5QG0C7S",
+     "kind": "image",
+     "filename": "adoption.png",
+     "content_type": "image/png",
+     "bytes": 32059,
+     "width": 1600,
+     "height": 900,
+     "duration_ms": null,
+     "waveform_peaks": null,
+     "reference_count": 0,
+     "deleted_at": null,
+     "created_at": "2026-10-03T17:52:56.171073",
+     "tags": [
+      "adoption.png"
+     ],
+     "description": "Image file with filename adoption.png, type image/png, dimensions 1600x900.",
+     "sha256": "682232c2c3adba277930c7e0b451b494a8ebdd6c40d71ad8f7aaf7cbedf7469e",
+     "dhash64": "5555556566666103",
+     "metadata_version": 1,
+     "change_id": "amc_01M41F8TEV8MDYWP6WK1B618ZZ"
+    },
+    {
+     "id": "ast_01JD8ZZY4P7VM818WRPE4G7SVS",
+     "kind": "image",
+     "filename": "swoosh.png",
+     "content_type": "image/png",
+     "bytes": 1804,
+     "width": 1200,
+     "height": 300,
+     "duration_ms": null,
+     "waveform_peaks": null,
+     "reference_count": 0,
+     "deleted_at": null,
+     "created_at": "2026-10-03T17:52:56.237429",
+     "tags": [
+      "swoosh.png"
+     ],
+     "description": "Image file with filename swoosh.png, type image/png, dimensions 1200x300.",
+     "sha256": "936218a54a7db6b4f7a5c08d8306aeebcfd5c271707106fb2df32d75ce6844c4",
+     "dhash64": "ffffffffffffffff",
+     "metadata_version": 1,
+     "change_id": "amc_01M41F8TF068ECPDT0XKXS7JCD"
+    }
+   ]
+  },
+  "error": null,
+  "budget": {
+   "used_tokens": 1207,
+   "input_tokens": 707,
+   "output_tokens": 500,
+   "structured_requests": [
+    {
+     "stage": "organise",
+     "contract": "MetadataPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 18.94,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T18:08:35.747392",
+  "cancel_requested": false
+ },
+ "seconds": 19.45,
+ "first_poll_s": 0.144,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:08:35.766877+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:08:35.794002+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "organise",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:08:35.839771+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "validated",
+   "message": "Validated output saved",
+   "at": "2026-10-03T18:08:54.719459+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "completed",
+   "message": "Assistant task completed",
+   "at": "2026-10-03T18:08:54.754785+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EZQGVNMMETDX26T310GPV",
+ "proposals": []
+}

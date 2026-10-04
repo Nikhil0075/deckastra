@@ -1,0 +1,258 @@
+
+> @deckastra/desktop@0.9.0-beta.1 build
+> node scripts/build.mjs
+
+
+  dist\main\index.js      338.4kb
+  dist\main\index.js.map  678.1kb
+
+Done in 1088ms
+
+  dist\main\preload.cjs       7.3kb
+  dist\main\preload.cjs.map  24.1kb
+
+Done in 67ms
+
+  dist\worker\cli.mjs       5.9mb
+  dist\worker\cli.mjs.map  10.1mb
+
+Done in 5516ms
+
+  dist\mcp\cli.mjs      1.4mb
+  dist\mcp\cli.mjs.map  2.5mb
+
+Done in 4732ms
+
+  dist\worker\assistant-design-check.cjs      1.6mb
+  dist\worker\assistant-design-check.cjs.map  3.2mb
+
+Done in 247ms
+
+  dist\worker\measurement-browser.js  1.4mb
+
+Done in 208ms
+desktop: 32 bundled fonts (233 static weights) and the equation faces copied for the exporter
+vite v6.4.3 building for production...
+transforming...
+../../node_modules/zod/v4/core/regexes.js (70:0): A comment
+
+"/** Anchors a pattern source. The interpolation lives here rather than at the call site because
+ * esbuild will not drop a `@__PURE__` call whose own argument interpolates a variable, but it
+ * will drop `anchor(dateSource)`. Keeping it inline pinned `date` into every bundle. */"
+
+in "../../node_modules/zod/v4/core/regexes.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+../../node_modules/zod/v4/core/util.js (330:0): A comment
+
+"// Wrapped in a `@__PURE__` IIFE: esbuild never tree-shakes a top-level initializer that contains a member access on `Number`, so the bare object literal survived into every bundle."
+
+in "../../node_modules/zod/v4/core/util.js" contains an annotation that Rollup cannot interpret due to the position of the comment. The comment will be removed to avoid issues.
+✓ 427 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/main/renderer/index.html                                                              0.39 kB │ gzip:   0.26 kB
+dist/main/renderer/assets/KaTeX_Size3-Regular-CTq5MqoE.woff                                4.42 kB
+dist/main/renderer/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2                               4.93 kB
+dist/main/renderer/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2                               5.21 kB
+dist/main/renderer/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2                               5.47 kB
+dist/main/renderer/assets/ibm-plex-mono-vietnamese-400-normal-DDuiU_S-.woff                5.62 kB
+dist/main/renderer/assets/ibm-plex-mono-cyrillic-ext-400-normal-DMdlQ8Kv.woff              5.82 kB
+dist/main/renderer/assets/ibm-plex-mono-vietnamese-400-normal-BulugwFq.woff2               5.87 kB
+dist/main/renderer/assets/KaTeX_Size4-Regular-BF-4gkZK.woff                                5.98 kB
+dist/main/renderer/assets/KaTeX_Size2-Regular-oD1tc_U0.woff                                6.19 kB
+dist/main/renderer/assets/hind-latin-ext-400-normal-BIsWM9a7.woff                          6.23 kB
+dist/main/renderer/assets/KaTeX_Size1-Regular-C195tn64.woff                                6.50 kB
+dist/main/renderer/assets/space-grotesk-vietnamese-wght-normal-D0rl6rjA.woff2              6.71 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2                         6.91 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2                            6.91 kB
+dist/main/renderer/assets/ibm-plex-mono-cyrillic-ext-400-normal-xuaO2J-f.woff2             6.91 kB
+dist/main/renderer/assets/ibm-plex-mono-cyrillic-400-normal-CEL4l2ZJ.woff                  7.20 kB
+dist/main/renderer/assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2             7.50 kB
+dist/main/renderer/assets/bebas-neue-latin-ext-400-normal-HFKRJXnW.woff                    7.52 kB
+dist/main/renderer/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf                                 7.59 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff                          7.66 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff                             7.72 kB
+dist/main/renderer/assets/ibm-plex-mono-cyrillic-400-normal-BSMlKf0J.woff2                 8.36 kB
+dist/main/renderer/assets/manrope-vietnamese-wght-normal-usUDDRr7.woff2                    8.52 kB
+dist/main/renderer/assets/archivo-black-latin-ext-400-normal--j5WRK12.woff                 8.78 kB
+dist/main/renderer/assets/bebas-neue-latin-ext-400-normal-DWiEslNC.woff2                   8.93 kB
+dist/main/renderer/assets/lora-vietnamese-wght-normal-CfJ7gtf3.woff2                       8.99 kB
+dist/main/renderer/assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2                  9.00 kB
+dist/main/renderer/assets/playfair-display-vietnamese-wght-normal-Cabi7G8-.woff2           9.11 kB
+dist/main/renderer/assets/hind-latin-ext-400-normal-CehS5lVz.woff2                         9.16 kB
+dist/main/renderer/assets/noto-naskh-arabic-symbols-wght-normal-DTaB7Hqz.woff2             9.41 kB
+dist/main/renderer/assets/manrope-greek-wght-normal-DL7QRZyv.woff2                         9.44 kB
+dist/main/renderer/assets/KaTeX_Script-Regular-D3wIWfF6.woff2                              9.64 kB
+dist/main/renderer/assets/baloo-2-vietnamese-wght-normal-C4ZonJY6.woff2                    9.89 kB
+dist/main/renderer/assets/jost-cyrillic-wght-normal-CjwCQKo9.woff2                        10.14 kB
+dist/main/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2                     10.25 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2                          10.34 kB
+dist/main/renderer/assets/KaTeX_Size4-Regular-DWFBv043.ttf                                10.36 kB
+dist/main/renderer/assets/noto-naskh-arabic-latin-ext-wght-normal-CJtFhxZA.woff2          10.39 kB
+dist/main/renderer/assets/KaTeX_Script-Regular-D5yQViql.woff                              10.59 kB
+dist/main/renderer/assets/mukta-latin-ext-400-normal-DBvoNXLH.woff                        11.02 kB
+dist/main/renderer/assets/bebas-neue-latin-400-normal-Bi-ndsyu.woff                       11.18 kB
+dist/main/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2                      11.23 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2                            11.32 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2                               11.35 kB
+dist/main/renderer/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf                                11.51 kB
+dist/main/renderer/assets/noto-sans-hebrew-latin-ext-wght-normal-BojrQYZr.woff2           11.56 kB
+dist/main/renderer/assets/fraunces-vietnamese-wght-normal-CnvboYUG.woff2                  11.57 kB
+dist/main/renderer/assets/ibm-plex-mono-latin-ext-400-normal-D3D2R8hC.woff                11.77 kB
+dist/main/renderer/assets/work-sans-vietnamese-wght-normal-BKsN3ITN.woff2                 11.80 kB
+dist/main/renderer/assets/hind-latin-400-normal-BDJq_LHN.woff                             11.90 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2                           12.03 kB
+dist/main/renderer/assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2              12.11 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2                             12.22 kB
+dist/main/renderer/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf                                12.23 kB
+dist/main/renderer/assets/noto-sans-hebrew-hebrew-wght-normal-Bt6ehdp-.woff2              12.26 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff                           12.32 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf                          12.34 kB
+dist/main/renderer/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf                             12.37 kB
+dist/main/renderer/assets/archivo-black-latin-400-normal-HW9MwEcM.woff                    13.00 kB
+dist/main/renderer/assets/nunito-vietnamese-wght-normal-U01xdrZh.woff2                    13.10 kB
+dist/main/renderer/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff                    13.14 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff                             13.21 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff                                13.30 kB
+dist/main/renderer/assets/ibm-plex-mono-latin-ext-400-normal-BmRBH3aV.woff2               13.35 kB
+dist/main/renderer/assets/source-serif-4-vietnamese-wght-normal-D-yuW59g.woff2            13.45 kB
+dist/main/renderer/assets/noto-sans-oriya-latin-ext-wght-normal-DYjvOk0t.woff2            13.55 kB
+dist/main/renderer/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2                         13.57 kB
+dist/main/renderer/assets/noto-sans-bengali-latin-ext-wght-normal-B4w0d5pX.woff2          13.62 kB
+dist/main/renderer/assets/bebas-neue-latin-400-normal-9mHNbWWO.woff2                      13.77 kB
+dist/main/renderer/assets/noto-sans-devanagari-latin-ext-wght-normal-CLkupaxV.woff2       13.85 kB
+dist/main/renderer/assets/noto-sans-kannada-latin-ext-wght-normal-MdBBF41x.woff2          13.99 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff                            14.11 kB
+dist/main/renderer/assets/noto-naskh-arabic-math-wght-normal-Cgl1D-No.woff2               14.28 kB
+dist/main/renderer/assets/archivo-black-latin-ext-400-normal-DQAASfvW.woff2               14.33 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff                              14.41 kB
+dist/main/renderer/assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2                     14.50 kB
+dist/main/renderer/assets/noto-sans-gujarati-symbols-wght-normal-BIVT2UXp.woff2           14.50 kB
+dist/main/renderer/assets/noto-sans-arabic-symbols-wght-normal-BJ6p-EzA.woff2             14.58 kB
+dist/main/renderer/assets/mukta-latin-ext-400-normal-CoeaTj-I.woff2                       14.68 kB
+dist/main/renderer/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2                   14.71 kB
+dist/main/renderer/assets/manrope-latin-ext-wght-normal-Ch3YOpNY.woff2                    15.12 kB
+dist/main/renderer/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2             15.20 kB
+dist/main/renderer/assets/noto-serif-devanagari-latin-ext-wght-normal-tigZJXFW.woff2      15.74 kB
+dist/main/renderer/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff                          16.03 kB
+dist/main/renderer/assets/hind-latin-400-normal-BqbzxKtL.woff2                            16.22 kB
+dist/main/renderer/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2                            16.40 kB
+dist/main/renderer/assets/KaTeX_Math-Italic-t53AETM-.woff2                                16.44 kB
+dist/main/renderer/assets/KaTeX_Script-Regular-C5JkGWo-.ttf                               16.65 kB
+dist/main/renderer/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2                            16.78 kB
+dist/main/renderer/assets/noto-sans-arabic-latin-ext-wght-normal-CIz31GGw.woff2           16.82 kB
+dist/main/renderer/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2                                16.99 kB
+dist/main/renderer/assets/noto-sans-telugu-latin-ext-wght-normal-xlpeUHwg.woff2           17.05 kB
+dist/main/renderer/assets/jost-latin-ext-wght-normal-BDUtSsKd.woff2                       17.10 kB
+dist/main/renderer/assets/noto-sans-gujarati-latin-ext-wght-normal-DAf-iy7o.woff2         17.10 kB
+dist/main/renderer/assets/lora-symbols-wght-normal-DQ5VrUkH.woff2                         17.25 kB
+dist/main/renderer/assets/noto-sans-tamil-latin-ext-wght-normal-D1TiJAvN.woff2            17.27 kB
+dist/main/renderer/assets/noto-sans-malayalam-latin-ext-wght-normal-s09EMxGK.woff2        17.35 kB
+dist/main/renderer/assets/mukta-latin-400-normal-DWf8bB-R.woff                            17.38 kB
+dist/main/renderer/assets/noto-sans-gurmukhi-latin-ext-wght-normal-CbYA9Het.woff2         17.46 kB
+dist/main/renderer/assets/source-serif-4-cyrillic-ext-wght-normal-cHuGMAiY.woff2          18.06 kB
+dist/main/renderer/assets/dm-sans-latin-ext-wght-normal-BOFOeGcA.woff2                    18.23 kB
+dist/main/renderer/assets/archivo-black-latin-400-normal-BTVu2TQR.woff2                   18.60 kB
+dist/main/renderer/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff                             18.67 kB
+dist/main/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2                       18.75 kB
+dist/main/renderer/assets/KaTeX_Math-Italic-DA0__PXp.woff                                 18.75 kB
+dist/main/renderer/assets/space-grotesk-latin-ext-wght-normal-D9tNdqV9.woff2              18.94 kB
+dist/main/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2                          19.00 kB
+dist/main/renderer/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff                             19.41 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf                            19.44 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Regular-CB_wures.ttf                              19.57 kB
+dist/main/renderer/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf                                 19.58 kB
+dist/main/renderer/assets/KaTeX_Main-Italic-BMLOBm91.woff                                 19.68 kB
+dist/main/renderer/assets/noto-naskh-arabic-latin-wght-normal-B_CzjACR.woff2              19.70 kB
+dist/main/renderer/assets/lora-latin-ext-wght-normal-C2Wlntb9.woff2                       20.09 kB
+dist/main/renderer/assets/noto-sans-hebrew-latin-wght-normal-Dl_pbM6R.woff2               20.19 kB
+dist/main/renderer/assets/source-serif-4-greek-wght-normal-ece1310W.woff2                 20.23 kB
+dist/main/renderer/assets/mukta-latin-400-normal-DXND9OdD.woff2                           20.48 kB
+dist/main/renderer/assets/nunito-cyrillic-wght-normal-CY6AOgYE.woff2                      20.78 kB
+dist/main/renderer/assets/playfair-display-latin-ext-wght-normal-CT1r92Rl.woff2           21.14 kB
+dist/main/renderer/assets/playfair-display-cyrillic-wght-normal-5WvUvBgz.woff2            21.15 kB
+dist/main/renderer/assets/lora-cyrillic-wght-normal-UWPuZLjM.woff2                        21.23 kB
+dist/main/renderer/assets/space-grotesk-latin-wght-normal-BhU9QXUp.woff2                  22.29 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf                             22.36 kB
+dist/main/renderer/assets/noto-sans-gujarati-math-wght-normal-D_zLZgZN.woff2              22.38 kB
+dist/main/renderer/assets/noto-sans-arabic-math-wght-normal-pS2d8anF.woff2                22.72 kB
+dist/main/renderer/assets/lora-cyrillic-ext-wght-normal-YcVxMP-u.woff2                    23.64 kB
+dist/main/renderer/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf                               24.50 kB
+dist/main/renderer/assets/manrope-latin-wght-normal-DHIcAJRg.woff2                        24.84 kB
+dist/main/renderer/assets/noto-sans-oriya-latin-wght-normal-D3uQTe1B.woff2                25.11 kB
+dist/main/renderer/assets/KaTeX_Main-Bold-Cx986IdX.woff2                                  25.32 kB
+dist/main/renderer/assets/noto-sans-devanagari-latin-wght-normal-Bxfr4UJH.woff2           25.38 kB
+dist/main/renderer/assets/noto-sans-bengali-latin-wght-normal-BEfni1Yl.woff2              25.60 kB
+dist/main/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2                   25.96 kB
+dist/main/renderer/assets/KaTeX_Main-Regular-B22Nviop.woff2                               26.27 kB
+dist/main/renderer/assets/jost-latin-wght-normal-ObQm3Zd1.woff2                           26.58 kB
+dist/main/renderer/assets/baloo-2-latin-ext-wght-normal-Dz43yst_.woff2                    27.38 kB
+dist/main/renderer/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf                           27.56 kB
+dist/main/renderer/assets/noto-sans-kannada-latin-wght-normal-DeLZCgFT.woff2              27.58 kB
+dist/main/renderer/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2                                28.08 kB
+dist/main/renderer/assets/nunito-cyrillic-ext-wght-normal-D4X5GqEv.woff2                  28.93 kB
+dist/main/renderer/assets/lora-math-wght-normal-sOy7rEfW.woff2                            29.24 kB
+dist/main/renderer/assets/caveat-latin-ext-wght-normal-Byk3UhVp.woff2                     29.47 kB
+dist/main/renderer/assets/noto-serif-devanagari-latin-wght-normal-B3HgCHZx.woff2          29.47 kB
+dist/main/renderer/assets/KaTeX_Main-Bold-Jm3AIy58.woff                                   29.91 kB
+dist/main/renderer/assets/KaTeX_Main-Regular-Dr94JaBh.woff                                30.77 kB
+dist/main/renderer/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf                              31.20 kB
+dist/main/renderer/assets/noto-sans-gurmukhi-latin-wght-normal-BcBT8azu.woff2             31.30 kB
+dist/main/renderer/assets/KaTeX_Math-Italic-flOr_0UB.ttf                                  31.31 kB
+dist/main/renderer/assets/noto-sans-gujarati-latin-wght-normal-BDbQYXqH.woff2             31.35 kB
+dist/main/renderer/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2               31.42 kB
+dist/main/renderer/assets/noto-sans-malayalam-latin-wght-normal-DtofEq_2.woff2            31.59 kB
+dist/main/renderer/assets/noto-sans-telugu-latin-wght-normal-CDSHg1Y4.woff2               31.85 kB
+dist/main/renderer/assets/noto-sans-tamil-latin-wght-normal-Cd-SWREo.woff2                31.93 kB
+dist/main/renderer/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf                              32.97 kB
+dist/main/renderer/assets/baloo-2-latin-wght-normal-B_TVFhwJ.woff2                        33.19 kB
+dist/main/renderer/assets/KaTeX_AMS-Regular-DMm9YOAa.woff                                 33.52 kB
+dist/main/renderer/assets/KaTeX_Main-Italic-3WenGoN9.ttf                                  33.58 kB
+dist/main/renderer/assets/fraunces-latin-ext-wght-normal-Ca2vKHc0.woff2                   33.58 kB
+dist/main/renderer/assets/noto-sans-gurmukhi-gurmukhi-wght-normal-HnZqhN5g.woff2          33.82 kB
+dist/main/renderer/assets/nunito-latin-ext-wght-normal-CXYtwYOx.woff2                     35.59 kB
+dist/main/renderer/assets/work-sans-latin-ext-wght-normal-B5dZ8C4S.woff2                  35.72 kB
+dist/main/renderer/assets/source-serif-4-cyrillic-wght-normal-DwHjdM4S.woff2              36.47 kB
+dist/main/renderer/assets/fraunces-latin-wght-normal-ukD16Tqj.woff2                       36.62 kB
+dist/main/renderer/assets/dm-sans-latin-wght-normal-Xz1IZZA0.woff2                        36.93 kB
+dist/main/renderer/assets/lora-latin-wght-normal-BiLcIKcI.woff2                           37.79 kB
+dist/main/renderer/assets/playfair-display-latin-wght-normal-BOwq7MWX.woff2               38.40 kB
+dist/main/renderer/assets/nunito-latin-wght-normal-BzFMHfZw.woff2                         39.13 kB
+dist/main/renderer/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2                 40.40 kB
+dist/main/renderer/assets/source-serif-4-latin-ext-wght-normal-CxNHBx-q.woff2             42.04 kB
+dist/main/renderer/assets/caveat-cyrillic-ext-wght-normal-DiMfzA-V.woff2                  42.86 kB
+dist/main/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                          48.26 kB
+dist/main/renderer/assets/hind-devanagari-400-normal-6Ms-mAa1.woff                        50.16 kB
+dist/main/renderer/assets/work-sans-latin-wght-normal-Bl-S9Xys.woff2                      50.32 kB
+dist/main/renderer/assets/noto-sans-tamil-tamil-wght-normal-iihgzMBi.woff2                50.47 kB
+dist/main/renderer/assets/source-serif-4-latin-wght-normal-D9elroTD.woff2                 50.82 kB
+dist/main/renderer/assets/KaTeX_Main-Bold-waoOVXN0.ttf                                    51.34 kB
+dist/main/renderer/assets/KaTeX_Main-Regular-ypZvNtVU.ttf                                 53.58 kB
+dist/main/renderer/assets/KaTeX_AMS-Regular-DRggAlZN.ttf                                  63.63 kB
+dist/main/renderer/assets/caveat-latin-wght-normal-C1hSzPvX.woff2                         74.93 kB
+dist/main/renderer/assets/hind-devanagari-400-normal-Ce8EC4-d.woff2                       74.94 kB
+dist/main/renderer/assets/caveat-cyrillic-wght-normal-D5lnP6kL.woff2                      77.22 kB
+dist/main/renderer/assets/mukta-devanagari-400-normal-GTtcXJDg.woff                       84.10 kB
+dist/main/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2                      85.07 kB
+dist/main/renderer/assets/noto-sans-malayalam-malayalam-wght-normal-C3telsSh.woff2        89.47 kB
+dist/main/renderer/assets/noto-sans-kannada-kannada-wght-normal-DuwB-P8d.woff2            90.80 kB
+dist/main/renderer/assets/noto-naskh-arabic-arabic-wght-normal-DIN-4rtF.woff2             94.03 kB
+dist/main/renderer/assets/noto-sans-oriya-oriya-wght-normal-JNDXqas0.woff2                98.87 kB
+dist/main/renderer/assets/mukta-devanagari-400-normal-DFIcfn-0.woff2                      99.35 kB
+dist/main/renderer/assets/noto-sans-bengali-bengali-wght-normal-DeF8kf4m.woff2           107.72 kB
+dist/main/renderer/assets/noto-sans-gujarati-gujarati-wght-normal-Clz9kKLg.woff2         112.27 kB
+dist/main/renderer/assets/baloo-2-devanagari-wght-normal-B4j4n2PV.woff2                  115.15 kB
+dist/main/renderer/assets/noto-sans-devanagari-devanagari-wght-normal-DWI_L5Cu.woff2     121.19 kB
+dist/main/renderer/assets/noto-sans-telugu-telugu-wght-normal-DoLU0sI2.woff2             123.97 kB
+dist/main/renderer/assets/noto-serif-devanagari-devanagari-wght-normal-Ck0C6go5.woff2    126.86 kB
+dist/main/renderer/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2             165.96 kB
+dist/main/renderer/assets/index-BfPDiXWw.css                                             183.65 kB │ gzip:  33.84 kB
+dist/main/renderer/assets/CodePanel-B15D3eJa.js                                          515.92 kB │ gzip: 155.57 kB │ map: 1,989.15 kB
+dist/main/renderer/assets/index-CCgGKSIU.js                                            1,435.08 kB │ gzip: 446.65 kB │ map: 5,955.79 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 23.53s
+desktop: 78 third-party packages bundled
+desktop: main, preload, worker, MCP server and renderer built

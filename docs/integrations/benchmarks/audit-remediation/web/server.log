@@ -1,0 +1,589 @@
+INFO:     Started server process [2478052]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:64635 (Press CTRL+C to quit)
+INFO:     127.0.0.1:64644 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/account HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "POST /v1/assistant/runs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M58P6EWMDGWJJXJ5R3J5J/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "POST /v1/assistant/runs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M5ARFZYBZ9E7DG6WPJQYD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M5ARFZYBZ9E7DG6WPJQYD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M5ARFZYBZ9E7DG6WPJQYD HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs/asr_01M41M5ARFZYBZ9E7DG6WPJQYD/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64644 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62184 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62184 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56637 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56637 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49583 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53279 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55687 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55687 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53279 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50385 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50385 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53279 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54134 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54134 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54134 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58294 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58216 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57056 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57056 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57056 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "OPTIONS /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62516 - "OPTIONS /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63939 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "OPTIONS /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53213 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53213 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64130 - "GET /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62615 - "GET /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64130 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53213 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53213 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52469 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53213 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62615 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64130 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52469 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57056 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57056 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61236 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61236 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61236 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61050 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61236 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61236 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61050 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61236 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61236 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61236 - "OPTIONS /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "OPTIONS /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61794 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52692 - "GET /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52391 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52692 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52692 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52692 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52692 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61794 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52692 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61612 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/assistant/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "POST /v1/assistant/runs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52692 - "OPTIONS /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52692 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52692 - "OPTIONS /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/assistant/runs/asr_01M41MXRKYHEM1VHH9Q4C1D7Q4/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58252 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61612 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55307 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55307 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55307 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62744 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58800 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58800 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62744 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62744 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62744 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58800 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55307 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62744 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62744 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58800 - "OPTIONS /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62744 - "OPTIONS /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55307 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58341 - "GET /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58341 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53396 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55307 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54180 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58341 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58341 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58341 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65372 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58341 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54180 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53396 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54180 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58341 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54180 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65372 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64070 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "POST /v1/dev/session HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54167 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60982 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60982 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54167 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54360 - "OPTIONS /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59147 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59147 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56474 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/assets?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54167 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59147 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41M5AMJKXZJXMT1F03C83XA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56474 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56474 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59147 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56474 - "OPTIONS /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59147 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59147 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59147 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59147 - "OPTIONS /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/workspaces/missing/never-uploaded.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/adoption.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/assistant/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "POST /v1/assistant/runs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "OPTIONS /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "OPTIONS /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "OPTIONS /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/head HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B&locale=en HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41N3V46XFY8XQ3X8P2S2G8A HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63383 - "OPTIONS /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41N3V46XFY8XQ3X8P2S2G8A HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41N3V46XFY8XQ3X8P2S2G8A HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59896 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/presentations/doc_01M41M58FP9T62RRWAFEYRGY5B/proposals/txn_01M41N3V46XFY8XQ3X8P2S2G8A HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/architecture-overview.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/en-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-0.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-1.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-2.ogg HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58041 - "GET /v1/workspace/assets/blob/workspaces/wsp_01M41M56XXR74Z3WXJ19KNMD3Y/assets/audit/swoosh.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51390 - "GET /v1/workspace/assets/blob/fixtures/audio/hi-step-3.ogg HTTP/1.1" 404 Not Found

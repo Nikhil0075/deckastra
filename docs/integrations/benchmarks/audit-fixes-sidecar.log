@@ -1,0 +1,144 @@
+
+> @deckastra/desktop@0.9.0-beta.1 build:sidecar
+> node scripts/build-sidecar.mjs
+
+building the workspace service…
+2088 INFO: PyInstaller: 6.22.3, contrib hooks: 2026.7
+2089 INFO: Python: 3.13.5
+2161 INFO: Platform: Windows-11-10.0.26200-SP0
+2161 INFO: Python environment: D:\Presentation_app\apps\desktop\dist\.venv
+2217 INFO: wrote D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service.spec
+2224 INFO: Removing temporary files and cleaning cache in C:\Users\ROG\AppData\Local\pyinstaller
+2585 INFO: Module search paths (PYTHONPATH):
+['D:\\Presentation_app',
+ 'C:\\Python313\\python313.zip',
+ 'C:\\Python313\\DLLs',
+ 'C:\\Python313\\Lib',
+ 'C:\\Python313',
+ 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv',
+ 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages',
+ 'D:\\Presentation_app\\apps\\api',
+ 'D:\\Presentation_app\\agents',
+ 'D:\\Presentation_app\\integrations']
+10227 INFO: Appending 'datas' from .spec
+10231 INFO: checking Analysis
+10231 INFO: Building Analysis because Analysis-00.toc is non existent
+10231 INFO: Looking for Python shared library...
+10232 INFO: Using Python shared library: C:\Python313\python313.dll
+10232 INFO: Running Analysis Analysis-00.toc
+10232 INFO: Target bytecode optimization level: 0
+10232 INFO: Initializing module dependency graph...
+10234 INFO: Initializing module graph hook caches...
+10902 INFO: Analyzing modules for base_library.zip ...
+19393 INFO: Processing standard module hook 'hook-encodings.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+22411 INFO: Processing standard module hook 'hook-math.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+26029 INFO: Processing standard module hook 'hook-pickle.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+29294 INFO: Processing standard module hook 'hook-heapq.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+30788 INFO: Caching module dependency graph...
+30892 INFO: Analyzing D:\Presentation_app\apps\api\deckastra_service.py
+31059 INFO: Processing standard module hook 'hook-sqlite3.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+32784 INFO: Processing standard module hook 'hook-sqlalchemy.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+38745 INFO: Processing standard module hook 'hook-platform.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+38862 INFO: Processing standard module hook 'hook-_ctypes.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+38989 INFO: Processing standard module hook 'hook-sysconfig.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+39230 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+39362 INFO: SetuptoolsInfo: initializing cached setuptools info...
+45618 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+46061 INFO: Processing standard module hook 'hook-xml.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+48714 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+48789 INFO: Setuptools: 'importlib_metadata' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.importlib_metadata'!
+48830 INFO: Processing standard module hook 'hook-setuptools.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+49438 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+49742 INFO: Processing pre-safe-import-module hook 'hook-jaraco.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+49745 INFO: Setuptools: 'jaraco' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco'!
+49914 INFO: Processing pre-safe-import-module hook 'hook-more_itertools.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+49915 INFO: Setuptools: 'more_itertools' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.more_itertools'!
+50508 INFO: Processing standard module hook 'hook-_osx_support.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+50616 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+53089 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+53097 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+53848 INFO: Processing pre-safe-import-module hook 'hook-backports.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+53899 INFO: Setuptools: 'backports' appears to be a full setuptools-vendored copy - creating alias to 'setuptools._vendor.backports'!
+56192 INFO: Processing pre-safe-import-module hook 'hook-tomli.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+56204 INFO: Setuptools: 'tomli' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.tomli'!
+58971 INFO: Processing pre-safe-import-module hook 'hook-wheel.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59023 INFO: Setuptools: 'wheel' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.wheel'!
+59344 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+59493 INFO: Processing pre-safe-import-module hook 'hook-zipp.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+59495 INFO: Setuptools: 'zipp' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.zipp'!
+87247 INFO: Processing standard module hook 'hook-mako.codegen.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+90386 INFO: Processing standard module hook 'hook-zoneinfo.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+109628 INFO: Processing standard module hook 'hook-anyio.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+118860 INFO: Processing standard module hook 'hook-PIL.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+119308 INFO: Processing standard module hook 'hook-PIL.Image.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+121768 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+122437 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+123573 INFO: Processing standard module hook 'hook-cryptography.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+129038 INFO: hook-cryptography: cryptography does not seem to be using dynamically linked OpenSSL.
+131693 INFO: Processing standard module hook 'hook-pydantic.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+139940 INFO: Processing standard module hook 'hook-uvicorn.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+146351 INFO: Processing standard module hook 'hook-difflib.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+147335 INFO: Processing standard module hook 'hook-webbrowser.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+149221 INFO: Processing standard module hook 'hook-websockets.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+155712 INFO: Processing standard module hook 'hook-jsonschema.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+157592 INFO: Processing standard module hook 'hook-jsonschema_specifications.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+158313 INFO: Processing standard module hook 'hook-urllib3.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+161031 INFO: Processing standard module hook 'hook-certifi.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+161332 INFO: Processing standard module hook 'hook-charset_normalizer.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+247910 INFO: Processing standard module hook 'hook-opentelemetry.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+254286 INFO: Processing standard module hook 'hook-orjson.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+274094 INFO: Processing standard module hook 'hook-ormsgpack.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\ormsgpack\\_pyinstaller'
+294567 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+297548 INFO: Analyzing hidden import 'uvicorn.loops.auto'
+297634 INFO: Analyzing hidden import 'uvicorn.protocols.http.auto'
+297637 INFO: Analyzing hidden import 'uvicorn.protocols.websockets.auto'
+297683 INFO: Analyzing hidden import 'uvicorn.lifespan.on'
+297729 INFO: Analyzing hidden import 'sqlalchemy.dialects.sqlite'
+298148 INFO: Analyzing hidden import 'aiosqlite'
+298292 INFO: Processing module hooks (post-graph stage)...
+303201 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+305178 INFO: Processing standard module hook 'hook-sqlalchemy.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks'
+313824 WARNING: Hidden import "pysqlite2" not found!
+313825 WARNING: Hidden import "MySQLdb" not found!
+313969 INFO: Processing standard module hook 'hook-tzdata.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+326556 INFO: Performing binary vs. data reclassification (723 entries)
+329425 INFO: Looking for ctypes DLLs
+329846 INFO: Analyzing run-time hooks ...
+329887 INFO: Including run-time hook 'pyi_rth_cryptography_openssl.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks'
+330014 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+330040 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+330045 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+330052 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'D:\\Presentation_app\\apps\\desktop\\dist\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+330275 INFO: Creating base_library.zip...
+330348 INFO: Looking for dynamic libraries
+D:\Presentation_app\apps\desktop\dist\.venv\Lib\site-packages\langgraph\checkpoint\base\__init__.py:17: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+369068 INFO: Extra DLL search directories (AddDllDirectory): []
+369068 INFO: Extra DLL search directories (PATH): []
+371273 INFO: Warnings written to D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service\warn-deckastra-service.txt
+372139 INFO: Graph cross-reference written to D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service\xref-deckastra-service.html
+372632 INFO: checking PYZ
+372633 INFO: Building PYZ because PYZ-00.toc is non existent
+372633 INFO: Building PYZ (ZlibArchive) D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service\PYZ-00.pyz
+375442 INFO: Building PYZ (ZlibArchive) D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service\PYZ-00.pyz completed successfully.
+375547 INFO: checking PKG
+375547 INFO: Building PKG because PKG-00.toc is non existent
+375547 INFO: Building PKG (CArchive) deckastra-service.pkg
+375600 INFO: Building PKG (CArchive) deckastra-service.pkg completed successfully.
+375603 INFO: Bootloader D:\Presentation_app\apps\desktop\dist\.venv\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\run.exe
+375603 INFO: checking EXE
+375603 INFO: Building EXE because EXE-00.toc is non existent
+375603 INFO: Building EXE from EXE-00.toc
+375625 INFO: Copying bootloader EXE to D:\Presentation_app\apps\desktop\dist\.pyinstaller\deckastra-service\deckastra-service.exe
+383268 INFO: Copying icon to EXE
+383400 INFO: Copying 0 resources to EXE
+383400 INFO: Embedding manifest in EXE
+383553 INFO: Appending PKG archive to EXE
+385543 INFO: Fixing EXE headers
+386494 INFO: Building EXE from EXE-00.toc completed successfully.
+386521 INFO: checking COLLECT
+386522 INFO: Building COLLECT because COLLECT-00.toc is non existent
+386534 INFO: Building COLLECT COLLECT-00.toc
+390505 INFO: Building COLLECT COLLECT-00.toc completed successfully.
+390526 INFO: Build complete! The results are available in: D:\Presentation_app\apps\desktop\dist\sidecar
+workspace service built into D:\Presentation_app\apps\desktop\dist\sidecar

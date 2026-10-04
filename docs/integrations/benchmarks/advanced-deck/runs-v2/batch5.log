@@ -1,0 +1,14 @@
+
+######## organise-deck
+{"task": "organise", "create_status": 202, "seconds": 63.69}
+status: completed | error: 
+result keys: ['warnings', 'metadata_proposal', 'status'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 1751, "input_tokens": 973, "output_tokens": 778, "structured_requests": [{"stage": "organise", "contract": "MetadataPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 250000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 41.72, "startup_seconds": 20.67, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## generate-5
+{"task": "generate", "create_status": 202, "seconds": 124.66}
+status: completed | error: 
+result keys: ['warnings', 'findings', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'started:Reading the request', 'provider:Explicit local-only mode', 'completed:The request asks to create a five-slide board update on FY26 regional revenue us', 'started:Gathering context', 'completed:Read 23 slide(s) for context', 'started:Designing the narrative', 'provider:Explicit local-only mode', 'completed:5-slide narrative drafted', 'started:Reviewing layout choices', 'provider:Explicit local-only mode', 'completed:Layout choices look right', 'started:Preparing the change', 'completed:2 operation(s) ready for review', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 7842, "input_tokens": 4964, "output_tokens": 2878, "structured_requests": [{"stage": "orchestrate", "contract": "OrchestratorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "story", "contract": "StoryPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "layout", "contract": "LayoutProposal", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 250000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 105.19, "startup_seconds": 18.64, "used_cost_usd": 0.0, "reserved_cost_usd": 0.

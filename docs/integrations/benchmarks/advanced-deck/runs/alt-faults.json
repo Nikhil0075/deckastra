@@ -1,0 +1,110 @@
+{
+ "task": "alt_text",
+ "request": {
+  "task": "alt_text",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EBJFSD9AXE48ZB140HSZN",
+  "operation_key": "83e6dcc098eb4495b7c28b782a272c56",
+  "scope": {
+   "kind": "slide",
+   "slide_ids": [
+    "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B"
+   ],
+   "element_ids": []
+  },
+  "instruction": "Write alt text for the chart picture."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41ETZ334THAT38DNRC91F6F",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "alt_text",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:01:20.740086",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41ETZ334THAT38DNRC91F6F",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "alt_text",
+  "status": "failed",
+  "result": null,
+  "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: operation 1: Property \"content\" does not exist at this path.",
+  "budget": {
+   "used_tokens": 20282,
+   "input_tokens": 19505,
+   "output_tokens": 777,
+   "structured_requests": [
+    {
+     "stage": "vision",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    },
+    {
+     "stage": "vision",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 74.36,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T18:01:20.740086",
+  "cancel_requested": false
+ },
+ "seconds": 75.45,
+ "first_poll_s": 0.271,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:01:20.758599+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:01:20.905272+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "vision",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:01:21.609742+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "vision",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:02:20.245816+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "failed",
+   "message": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: operation 1: Property \"content\" does not exist at this path.",
+   "at": "2026-10-03T18:02:35.280475+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EBJFSD9AXE48ZB140HSZN",
+ "proposals": []
+}

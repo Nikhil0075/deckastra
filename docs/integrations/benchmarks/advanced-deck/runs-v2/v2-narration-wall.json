@@ -1,0 +1,137 @@
+{
+ "task": "narration",
+ "request": {
+  "task": "narration",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41NWAV914BGEMECMDXD9MX2",
+  "operation_key": "aa30db1dd4d84beebf5685c938757329",
+  "scope": {
+   "kind": "slide",
+   "slide_ids": [
+    "sld_01JDM7WWDXS04VSY20CKR1XTWY"
+   ],
+   "element_ids": []
+  },
+  "instruction": "Write a short narration for each click step from the slide and notes."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41PMA7HFC4MS9TB1ZDG3DHW",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "narration",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T20:17:31.377878",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41PMA7HFC4MS9TB1ZDG3DHW",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "narration",
+  "status": "failed",
+  "result": null,
+  "error": "The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.",
+  "budget": {
+   "used_tokens": 10535,
+   "input_tokens": 9676,
+   "output_tokens": 859,
+   "structured_requests": [
+    {
+     "stage": "narration",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": false,
+     "outcome": "valid",
+     "patch_valid": false
+    },
+    {
+     "stage": "narration",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": false,
+     "outcome": "valid",
+     "patch_valid": false
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 206.42,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T20:17:31.377878",
+  "cancel_requested": false
+ },
+ "seconds": 208.06,
+ "first_poll_s": 1.808,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T20:17:31.394257+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T20:17:31.424192+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "narration",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T20:17:45.581406+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "narration",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T20:20:13.683220+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "failed",
+   "message": "The assistant could not produce a validated result. Completed changes and usage are recorded; review the run before retrying.",
+   "at": "2026-10-03T20:20:57.863548+00:00"
+  }
+ ],
+ "head_after": "ver_01M41NWAV914BGEMECMDXD9MX2",
+ "proposals": [
+  {
+   "id": "txn_01M41NW5G3TYP01P16GHVA0ZKW",
+   "status": "pending",
+   "intent": "Fix the layout problems on this slide.",
+   "reason": null,
+   "risk_tier": "medium",
+   "agent_id": "assistant:tidy",
+   "run_id": "asr_01M41NW3D8V050Y2VSKQKH1GCQ",
+   "created_at": "2026-10-03T20:04:20.101596",
+   "expires_at": "2026-10-04T20:04:20.099935",
+   "operation_count": 7
+  },
+  {
+   "id": "txn_01M41NW80D7XK0NB9056REV3BD",
+   "status": "pending",
+   "intent": "Fix layout problems across the deck.",
+   "reason": null,
+   "risk_tier": "medium",
+   "agent_id": "assistant:tidy",
+   "run_id": "asr_01M41NW5QPBCYR0R2HXJK1JYHT",
+   "created_at": "2026-10-03T20:04:22.669940",
+   "expires_at": "2026-10-04T20:04:22.669102",
+   "operation_count": 7
+  }
+ ]
+}

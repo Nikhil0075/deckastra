@@ -1,0 +1,123 @@
+{
+ "task": "organise",
+ "request": {
+  "task": "organise",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M42HH9TXZZRTHAZ09B7ZQGSM",
+  "operation_key": "4e6d8797e5b342ab81960944c7642b71",
+  "scope": {
+   "kind": "deck",
+   "slide_ids": [],
+   "element_ids": []
+  },
+  "instruction": "Tag and describe the pictures used in this deck."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M42HHDGH6EY04WC4A6ANSGDX",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-04T04:07:47.987760",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M42HHDGH6EY04WC4A6ANSGDX",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "organise",
+  "status": "completed",
+  "result": {
+   "warnings": [
+    "Could not inspect architecture-overview.png: image bytes are unavailable. Other objects will still be checked.",
+    "Could not inspect q3-photo.png: image bytes are unavailable. Other objects will still be checked."
+   ],
+   "metadata_proposal": [
+    {
+     "asset_id": "ast_01JDZJD4WE9SS3HE57R5QG0C7S",
+     "tags": [
+      "regional adoption",
+      "survey results",
+      "bar chart",
+      "North",
+      "South",
+      "East",
+      "West",
+      "percentages",
+      "data visualization"
+     ],
+     "description": "A bar chart titled 'Regional adoption, FY26 (survey n=1,204)' displaying adoption percentages across four regions: North (42%), South (67%), East (23%), and West (88%)."
+    }
+   ],
+   "status": "pending_metadata"
+  },
+  "error": null,
+  "budget": {
+   "used_tokens": 1751,
+   "input_tokens": 973,
+   "output_tokens": 778,
+   "structured_requests": [
+    {
+     "stage": "organise",
+     "contract": "MetadataPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 250000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 41.72,
+   "startup_seconds": 20.67,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-04T04:07:47.987760",
+  "cancel_requested": false
+ },
+ "seconds": 63.69,
+ "first_poll_s": 0.294,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-04T04:07:48.002765+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-04T04:07:48.146599+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "organise",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-04T04:07:48.180993+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "validated",
+   "message": "Validated output saved",
+   "at": "2026-10-04T04:08:50.531510+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "completed",
+   "message": "Assistant task completed",
+   "at": "2026-10-04T04:08:50.543428+00:00"
+  }
+ ],
+ "head_after": "ver_01M42HH9TXZZRTHAZ09B7ZQGSM",
+ "proposals": []
+}

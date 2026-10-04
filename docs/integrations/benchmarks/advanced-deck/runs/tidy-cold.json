@@ -1,0 +1,110 @@
+{
+ "task": "tidy",
+ "request": {
+  "task": "tidy",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EBJFSD9AXE48ZB140HSZN",
+  "operation_key": "634b6ae33f764643b2bf05decfc004c1",
+  "scope": {
+   "kind": "slide",
+   "slide_ids": [
+    "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B"
+   ],
+   "element_ids": []
+  },
+  "instruction": "Fix the layout problems on this slide."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41ED7F3FJFYJ9G4CP3RNK3F",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "tidy",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T17:53:50.566673",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41ED7F3FJFYJ9G4CP3RNK3F",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "tidy",
+  "status": "failed",
+  "result": null,
+  "error": "'Gemma 4 E2B QAT Q4' did not answer within 4s. On this machine the model may be too large to run at a usable speed.",
+  "budget": {
+   "used_tokens": 13370,
+   "input_tokens": 9595,
+   "output_tokens": 3775,
+   "structured_requests": [
+    {
+     "stage": "cleanup",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    },
+    {
+     "stage": "cleanup",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": false,
+     "outcome": "provider_error"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 180.67,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T17:53:50.566673",
+  "cancel_requested": false
+ },
+ "seconds": 181.34,
+ "first_poll_s": 0.288,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T17:53:50.586987+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T17:53:50.639128+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "cleanup",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T17:53:51.143537+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "cleanup",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T17:56:46.745032+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "failed",
+   "message": "'Gemma 4 E2B QAT Q4' did not answer within 4s. On this machine the model may be too large to run at a usable speed.",
+   "at": "2026-10-03T17:56:51.326340+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EBJFSD9AXE48ZB140HSZN",
+ "proposals": []
+}

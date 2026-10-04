@@ -1,0 +1,75 @@
+{
+  "responses": [
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JB8Z9K2QW4RN7F3X01000100&locale=en",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B&locale=en",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs",
+      "status": 202
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=0",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=2",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N/events?after=3",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/runs/asr_01M41N3M51T1E0232TXMHB0V1N",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:64635/v1/assistant/capabilities?presentation_id=doc_01M41M58FP9T62RRWAFEYRGY5B&slide_id=sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B&locale=en",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "generationDefault": "append",
+  "budgetMessage": "This task needs at least US$0.2462 reserved; US$0.0481 remains. Existing uncertain usage still counts against the ceiling.",
+  "imageDisabled": true,
+  "cleanupPanel": "Cleanup and motion use the editor's engines. Model tasks require representative qualification; local-only mode allows experimental Gemma runs.\n\nCloud budget: US$0.0481 remaining of US$5.00. US$0.2013 reserved for pending or uncertain requests.\n\nCLEAN UP SLIDE\nWRITE SCRIPT\nTask\nFix design findings\nWrite missing alt text\nImprove consistency\nEdit presentation\nGenerate slide content\nResearch topic\nTranslate\nWrite narration scripts\nCreate spoken narration\nImprove motion\nOrganise assets\nCreate an image\nExport\nScope\nCurrent slide\nEntire deck\nSelected objects\nInstructions\n\nEditor engine\n\nRUN ASSISTANT\nValidated output saved\n\nPrepared 7 deterministic layout adjustments.\n\nThis object reaches outside the slide's safe area.\n\n\"Body overlapping title\" overlaps \"Title\" by 1500 × 56px.\n\n\"Adoption chart (no alt)\" overlaps \"Body overlapping title\" by 460 × 150px.\n\n\"Adoption chart (no alt)\" overlaps \"Overflowing box\" by 440 × 198px.\n\nThis text is 9px, below the 16px an audience can read from the back of a room.\n\n\"Adoption chart (no alt)\" has no alternative text, so a screen reader announces nothing.\n\nA screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.\n\nReview this change in Proposals before applying it.\n\nSpent $0.0000 · Reserved $0.0000\n\nRun history",
+  "checked": [
+    "replacement warning",
+    "image spend preflight",
+    "engine cleanup via shared panel",
+    "pending proposal review"
+  ]
+}

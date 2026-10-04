@@ -1,0 +1,14 @@
+
+> @deckastra/presentation-core@0.0.0 test
+> vitest run locales.test.ts
+
+
+ RUN  v3.2.7 D:/Presentation_app/packages/presentation-core
+
+ ✓ tests/locales.test.ts (12 tests) 174ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  00:32:08
+   Duration  2.15s (transform 890ms, setup 0ms, collect 1.24s, tests 174ms, environment 0ms, prepare 335ms)
+

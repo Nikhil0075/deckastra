@@ -1,0 +1,13 @@
+
+ RUN  v3.2.7 D:/Presentation_app/packages/editor-ui
+
+ ✓ tests/locale-lens.test.ts (11 tests) 460ms
+ ✓ tests/assistant-panel.test.tsx (5 tests) 822ms
+   ✓ saves before starting with the current version and selected scope, then cancels  514ms
+ ✓ tests/design-check.test.tsx (18 tests) 462ms
+
+ Test Files  3 passed (3)
+      Tests  34 passed (34)
+   Start at  01:23:07
+   Duration  15.65s (transform 5.41s, setup 0ms, collect 13.76s, tests 1.74s, environment 20.69s, prepare 1.96s)
+

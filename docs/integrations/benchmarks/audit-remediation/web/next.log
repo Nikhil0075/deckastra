@@ -1,0 +1,17 @@
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3019
+- Network:       http://172.29.208.1:3019
+- Environments: .env.local
+✓ Ready in 18.9s
+✓ Running next.config.mjs took 359ms
+⚠ Slow filesystem detected. The benchmark took 217ms. If \\?\D:\Presentation_app\apps\web\.next\dev is a network drive, consider moving it to a local folder.
+See more: https://nextjs.org/docs/app/guides/local-development
+
+○ Compiling /edit/[id] ...
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 25.8s (next.js: 25.0s, application-code: 745ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 191ms (next.js: 49ms, application-code: 141ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 347ms (next.js: 62ms, application-code: 284ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 150ms (next.js: 63ms, application-code: 87ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 117ms (next.js: 29ms, application-code: 89ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 7.7s (next.js: 7.5s, application-code: 225ms)
+ GET /edit/doc_01M41M58FP9T62RRWAFEYRGY5B 200 in 209ms (next.js: 44ms, application-code: 165ms)

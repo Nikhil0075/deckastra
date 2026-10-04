@@ -1,0 +1,110 @@
+{
+ "task": "motion",
+ "request": {
+  "task": "motion",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+  "operation_key": "9dbbb2e2aedb46649bd53e7abb0ca8ac",
+  "scope": {
+   "kind": "slide",
+   "slide_ids": [
+    "sld_01JD6W7VZPD07SJTQ75WM83R19"
+   ],
+   "element_ids": []
+  },
+  "instruction": "Reveal the takeaways one by one after the chart."
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41F36S7XN9Y3N4YNSJBNWFS",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "motion",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:05:50.759968",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41F36S7XN9Y3N4YNSJBNWFS",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "motion",
+  "status": "failed",
+  "result": null,
+  "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: /slides/3/elements/1: 120 is not valid under any of the given schemas; /slides/3/elements/2: {'id': 'el_01JDKKW6NJ0GTWVYCKXNGRBBNN', 'type': 'chart', 'name': 'Revenue lines', 'semanticRole': 'primaryChart', 'transform': {'y': 230, 'width': 1100, 'height': 700}, 'chartType': 'line', 'data': {'type': 'inline', 'rows': [{'quarter': 'Q1', 'region': 'India', 'revenue': 412.5}, {'quarter': 'Q2', 'region': 'India', 'revenue': 455.0}, {'quarter': 'Q3', 'region': 'India', 'revenue': 431.2}, {'quarter': 'Q4', 'region': 'India', 'revenue': 498.9}, {'quarter': 'Q1', 'region': 'GCC', 'revenue': 120.4}, {'quarter': 'Q2', 'region': 'GCC', 'revenue': 133.0}, {'quarter': 'Q3', 'region': 'GCC', 'revenue': 151.8}, {'quarter': 'Q4', 'region': 'GCC', 'revenue': 149.1}]}, 'encoding': {'category': 'quarter', 'value': 'revenue', 'series': 'region'}, 'chartStyle': {'showLegend': True, 'showGridlines': True}} is not valid under any of the given schemas; /slides/3/elements/3: 1280 is not valid under any of the given schemas; /slides/3/elements/4: {'id': 'el_01JDBDMCX1T21KHK1Q98002WDY', 'type': 'text', 'name': 'Takeaways', 'semanticRole': 'body', 'transform': {'y': 260, 'width': 520, 'height': 600}, 'content': {'version': 1, 'blocks': [{'id': 'blk_01JDVSW4WKCRY03C98WWA3ZQAS', 'type': 'bullet', 'spans': [{'text': 'India: ₹412.5 → ₹498.9 cr (+21%)'}]}, {'id': 'blk_01JD512G2S3RB298D1SAH5XZ0K', 'type': 'bullet', 'spans': [{'text': 'GCC: ₹120.4 → ₹149.1 cr (+24%)'}]}, {'id': 'blk_01JD42MBMJ4N7SQMT6KCEVJNYD', 'type': 'bullet', 'spans': [{'text': 'Q3 India dip tied to '}, {'text': 'monsoon outages', 'bold': True}]}]}, 'typography': {'fontFamily': 'token:typography.body.fontFamily', 'fontSize': 28, 'color': 'token:colors.foreground'}} is not valid under any of the given schemas",
+  "budget": {
+   "used_tokens": 14226,
+   "input_tokens": 12578,
+   "output_tokens": 1648,
+   "structured_requests": [
+    {
+     "stage": "authoring",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    },
+    {
+     "stage": "authoring",
+     "contract": "AuthorPlan",
+     "attempts": 1,
+     "valid_first_attempt": true,
+     "outcome": "valid"
+    }
+   ],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 70.85,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 5,
+  "created_at": "2026-10-03T18:05:50.759968",
+  "cancel_requested": false
+ },
+ "seconds": 71.42,
+ "first_poll_s": 0.215,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:05:50.781298+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:05:50.822800+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "provider",
+   "provider": "local",
+   "task": "authoring",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:05:51.853916+00:00"
+  },
+  {
+   "sequence": 4,
+   "status": "provider",
+   "provider": "local",
+   "task": "authoring",
+   "reason": "Explicit local-only mode",
+   "at": "2026-10-03T18:06:40.620613+00:00"
+  },
+  {
+   "sequence": 5,
+   "status": "failed",
+   "message": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: /slides/3/elements/1: 120 is not valid under any of the given schemas; /slides/3/elements/2: {'id': 'el_01JDKKW6NJ0GTWVYCKXNGRBBNN', 'type': 'chart', 'name': 'Revenue lines', 'semanticRole': 'primaryChart', 'transform': {'y': 230, 'width': 1100, 'height': 700}, 'chartType': 'line', 'data': {'type': 'inline', 'rows': [{'quarter': 'Q1', 'region': 'India', 'revenue': 412.5}, {'quarter': 'Q2', 'region': 'India', 'revenue': 455.0}, {'quarter': 'Q3', 'region': 'India', 'revenue': 431.2}, {'quarter': 'Q4', 'region': 'India', 'revenue': 498.9}, {'quarter': 'Q1', 'region': 'GCC', 'revenue': 120.4}, {'quarter': 'Q2', 'region': 'GCC', 'revenue': 133.0}, {'quarter': 'Q3', 'region': 'GCC', 'revenue': 151.8}, {'quarter': 'Q4', 'region': 'GCC', 'revenue': 149.1}]}, 'encoding': {'category': 'quarter', 'value': 'revenue', 'series': 'region'}, 'chartStyle': {'showLegend': True, 'showGridlines': True}} is not valid under any of the given schemas; /slides/3/elements/3: 1280 is not valid under any of the given schemas; /slides/3/elements/4: {'id': 'el_01JDBDMCX1T21KHK1Q98002WDY', 'type': 'text', 'name': 'Takeaways', 'semanticRole': 'body', 'transform': {'y': 260, 'width': 520, 'height': 600}, 'content': {'version': 1, 'blocks': [{'id': 'blk_01JDVSW4WKCRY03C98WWA3ZQAS', 'type': 'bullet', 'spans': [{'text': 'India: ₹412.5 → ₹498.9 cr (+21%)'}]}, {'id': 'blk_01JD512G2S3RB298D1SAH5XZ0K', 'type': 'bullet', 'spans': [{'text': 'GCC: ₹120.4 → ₹149.1 cr (+24%)'}]}, {'id': 'blk_01JD42MBMJ4N7SQMT6KCEVJNYD', 'type': 'bullet', 'spans': [{'text': 'Q3 India dip tied to '}, {'text': 'monsoon outages', 'bold': True}]}]}, 'typography': {'fontFamily': 'token:typography.body.fontFamily', 'fontSize': 28, 'color': 'token:colors.foreground'}} is not valid under any of the given schemas",
+   "at": "2026-10-03T18:07:01.696326+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EZQGVNMMETDX26T310GPV",
+ "proposals": []
+}

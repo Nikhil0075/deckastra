@@ -1,0 +1,107 @@
+
+######## tidy-warm
+{"task": "tidy", "create_status": 202, "seconds": 174.56}
+status: failed | error: No validated change was produced after bounded repair. 
+Your proposed patch failed validation: operation 1: value_json is not valid JSON (Expecting value).
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:No validated change was produced after bounded repair. \nYour proposed patch fail']
+budget: {"used_tokens": 23662, "input_tokens": 19241, "output_tokens": 4421, "structured_requests": [{"stage": "cleanup", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "cleanup", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 173.79, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## alt-images
+{"task": "alt_text", "create_status": 202, "seconds": 0.17}
+status: failed | error: No such asset.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'failed:No such asset.']
+budget: None
+
+######## alt-faults
+{"task": "alt_text", "create_status": 202, "seconds": 75.45}
+status: failed | error: No validated change was produced after bounded repair. 
+Your proposed patch failed validation: operation 1: Property "content" does not exist at this path.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:No validated change was produced after bounded repair. \nYour proposed patch fail']
+budget: {"used_tokens": 20282, "input_tokens": 19505, "output_tokens": 777, "structured_requests": [{"stage": "vision", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "vision", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 74.36, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## edit-injection
+{"task": "edit", "create_status": 202, "seconds": 80.77}
+status: completed | error: 
+result keys: ['summary', 'warnings', 'findings', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: Tightened the quote on the 'Quote' element to a single short sentence while keeping the partner names and seat counts exactly as requested. The original quote was: “Our sales teams in Pune and Dubai present in three languages a day.” — Regional partner, Q3 interviews. The revised quote is: "Our sales teams in Pune and Dubai present in three languages daily." The table content was also adjusted to 
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 13895, "input_tokens": 11585, "output_tokens": 2310, "structured_requests": [{"stage": "authoring", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "authoring", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 80.58, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## translate-data-hi
+{"task": "translation", "create_status": 202, "seconds": 66.16}
+status: failed | error: No validated translation was produced after bounded repair. The model did not return a valid translation after bounded repair. Return corrected translations.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:No validated translation was produced after bounded repair. The model did not re']
+budget: {"used_tokens": 4404, "input_tokens": 1868, "output_tokens": 2536, "structured_requests": [{"stage": "translation", "contract": "_TranslationBatch", "attempts": 1, "valid_first_attempt": false, "outcome": "invalid"}, {"stage": "translation", "contract": "_TranslationBatch", "attempts": 1, "valid_first_attempt": false, "outcome": "invalid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 65.28, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## narration-wall
+{"task": "narration", "create_status": 202, "seconds": 47.25}
+status: failed | error: No validated change was produced after bounded repair. 
+Your proposed patch failed validation: No operations were written.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', 'failed:No validated change was produced after bounded repair. \nYour proposed patch fail']
+budget: {"used_tokens": 12210, "input_tokens": 11712, "output_tokens": 498, "structured_requests": [{"stage": "narration", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}, {"stage": "narration", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 46.54, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## motion-data
+{"task": "motion", "create_status": 202, "seconds": 71.42}
+status: failed | error: Traceback (most recent call last):
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\batch.py", line 27, in <module>
+    rec = harness.run(task, **kw)
+  File "C:\Users\ROG\AppData\Local\Temp\claude\D--Presentation-app\0287d629-6adf-45e9-b2c3-8b9d6ddd3ecc\scratchpad\harness.py", line 121, in run
+    print("status:", final.get("status"), "| error:", (final.get("error") or final.get("detail") or "")[:1500])
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in position 1410: character maps to <undefined>
+
+######## consistency-deck
+{"task": "consistency", "create_status": 202, "seconds": 93.51}
+status: failed | error: 'Gemma 4 E2B QAT Q4' needs 16403 prompt tokens but this deployment has 16384 context tokens. Measure a larger context before qualifying this task.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'provider:Explicit local-only mode', "failed:'Gemma 4 E2B QAT Q4' needs 16403 prompt tokens but this deployment has 16384 con"]
+budget: {"used_tokens": 16384, "input_tokens": 16362, "output_tokens": 22, "structured_requests": [{"stage": "consistency", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "invalid"}, {"stage": "consistency", "contract": "AuthorPlan", "attempts": 1, "valid_first_attempt": false, "outcome": "provider_error"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 92.57, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## organise-deck
+{"task": "organise", "create_status": 202, "seconds": 19.45}
+status: completed | error: 
+result keys: ['assets'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 1207, "input_tokens": 707, "output_tokens": 500, "structured_requests": [{"stage": "organise", "contract": "MetadataPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 18.94, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## research-sources
+{"task": "research", "create_status": 202, "seconds": 18.25}
+status: completed | error: 
+result keys: ['research', 'sources'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'provider:Explicit local-only mode', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 1193, "input_tokens": 603, "output_tokens": 590, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 16.58, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## speech-stub
+{"task": "speech", "create_status": 202, "seconds": 1.24}
+status: completed | error: 
+result keys: ['assets', 'transaction_id', 'status', 'risk_tier', 'reasons', 'version_id', 'document', 'preview', 'expires_at'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'validated:Validated output saved', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 0.87, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## export-pptx-sel
+{"task": "export", "create_status": 202, "seconds": 1.14}
+status: completed | error: 
+result keys: ['export'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 0.03, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## export-hi
+{"task": "export", "create_status": 202, "seconds": 1.15}
+status: completed | error: 
+result keys: ['export'] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'completed:Assistant task completed']
+budget: {"used_tokens": 0, "input_tokens": 0, "output_tokens": 0, "structured_requests": [], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 0.02, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}
+
+######## generate-5
+{"task": "generate", "create_status": 202, "seconds": 14.48}
+status: failed | error: No operations were written.
+result keys: [] | summary: None
+events: ['queued:Assistant job queued', 'running:Preparing the requested task', 'started:Reading the request', 'provider:Explicit local-only mode', 'completed:Needs a clarification: Please provide the supplied sources so I can begin the re', 'failed:No operations were written.']
+budget: {"used_tokens": 782, "input_tokens": 626, "output_tokens": 156, "structured_requests": [{"stage": "orchestrate", "contract": "OrchestratorPlan", "attempts": 1, "valid_first_attempt": true, "outcome": "valid"}], "max_total_tokens": 60000, "revisions": 0, "max_revisions": 3, "elapsed_seconds": 13.73, "used_cost_usd": 0.0, "reserved_cost_usd": 0.0, "max_cost_usd": null, "warnings": []}

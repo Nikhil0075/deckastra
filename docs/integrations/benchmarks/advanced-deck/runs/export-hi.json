@@ -1,0 +1,112 @@
+{
+ "task": "export",
+ "request": {
+  "task": "export",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "expected_version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+  "operation_key": "c2954df6176d48bb9634db3f260afaf0",
+  "scope": {
+   "kind": "deck",
+   "slide_ids": [],
+   "element_ids": []
+  },
+  "export_kind": "pdf",
+  "locale": "hi-IN"
+ },
+ "create_status": 202,
+ "create": {
+  "id": "asr_01M41F9F832MTE2HG19JJ7KMED",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "export",
+  "status": "queued",
+  "result": null,
+  "error": null,
+  "budget": null,
+  "last_sequence": 1,
+  "created_at": "2026-10-03T18:09:16.036039",
+  "cancel_requested": false
+ },
+ "final": {
+  "id": "asr_01M41F9F832MTE2HG19JJ7KMED",
+  "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+  "task": "export",
+  "status": "completed",
+  "result": {
+   "export": {
+    "id": "exp_01M41F9FB27C5RNARKAV5VS3S8",
+    "presentation_id": "doc_01JDS368EWNBW71G8VKNVMPCE8",
+    "version_id": "ver_01M41EZQGVNMMETDX26T310GPV",
+    "kind": "pdf",
+    "status": "queued",
+    "progress": 0.0,
+    "stage": null,
+    "message": null,
+    "filename": null,
+    "content_type": null,
+    "bytes": 0,
+    "report": null,
+    "error": null,
+    "created_at": "2026-10-03T18:09:16.130660+00:00",
+    "finished_at": null,
+    "attempts": 0,
+    "max_attempts": 3,
+    "cancel_requested": false
+   }
+  },
+  "error": null,
+  "budget": {
+   "used_tokens": 0,
+   "input_tokens": 0,
+   "output_tokens": 0,
+   "structured_requests": [],
+   "max_total_tokens": 60000,
+   "revisions": 0,
+   "max_revisions": 3,
+   "elapsed_seconds": 0.02,
+   "used_cost_usd": 0.0,
+   "reserved_cost_usd": 0.0,
+   "max_cost_usd": null,
+   "warnings": []
+  },
+  "last_sequence": 3,
+  "created_at": "2026-10-03T18:09:16.036039",
+  "cancel_requested": false
+ },
+ "seconds": 1.15,
+ "first_poll_s": 0.141,
+ "events": [
+  {
+   "sequence": 1,
+   "status": "queued",
+   "message": "Assistant job queued",
+   "at": "2026-10-03T18:09:16.058533+00:00"
+  },
+  {
+   "sequence": 2,
+   "status": "running",
+   "message": "Preparing the requested task",
+   "at": "2026-10-03T18:09:16.092290+00:00"
+  },
+  {
+   "sequence": 3,
+   "status": "completed",
+   "message": "Assistant task completed",
+   "at": "2026-10-03T18:09:16.132356+00:00"
+  }
+ ],
+ "head_after": "ver_01M41EZQGVNMMETDX26T310GPV",
+ "proposals": [
+  {
+   "id": "txn_01M41F9DR6D8Q377BW2HD4RRSR",
+   "status": "pending",
+   "intent": "Create spoken narration",
+   "reason": null,
+   "risk_tier": "medium",
+   "agent_id": "assistant:speech",
+   "run_id": "asr_01M41F9CTXTEVQEBQADHND4ZTF",
+   "created_at": "2026-10-03T18:09:14.504736",
+   "expires_at": "2026-10-04T18:09:14.502721",
+   "operation_count": 6
+  }
+ ]
+}
