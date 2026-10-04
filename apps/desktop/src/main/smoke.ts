@@ -2911,7 +2911,7 @@ async function runMenu(
     generation: report.generation?.provider ?? report.generation?.error,
     appLogLines: report.logs?.app?.length ?? 0,
     serviceLogLines: report.logs?.service?.length ?? 0,
-    keySet: report.cloudKey?.set,
+    signedIn: report.account?.signedIn,
   };
   if (!report.build || !report.logs || report.app?.version !== app.getVersion()) {
     throw new Error("the diagnostics report does not describe this build");
@@ -3202,41 +3202,13 @@ async function runIntelligence(window: BrowserWindow, record: Record<string, unk
   await wait("the drawer never named a route", `document.querySelector('[data-testid="intelligence-route"]')`);
   record.before = await route();
 
-  // A key this machine will store, and a service restarted with it.
-  const key = "sk-ant-api03-smoke-not-a-real-key-000000000000";
-  await wait("no key field", `document.querySelector('[data-testid="cloud-key-input"]')`);
-  await page(`(() => {
-    const field = document.querySelector('[data-testid="cloud-key-input"]');
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(field, ${JSON.stringify(key)});
-    field.dispatchEvent(new Event("input", { bubbles: true }));
+  record.account = await page(`window.deckastraAccount.state()`);
+  record.credentialReadable = await page(`(async () => {
+    const state = await window.deckastraAccount.state();
+    return ["idToken", "refreshToken", "accessToken", "secret"].some((key) => key in state);
   })()`);
-  await page(clickTestId("cloud-key-save"));
-  await wait("the key was not stored", `document.querySelector('[data-testid="cloud-key-set"]')`);
-  await wait(
-    "the service did not come back on the cloud route",
-    `/ANTHROPIC|cloud model/i.test(document.querySelector('[data-testid="intelligence-route"]')?.innerText ?? "")`,
-    60_000,
-  );
-  record.withKey = await route();
+  if (record.credentialReadable) throw new Error("Account state exposed a credential to the renderer");
 
-  // The page must never be able to read it back.
-  record.keyReadable = await page(`(async () => {
-    const state = await window.deckastra.cloudKey();
-    return JSON.stringify(state).includes("sk-ant");
-  })()`);
-  if (record.keyReadable) throw new Error("the page can read the stored key back");
-
-  await page(clickTestId("cloud-key-remove"));
-  await wait("the key was not removed", `document.querySelector('[data-testid="cloud-key-input"]')`);
-  await wait(
-    "the route did not go back to unset after the key was removed",
-    `!/ANTHROPIC|cloud model/i.test(document.querySelector('[data-testid="intelligence-route"]')?.innerText ?? "")`,
-    60_000,
-  );
-  record.after = await route();
-  if (record.after !== record.before) {
-    throw new Error(`the route did not return to where it started: ${String(record.before)} then ${String(record.after)}`);
-  }
 }
 
 /**

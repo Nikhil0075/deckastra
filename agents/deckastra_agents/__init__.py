@@ -23,7 +23,7 @@ from .budgets import BudgetExceeded, RunBudget
 from .envelope import POLICY, Source, envelope
 from .events import AgentEvent, collector, fan_out
 from .memory import InMemoryStore, ProjectMemory
-from .router import AnthropicClient, ModelClient, StubClient, default_client
+from .router import ModelClient, StubClient, default_client
 from .runner import AgentRun, RunResult, run_generation
 from .state import EditScope, PresentationAgentState, initial_state
 from .tools.registry import ToolDefinition, ToolRegistry
@@ -31,7 +31,6 @@ from .tools.registry import ToolDefinition, ToolRegistry
 __all__ = [
     "AgentEvent",
     "AgentRun",
-    "AnthropicClient",
     "BudgetExceeded",
     "EditScope",
     "InMemoryStore",

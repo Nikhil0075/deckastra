@@ -99,7 +99,12 @@ def _client() -> Any:
 
 
 def bucket() -> str:
-    return os.environ.get("S3_ASSETS_BUCKET", "deckastra-assets")
+    return os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET") or os.environ.get("S3_ASSETS_BUCKET", "deckastra-assets")
+
+
+def _gcs_blob(key: str):
+    from .gcs_storage import blob
+    return blob(bucket(), key)
 
 
 # --------------------------------------------------------------------- the five
@@ -108,6 +113,9 @@ def bucket() -> str:
 def presigned_put(key: str, content_type: str, *, expires_seconds: int = 900) -> str:
     if local_root() is not None:
         return blob_url(key)
+    if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+        from .gcs_storage import signed_url
+        return signed_url(bucket(), key, method="PUT", content_type=content_type, expires=expires_seconds)
     return str(
         _client().generate_presigned_url(
             "put_object",
@@ -121,6 +129,9 @@ def presigned_put(key: str, content_type: str, *, expires_seconds: int = 900) ->
 def presigned_get(key: str, *, expires_seconds: int = 900) -> str:
     if local_root() is not None:
         return blob_url(key)
+    if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+        from .gcs_storage import signed_url
+        return signed_url(bucket(), key, expires=expires_seconds)
     return str(
         _client().generate_presigned_url(
             "get_object",
@@ -161,6 +172,10 @@ def metadata(key: str) -> ObjectMetadata:
         )
 
     try:
+        if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+            item = _gcs_blob(key)
+            item.reload()
+            return ObjectMetadata(bytes=int(item.size or 0), content_type=item.content_type, etag=item.etag)
         result = _client().head_object(Bucket=bucket(), Key=key)
     except Exception as error:
         raise ObjectStorageError("The uploaded object could not be verified.") from error
@@ -184,7 +199,10 @@ def delete(key: str) -> None:
         return
 
     try:
-        _client().delete_object(Bucket=bucket(), Key=key)
+        if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+            _gcs_blob(key).delete()
+        else:
+            _client().delete_object(Bucket=bucket(), Key=key)
     except Exception as error:
         raise ObjectStorageError("The stored object could not be deleted; cleanup can be retried.") from error
 
@@ -231,6 +249,10 @@ def put(key: str, data: bytes, content_type: str) -> ObjectMetadata:
     if local_root() is not None:
         return put_local(key, data, content_type)
     try:
+        if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+            item = _gcs_blob(key)
+            item.upload_from_string(data, content_type=content_type)
+            return ObjectMetadata(bytes=len(data), content_type=content_type, etag=item.etag)
         result = _client().put_object(Bucket=bucket(), Key=key, Body=data, ContentType=content_type)
     except Exception as error:
         raise ObjectStorageError("The object could not be stored.") from error
@@ -255,6 +277,10 @@ def read(key: str) -> tuple[bytes, str]:
         return read_local(key)
 
     try:
+        if os.environ.get("DECKASTRA_GCS_ASSETS_BUCKET"):
+            item = _gcs_blob(key)
+            item.reload()
+            return item.download_as_bytes(), item.content_type or "application/octet-stream"
         result = _client().get_object(Bucket=bucket(), Key=key)
         data = result["Body"].read()
     except Exception as error:

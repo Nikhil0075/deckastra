@@ -6,9 +6,8 @@ import { app } from "electron";
 import type { ServiceFailureKind } from "../shared/ipc";
 import { logEvent, logRaw } from "./logs";
 import { buildManifest, mismatchedMigrations } from "./build-manifest";
-import { readCloudKey } from "./cloud-key";
 import { logMirror } from "./log-mirror";
-import { assistantEnvironment } from "./assistant-config";
+import { gatewayEnvironment } from "./gateway";
 
 const mirrorStderr = logMirror(process.stderr, (error) => logEvent("service.log-mirror-closed", { detail: error.message }));
 
@@ -178,28 +177,21 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
 
   async function launch(): Promise<number> {
     const { file, args, cwd, env } = command(options.dataDir);
-    // The user's own key, decrypted here and handed to the service as its
-    // environment (item 23). Choosing the cloud *is* storing a key: without one
-    // the installed product has no cloud route, and an `ANTHROPIC_API_KEY` that
-    // happened to be in the environment is not a choice anyone made, so a
-    // packaged app starts its service without it.
-    const cloudKey = await readCloudKey();
-    const intelligence: NodeJS.ProcessEnv = cloudKey
-      ? { ANTHROPIC_API_KEY: cloudKey, DECKASTRA_INTELLIGENCE: "cloud" }
-      : app.isPackaged
-        ? { ANTHROPIC_API_KEY: undefined, DECKASTRA_INTELLIGENCE: undefined }
-          : {};
-    let assistant: NodeJS.ProcessEnv = {};
-    try { assistant = await assistantEnvironment(); }
-    catch { logEvent("assistant.configuration-invalid", { detail: "Check the server-side assistant configuration file." }); }
+    const gateway = await gatewayEnvironment();
+    // The main process owns account credentials. The local service receives only
+    // its private proxy address and a per-launch credential for that proxy.
+    const localEnv = Object.fromEntries(Object.entries(env).filter(([key]) =>
+      !/^(ANTHROPIC_|GOOGLE_|DECKASTRA_GOOGLE_|DECKASTRA_VERTEX_|DECKASTRA_MODEL_|DECKASTRA_ASSISTANT_)/.test(key)));
     options.onStatus({ state: attempt === 0 ? "starting" : "restarting", attempt });
 
     const spawned = spawn(file, args, {
       cwd,
       env: {
-        ...env,
-          ...intelligence,
-          ...assistant,
+        ...localEnv,
+        ...gateway,
+        DECKASTRA_FONT_PACK_DIR: join(options.dataDir, "font-packs"),
+        DECKASTRA_INTELLIGENCE: "vertex",
+        DECKASTRA_ASSISTANT_MODE: "vertex",
         DECKASTRA_LOCAL_SECRET: secret,
         // The installed product never generates with the stub, and never treats
         // an inherited API key as a choice to use the cloud (item 20). A checkout

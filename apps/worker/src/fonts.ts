@@ -255,6 +255,17 @@ export function uploadedFontCss(document: PresentationDocument, library: AssetLi
  */
 export async function pageFontCss(document: PresentationDocument, library: AssetLibrary): Promise<string> {
   const parts: string[] = [];
+  const root = process.env.DECKASTRA_FONT_PACK_DIR;
+  const language = sourceLocale(document).toLowerCase();
+  const pack = language.startsWith("ja") ? "japanese" : language.startsWith("ko") ? "korean" : language.startsWith("zh") ?
+    (/hant|tw|hk|mo/.test(language) ? "chinese-traditional" : "chinese") : null;
+  if (root && pack) {
+    const family = pack === "japanese" ? "Noto Sans JP" : pack === "korean" ? "Noto Sans KR" : "Noto Sans SC";
+    for (const weight of [400, 700]) {
+      const data = await readFile(join(root, `${pack}-${weight}.woff2`));
+      parts.push(`@font-face{font-family:"${family}";src:url(data:font/woff2;base64,${data.toString("base64")}) format('woff2');font-weight:${weight};font-display:block}`);
+    }
+  }
   const weights = documentWeights(document);
   for (const font of bundledFamiliesUsed(document)) {
     try {

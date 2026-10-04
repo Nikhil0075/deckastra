@@ -1,6 +1,7 @@
 import { cpSync, mkdtempSync, rmSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { dataEntries, missingData } from "../scripts/sidecar-data.mjs";
@@ -11,7 +12,7 @@ import { dataEntries, missingData } from "../scripts/sidecar-data.mjs";
  * one input removed at a time — the failure that used to ship silently.
  */
 
-const ROOT = join(dirname(new URL(import.meta.url).pathname.slice(1)), "..", "..", "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 // Each case copies the four bundled inputs into a scratch root, which is real
 // file work; given room rather than racing the default timeout.

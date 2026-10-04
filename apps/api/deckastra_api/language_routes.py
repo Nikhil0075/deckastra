@@ -15,6 +15,7 @@ third place for its rules to drift.
 """
 
 from __future__ import annotations
+from deckastra_agents import router as model_router
 
 import logging
 from typing import Any, Literal
@@ -25,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import locales, model_server, object_storage, proposals, quotas, speech, store, translation
+from . import locales, object_storage, proposals, quotas, speech, store, translation
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import Asset
 from .db.session import get_session
@@ -105,7 +106,7 @@ def translate_deck(
         return {"outcome": "none", "translated": [], "refused": [], "message": "Nothing to translate in that scope."}
 
     # A model translation spends tokens like generation does; refuse first.
-    translator = translation.build_translator(lambda: model_server.build_client())
+    translator = translation.build_translator(lambda: model_router.default_client())
     if translator.name == "model":
         try:
             quotas.check_tokens(session, access.workspace_id)

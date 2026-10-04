@@ -55,6 +55,7 @@ CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:   taking a backup. No grant carries it, which is what stops an agent from
 #:   managing its own leash, or from writing every deck to a folder it chose.
 RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
+    (re.compile(r"^/v1/(projects/[^/]+/imports|imports/)(/|$)?"), CHANGING, "administer"),
     # Only the app itself. A grant that could revoke grants could revoke someone
     # else's access, or turn its own refusals into a thing it decides about.
     (re.compile(r"^/v1/local/agent-access(/|$)"), CHANGING, "administer"),

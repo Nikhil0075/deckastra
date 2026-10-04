@@ -1,4 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { ACCOUNT_IPC, type AccountBridge } from "../shared/account";
+
+const accountBridge: AccountBridge = {
+  state: () => ipcRenderer.invoke(ACCOUNT_IPC.state),
+  signIn: () => ipcRenderer.invoke(ACCOUNT_IPC.signIn),
+  signOut: () => ipcRenderer.invoke(ACCOUNT_IPC.signOut),
+};
+contextBridge.exposeInMainWorld("deckastraAccount", accountBridge);
 
 import {
   IPC,

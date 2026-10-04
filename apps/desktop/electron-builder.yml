@@ -20,6 +20,12 @@ appId: com.deckastra.desktop
 # concludes nothing is installed. Keep in step with the devDependency.
 electronVersion: 44.4.3
 productName: Deckastra
+fileAssociations:
+  - ext: mydeck
+    name: Deckastra presentation
+    mimeType: application/vnd.deckastra.mydeck+zip
+    role: Editor
+    icon: build/icon.ico
 directories:
   output: release
   buildResources: build

@@ -40,6 +40,8 @@ def configured() -> str | None:
         return "file"
     if os.environ.get("DECKASTRA_GOOGLE_API_KEY", "").strip():
         return "key"
+    if os.environ.get("DECKASTRA_VERTEX_IDENTITY") == "attached":
+        return "attached"
     return None
 
 
@@ -49,14 +51,20 @@ def bearer_token() -> str | None:
     if token:
         return token
     path = os.environ.get("DECKASTRA_GOOGLE_CREDENTIALS", "").strip()
-    if not path:
+    attached = os.environ.get("DECKASTRA_VERTEX_IDENTITY") == "attached"
+    if not path and not attached:
         return None
+    cache_key = path or "attached"
     with _lock:
-        credentials = _cached.get(path)
+        credentials = _cached.get(cache_key)
         if credentials is None:
-            credentials = _load(path)
+            if attached and not path:
+                import google.auth
+                credentials, _ = google.auth.default(scopes=SCOPES)
+            else:
+                credentials = _load(path)
             _cached.clear()
-            _cached[path] = credentials
+            _cached[cache_key] = credentials
         if not credentials.valid:
             _refresh(credentials)
         return credentials.token

@@ -21,13 +21,13 @@ import os
 import time
 from typing import Any
 
-from deckastra_agents.router import NOT_SET_UP, PROVIDER_LOCAL, PROVIDER_NONE, ModelUnavailable, api_schema, selected_provider
+from deckastra_agents.router import ModelUnavailable, selected_provider
 from pydantic import ValidationError
 
 from .models import GenerationDiagnostics, GenerateRequest, StoryPlan
 from .stub import stub_story_plan
 
-MODEL = "claude-opus-5"
+
 
 # Non-streaming, so this stays well under the SDK's HTTP timeout. A plan is small
 # — a few hundred output tokens per slide — which is a large part of why the model
@@ -129,132 +129,37 @@ def _tighten(node: Any) -> None:
             _tighten(item)
 
 
-def api_key_available() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+class StoryGenerationError(RuntimeError):
+    pass
 
 
-def generate_story_plan(
-    request: GenerateRequest,
-) -> tuple[StoryPlan, GenerationDiagnostics]:
-    """Produce a StoryPlan, from the model when a key is configured and from the
-    deterministic stub when one is not.
-
-    The stub is not a mock for tests — it is what keeps the whole vertical slice
-    runnable end to end without credentials, so the renderer, the composer and the
-    present-mode path can all be exercised in CI.
-    """
+def generate_story_plan(request: GenerateRequest) -> tuple[StoryPlan, GenerationDiagnostics]:
+    """The compatibility generation route uses the same task factory as the graph."""
+    from deckastra_agents.budgets import RunBudget
+    from deckastra_agents.router import ModelRequest, default_client, PROVIDER_STUB
     started = time.monotonic()
-
-    # The single-shot chain talks to the SDK directly rather than through
-    # `ModelClient`, so it cannot serve a local model yet. Refusing is the only
-    # honest answer to someone who selected local intelligence: the alternative
-    # is a stub deck that looks like a model wrote it badly, on the one path
-    # where they asked for nothing to leave the machine.
-    provider = selected_provider()
-    # An installed product with nothing set up: refused, never the stub (item 20).
-    if provider == PROVIDER_NONE:
-        raise ModelUnavailable(NOT_SET_UP)
-    if provider == PROVIDER_LOCAL:
-        raise ModelUnavailable(
-            "Local intelligence is selected, and the single-shot planner can only "
-            "reach a cloud model. Use the agent graph (use_graph), or choose cloud "
-            "generation."
-        )
-
-    if not api_key_available():
-        plan = stub_story_plan(request)
-        return plan, GenerationDiagnostics(
-            source="stub",
-            duration_ms=int((time.monotonic() - started) * 1000),
-            warnings=[
-                "ANTHROPIC_API_KEY is not set — this deck was composed by the "
-                "deterministic stub planner, not by a model."
-            ],
-        )
-
-    import anthropic
-
-    client = anthropic.Anthropic()
-    diagnostics = GenerationDiagnostics(source="model", model=MODEL)
-    errors: list[str] = []
-
+    if selected_provider() == PROVIDER_STUB:
+        return stub_story_plan(request), GenerationDiagnostics(source="stub", duration_ms=int((time.monotonic() - started) * 1000), warnings=["This deck was composed by the development stub planner."])
+    client = default_client()
+    budget = RunBudget()
+    errors = []
+    diagnostics = GenerationDiagnostics(source="model")
     for attempt in range(1, 3):
         diagnostics.attempts = attempt
-
-        messages: list[dict[str, Any]] = [
-            {"role": "user", "content": _build_user_message(request)}
-        ]
+        prompt = _build_user_message(request)
         if errors:
-            # Hand the model its own validation errors rather than re-asking blind.
-            messages.append(
-                {
-                    "role": "user",
-                    "content": (
-                        "That response did not validate:\n"
-                        + "\n".join(f"- {e}" for e in errors)
-                        + "\n\nReturn corrected JSON matching the schema exactly."
-                    ),
-                }
-            )
-
+            prompt += "\nThat response did not validate. Return corrected JSON: " + "\n".join(errors)
+        response = client.complete(ModelRequest("planning", SYSTEM_PROMPT, [{"role": "user", "content": prompt}], response_schema=_plan_schema(), max_tokens=16000, stage="story"), budget)
+        diagnostics.model = response.model
+        if response.refusal:
+            raise StoryGenerationError(f"The model declined this request ({response.refusal}).")
         try:
-            response = client.messages.create(
-                model=MODEL,
-                max_tokens=MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                messages=messages,
-                output_config={
-                    "format": {"type": "json_schema", "schema": api_schema(_plan_schema())}
-                },
-                # A policy decline would otherwise end the request with no deck and
-                # no explanation; routing by category keeps the flow alive.
-                betas=["server-side-fallback-2026-07-01"],
-                fallbacks="default",
-            )
-        except anthropic.APIStatusError as exc:  # noqa: PERF203 - distinct handling below
-            raise StoryGenerationError(
-                f"Claude API error {exc.status_code}: {exc.message}"
-            ) from exc
-        except anthropic.APIConnectionError as exc:
-            raise StoryGenerationError(f"Could not reach the Claude API: {exc}") from exc
-
-        diagnostics.input_tokens += response.usage.input_tokens
-        diagnostics.output_tokens += response.usage.output_tokens
-
-        # Always check stop_reason before reading content.
-        if response.stop_reason == "refusal":
-            detail = getattr(response, "stop_details", None)
-            category = getattr(detail, "category", None) or "unspecified"
-            raise StoryGenerationError(
-                f"The request was declined ({category}). Try rephrasing the brief."
-            )
-
-        # Cut off: half a plan, which a repair at the same limit would reproduce.
-        if response.stop_reason == "max_tokens":
-            raise StoryGenerationError(
-                f"The plan was cut off at the {MAX_TOKENS:,}-token limit before it was "
-                "complete. Try fewer slides or a shorter brief."
-            )
-
-        text = next((b.text for b in response.content if b.type == "text"), "")
-
-        try:
-            plan = StoryPlan.model_validate(json.loads(text))
-        except (json.JSONDecodeError, ValidationError) as exc:
-            errors = [str(exc)[:500]]
+            plan = StoryPlan.model_validate_json(response.text)
+            diagnostics.duration_ms = int((time.monotonic() - started) * 1000)
+            return plan, diagnostics
+        except ValidationError as exc:
+            errors = [str(exc)[:2000]]
             diagnostics.plan_valid_first_attempt = False
             diagnostics.valid_first_attempt = False
             diagnostics.validation_errors.extend(errors)
-            continue
-
-        diagnostics.duration_ms = int((time.monotonic() - started) * 1000)
-        return plan, diagnostics
-
-    raise StoryGenerationError(
-        "The model did not return a valid plan after two attempts: "
-        + "; ".join(diagnostics.validation_errors)
-    )
-
-
-class StoryGenerationError(RuntimeError):
-    """Surfaced to the caller as a 502 with the reason intact."""
+    raise StoryGenerationError("The model did not return a valid story after two attempts.")

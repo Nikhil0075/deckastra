@@ -27,6 +27,8 @@ export const LIMITS = {
 
 export const WARN_AT = 0.8;
 
+export const MYDECK_LIMITS = { entries: 2000, totalBytes: 1024 ** 3, assetBytes: 200 * 1024 ** 2, compressionRatio: 100 } as const;
+
 export type LimitName = keyof typeof LIMITS;
 
 export interface LimitCheck {

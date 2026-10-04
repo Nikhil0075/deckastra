@@ -2,7 +2,7 @@
 """Run production assistant contracts and record evidence; never invent quality scores.
 
 Examples:
-  python scripts/benchmark-assistant.py --local-config PATH --tasks cleanup --limit 2 --output probe.json
+  python scripts/benchmark-assistant.py --provider vertex --model PINNED_ID --tasks cleanup --limit 2 --output probe.json
   python scripts/benchmark-assistant.py --provider vertex --model PINNED_ID --reviews reviews.json --output flash.json
 Twenty distinct cases per task and independently recorded rubric reviews are required
 for qualification. A probe is useful evidence, but cannot qualify a deployment.
@@ -33,9 +33,8 @@ from importlib import import_module
 story = import_module("deckastra_agents.nodes.story")
 critic = import_module("deckastra_agents.nodes.critic")
 from deckastra_agents.qualification import TASKS, qualifies
-from deckastra_agents.hybrid_model import deployment_signature
 from deckastra_agents.vertex_model import VertexClient, runtime_id as vertex_runtime_id
-from deckastra_api import assistant_tasks, agent_service, model_server
+from deckastra_api import assistant_tasks, agent_service
 
 DIMENSIONS = ("factual_grounding", "narrative_quality", "visual_consistency", "translation", "accessibility", "instruction_adherence")
 
@@ -59,7 +58,7 @@ def rescore(report, reviews):
         cases = [c for c in report["cases"] if c["task"] == task and not c.get("budget_blocked")]
         record["metrics"].update(task_success=sum(c["success"] for c in cases) / len(cases) if cases else 0, safety_failures=sum(c["review"].get("safety_failures", 0) for c in cases), severe_regressions=sum(c["review"].get("severe_regressions", 0) for c in cases))
         record["review"] = {"independent_of_system_author": bool(cases) and all(c["reviewed"] for c in cases)}
-        record["qualified"] = qualifies(record, model_id=record["model_id"], runtime_id=record["runtime_id"], hardware_id=record["hardware_id"])
+        record["qualified"] = qualifies(record, model_id=record["model_id"], runtime_id=record["runtime_id"], location=record["location"])
     return report
 SCENARIOS = (
     "Preserve all numbers and proper names.", "Make the message understandable to a new colleague.",
@@ -151,9 +150,8 @@ def perform(task, request, snapshot, client, budget):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--provider", choices=("local", "vertex"), default="local")
+    parser.add_argument("--provider", choices=("vertex",), default="vertex")
     parser.add_argument("--model")
-    parser.add_argument("--local-config")
     parser.add_argument("--tasks", nargs="+", choices=TASKS, default=list(TASKS))
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--reviews", help="Independent rubric scores keyed by case id; scores from zero to one.")
@@ -161,29 +159,19 @@ def main():
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     if not 1 <= args.limit <= 20: parser.error("limit must be 1..20")
-    if args.local_config:
-        config = json.loads(Path(args.local_config).read_text(encoding="utf-8-sig"))
-        for key, value in config.items():
-            if key.startswith("DECKASTRA_") and isinstance(value, str): os.environ[key] = value
     reviews = json.loads(Path(args.reviews).read_text(encoding="utf-8")) if args.reviews else {}
     if args.rescore:
         report = rescore(json.loads(Path(args.rescore).read_text(encoding="utf-8")), reviews)
         Path(args.output).write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         return
-    if args.provider == "vertex":
-        if not args.model: parser.error("Vertex benchmarks require a pinned --model and configured spend ceiling")
-        client = VertexClient(args.model); model_id = args.model
-        runtime_id, hardware_id = vertex_runtime_id(args.model, client.config), client.config["location"]
-        ledger = CostLedger(client.config["ceiling"])
-    else:
-        from deckastra_agents.local_model import local_client
-        inner = local_client(); client = model_server._KeptAlive(inner); model_id = inner.pack.id
-        runtime_id, hardware_id = os.environ.get("DECKASTRA_ASSISTANT_RUNTIME", ""), os.environ.get("DECKASTRA_ASSISTANT_HARDWARE", "")
-        ledger = None
+    if not args.model: parser.error("Vertex benchmarks require a pinned --model and configured spend ceiling")
+    client = VertexClient(args.model); model_id = args.model
+    runtime_id, location = vertex_runtime_id(args.model, client.config), client.config["location"]
+    ledger = CostLedger(client.config["ceiling"])
     all_cases = [(task, index, *fixture(task, index)) for task in args.tasks for index in range(args.limit)]
     digest = hashlib.sha256(json.dumps(all_cases, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     task_digests = {task: hashlib.sha256(json.dumps([case for case in all_cases if case[0] == task], sort_keys=True, ensure_ascii=False).encode()).hexdigest() for task in args.tasks}
-    report = {"provider": args.provider, "deployment_signature": deployment_signature(), "dataset_sha256": digest, "tasks": {}, "cases": [], "rubric": {dimension: "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief" for dimension in DIMENSIONS}, "notes": ["VRAM is whole-device usage; RAM is this process and supervised child RSS.", "Cold first request includes model startup. Missing independent reviews fail qualification."]}
+    report = {"provider": args.provider, "dataset_sha256": digest, "tasks": {}, "cases": [], "rubric": {dimension: "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief" for dimension in DIMENSIONS}, "notes": ["VRAM is whole-device usage; RAM is this process and supervised child RSS.", "Cold first request includes model startup. Missing independent reviews fail qualification."]}
     output = Path(args.output); output.parent.mkdir(parents=True, exist_ok=True)
     try:
         for task, index, request, snapshot in all_cases:
@@ -214,16 +202,15 @@ def main():
             warm = sorted(c["seconds"] for c in cases if c["temperature_class"] == "warm") or [case["seconds"]]
             first_valid = sum(c["first_attempt_valid"] and c["automatic_valid"] for c in cases) / len(cases) if cases else 0
             metrics = {"samples": len(cases), "first_attempt_validity": first_valid, "functional_first_attempt_validity": first_valid, "task_success": sum(c["success"] for c in cases) / len(cases) if cases else 0, "p95_seconds": warm[max(0, math.ceil(.95 * len(warm)) - 1)], "safety_failures": sum(c["review"].get("safety_failures", 0) for c in cases), "severe_regressions": sum(c["review"].get("severe_regressions", 0) for c in cases)}
-            record = dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": all(c["reviewed"] for c in cases)}, coverage={"distinct_slides": len({c["slide_id"] for c in cases}), "feature_groups": len({g for c in cases for g in c["feature_groups"]})}, task=task, model_id=model_id, runtime_id=runtime_id, hardware_id=hardware_id, dataset_sha256=task_digests[task], metrics=metrics)
-            record["qualified"] = qualifies(record, model_id=model_id, runtime_id=runtime_id, hardware_id=hardware_id)
+            record = dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": all(c["reviewed"] for c in cases)}, coverage={"distinct_slides": len({c["slide_id"] for c in cases}), "feature_groups": len({g for c in cases for g in c["feature_groups"]})}, task=task, model_id=model_id, runtime_id=runtime_id, location=location, dataset_sha256=task_digests[task], metrics=metrics)
+            record["qualified"] = qualifies(record, model_id=model_id, runtime_id=runtime_id, location=location)
             report["tasks"][task] = record
-            if args.provider == "local": report["runtime_diagnostics"] = model_server.diagnostics()
             output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
             print(f"{case_id}: {case['seconds']:.1f}s, valid={case['automatic_valid']}, reviewed={reviewed}, qualified={record['qualified']}", flush=True)
             if case.get("budget_blocked"):
                 break
     finally:
-        if args.provider == "local": model_server.stop()
+        pass
 
 
 if __name__ == "__main__": main()

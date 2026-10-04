@@ -79,7 +79,7 @@ def scripted(monkeypatch, plans: list[dict]) -> Scripted:
     model = Scripted(plans)
     from deckastra_api import agent_routes
 
-    monkeypatch.setattr(agent_routes.model_server, "build_client", lambda fallback=None: model)
+    monkeypatch.setattr(agent_routes.model_router, "default_client", lambda fallback=None: model)
     return model
 
 

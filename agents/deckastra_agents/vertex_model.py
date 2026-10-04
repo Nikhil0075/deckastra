@@ -208,7 +208,8 @@ class VertexClient:
         usage = None
         try:
             budget.check_clock()
-            budget.reserve_cost(operation_id, maximum)
+            from .vertex_router import task_of
+            budget.reserve_cost(operation_id, maximum, task=task_of(request), model=self.model)
             remaining = max(0.1, budget.max_wall_clock_seconds - budget.elapsed_seconds)
             with httpx.Client(transport=self.transport, timeout=httpx.Timeout(remaining, read=min(30, remaining))) as client:
                 with client.stream("POST", url, json=body, headers={"Authorization": f"Bearer {access_token}"}) as answer:

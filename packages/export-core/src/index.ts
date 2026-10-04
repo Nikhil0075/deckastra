@@ -266,3 +266,4 @@ export function sceneUsedEstimatedMetrics(scene: SlideScene): boolean {
   );
   return walk(scene.nodes);
 }
+export { createZip, crc32, type ZipEntry } from "./zip";

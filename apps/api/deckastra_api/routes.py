@@ -916,6 +916,10 @@ def duplicate_presentation(
     stored = store.create_presentation(
         session, project_id=project.id, document=duplicated, created_by=principal.user_id, source="user"
     )
+    from .import_models import PackageExtras
+    extras = session.get(PackageExtras, presentation_id)
+    if extras:
+        session.add(PackageExtras(presentation_id=stored.presentation_id, assets_json=dict(extras.assets_json)))
     return {"presentation_id": stored.presentation_id, "version_id": stored.version_id, "title": stored.title}
 
 

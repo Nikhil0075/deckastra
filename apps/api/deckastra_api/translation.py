@@ -302,8 +302,9 @@ class GoogleTranslator:
 
     def translate(self, items: list[Item], *, source: str, target: str) -> dict[str, str]:
         texts = [item.text for item in items]
+        from .paid_services import billed
         try:
-            with httpx.Client(timeout=30) as http:
+            with billed("translation", sum(map(len, texts)), "DECKASTRA_TRANSLATION_USD_PER_MILLION"), httpx.Client(timeout=30) as http:
                 if self.token and self.project:
                     body: dict[str, Any] = {
                         "contents": texts,
@@ -346,16 +347,15 @@ def selected_translator_name() -> str:
             f"Use one of: {', '.join(PROVIDERS)}. Nothing was sent anywhere."
         )
     if choice:
-        if choice == "stub" and distribution():
+        if choice == "stub" and (distribution() or os.environ.get("DECKASTRA_ENV") == "production"):
             raise ModelUnavailable("The keyless stand-in translator is for development; it is not in an installed product.")
         return choice
     status = generation_status()
-    if status.get("available") and status.get("provider") in ("cloud", "local"):
+    if status.get("available") and status.get("provider") == "vertex":
         return "model"
-    if distribution():
+    if distribution() or os.environ.get("DECKASTRA_ENV") == "production":
         raise ModelUnavailable(
-            "Translation is not set up on this install. Add a cloud API key under Intelligence, or "
-            "translate with a connected AI agent."
+            "Translation needs an evaluated Vertex model and a signed-in account with credits."
         )
     return "stub"
 

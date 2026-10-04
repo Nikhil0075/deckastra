@@ -57,7 +57,7 @@ describe("a diagnostics report", () => {
     });
     const text = JSON.stringify(report);
 
-    expect(report.cloudKey.set).toBe(true);
+    expect(report.account.signedIn).toBe(false);
     expect(text).not.toContain(KEY);
     expect(text).not.toContain("0123456789abcdefghij");
     // Whether an agent may reach this install, never the credential it holds.

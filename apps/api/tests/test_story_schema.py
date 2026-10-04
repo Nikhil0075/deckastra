@@ -6,11 +6,11 @@ sends its own schema and needs its own check (see `agents/tests/test_api_schema.
 
 from __future__ import annotations
 
-from deckastra_agents.router import api_schema
+from deckastra_agents.vertex_model import vertex_schema
 
 from deckastra_api.story import _plan_schema
 
-REFUSED = {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minLength", "maxLength", "pattern", "maxItems"}
+REFUSED = {"$ref", "$defs", "additionalProperties", "pattern", "default"}
 
 
 def _keys(node):
@@ -24,4 +24,4 @@ def _keys(node):
 
 
 def test_the_single_shot_plan_sends_nothing_the_api_refuses():
-    assert REFUSED.isdisjoint(_keys(api_schema(_plan_schema())))
+    assert REFUSED.isdisjoint(_keys(vertex_schema(_plan_schema())))

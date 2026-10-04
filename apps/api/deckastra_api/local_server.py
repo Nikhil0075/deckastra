@@ -241,6 +241,8 @@ def start_export_worker() -> threading.Thread:
         worker_id = "local"
         while True:
             try:
+                from .mydeck_import import process_one as import_package
+                import_package()
                 with session_scope() as session:
                     job = export_service.process_one(session, worker_id)
             except Exception:  # noqa: BLE001 - one bad job must not end the loop

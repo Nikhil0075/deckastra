@@ -1,0 +1,21 @@
+# Copy the tested images byte-for-byte into the production registry.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        for image in api export-worker migrate; do
+          source="${_REGION}-docker.pkg.dev/${_SOURCE_PROJECT}/deckastra/$${image}:${_TAG}"
+          target="${_REGION}-docker.pkg.dev/$PROJECT_ID/deckastra/$${image}:${_TAG}"
+          docker pull "$${source}"
+          docker tag "$${source}" "$${target}"
+          docker push "$${target}"
+        done
+substitutions:
+  _REGION: asia-south1
+  _SOURCE_PROJECT: deckastra
+  _TAG: dev
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s

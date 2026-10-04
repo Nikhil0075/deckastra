@@ -31,7 +31,8 @@ import {
 } from "./ipc-guard";
 import { logEvent } from "./logs";
 import { approveClose, settleClose } from "./close-guard";
-import { cloudKeyState, setCloudKey } from "./cloud-key";
+import { accountState, signIn, signOut } from "./account";
+import { ACCOUNT_IPC } from "../shared/account";
 import type { RestoreResult } from "./backup";
 import {
   chooseBackupFolder,
@@ -51,6 +52,7 @@ import { runSmoke, smokeDir } from "./smoke";
 import { classifyFailure, serviceCommand, startSidecar, type Sidecar } from "./sidecar";
 import { dataDir, ensurePresentation, rememberPresentation } from "./workspace-state";
 import { createWindow } from "./windows";
+import { importDeckFile } from "./deck-file";
 
 /**
  * The desktop shell (milestone D1).
@@ -222,16 +224,13 @@ function registerHandlers(): void {
     return status;
   });
 
-  handleFromWindow(IPC.cloudKey, () => cloudKeyState());
+  handleFromWindow(ACCOUNT_IPC.state, () => accountState());
+  handleFromWindow(ACCOUNT_IPC.signIn, () => signIn());
+  handleFromWindow(ACCOUNT_IPC.signOut, () => signOut());
+  handleFromWindow(IPC.cloudKey, () => ({ set: false, updatedAt: null, storable: false }));
 
   handleFromWindow(IPC.cloudKeySet, async (_window, payload) => {
-    const asked = asRecord(payload).key;
-    const key = asked === null ? null : asText(asked, "An API key", 500);
-    const state = await setCloudKey(key);
-    // The service reads the key from its environment when it starts, so the
-    // change only means anything after a restart.
-    await restartService();
-    return state;
+    throw new Error("API keys have been retired. Sign in to use Deckastra AI credits.");
   });
 
     handleFromWindow(IPC.agentAccess, (): Promise<AgentAccess> => readAgentAccess());
@@ -533,7 +532,7 @@ async function startup(): Promise<void> {
     service: () => (sidecar ? { port: sidecar.port, secret: sidecar.secret } : null),
   });
   registerHandlers();
-  installMenu(sendMenuCommand, { exportDiagnostics, backUp: backUpNow, restore: restoreNow, showNotices });
+  installMenu(sendMenuCommand, { exportDiagnostics, backUp: backUpNow, restore: restoreNow, showNotices, openDeckFile: () => openDeckFile() });
 
   const smoke = smokeDir();
   // `?smoke=1` is what lets the harness reach the renderer's scene builder. Set
@@ -548,6 +547,8 @@ async function startup(): Promise<void> {
     // sees no sidecar and withdraws. Restarts go the other way — the variable is
     // set and only the broadcast knows the new port.
     await refreshAttachment();
+    for (const path of process.argv.filter(argument => argument.toLowerCase().endsWith(".mydeck"))) void openDeckFile(path);
+    for (const path of pendingDeckFiles.splice(0)) void openDeckFile(path);
   } catch (error) {
     // The window is already open, so the failure is reported into a surface the
     // user can read instead of a process that exits with nothing on screen.
@@ -672,7 +673,24 @@ app.on("before-quit", (event) => {
   })();
 });
 
-app.on("second-instance", () => {
+const pendingDeckFiles: string[] = [];
+async function openDeckFile(path?: string): Promise<void> {
+  if (!sidecar) { if (path) pendingDeckFiles.push(path); return; }
+  try {
+    const id = await importDeckFile(sidecar, path);
+    if (!id) return;
+    await rememberPresentation(sidecar, id);
+    presentation = Promise.resolve(id);
+    openPresentationId = id;
+    await refreshAttachment();
+    createWindow();
+  } catch (error) {
+    await dialog.showMessageBox({ type: "error", title: "Could not open deck file", message: error instanceof Error ? error.message : "The deck file could not be opened." });
+  }
+}
+app.on("open-file", (event, path) => { event.preventDefault(); void openDeckFile(path); });
+app.on("second-instance", (_event, argv) => {
+  for (const path of argv.filter(argument => argument.toLowerCase().endsWith(".mydeck"))) void openDeckFile(path);
   const [existing] = BrowserWindow.getAllWindows();
   if (existing) {
     if (existing.isMinimized()) existing.restore();

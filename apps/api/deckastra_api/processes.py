@@ -103,6 +103,33 @@ def _kill_tree_windows(pid: int) -> int:
     return killed
 
 
+def _kill_tree_posix(pid: int) -> None:
+    import os
+    import signal
+    from pathlib import Path
+    children: dict[int, list[int]] = {}
+    if sys.platform.startswith("linux"):
+        for path in Path("/proc").glob("[0-9]*/stat"):
+            try:
+                fields = path.read_text(encoding="utf-8", errors="replace").rsplit(")", 1)[1].split()
+                children.setdefault(int(fields[1]), []).append(int(path.parent.name))
+            except (OSError, ValueError, IndexError):
+                continue  # A process may exit during the snapshot.
+    else:
+        result = subprocess.run(["ps", "-A", "-o", "pid=", "-o", "ppid="], capture_output=True, text=True, check=True)
+        for line in result.stdout.splitlines():
+            child, parent = map(int, line.split())
+            children.setdefault(parent, []).append(child)
+    def walk(target):
+        for child in children.get(target, []):
+            walk(child)
+        try:
+            os.kill(target, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    walk(pid)
+
+
 def terminate_tree(process: "subprocess.Popen", grace: float = 10.0) -> None:
     """Stop `process` and every process it started, then wait for it."""
     if process.poll() is not None:
@@ -112,9 +139,9 @@ def terminate_tree(process: "subprocess.Popen", grace: float = 10.0) -> None:
         if sys.platform == "win32":
             _kill_tree_windows(process.pid)
         else:
-            # POSIX has the process group for this, and the callers spawn with
-            # one; terminate is enough to reach the whole of it.
-            process.terminate()
+            # Walk descendants explicitly: a Python child's terminate() sends
+            # one PID a signal, even when it was started in a process group.
+            _kill_tree_posix(process.pid)
     except Exception:  # noqa: BLE001 - a failed kill must not replace the real answer
         logger.exception("Could not stop the process tree cleanly")
 

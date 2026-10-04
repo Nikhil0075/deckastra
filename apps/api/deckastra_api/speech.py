@@ -73,8 +73,9 @@ def selected_speech_provider() -> str:
         )
     if choice == "google":
         return "google"
-    if choice == "stub" or not distribution():
-        if distribution():
+    production = distribution() or os.environ.get("DECKASTRA_ENV") == "production"
+    if choice == "stub" or not production:
+        if production:
             raise ModelUnavailable("The stand-in voice is for development; it is not in an installed product.")
         return "stub"
     raise ModelUnavailable(
@@ -281,7 +282,7 @@ def cache_key(
 
 
 def synthesize(
-    text: str, *, locale: str, voice: str, rate: float = 1.0, pronunciations: list[Pronunciation] | None = None
+    text: str, *, locale: str, voice: str, rate: float = 1.0, pronunciations: list[Pronunciation] | None = None, budget=None, accounted=False
 ) -> Synthesis:
     provider = selected_speech_provider()
     pronunciations = applicable(text, pronunciations or [])
@@ -291,7 +292,11 @@ def synthesize(
         if duration is None:
             raise SpeechError("The stand-in recording could not be measured.")
         return Synthesis(data, "audio/wav", "wav", duration, "stub", audio.peaks(audio.wav_samples(data)))
-    return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
+    from .paid_services import billed
+    if accounted:
+        return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
+    with billed("speech", len(text), "DECKASTRA_SPEECH_USD_PER_MILLION", budget=budget):
+        return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
 
 
 # --------------------------------------------------------------------- Google

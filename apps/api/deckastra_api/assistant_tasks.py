@@ -435,7 +435,7 @@ def _compute(request, snapshot, client, budget, emit):
                         budget.reconcile_cost(operation, charge, 0)
                     raise
             try:
-                result = speech.synthesize(script, locale=request["locale"], voice=request["voice"])
+                result = speech.synthesize(script, locale=request["locale"], voice=request["voice"], accounted=True)
             except speech.SpeechError as exc:
                 import httpx
                 cause = exc.__cause__
