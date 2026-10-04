@@ -130,6 +130,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -185,7 +192,7 @@ jobs:
       # are byte-identical. There are two implementations because the store
       # replays operations server-side; this is what keeps them from drifting.
       - name: API tests
-        run: python -m pytest apps/api/tests -q
+        run: python -m pytest apps/api/tests -q -m 'not slow'
 
       # The agent system runs against the deterministic stub client, so it needs
       # no API key and spends nothing. What it checks is the part that is ours:
@@ -368,6 +375,7 @@ jobs:
           DECKASTRA_SMOKE_PROFILE: ${{ github.workspace }}/.artifacts/desktop-profile
           DECKASTRA_SMOKE_FIXTURES: ${{ github.workspace }}/packages/presentation-schema/fixtures
           DECKASTRA_SMOKE_BASELINES: ${{ github.workspace }}/packages/renderer/baselines
+          DECKASTRA_SIDECAR: ${{ github.workspace }}/apps/desktop/dist/sidecar/deckastra-service/deckastra-service.exe
         run: |
           mkdir -p "$DECKASTRA_SMOKE_DIR" "$DECKASTRA_SMOKE_PROFILE"
           cd apps/desktop

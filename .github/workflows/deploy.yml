@@ -10,6 +10,8 @@ on:
   push:
     branches: [main]
     paths: ['apps/api/**', 'apps/worker/**', 'agents/**', 'integrations/**', 'packages/**', 'infrastructure/**', 'package*.json', '.github/workflows/deploy.yml']
+  pull_request:
+    paths: ['apps/api/**', 'apps/worker/**', 'apps/desktop/src/main/**', 'agents/**', 'integrations/**', 'packages/**', 'infrastructure/**', '.github/workflows/deploy.yml']
 permissions:
   contents: read
   id-token: write
@@ -17,7 +19,37 @@ concurrency:
   group: cloud-backend-${{ inputs.environment || 'dev' }}
   cancel-in-progress: false
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: deckastra
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: deckastra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
+      - name: Backend checks against PostgreSQL
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg://deckastra:ci_only@localhost:5432/deckastra
+        run: python -m pytest apps/api/tests agents/tests -q -m 'not slow'
   deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
     timeout-minutes: 45
@@ -46,8 +78,6 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
-      - name: Backend checks
-        run: python -m pytest apps/api/tests agents/tests -q -m 'not slow'
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: projects/${{ env.GCP_NUMBER }}/locations/global/workloadIdentityPools/deckastra-github/providers/github

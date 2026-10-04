@@ -1,0 +1,128 @@
+[
+  {
+    "task": "authoring",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 16,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.65,
+      "functional_first_attempt_validity": 0.65,
+      "task_success": 0.0,
+      "p95_seconds": 50.48550779999641,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "cleanup",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 20,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.0,
+      "functional_first_attempt_validity": 0.0,
+      "task_success": 0.0,
+      "p95_seconds": 5.190318600005412,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "critique",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 20,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 1.0,
+      "functional_first_attempt_validity": 1.0,
+      "task_success": 0.0,
+      "p95_seconds": 27.139355100000103,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "narration",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 19,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.5,
+      "functional_first_attempt_validity": 0.5,
+      "task_success": 0.0,
+      "p95_seconds": 85.20954820000043,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "planning",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 17,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.85,
+      "functional_first_attempt_validity": 0.85,
+      "task_success": 0.0,
+      "p95_seconds": 48.11423270000523,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "translation",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 16,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.55,
+      "functional_first_attempt_validity": 0.55,
+      "task_success": 0.0,
+      "p95_seconds": 28.547157699998934,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  {
+    "task": "vision",
+    "model": "gemini-3.1-pro-preview",
+    "runtime": "vertex-native-v1-d7daa4765e92400f",
+    "location": "global",
+    "cases": 20,
+    "automatic_valid": 18,
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.8,
+      "functional_first_attempt_validity": 0.8,
+      "task_success": 0.0,
+      "p95_seconds": 54.29466929999762,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  }
+]

@@ -6,7 +6,7 @@ pydantic>=2.9,<3
 jsonschema>=4.23,<5
 
 # Persistence (Phase 2).
-SQLAlchemy>=2.0,<3
+SQLAlchemy>=2.0,<2.1
 alembic>=1.13,<2
 # psycopg 3. The sync driver is deliberate: FastAPI runs sync endpoints in a
 # thread pool, and async buys nothing until there is measured pool pressure.

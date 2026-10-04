@@ -19,7 +19,7 @@ from sqlalchemy import create_engine, inspect
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api.db.models import Base  # noqa: E402
+from deckastra_api.db.session import Base  # noqa: E402 - includes additive table registration
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_DIR = REPO_ROOT / "infrastructure" / "database"
