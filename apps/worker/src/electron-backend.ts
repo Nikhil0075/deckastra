@@ -239,6 +239,7 @@ export class ElectronPage implements RenderPage {
       heightIn: inches(options.height, 11.25),
       printBackground: options.printBackground ?? false,
       preferCSSPageSize: options.preferCSSPageSize ?? false,
+      tagged: options.tagged ?? false,
     })) as string;
     return new Uint8Array(Buffer.from(base64, "base64"));
   }

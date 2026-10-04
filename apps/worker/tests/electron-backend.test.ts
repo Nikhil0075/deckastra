@@ -218,8 +218,9 @@ describe("talking to the host", () => {
     expect(fake.sent.filter((request) => request.method === "pdf")).toEqual([]);
 
     // The exporter's real options pass, converted to inches.
-    await page.pdf({
-      printBackground: true,
+      await page.pdf({
+        tagged: true,
+        printBackground: true,
       width: "20in",
       height: "11.25in",
       margin: { top: "0", right: "0", bottom: "0", left: "0" },
@@ -230,7 +231,8 @@ describe("talking to the host", () => {
     expect(fake.sent.find((request) => request.method === "pdf")!.params).toMatchObject({
       widthIn: 20,
       heightIn: 11.25,
-      printBackground: true,
+        printBackground: true,
+        tagged: true,
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   isMenuCommand,
   type CloudKeyRequest,
   type CloudKeyState,
+  type ClipboardTextRequest,
   type MenuCommand,
   type AgentAccess,
   type AgentAccessRequest,
@@ -45,6 +46,9 @@ const bridge: DesktopBridge = {
 
   saveFile: (request: SaveFileRequest) =>
     ipcRenderer.invoke(IPC.saveFile, request) as Promise<SaveFileResult>,
+
+  writeClipboardText: (text: string) =>
+    ipcRenderer.invoke(IPC.clipboardWriteText, { text } satisfies ClipboardTextRequest) as Promise<void>,
 
   // `send`, not `invoke`: the call has to complete inside the task that handled
   // the click, or the synchronous contract `HostBridge` states is a lie.

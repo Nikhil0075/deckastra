@@ -246,5 +246,8 @@ export interface UploadedAsset {
   bytes: number;
   width: number | null;
   height: number | null;
+  /** Audio: its length, read from the file by the service. */
+  duration_ms?: number | null;
+  waveform_peaks?: number[] | null;
   storage_key: string;
 }

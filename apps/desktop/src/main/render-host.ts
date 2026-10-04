@@ -191,6 +191,7 @@ export function runRenderHost(): void {
       case "pdf": {
         const { window } = page(request.params.pageId);
         const bytes = await window.webContents.printToPDF({
+          generateTaggedPDF: request.params.tagged ?? false,
           printBackground: request.params.printBackground,
           pageSize: { width: request.params.widthIn, height: request.params.heightIn },
           // Electron 44 dropped `marginType`; explicit zeros are what "none"

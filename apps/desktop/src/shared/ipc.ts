@@ -42,6 +42,8 @@ export const IPC = {
   openPresentation: "deckastra:workspace:open",
   /** Hand the user a file through a native save dialog. */
   saveFile: "deckastra:file:save",
+  /** Put plain text on the operating-system clipboard. */
+  clipboardWriteText: "deckastra:clipboard:write-text",
   /** Open the presenter window. Fire-and-forget; see `OpenPresenterWindow`. */
   openPresenter: "deckastra:presenter:open",
   /** Close a presenter window this renderer opened. */
@@ -267,6 +269,10 @@ export interface SaveFileResult {
   path?: string;
 }
 
+export interface ClipboardTextRequest {
+  text: string;
+}
+
 export interface OpenPresenterRequest {
   /**
    * Chosen by the renderer, not the main process.
@@ -293,6 +299,7 @@ export interface DesktopBridge {
   /** Make another deck the open one. Rejects if it does not exist or cannot be read. */
   openPresentation(request: OpenPresentationRequest): Promise<CurrentPresentation>;
   saveFile(request: SaveFileRequest): Promise<SaveFileResult>;
+  writeClipboardText(text: string): Promise<void>;
   openPresenter(request: OpenPresenterRequest): void;
   closePresenter(id: string): void;
   /** Returns an unsubscribe function. */

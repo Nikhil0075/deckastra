@@ -39,6 +39,7 @@ export interface ScreenshotOptions {
 
 /** The subset of Playwright's PDF options the exporter uses. */
 export interface PdfOptions {
+  tagged?: boolean;
   printBackground?: boolean;
   width?: string;
   height?: string;

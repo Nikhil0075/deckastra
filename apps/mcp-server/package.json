@@ -22,6 +22,7 @@
     "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {
+    "@deckastra/presentation-core": "*",
     "@deckastra/presentation-schema": "*",
     "@deckastra/workspace-client": "*",
     "@deckastra/workspace-contracts": "*",

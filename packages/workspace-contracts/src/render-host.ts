@@ -51,6 +51,7 @@ export type RenderHostRequest =
         heightIn: number;
         printBackground: boolean;
         preferCSSPageSize: boolean;
+        tagged?: boolean;
       };
     }
   | { id: number; method: "closePage"; params: { pageId: number } };

@@ -61,6 +61,10 @@ extraResources:
   - from: dist/mcp
     to: mcp
 win:
+  # Project-owned multi-resolution Windows icon, derived from the adjacent
+  # 1024px PNG source. Keeping the ICO in-tree makes Windows packaging
+  # deterministic and avoids a network-only icon conversion toolchain.
+  icon: build/icon.ico
   target:
     - nsis
   artifactName: ${productName}-${version}-win-${arch}.${ext}

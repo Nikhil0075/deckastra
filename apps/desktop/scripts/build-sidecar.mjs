@@ -67,6 +67,12 @@ const hidden = [
   "langgraph.checkpoint.sqlite",
   "aiosqlite",
   "alembic.ddl.sqlite",
+  // Google credentials (google_credentials.py) import their classes by name at
+  // run time: a user's sign-in file and a service account, and the transport
+  // that renews them. Static analysis does not see those imports.
+  "google.auth.transport.requests",
+  "google.oauth2.credentials",
+  "google.oauth2.service_account",
 ];
 
 const excluded = [
