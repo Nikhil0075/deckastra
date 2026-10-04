@@ -1,0 +1,84 @@
+{
+  "provider": "vertex",
+  "deployment_signature": "2cb5ea4e983226e844e55801ff496c6fe8586516dfdb42224d110229582db725",
+  "dataset_sha256": "3fff8d766565cf910c57a32879273b4b6612ceaa0c71cfc96739f5d3e7b2207c",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemini-3.8-flash",
+      "runtime_id": "vertex-rest-v1",
+      "hardware_id": "global",
+      "dataset_sha256": "3fff8d766565cf910c57a32879273b4b6612ceaa0c71cfc96739f5d3e7b2207c",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 16.24370730004739,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          }
+        ],
+        "summary": "Moved the headline within the safe area boundary, aligning it with the slide margin and subtitle.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 16.24370730004739,
+      "ram_mb": 152.56640625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7130,
+        "input_tokens": 5757,
+        "output_tokens": 1373,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 16.24,
+        "used_cost_usd": 0.018933,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "09f1169527d08db9845c2fa45aa109f2013b80097af106f2e5fd7f3952a40900",
+      "review": {},
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ]
+}

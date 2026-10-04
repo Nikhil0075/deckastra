@@ -40,6 +40,24 @@
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "@fontsource/ibm-plex-mono/index.css";
 @import "@fontsource-variable/caveat/wght.css";
+/* World scripts (integration plan 01 §3.9). Each face's files are split by
+   unicode-range, so a Hindi file is fetched only when Hindi is on screen. */
+@import "@fontsource-variable/noto-sans-devanagari/wght.css";
+@import "@fontsource-variable/noto-serif-devanagari/wght.css";
+@import "@fontsource/mukta/index.css";
+@import "@fontsource/hind/index.css";
+@import "@fontsource-variable/baloo-2/wght.css";
+@import "@fontsource-variable/noto-sans-bengali/wght.css";
+@import "@fontsource-variable/noto-sans-tamil/wght.css";
+@import "@fontsource-variable/noto-sans-telugu/wght.css";
+@import "@fontsource-variable/noto-sans-kannada/wght.css";
+@import "@fontsource-variable/noto-sans-malayalam/wght.css";
+@import "@fontsource-variable/noto-sans-gujarati/wght.css";
+@import "@fontsource-variable/noto-sans-gurmukhi/wght.css";
+@import "@fontsource-variable/noto-sans-oriya/wght.css";
+@import "@fontsource-variable/noto-sans-arabic/wght.css";
+@import "@fontsource-variable/noto-naskh-arabic/wght.css";
+@import "@fontsource-variable/noto-sans-hebrew/wght.css";
 @import "./styles/tokens.css";
 @import "./styles/components.css";
 @import "./styles/shell.css";
@@ -127,3 +145,14 @@ a {
 .present-idle {
   cursor: none;
 }
+
+.dk-assistant { display: grid; gap: 12px; }
+.dk-assistant > label { display: grid; gap: 5px; font-size: 12px; }
+.dk-assistant select, .dk-assistant textarea, .dk-assistant input:not([type="checkbox"]) {
+  width: 100%; min-width: 0; border: 1px solid var(--dk-border, #3b4250);
+  border-radius: 8px; padding: 8px; color: inherit; background: transparent; font: inherit;
+}
+.dk-assistant textarea { min-height: 90px; resize: vertical; }
+.dk-assistant fieldset { display: grid; gap: 8px; border: 1px solid var(--dk-border, #3b4250); border-radius: 8px; padding: 10px; }
+.dk-assistant [role="alert"] { color: var(--dk-danger, #ef6464); }
+.dk-assistant details > div { display: flex; justify-content: space-between; gap: 8px; padding-block: 6px; }

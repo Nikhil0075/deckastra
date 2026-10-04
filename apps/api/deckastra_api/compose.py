@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from copy import deepcopy
+import re
 from typing import Any
 
 from .ids import new_id
@@ -173,6 +174,60 @@ def _caption(text: str, y: float) -> dict[str, Any]:
         size=18,
         color="token:colors.foregroundSubtle",
     )
+
+
+#: Captions are 18px body text, so WCAG 1.4.3's normal-text minimum applies.
+CAPTION_MINIMUM = 4.5
+#: Quietest first. A theme promises nothing about `foregroundSubtle`, and only 3:1
+#: (large text) about `foregroundMuted`; `foreground` carries its 4.5:1 pair.
+CAPTION_COLOURS = ("foregroundSubtle", "foregroundMuted", "foreground")
+
+
+def _theme_colour(theme: dict[str, Any], name: str, depth: int = 0) -> str | None:
+    value = (theme.get("colors") or {}).get(name)
+    if isinstance(value, str) and value.startswith("token:colors.") and depth < 8:
+        return _theme_colour(theme, value.removeprefix("token:colors."), depth + 1)
+    return value if isinstance(value, str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", value) else None
+
+
+def caption_colour(theme: dict[str, Any]) -> str:
+    """The quietest theme colour a caption can be read in on this theme's background.
+
+    Neo Technical's `foregroundSubtle` is 4.49:1 on its background, so every
+    caption the composer drew on that theme failed contrast by a hundredth, and
+    the assistant's layout gate refused every generated slide that had one.
+    A colour that cannot be measured (an alpha value, a missing role) is not
+    assumed to pass: the caption takes `foreground`.
+    """
+    from .office_theme import contrast
+
+    background = _theme_colour(theme, "background")
+    for name in CAPTION_COLOURS:
+        colour = _theme_colour(theme, name)
+        if background and colour and contrast(colour, background) >= CAPTION_MINIMUM:
+            return f"token:colors.{name}"
+    return "token:colors.foreground"
+
+
+def readable_captions(slides: list[dict[str, Any]], theme: dict[str, Any]) -> None:
+    """Re-colour composed captions for the theme they will actually render in.
+
+    In place, on slides this module composed. A caller appending composed slides
+    to an existing deck must pass that deck's theme, not the composer's.
+    """
+    chosen = caption_colour(theme)
+    if chosen == "token:colors.foregroundSubtle":
+        return
+
+    def walk(elements: list[dict[str, Any]]) -> None:
+        for element in elements:
+            typography = element.get("typography") or {}
+            if element.get("semanticRole") == "caption" and typography.get("color") == "token:colors.foregroundSubtle":
+                typography["color"] = chosen
+            walk(element.get("children") or [])
+
+    for slide in slides:
+        walk(slide.get("elements") or [])
 
 
 # --------------------------------------------------------------------- layouts
@@ -589,6 +644,8 @@ def compose_document(
         slide = compose_slide(slide_plan, index)
         motion_warnings.extend(animate_slide(slide, intents.get(index)))
         slides.append(slide)
+    theme = deepcopy(theme_definition) if theme_definition is not None else neo_technical_theme()
+    readable_captions(slides, theme)
 
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -613,7 +670,7 @@ def compose_document(
             "aspectRatio": "16:9",
             "safeArea": SAFE,
         },
-        "theme": deepcopy(theme_definition) if theme_definition is not None else neo_technical_theme(),
+        "theme": theme,
         "slides": slides,
         "assets": [],
         "components": [],

@@ -1,0 +1,454 @@
+{
+  "provider": "local",
+  "deployment_signature": "370de4d0f90454f940b398bd92b5ed76b30330bb7876bdb4c78c85da9289077b",
+  "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 122.40965809999034,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "authoring": {
+      "task": "authoring",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 60.60590000008233,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "planning": {
+      "task": "planning",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 2.445621599908918,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "critique": {
+      "task": "critique",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 1.9838253000052646,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "translation": {
+      "task": "translation",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 56.72166809998453,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "narration": {
+      "task": "narration",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 46.00414340000134,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "vision": {
+      "task": "vision",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "c1331e47f841232b9746a4495be2ca71d8bbe846b9511987ffbf61bbbe8a04af",
+      "metrics": {
+        "samples": 1,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 83.23612689995207,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/y",
+            "value": 360
+          }
+        ],
+        "summary": "Fixed layout finding W104 by moving the text element 'One deck, every language' by 132 pixels to bring it within the safe area.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 122.40965809999034,
+      "ram_mb": 2652.9296875,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 6605,
+        "input_tokens": 5242,
+        "output_tokens": 1363,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 122.41,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "8856c8564e7683274c914dbff08059c52a1aa8e5c07ad8212f4b72b6229844b1",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "authoring-00",
+      "task": "authoring",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "No operation required as the existing text is already concise and factual, satisfying the instruction to shorten it while retaining its meaning."
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 60.60590000008233,
+      "ram_mb": 2660.08984375,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 6706,
+        "input_tokens": 4803,
+        "output_tokens": 1903,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 60.61,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "a4fc2aecaffbced9c8821faa45f00df8373bbeea4dbb25f954523f38e2dcd3af",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "planning-00",
+      "task": "planning",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' needs 8431 prompt tokens but this deployment has 8192 context tokens. Measure a larger context before qualifying this task.",
+      "automatic_valid": false,
+      "seconds": 2.445621599908918,
+      "ram_mb": 2582.859375,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "planning",
+            "contract": "StoryPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 2.45,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "critique-00",
+      "task": "critique",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' needs 8533 prompt tokens but this deployment has 8192 context tokens. Measure a larger context before qualifying this task.",
+      "automatic_valid": false,
+      "seconds": 1.9838253000052646,
+      "ram_mb": 2585.98046875,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "critique",
+            "contract": "CriticResult",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.98,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "translation-00",
+      "task": "translation",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "No refusal. The requested translation into Hindi is already present in the locale overlays for the slide."
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 56.72166809998453,
+      "ram_mb": 2719.87109375,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 6141,
+        "input_tokens": 4822,
+        "output_tokens": 1319,
+        "structured_requests": [
+          {
+            "stage": "translation",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 56.72,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "6d6840d9c3cb7ec8d0c2c44ea1d3ed2970317af4148dfd6e97c43656fc527fa5",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "narration-00",
+      "task": "narration",
+      "temperature_class": "warm",
+      "error": "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.",
+      "automatic_valid": false,
+      "seconds": 46.00414340000134,
+      "ram_mb": 2676.98828125,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 46.0,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "vision-00",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 83.23612689995207,
+      "ram_mb": 2535.890625,
+      "vram_mb": 1652.0,
+      "usage": {
+        "used_tokens": 7795,
+        "input_tokens": 5935,
+        "output_tokens": 1860,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 83.24,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ],
+  "runtime_diagnostics": {
+    "loaded_pack": "gemma4-e2b-q4",
+    "runtime_stderr_tail": [
+      "3.00.832.692 I slot print_timing: id  0 | task 3282 | prompt processing, n_tokens =   4818, progress = 1.00, t =  15.95 s / 302.04 tokens per second",
+      "3.05.894.492 I slot print_timing: id  0 | task 3282 | n_gen =    138, tg =  45.50 t/s, tg_3s =  45.83 t/s",
+      "3.08.911.815 I slot print_timing: id  0 | task 3282 | n_gen =    287, tg =  47.44 t/s, tg_3s =  49.38 t/s",
+      "3.11.922.182 I slot print_timing: id  0 | task 3282 | n_gen =    431, tg =  47.57 t/s, tg_3s =  47.84 t/s",
+      "3.14.937.306 I slot print_timing: id  0 | task 3282 | n_gen =    579, tg =  47.95 t/s, tg_3s =  49.09 t/s",
+      "3.17.948.566 I slot print_timing: id  0 | task 3282 | n_gen =    730, tg =  48.39 t/s, tg_3s =  50.15 t/s",
+      "3.20.951.523 I slot print_timing: id  0 | task 3282 | n_gen =    874, tg =  48.32 t/s, tg_3s =  47.95 t/s",
+      "3.23.959.636 I slot print_timing: id  0 | task 3282 | n_gen =   1012, tg =  47.97 t/s, tg_3s =  45.88 t/s",
+      "3.26.960.955 I slot print_timing: id  0 | task 3282 | n_gen =   1144, tg =  47.47 t/s, tg_3s =  43.98 t/s",
+      "3.29.970.687 I slot print_timing: id  0 | task 3282 | n_gen =   1270, tg =  46.85 t/s, tg_3s =  41.86 t/s",
+      "3.31.237.449 I slot print_timing: id  0 | task 3282 | prompt eval time =   18002.03 ms /  4822 tokens (    3.73 ms per token,   267.86 tokens per second)",
+      "3.31.237.463 I slot print_timing: id  0 | task 3282 |        eval time =   28354.01 ms /  1319 tokens (   21.51 ms per token,    46.48 tokens per second)",
+      "3.31.237.465 I slot print_timing: id  0 | task 3282 |       total time =   46356.04 ms /  6141 tokens",
+      "3.31.237.468 I slot print_timing: id  0 | task 3282 |    graphs reused =       4562",
+      "3.31.237.965 I slot      release: id  0 | task 3282 | stop processing: n_tokens = 6140, truncated = 0",
+      "4.29.013.308 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.251 (> 0.100 thold), f_keep = 0.242",
+      "4.29.056.377 I slot launch_slot_: id  0 | task 4606 | processing task, is_child = 0",
+      "4.34.365.491 I slot print_timing: id  0 | task 4606 | prompt processing, n_tokens =   1644, progress = 0.28, t =   5.31 s / 309.66 tokens per second",
+      "4.40.321.050 I slot print_timing: id  0 | task 4606 | prompt processing, n_tokens =   3692, progress = 0.62, t =  11.26 s / 327.76 tokens per second",
+      "4.48.303.357 I slot print_timing: id  0 | task 4606 | prompt processing, n_tokens =   5419, progress = 0.91, t =  19.25 s / 281.55 tokens per second",
+      "4.49.244.618 I slot print_timing: id  0 | task 4606 | prompt processing, n_tokens =   5852, progress = 0.99, t =  20.19 s / 289.88 tokens per second",
+      "4.58.588.533 I slot print_timing: id  0 | task 4606 | prompt processing, n_tokens =   5931, progress = 1.00, t =  29.53 s / 200.83 tokens per second",
+      "5.01.632.638 I slot print_timing: id  0 | task 4606 | n_gen =    136, tg =  44.96 t/s, tg_3s =  45.30 t/s",
+      "5.04.648.527 I slot print_timing: id  0 | task 4606 | n_gen =    288, tg =  47.69 t/s, tg_3s =  50.40 t/s",
+      "5.07.659.096 I slot print_timing: id  0 | task 4606 | n_gen =    427, tg =  47.18 t/s, tg_3s =  46.17 t/s",
+      "5.10.660.213 I slot print_timing: id  0 | task 4606 | n_gen =    557, tg =  46.22 t/s, tg_3s =  43.32 t/s",
+      "5.13.671.831 I slot print_timing: id  0 | task 4606 | n_gen =    702, tg =  46.60 t/s, tg_3s =  48.15 t/s",
+      "5.16.679.795 I slot print_timing: id  0 | task 4606 | n_gen =    837, tg =  46.32 t/s, tg_3s =  44.88 t/s",
+      "5.19.867.172 I slot print_timing: id  0 | task 4606 | n_gen =    975, tg =  46.27 t/s, tg_3s =  45.97 t/s",
+      "5.22.903.054 I slot print_timing: id  0 | task 4606 | n_gen =   1095, tg =  45.07 t/s, tg_3s =  37.25 t/s",
+      "5.26.039.666 I slot print_timing: id  0 | task 4606 | n_gen =   1230, tg =  44.84 t/s, tg_3s =  43.04 t/s",
+      "5.29.049.394 I slot print_timing: id  0 | task 4606 | n_gen =   1353, tg =  44.45 t/s, tg_3s =  40.87 t/s",
+      "5.32.066.438 I slot print_timing: id  0 | task 4606 | n_gen =   1496, tg =  44.71 t/s, tg_3s =  47.40 t/s",
+      "5.35.085.621 I slot print_timing: id  0 | task 4606 | n_gen =   1628, tg =  44.63 t/s, tg_3s =  43.72 t/s",
+      "5.38.096.882 I slot print_timing: id  0 | task 4606 | n_gen =   1773, tg =  44.90 t/s, tg_3s =  48.15 t/s",
+      "5.40.039.498 I slot print_timing: id  0 | task 4606 | prompt eval time =   29573.56 ms /  5935 tokens (    4.98 ms per token,   200.69 tokens per second)",
+      "5.40.039.514 I slot print_timing: id  0 | task 4606 |        eval time =   41409.00 ms /  1860 tokens (   22.27 ms per token,    44.89 tokens per second)",
+      "5.40.039.518 I slot print_timing: id  0 | task 4606 |       total time =   70982.56 ms /  7795 tokens",
+      "5.40.039.522 I slot print_timing: id  0 | task 4606 |    graphs reused =       6413",
+      "5.40.190.977 I slot      release: id  0 | task 4606 | stop processing: n_tokens = 7794, truncated = 0"
+    ],
+    "active_requests": 0
+  }
+}

@@ -1,4 +1,5 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
+import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult } from "./assistant";
 
 import type { AgentEditResult, AppliedChange, EditScopePayload, PendingProposal, ProposalDetail } from "./agent";
 import type {
@@ -32,6 +33,7 @@ import type { AccountContext, AccountProject, HealthReport, Session } from "./se
 import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
 import type { ImportedTheme, SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
+import type { LanguagesStatus, SynthesizeRequest, SynthesizeResult, TranslateRequest, TranslateResult, Voice } from "./languages";
 
 /**
  * Per-call transport options.
@@ -74,6 +76,22 @@ export interface RequestOptions {
  * thread through props toward a place they cannot see.
  */
 export interface WorkspaceClient {
+  readonly assistant?: {
+    capabilities(options?: RequestOptions & { presentationId?: string; slideId?: string; locale?: string }): Promise<AssistantCapabilities>;
+    start(request: AssistantRequest, options?: RequestOptions): Promise<AssistantRun>;
+    get(runId: string, options?: RequestOptions): Promise<AssistantRun>;
+    list(presentationId: string, options?: RequestOptions): Promise<{ runs: AssistantRun[] }>;
+    events(runId: string, after?: number, options?: RequestOptions): Promise<{ events: AssistantEvent[] }>;
+    cancel(runId: string, options?: RequestOptions): Promise<AssistantRun>;
+    resume(runId: string, options?: RequestOptions): Promise<AssistantRun>;
+    approveMetadata(runId: string, options?: RequestOptions): Promise<AssistantRun>;
+    designCheck(presentationId: string, slideId?: string, options?: RequestOptions): Promise<DesignCheckResult>;
+    assetList(request: { workspace_id?: string; filter?: "all" | "unused" | "untagged"; cursor?: string; q?: string; limit?: number }, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
+    assetView(assetId: string, maxPx?: number, options?: RequestOptions, crop?: { x: number; y: number; width: number; height: number }): Promise<{ asset_id: string; base64: string; mime_type: string; width: number; height: number }>;
+    assetUpdate(assetId: string, request: AssetMetadataUpdate, options?: RequestOptions): Promise<AssistantAsset>;
+    assetRevert(assetId: string, changeId: string, options?: RequestOptions): Promise<AssistantAsset>;
+    assetDuplicates(workspaceId?: string, cursor?: string, options?: RequestOptions): Promise<{ groups: { asset_ids: string[]; kind: "exact" | "candidate"; distance: number | null }[]; partial: boolean; next_cursor: string | null }>;
+  };
   /** Which surface authored a patch. Recorded on every transaction. */
   readonly clientId: string;
 
@@ -103,8 +121,8 @@ export interface WorkspaceClient {
      * person between devices (design review, 2026-09-27). Optional: a surface
      * with no service to keep them keeps them locally instead.
      */
-    readPreference?(key: "library", options?: RequestOptions): Promise<unknown>;
-    writePreference?(key: "library", value: unknown, options?: RequestOptions): Promise<void>;
+    readPreference?(key: "library" | "translation" | "pronunciations" | "speech", options?: RequestOptions): Promise<unknown>;
+    writePreference?(key: "library" | "translation" | "pronunciations" | "speech", value: unknown, options?: RequestOptions): Promise<void>;
   };
 
   readonly documents: {
@@ -286,6 +304,12 @@ export interface WorkspaceClient {
     revoke(shareId: string, options?: RequestOptions): Promise<void>;
     /** Unauthenticated. The token in the URL is the entire credential. */
     redeem(token: string, options?: RequestOptions): Promise<SharedDocument>;
+    /**
+     * Where a shared deck's picture or recording loads from. Synchronous and
+     * credential-free: the token in the path is what authorises it, and the
+     * service answers only for files the shared document cites.
+     */
+    assetUrl?(token: string, assetId: string): string;
   };
 
   /**
@@ -338,7 +362,13 @@ export interface WorkspaceClient {
         width?: number;
         height?: number;
         /** Defaults to an image. A font is `"font"` with its `font/*` type. */
-        kind?: "image" | "font";
+        kind?: "image" | "font" | "audio";
+        /**
+         * Audio: what the browser decoded, used only when the service cannot
+         * read the container itself, and 256 peaks for the timeline's waveform.
+         */
+        durationMs?: number;
+        waveformPeaks?: number[];
         /** Overrides the file's own type, which a browser often leaves empty for fonts. */
         contentType?: string;
       },
@@ -361,6 +391,17 @@ export interface WorkspaceClient {
     ): Promise<SavedTheme>;
     /** Read a PowerPoint theme (.thmx) or template (.pptx). Changes nothing. */
     importOffice(presentationId: string, file: Blob, options?: RequestOptions): Promise<ImportedTheme>;
+  };
+
+  /**
+   * Translation and narration (integration plan 01 §3.7, §3.8). Optional, so a
+   * surface without these services says so rather than failing a call.
+   */
+  readonly languages?: {
+    status(options?: RequestOptions): Promise<LanguagesStatus>;
+    translate(presentationId: string, locale: string, body: TranslateRequest, options?: RequestOptions): Promise<TranslateResult>;
+    voices(locale: string, options?: RequestOptions): Promise<Voice[]>;
+    synthesize(presentationId: string, body: SynthesizeRequest, options?: RequestOptions): Promise<SynthesizeResult>;
   };
 
   readonly repositories: {

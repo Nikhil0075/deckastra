@@ -65,6 +65,10 @@ class ModelPack:
     #: q4 on a machine with 8GB will swap, and "slow" is how that presents.
     min_ram_mb: int | None = None
     license_file: Path | None = None
+    capabilities: tuple[str, ...] = ("text", "structured")
+    vision_projector: Path | None = None
+    chat_template: Path | None = None
+    sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,6 +121,26 @@ def _load(directory: Path) -> ModelPack | PackProblem:
             "An interrupted download looks exactly like this.",
         )
 
+    def artifact(name: str) -> Path | None:
+        value = declared.get(name)
+        if not value:
+            return None
+        path = (directory / str(value)).resolve()
+        if not path.is_relative_to(directory.resolve()) or not path.is_file():
+            raise ValueError(f"{name} must name an existing file inside this pack.")
+        return path
+    try:
+        if not weights.resolve().is_relative_to(directory.resolve()):
+            raise ValueError("Weights must be inside the model pack.")
+        projector, template = artifact("vision_projector"), artifact("chat_template")
+        capabilities = tuple(declared.get("capabilities", ["text", "structured"]))
+        if "vision" in capabilities and projector is None:
+            raise ValueError("A vision pack must include a vision_projector.")
+        if any(c not in {"text", "structured", "vision", "tools"} for c in capabilities):
+            raise ValueError("Unknown model-pack capability.")
+    except ValueError as error:
+        return PackProblem(directory, str(error))
+
     license_file = declared.get("license_file")
     resolved_license_file = directory / str(license_file) if license_file else None
     if resolved_license_file is not None and not resolved_license_file.is_file():
@@ -132,6 +156,8 @@ def _load(directory: Path) -> ModelPack | PackProblem:
         license=license_name,
         min_ram_mb=int(declared["min_ram_mb"]) if declared.get("min_ram_mb") else None,
         license_file=resolved_license_file,
+        capabilities=capabilities, vision_projector=projector, chat_template=template,
+        sha256=declared.get("sha256"),
     )
 
 

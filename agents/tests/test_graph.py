@@ -220,13 +220,13 @@ def test_a_short_plan_is_flagged():
     assert any("Asked for 5 slides" in warning for warning in produced["warnings"])
 
 
-def test_the_brief_reaches_the_model_inside_an_envelope():
+def test_the_authenticated_brief_is_distinct_from_untrusted_sources():
     client = stub(planning=STORY_PLAN)
     ctx, _ = context(client)
     story(state(), ctx)
 
     sent = client.calls[-1].messages[0]["content"]
-    assert "<untrusted-content" in sent
+    assert "<user-request>" in sent
     assert "Explain the pipeline" in sent
 
 

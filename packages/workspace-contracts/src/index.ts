@@ -23,3 +23,5 @@ export * from "./shares";
 export * from "./themes";
 export * from "./motion";
 export * from "./render-host";
+export * from "./languages";
+export * from "./assistant";

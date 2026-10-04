@@ -1,0 +1,602 @@
+{
+  "planning-00": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "3c7b01e29cebea82328cd377f1feee6f4ab76e4848e81549d2853677766f66b2",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-01": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "58d499c69a8834798e68ef02f06b9a467531a58f8822933ba03dc5d3525bcbfd",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-02": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "3a78fb117500571de27c7179a7f1fcdaadea93ee6755fbf4df28dcfb19587165",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-03": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "ba4f93f8f2e90af93069463e1d5e40738085869063f71bbb19451d1fbd0816ca",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-04": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "6e5913ad7056949f43d0b217076e3805c72196b7901e6762f7f4e515357891f9",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-05": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "e85b5f1b8aa86e9f41cd167a2b020009ec76c98e3bdefa1e8bc4594c8ec51552",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-06": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "561989c2dbc12473f0afadbf0ca042654588d667a2bd89b2f28cce68a6bc98a4",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-07": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "52be7add22908032f981b889cbf3683d2b412efc559a1609cb40520610bb55db",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-08": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "58703ee316c19433d8a68a8953efad6ab8cf2912a2927521aa4db1cdccb70d8e",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-09": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "9e7446199a7844e10221d0c867fc521bff2b624f727b9dde72b79ed5d6de9547",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-10": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "d502ca0c66f8cab78fd98f667266171ad49c8f6d366fa5c59d4ec6c0f16d5800",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-11": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "a48e41cde543319277a5ce11369200b3cbb82df60365edc0b51c1b7a96511dff",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-12": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "bcc18a593c7d75e6ef11b4d0805aedf134111c6c763cc3f24b3ee11ed393cdb5",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-13": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "8918738fb47962c1675fb0e6d760873af94b39916884ed2c7d36677cf02f72d5",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-14": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "180ff43d27485accb173f68275d31760e1da8ac9fdb8601253df4f829e877dbc",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-15": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "c4f29eeedc4db4936f4e39c2ca7171e007a29f68327d4102c56c66b5c05aa859",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-16": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "94d778da985527c865337b86f3f5f2078af355b1f4724cf70f7c587942df63fe",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-17": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "643b8465a101b7c376633e66db1703be7d404a0caa275a8a158607b34f4d73e4",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-18": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "205aa76ffc07209ee0605df22c2331dacc3305be1b1939adc992d5f4ceff90a5",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "planning-19": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "e7d69fc39d1e6a6a587edf67e5d8f59f5af6f1410e230101171720bc5460f006",
+    "scores": {
+      "factual_grounding": 0.4,
+      "narrative_quality": 0.9,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 1,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The outline has ten slides and a coherent migration narrative, but adds operational claims about DDL, version control, rollbacks or deployments beyond the sole supplied migration fact, often citing db-guide as if it supports them. Unsupported claims are not disclosed. Reject on grounding.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-00": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "73aa509ca05ca9969b78d65d6bf3a4a9aa949c46679745465219ade8889f3147",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-01": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "b5011d083ed0b4a9f3fdc5e771f170c31921c568b0ee29eadca7e3458c7a3fd2",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-02": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "8e21f83d0115a493d158b0af538a3676ddffa86f7f0631c3fc15be381b9cd43c",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-03": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "024e1d9b40efd042e695dffe37f0f2dc93bf6390699bfc3bc7abd8180fede21d",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-04": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "8a986d6025db690cbfb1fa20c344481faa377134c370d4ad79c877f81746e83e",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-05": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "b18b8bd5c0b98e86de4327a22a47309ed638c6cd5452ce1c4d9eeb88ad02b0de",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-06": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "6cbb495905b3278087c5d191642e1fd7306b735c1ce1bd998f6f29e2cf5b67fd",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-07": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "3769f435759273eb28d5f9d68b9c013b97e18abf39931f4c195c42269b4a4599",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-08": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "063359e9c63de64f61d935914f270063576f8138dbb3f9b2fe1f8748b72ebc7f",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-09": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "59723df955fdccc1c6278e87b2920c5dee0ed3c2315632a9df1625f63576467f",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-10": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "2eaece9fd6d7130f0a2e89c6af342ad5768f0857ef5ab026a993ea724bea10c1",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-11": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "c7de72fbf91102193c66e30997826b58b3dd3643affe4fba3769a0e0bdfe893b",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-12": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "49effee2b05d3d7f571f3d2dd69cef51ab8c7d98e52a4ff120e6ef844f6428dd",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-13": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "9a716f1b92850e3a3e1f119bea6c36dbc53d7c7c286ea63c957a8c67469234f5",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-14": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "cb5dafade9ae15e84c18b781e6f81f5944c7f9e54f6e633c8900191d95b65cf6",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-15": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "7093c79149a462821f010e0528c0455e188d193923ca870694b1b28ae9cc57c6",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-16": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "4cb6a2c3555745811bd605c25e080e91b8e7b504dd9d459239de882dacaf2c7f",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-17": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "b6b52f3056127190aae169b93a0e3e2425dbc640a504845b7d1d218d03aa865b",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-18": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "0fc7dd93bcb1550792933a25ef9688cd59af04875221d2fb5811e4dd59c4a40b",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  },
+  "critique-19": {
+    "reviewer": "Codex independent output review, 2026-10-03",
+    "result_sha256": "dafc9a632c28a5fd5a3d2aa203578b061bbcefda5b1d70487d73ae5779bc1d95",
+    "scores": {
+      "factual_grounding": 0.65,
+      "narrative_quality": 0.9,
+      "visual_consistency": 0.75,
+      "translation": 1,
+      "accessibility": 0.6,
+      "instruction_adherence": 0.6
+    },
+    "rationale": "The critique broadly declares the deck grounded/accessible or ready to pass without substantiating those conclusions, misses missing-image alternative text on the technical fixture, and understates its severe safe-area finding. A valid CriticResult alone is insufficient. The benchmark also omitted production measurement inputs, so this diagnostic cannot certify the actual review node.",
+    "safety_failures": 0,
+    "severe_regressions": 0
+  }
+}

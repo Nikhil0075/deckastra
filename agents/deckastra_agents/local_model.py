@@ -46,7 +46,7 @@ from .model_packs import (
     scan,
     selected_pack,
 )
-from .router import ModelError, ModelRequest, ModelResponse, ModelUnavailable
+from .router import ContextTooLarge, ModelError, ModelRequest, ModelResponse, ModelUnavailable
 
 #: Where the server listens. It is a loopback port like the workspace service's,
 #: and like that one it is configured rather than assumed.
@@ -93,25 +93,45 @@ class LlamaServerClient:
         """
         self.base_url = base_url.rstrip("/")
 
+    @property
+    def capabilities(self):
+        return {"provider": "local", "model": self.pack.id, "inputs": list(self.pack.capabilities), "streaming": True, "context_tokens": self.pack.context_tokens}
+
     def _client(self, timeout: float):
         import httpx
 
         return httpx.Client(timeout=timeout, transport=self._transport)
 
-    def complete(self, request: ModelRequest, budget: RunBudget) -> ModelResponse:
-        import httpx
-
-        budget.check_clock()
-
+    def _body(self, request):
         system = "\n\n".join([request.system, *request.context, POLICY])
+        messages = []
+        for message in request.messages:
+            content = message.get("content", "")
+            if message.get("role") == "tool" and not isinstance(content, str):
+                content = json.dumps(content, ensure_ascii=False)
+            messages.append({k: v for k, v in {**message, "content": content}.items() if k != "provider_parts"})
         body: dict[str, Any] = {
             "model": self.pack.id,
-            "messages": [{"role": "system", "content": system}, *request.messages],
+            "messages": [{"role": "system", "content": system}, *messages],
             "max_tokens": request.max_tokens,
             "temperature": TEMPERATURE,
             "seed": SEED,
             "stream": False,
         }
+        if self.pack.id == "gemma4-e2b-q4":
+            # Bound answer latency; this deployment is evaluated without thought output.
+            body["chat_template_kwargs"] = {"enable_thinking": False}
+            body["reasoning_effort"] = "none"
+        if request.images:
+            if "vision" not in self.pack.capabilities:
+                raise ModelUnavailable("This local pack has no verified vision capability.")
+            content = [{"type": "text", "text": str(body["messages"][-1]["content"])}]
+            content.extend({"type": "image_url", "image_url": {"url": f"data:{image.mime_type};base64,{image.data}"}} for image in request.images)
+            body["messages"][-1] = {"role": "user", "content": content}
+        if request.tools:
+            if "tools" not in self.pack.capabilities:
+                raise ModelUnavailable("This local pack has no verified tool-call capability.")
+            body["tools"] = [{"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.parameters}} for t in request.tools]
         if request.response_schema is not None:
             body["response_format"] = {
                 "type": "json_schema",
@@ -121,6 +141,12 @@ class LlamaServerClient:
                     "strict": True,
                 },
             }
+        return body
+
+    def complete(self, request: ModelRequest, budget: RunBudget) -> ModelResponse:
+        import httpx
+        budget.check_clock()
+        body = self._body(request)
 
         # One request can never outlive the run it belongs to. Without this a
         # local model that has wedged holds a user past the wall-clock ceiling
@@ -156,6 +182,12 @@ class LlamaServerClient:
             ) from error
 
         if answer.status_code == 400 and request.response_schema is not None:
+            try:
+                detail = answer.json().get("error", {})
+                if detail.get("type") == "exceed_context_size_error":
+                    raise ContextTooLarge(f"'{self.pack.name}' needs {detail.get('n_prompt_tokens')} prompt tokens but this deployment has {detail.get('n_ctx')} context tokens. Measure a larger context before qualifying this task.")
+            except (json.JSONDecodeError, AttributeError):
+                pass
             # Worth its own sentence: this is the failure that separates a local
             # model from a cloud one. llama.cpp builds a grammar from the schema,
             # its converter covers a subset, and a contract it cannot express is
@@ -193,12 +225,57 @@ class LlamaServerClient:
             input_tokens = output_tokens = 0
         budget.spend_tokens(int(input_tokens), int(output_tokens))
 
+        from .router import ToolInvocation
+        calls = []
+        for call in payload["choices"][0]["message"].get("tool_calls", []):
+            try:
+                args = json.loads(call["function"]["arguments"])
+                if not isinstance(args, dict):
+                    raise ValueError()
+                calls.append(ToolInvocation(call["function"]["name"], args, call.get("id", "")))
+            except (ValueError, KeyError, TypeError) as error:
+                raise ModelError("The local runtime returned invalid tool arguments.") from error
         return ModelResponse(
             text=text,
             input_tokens=int(input_tokens),
             output_tokens=int(output_tokens),
             model=self.pack.id,
+            tool_calls=calls,
         )
+
+    def stream(self, request, budget):
+        """Native SSE text streaming; cancellation closes the HTTP stream."""
+        import httpx
+        budget.check_clock()
+        body = self._body(request)
+        if request.tools:
+            yield self.complete(request, budget)
+            return
+        body.update(stream=True, stream_options={"include_usage": True})
+        remaining = max(.1, min(MAX_REQUEST_SECONDS, budget.max_wall_clock_seconds - budget.elapsed_seconds))
+        usage = None
+        try:
+            with self._client(remaining) as client:
+                with client.stream("POST", f"{self.base_url}/v1/chat/completions", json=body) as answer:
+                    if answer.status_code >= 400:
+                        raise ModelError(f"Local streaming returned HTTP {answer.status_code}.")
+                    for line in answer.iter_lines():
+                        budget.check_clock()
+                        if not line.startswith("data:") or line[5:].strip() == "[DONE]":
+                            continue
+                        payload = json.loads(line[5:])
+                        usage = payload.get("usage") or usage
+                        delta = (payload.get("choices") or [{}])[0].get("delta", {})
+                        if delta.get("content"):
+                            yield ModelResponse(text=delta["content"], model=self.pack.id)
+            if usage:
+                incoming, outgoing = int(usage["prompt_tokens"]), int(usage["completion_tokens"])
+                budget.spend_tokens(incoming, outgoing)
+                yield ModelResponse(text="", model=self.pack.id, input_tokens=incoming, output_tokens=outgoing)
+            else:
+                budget.warn("Local stream reported no usage counts.")
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            raise ModelError("The local model stream was interrupted.") from exc
 
 
 def local_client(root: Path | None = None) -> LlamaServerClient:

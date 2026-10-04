@@ -58,6 +58,9 @@ STAND_IN = textwrap.dedent(
             self._send({"data": [{"id": "stand-in"}]})
 
         def do_POST(self):
+            # Consume the request before closing HTTP/1.0; unread bytes cause a
+            # TCP reset on Windows and conceal the supervisor behavior under test.
+            self.rfile.read(int(self.headers.get("content-length", "0")))
             self._send({
                 "choices": [{"message": {"content": json.dumps({"ok": True})}}],
                 "usage": {"prompt_tokens": 11, "completion_tokens": 3},
@@ -143,6 +146,36 @@ def test_a_model_is_loaded_on_demand_and_reused(local_install):
     assert os.environ["DECKASTRA_MODEL_SERVER"] == first
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows Job Object lifetime")
+def test_child_is_killed_when_parent_is_force_terminated(tmp_path):
+    import subprocess
+    import psutil
+    parent_script = tmp_path / "job_parent.py"
+    api_root = str(Path(__file__).resolve().parents[1])
+    parent_script.write_text(
+        "import sys, subprocess, time\n"
+        f"sys.path.insert(0, {api_root!r})\n"
+        "from deckastra_api.process_job import ChildJob\n"
+        "job=ChildJob()\n"
+        "child=subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'], creationflags=subprocess.CREATE_NO_WINDOW)\n"
+        "job.assign(child)\n"
+        "print(child.pid, flush=True)\n"
+        "time.sleep(120)\n", encoding="utf-8")
+    parent = subprocess.Popen([sys.executable, str(parent_script)], stdout=subprocess.PIPE, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+    child_pid = None
+    try:
+        child_pid = int(parent.stdout.readline().strip())
+        assert psutil.pid_exists(child_pid)
+        parent.kill(); parent.wait(timeout=5)
+        deadline = time.monotonic() + 5
+        while psutil.pid_exists(child_pid) and time.monotonic() < deadline:
+            time.sleep(.05)
+        assert not psutil.pid_exists(child_pid), "The child survived an abrupt parent exit"
+    finally:
+        if parent.poll() is None: parent.kill(); parent.wait(timeout=5)
+        if child_pid and psutil.pid_exists(child_pid): psutil.Process(child_pid).kill()
+
+
 def test_ready_means_answering_not_merely_started(local_install):
     """D1's lesson, and it is worse here.
 
@@ -157,6 +190,35 @@ def test_ready_means_answering_not_merely_started(local_install):
 
     assert time.monotonic() - started >= 1.4
     assert httpx.get(f"{base_url}/v1/models", timeout=5).status_code == 200
+
+
+def test_loading_the_model_is_not_charged_to_the_job(local_install):
+    """2026-10-04 recheck: a cold start spent most of a one-slide job's 180 s.
+
+    Loading is bounded by its own start-up timeout. A job whose clock is shorter
+    than the load must still get its whole allowance once the model answers.
+    """
+    from deckastra_agents.budgets import RunBudget
+
+    local_install(delay="1.5")
+    budget = RunBudget(max_wall_clock_seconds=1.0)
+
+    model_server.ensure_ready(budget)
+
+    budget.check_clock()  # would raise: 1.5 s of loading against a 1 s clock
+    assert budget.startup_seconds >= 1.4
+    assert budget.max_wall_clock_seconds - budget.elapsed_seconds > 0.5
+    assert budget.report()["startup_seconds"] >= 1.4
+
+
+def test_cancelling_during_load_still_stops_it(local_install):
+    from deckastra_agents.budgets import RunBudget, RunCancelled
+
+    local_install(delay="5")
+    budget = RunBudget(max_wall_clock_seconds=600, cancelled=lambda: True)
+
+    with pytest.raises(RunCancelled):
+        model_server.ensure_ready(budget)
 
 
 def test_a_runtime_that_dies_while_loading_is_reported_with_what_it_said(local_install):

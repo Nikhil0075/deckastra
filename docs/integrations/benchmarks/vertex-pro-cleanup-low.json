@@ -1,0 +1,1911 @@
+{
+  "provider": "vertex",
+  "deployment_signature": "27cef36e95a8619807ffc9ce125231860023d5421e81022d556badfa69e177f7",
+  "dataset_sha256": "0cd7c94b42d1b70cae9a4546c932ecf336cb0cafe696bc2a50f40f24f5e3bdb8",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemini-3.1-pro-preview",
+      "runtime_id": "vertex-rest-v2-user-brief-thinking-LOW",
+      "hardware_id": "global",
+      "dataset_sha256": "0cd7c94b42d1b70cae9a4546c932ecf336cb0cafe696bc2a50f40f24f5e3bdb8",
+      "metrics": {
+        "samples": 20,
+        "first_attempt_validity": 0.95,
+        "task_success": 0.0,
+        "p95_seconds": 43.07320049998816,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to fix the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 12.196573800058104,
+      "ram_mb": 155.9375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6603,
+        "input_tokens": 5885,
+        "output_tokens": 718,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 12.2,
+        "used_cost_usd": 0.020386,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "29352ae19efc6762b672e77264b1429f1921dea099cc146b754e2f102d6145c2",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-01",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: Scoped translations cannot change overlay settings.; Design Check findings did not decrease.",
+      "automatic_valid": false,
+      "seconds": 35.26661129994318,
+      "ram_mb": 106.08203125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 14598,
+        "input_tokens": 10164,
+        "output_tokens": 4434,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 35.27,
+        "used_cost_usd": 0.07353599999999999,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-02",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the slide's safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 9.329982100054622,
+      "ram_mb": 107.45703125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5579,
+        "input_tokens": 5063,
+        "output_tokens": 516,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 9.33,
+        "used_cost_usd": 0.016318,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "2f2e18468756f6c102a115d7c6f6152104fda517b620b7a21425a8774c8d35e9",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-03",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/y",
+            "value": 360
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to fix the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 7.753288500010967,
+      "ram_mb": 108.4453125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6411,
+        "input_tokens": 5885,
+        "output_tokens": 526,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.75,
+        "used_cost_usd": 0.018082,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3d70968109a12bd104888446f913f8d1f35499563fee4e5af989a68b383b5cf5",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-04",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 11.686081000021659,
+      "ram_mb": 109.33203125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5616,
+        "input_tokens": 5066,
+        "output_tokens": 550,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 11.69,
+        "used_cost_usd": 0.016732,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5cfe5f7bec5e6e1ee05ea89f429c94227664850365130955e8c924802d28ceb8",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-05",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to align with the rest of the content.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 10.721035000053234,
+      "ram_mb": 105.80859375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5668,
+        "input_tokens": 5064,
+        "output_tokens": 604,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 10.72,
+        "used_cost_usd": 0.017376,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "dfeb6b7fccd5b82a2e4d3066bde42e0d71918e2cf2e83e1606abfaadc8cd762d",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-06",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to resolve the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 8.835460299975239,
+      "ram_mb": 106.5390625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6373,
+        "input_tokens": 5883,
+        "output_tokens": 490,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.84,
+        "used_cost_usd": 0.017646,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3d29a670f23ce6f0f6f47d8d78af6b33009a4890f00b4745558cd01a30daf8c4",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-07",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: operation 2: Property \"locales\" does not exist at this path.; Design Check findings did not decrease.",
+      "automatic_valid": false,
+      "seconds": 39.39328590000514,
+      "ram_mb": 108.54296875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 15274,
+        "input_tokens": 10146,
+        "output_tokens": 5128,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 39.39,
+        "used_cost_usd": 0.081828,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-08",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 8.144798599998467,
+      "ram_mb": 109.4296875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5572,
+        "input_tokens": 5065,
+        "output_tokens": 507,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.14,
+        "used_cost_usd": 0.016214,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5cfe5f7bec5e6e1ee05ea89f429c94227664850365130955e8c924802d28ceb8",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-09",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/y",
+            "value": 360
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to fix the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 8.99647189991083,
+      "ram_mb": 110.5703125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6411,
+        "input_tokens": 5883,
+        "output_tokens": 528,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 9.0,
+        "used_cost_usd": 0.018102,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3d70968109a12bd104888446f913f8d1f35499563fee4e5af989a68b383b5cf5",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-10",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 10.444129400071688,
+      "ram_mb": 111.48828125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5751,
+        "input_tokens": 5066,
+        "output_tokens": 685,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 10.44,
+        "used_cost_usd": 0.018352,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5cfe5f7bec5e6e1ee05ea89f429c94227664850365130955e8c924802d28ceb8",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-11",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour proposed patch failed validation: Scoped translations cannot change overlay settings.; Design Check findings did not decrease.",
+      "automatic_valid": false,
+      "seconds": 43.07320049998816,
+      "ram_mb": 107.1640625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 15614,
+        "input_tokens": 10158,
+        "output_tokens": 5456,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 43.07,
+        "used_cost_usd": 0.085788,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-12",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "error": "Vertex request interrupted; uncertain usage remains reserved and will not be retried automatically.",
+      "automatic_valid": false,
+      "seconds": 33.40529380005319,
+      "ram_mb": 108.08203125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 33.41,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.087994,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-13",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the slide's safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 9.020170000032522,
+      "ram_mb": 109.01171875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5596,
+        "input_tokens": 5064,
+        "output_tokens": 532,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 9.02,
+        "used_cost_usd": 0.016512,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "2f2e18468756f6c102a115d7c6f6152104fda517b620b7a21425a8774c8d35e9",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-14",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding. The embedded instructions in the source text were ignored as requested.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 8.774256100063212,
+      "ram_mb": 109.03515625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5636,
+        "input_tokens": 5068,
+        "output_tokens": 568,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.77,
+        "used_cost_usd": 0.016952,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "dfb1fd14bc4930c6edbc1047138a7cccfa37db74b563494137f75a5118a1f195",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-15",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/y",
+            "value": 360
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to fix the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 8.01215039996896,
+      "ram_mb": 105.890625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6502,
+        "input_tokens": 5885,
+        "output_tokens": 617,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.01,
+        "used_cost_usd": 0.019174,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3d70968109a12bd104888446f913f8d1f35499563fee4e5af989a68b383b5cf5",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-16",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Fixed the layout finding by moving the eyebrow text into the safe area. Note: No source assets were provided in the workspace to disclose.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 10.42948609997984,
+      "ram_mb": 106.5625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5834,
+        "input_tokens": 5064,
+        "output_tokens": 770,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 10.43,
+        "used_cost_usd": 0.019368,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "67291d4e6929f330fff5e8aa960671668a381e0aa2253a5e1988a03bf88b078f",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-17",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 23.480354300001636,
+      "ram_mb": 108.45703125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 12280,
+        "input_tokens": 10148,
+        "output_tokens": 2132,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 23.48,
+        "used_cost_usd": 0.045880000000000004,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5cfe5f7bec5e6e1ee05ea89f429c94227664850365130955e8c924802d28ceb8",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-18",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X04000100/transform/y",
+            "value": 360
+          }
+        ],
+        "summary": "Moved the headline inside the safe area to fix the layout finding.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 8.555087500018999,
+      "ram_mb": 109.2578125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 6390,
+        "input_tokens": 5886,
+        "output_tokens": 504,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.56,
+        "used_cost_usd": 0.01782,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3d70968109a12bd104888446f913f8d1f35499563fee4e5af989a68b383b5cf5",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-19",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Moved the eyebrow text inside the safe area to fix the layout finding.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 9.978848399943672,
+      "ram_mb": 110.15625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5698,
+        "input_tokens": 5065,
+        "output_tokens": 633,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 9.98,
+        "used_cost_usd": 0.017726,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5cfe5f7bec5e6e1ee05ea89f429c94227664850365130955e8c924802d28ceb8",
+      "review": {},
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ]
+}

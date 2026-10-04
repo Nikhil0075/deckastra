@@ -92,6 +92,8 @@ def ask_model(
     model: type[T],
     context: list[str] | None = None,
     max_tokens: int = 8_000,
+    images: list[Any] | None = None,
+    max_attempts: int | None = None,
 ) -> T:
     """One structured request, validated into a contract, with one repair attempt.
 
@@ -106,6 +108,8 @@ def ask_model(
         response_schema=strict_schema(model),
         max_tokens=max_tokens,
         context=[block for block in (context or []) if block],
+        stage=stage,
+        images=images or [],
     )
 
     errors: list[str] = []
@@ -115,7 +119,13 @@ def ask_model(
     }
     ctx.budget.structured_requests.append(observation)
 
-    for attempt in (1, 2):
+    can_escalate = (getattr(ctx.client, "supports_escalation", False)
+                    and not getattr(ctx.client, "local_only", False)
+                    and ctx.client.route(request) == "local")
+    attempts = max_attempts or (3 if can_escalate else 2)
+    for attempt in range(1, attempts + 1):
+        if attempt == 3:
+            ctx.client.escalate(request, ctx.budget, "Structured output failed after one repair.")
         observation["attempts"] = attempt
         if errors:
             request.messages = [
@@ -163,11 +173,11 @@ def ask_model(
         except (json.JSONDecodeError, ValidationError) as exc:
             observation["outcome"] = "invalid"
             errors = [str(exc)[:600]]
-            if attempt == 2:
+            if attempt == attempts:
                 raise NodeFailure(
                     stage,
                     "model_failure",
-                    f"The model did not return a valid {model.__name__} after two attempts.",
+                    f"The model did not return a valid {model.__name__} after {attempts} attempts. " + errors[0],
                     fallback="The run stopped at this stage; earlier stages are kept.",
                     recoverable=False,
                 ) from exc

@@ -1,0 +1,16 @@
+{
+  "created_status": 202,
+  "run_id": "asr_01M4102R0P81FE1MGPQK4SQHH0",
+  "presentation_id": "doc_01M40Z0DA0DPVHAR215HQRBMY8",
+  "creation_ms": 968,
+  "completion_ms": 1836,
+  "page_errors": [],
+  "http_failures": [],
+  "alerts": [],
+  "queue_handoff": true,
+  "passed": true,
+  "notes": [
+    "Empty Next.js route-announcement live regions are not application errors.",
+    "Assistant completion is export queue handoff; artifact integrity is recorded separately."
+  ]
+}

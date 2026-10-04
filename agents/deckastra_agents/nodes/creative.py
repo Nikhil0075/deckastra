@@ -16,7 +16,7 @@ import re
 from typing import Any
 
 from ..contracts import CreativeDirection
-from ..envelope import Source, envelope
+from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
 
@@ -66,7 +66,7 @@ def creative(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         [
             "Propose a visual direction for this deck.",
             "",
-            envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+            user_brief(str(request.get("instruction", ""))),
             "",
             "The narrative, in outline:",
             outline or "(no slides yet)",

@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..contracts import StoryPlan
-from ..envelope import Source, envelope
+from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
 
@@ -38,13 +38,13 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
     parts = [
         f"Design a {slide_count}-slide presentation.",
         "",
-        envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+        user_brief(str(request.get("instruction", ""))),
     ]
 
     for field, kind in (("audience", "audience"), ("objective", "objective"), ("tone", "tone")):
         value = request.get(field)
         if value:
-            parts += ["", envelope(str(value), Source(id=field, kind=kind))]
+            parts += ["", user_brief(f"{field}: {value}")]
 
     context_blocks: list[str] = list(research.get("context_blocks") or [])
     if context_blocks:
@@ -56,8 +56,8 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
 
     # A person reviewed the previous outline at the checkpoint and asked for
     # changes. Their note is the user's turn, like the brief, and it is
-    # enveloped like the brief: it is their words, not an instruction channel
-    # anything else can write to. The previous outline travels with it, because
+    # wrapped like the brief in the authenticated request channel. Sources cannot
+    # create that wrapper. The previous outline travels with it, because
     # "make slide 3 about pricing" means nothing without the slide 3 it replaces.
     decision = state.get("human_decision") or {}
     revising = decision.get("action") == "revise"
@@ -73,7 +73,7 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
             "The previous outline:",
             envelope(outline, Source(id="previous-outline", kind="draft")),
             "Their note:",
-            envelope(str(decision.get("note") or ""), Source(id="revision-note", kind="user-brief")),
+            user_brief(str(decision.get("note") or "")),
         ]
 
     memory_context = ctx.memory.prompt_context() if ctx.memory else ""

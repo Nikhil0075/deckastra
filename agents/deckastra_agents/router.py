@@ -35,6 +35,26 @@ TASK_CRITIQUE = "critique"  # judging work, needs care but not invention
 TASK_FAST = "fast"  # classification and routing
 
 
+@dataclass(frozen=True)
+class ImageInput:
+    data: str
+    mime_type: str = "image/png"
+
+
+@dataclass(frozen=True)
+class ModelTool:
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ToolInvocation:
+    name: str
+    arguments: dict[str, Any]
+    id: str = ""
+
+
 @dataclass
 class ModelRequest:
     task_type: str
@@ -45,6 +65,11 @@ class ModelRequest:
     max_tokens: int = 8_000
     #: Extra system context appended after the contract, before the policy.
     context: list[str] = field(default_factory=list)
+    images: list[ImageInput] = field(default_factory=list)
+    tools: list[ModelTool] = field(default_factory=list)
+    stage: str = ""
+    web_search: bool = False
+    image_output: bool = False
 
 
 @dataclass
@@ -55,6 +80,9 @@ class ModelResponse:
     model: str = ""
     #: Set when the provider declined; the caller decides what to tell the user.
     refusal: str | None = None
+    tool_calls: list[ToolInvocation] = field(default_factory=list)
+    provider_parts: list[dict[str, Any]] = field(default_factory=list)
+    sources: list[dict[str, Any]] = field(default_factory=list)
 
     def json(self) -> Any:
         return json.loads(self.text)
@@ -78,6 +106,14 @@ class ModelUnavailable(ModelError):
     message names what to install or choose. `ask_model` already turns any
     `ModelError` into a stage failure that keeps earlier stages, which is the
     right handling for both.
+    """
+
+
+class ContextTooLarge(ModelUnavailable):
+    """The request does not fit the serving context window.
+
+    A subclass so every existing handler treats it as before; its own type lets a
+    caller tell the person the remedy is a smaller selection rather than set-up.
     """
 
 
@@ -326,6 +362,8 @@ class StubClient:
 INTELLIGENCE_ENV = "DECKASTRA_INTELLIGENCE"
 INTELLIGENCE_LOCAL = "local"
 INTELLIGENCE_CLOUD = "cloud"
+INTELLIGENCE_HYBRID = "hybrid"
+INTELLIGENCE_VERTEX = "vertex"
 
 
 #: What will actually produce text here.
@@ -366,7 +404,7 @@ def distribution() -> bool:
 
 #: Every value `DECKASTRA_INTELLIGENCE` may hold, after trimming and
 #: lower-casing. Empty is "unset": the web app and CI.
-INTELLIGENCE_MODES = frozenset({"", INTELLIGENCE_LOCAL, INTELLIGENCE_CLOUD})
+INTELLIGENCE_MODES = frozenset({"", INTELLIGENCE_LOCAL, INTELLIGENCE_CLOUD, INTELLIGENCE_HYBRID, INTELLIGENCE_VERTEX})
 
 
 class IntelligenceMisconfigured(ModelUnavailable):
@@ -394,7 +432,7 @@ def intelligence() -> str:
     if choice not in INTELLIGENCE_MODES:
         raise IntelligenceMisconfigured(
             f"{INTELLIGENCE_ENV} is set to {raw!r}, which this build does not recognise. "
-            f"Use 'local' or 'cloud', or leave it unset. Nothing was sent anywhere."
+            f"Use 'local', 'cloud', 'hybrid', 'vertex', or leave it unset. Nothing was sent anywhere."
         )
     return choice
 
@@ -411,6 +449,8 @@ def selected_provider() -> str:
     sites would have said it was.
     """
     choice = intelligence()
+    if choice in (INTELLIGENCE_HYBRID, INTELLIGENCE_VERTEX):
+        return choice
     if choice == INTELLIGENCE_LOCAL:
         if distribution():
             raise ModelUnavailable(LOCAL_NOT_INCLUDED)
@@ -439,6 +479,9 @@ def generation_status() -> dict[str, object]:
         return {"provider": "unavailable", "available": False, "reason": str(exc)}
     if provider == PROVIDER_NONE:
         return {"provider": PROVIDER_NONE, "available": False, "reason": NOT_SET_UP}
+    if provider in (INTELLIGENCE_HYBRID, INTELLIGENCE_VERTEX):
+        from .hybrid_model import status
+        return status()
     if provider == PROVIDER_CLOUD and not api_key_available():
         return {
             "provider": PROVIDER_CLOUD,
@@ -473,6 +516,10 @@ def default_client(fallback: "Callable[[], ModelClient] | None" = None) -> Model
     provider = selected_provider()
     if provider == PROVIDER_NONE:
         raise ModelUnavailable(NOT_SET_UP)
+
+    if choice in (INTELLIGENCE_HYBRID, INTELLIGENCE_VERTEX):
+        from .hybrid_model import configured_client
+        return configured_client()
 
     if choice == INTELLIGENCE_LOCAL:
         # Imported here so nothing on the cloud path pays for it, and — more to

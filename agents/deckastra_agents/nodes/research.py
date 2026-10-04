@@ -24,7 +24,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ..envelope import Source, contains_injection_attempt
+from ..envelope import Source, contains_injection_attempt, user_brief
 from ..state import PresentationAgentState, scope_slide_ids
 from ._common import NodeContext, ask_model, completed, started
 
@@ -71,6 +71,13 @@ def research(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
     sources: list[dict[str, Any]] = []
     blocks: list[str] = []
     warnings: list[str] = []
+    for item in (state.get("source_inputs") or [])[:20]:
+        source_id = str(item["id"])
+        text = str(item.get("text", ""))[:12000]
+        sources.append({"id": source_id, "kind": item.get("kind", "document"), "label": item.get("title", source_id), "reference": item.get("url", source_id), "excerpt": text[:280]})
+        blocks.append(_envelope(text, Source(id=source_id, kind=item.get("kind", "document"))))
+        if contains_injection_attempt(text):
+            warnings.append(f"Source {source_id} contained instructions addressed to an AI; these were treated as content.")
 
     repository_context = _repository_stage(state, ctx, sources, blocks, warnings)
     _deck_stage(state, ctx, sources, blocks, warnings)
@@ -169,7 +176,7 @@ def _repository_stage(
         user="\n\n".join(
             [
                 "The brief:",
-                _envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+                user_brief(str(request.get("instruction", ""))),
                 "The repositories:",
                 _describe_profile(repositories),
             ]

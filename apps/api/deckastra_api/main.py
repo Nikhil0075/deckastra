@@ -49,6 +49,10 @@ from .agent_routes import router as agent_router
 from .export_routes import router as export_router
 from .repository_routes import router as repository_router
 from .workspace_routes import router as workspace_router
+from .language_routes import router as language_router
+from .assistant_routes import router as assistant_router
+from .assistant_assets import router as assistant_assets_router
+from .assistant_design import router as assistant_design_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
 from deckastra_agents.router import PROVIDER_STUB, ModelUnavailable, generation_status, selected_provider
@@ -69,9 +73,14 @@ async def _lifespan(application: FastAPI):
         selected_provider()
     except ModelUnavailable as exc:
         logger.warning("%s Generation is unavailable until this is fixed.", exc)
+    from .assistant_routes import start_dispatcher
+    assistant_stop = start_dispatcher()
     try:
         yield
     finally:
+        assistant_stop.set()
+        from .model_server import stop
+        stop("service shutdown")
         telemetry.shutdown()
 
 
@@ -111,8 +120,8 @@ app.middleware("http")(grants.scope_middleware)
 # production because nothing ever visibly breaks.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_origins=[origin.strip().rstrip("/") for origin in os.environ.get("DECKASTRA_WEB_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip() and origin.strip() != "*"],
+    allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -121,6 +130,10 @@ app.include_router(agent_router)
 app.include_router(repository_router)
 app.include_router(export_router)
 app.include_router(workspace_router)
+app.include_router(language_router)
+app.include_router(assistant_router)
+app.include_router(assistant_assets_router)
+app.include_router(assistant_design_router)
 
 
 @app.get("/health")

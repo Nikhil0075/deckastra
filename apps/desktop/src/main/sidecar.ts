@@ -7,6 +7,10 @@ import type { ServiceFailureKind } from "../shared/ipc";
 import { logEvent, logRaw } from "./logs";
 import { buildManifest, mismatchedMigrations } from "./build-manifest";
 import { readCloudKey } from "./cloud-key";
+import { logMirror } from "./log-mirror";
+import { assistantEnvironment } from "./assistant-config";
+
+const mirrorStderr = logMirror(process.stderr, (error) => logEvent("service.log-mirror-closed", { detail: error.message }));
 
 /**
  * The workspace service, supervised (milestone D1).
@@ -85,6 +89,7 @@ function exporterEnvironment(): NodeJS.ProcessEnv {
   return {
     DECKASTRA_WORKER_CMD: join(worker, "cli.mjs"),
     DECKASTRA_WORKER_NODE: process.execPath,
+    DECKASTRA_DESIGN_CHECK_CMD: `"${process.execPath}" "${join(worker, "assistant-design-check.cjs")}"`,
     // Built alongside the exporter, because the packaged app has neither the
     // measurer's TypeScript source nor esbuild to compile it with.
     DECKASTRA_MEASURER_JS: join(worker, "measurement-browser.js"),
@@ -183,14 +188,18 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
       ? { ANTHROPIC_API_KEY: cloudKey, DECKASTRA_INTELLIGENCE: "cloud" }
       : app.isPackaged
         ? { ANTHROPIC_API_KEY: undefined, DECKASTRA_INTELLIGENCE: undefined }
-        : {};
+          : {};
+    let assistant: NodeJS.ProcessEnv = {};
+    try { assistant = await assistantEnvironment(); }
+    catch { logEvent("assistant.configuration-invalid", { detail: "Check the server-side assistant configuration file." }); }
     options.onStatus({ state: attempt === 0 ? "starting" : "restarting", attempt });
 
     const spawned = spawn(file, args, {
       cwd,
       env: {
         ...env,
-        ...intelligence,
+          ...intelligence,
+          ...assistant,
         DECKASTRA_LOCAL_SECRET: secret,
         // The installed product never generates with the stub, and never treats
         // an inherited API key as a choice to use the cloud (item 20). A checkout
@@ -211,7 +220,7 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
       logRaw("service", chunk.toString("utf8"));
       // The service's own logs. Kept on our stderr so a packaged run still has
       // somewhere to look when something fails.
-      process.stderr.write(chunk);
+      mirrorStderr(chunk);
     });
 
     const ready = await readReadyLine(spawned, (detail) => {

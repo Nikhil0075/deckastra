@@ -1,0 +1,302 @@
+{
+  "cleanup-00": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-01": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "060995e4168e2800626b3ef5ed436389de65b8754bd2fc5120c4591b8a5cc72a",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-02": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-03": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-04": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "083dac6e2f4ed8e2bd7775b98d9fb160f1fd69a3538d3e93998d59ef6ce5de7f",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0.85,
+      "translation": 1,
+      "accessibility": 0.85,
+      "instruction_adherence": 0.85
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The two operations put the selected eyebrow back inside the safe area and preserve all text and other slides. Existing findings remain visible; no severe regression was introduced."
+  },
+  "cleanup-05": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-06": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-07": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-08": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-09": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-10": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-11": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-12": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "4ac4e76aedc0e6a168eb862e5a9f2f0d78b77ccae92ef1cd8c8e63c215df9d25",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-13": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-14": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-15": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-16": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-17": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-18": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  },
+  "cleanup-19": {
+    "reviewer": "Codex manual review of persisted output, independent of generating Gemma model, 2026-10-03",
+    "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+    "scores": {
+      "factual_grounding": 1,
+      "narrative_quality": 1,
+      "visual_consistency": 0,
+      "translation": 1,
+      "accessibility": 0.5,
+      "instruction_adherence": 0
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "The persisted result contains no operations despite the supplied negative-x layout defect. The refusal warning does not explain a real limitation. It preserves existing content but does not fulfill cleanup; JSON validity alone is insufficient."
+  }
+}

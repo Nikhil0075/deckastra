@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..contracts import Intent, OrchestratorPlan
-from ..envelope import Source, envelope
+from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
 
@@ -73,7 +73,9 @@ def orchestrate(state: PresentationAgentState, ctx: NodeContext) -> dict[str, An
         [
             "Route this request.",
             "",
-            envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+            user_brief(str(request.get("instruction", ""))),
+            "Attached sources below are available to research; do not ask for these sources again.",
+            envelope(str([{"id": source.get("id"), "title": source.get("title"), "text": str(source.get("text", ""))[:1200]} for source in state.get("source_inputs", [])]), Source(id="attached-sources", kind="document")),
             "",
             f"The deck currently has {len(slides)} slide(s).",
             (

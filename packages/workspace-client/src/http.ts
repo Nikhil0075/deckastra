@@ -1,4 +1,5 @@
 import type {
+  AssistantRun, AssistantCapabilities, AssistantEvent, AssistantAsset, DesignCheckResult,
   TransitionRequest,
   TransitionResult,
   AccountContext,
@@ -47,6 +48,10 @@ import type {
   RestoreVersionResult,
   WorkspaceClient,
   UploadedAsset,
+  LanguagesStatus,
+  SynthesizeResult,
+  TranslateResult,
+  Voice,
 } from "@deckastra/workspace-contracts";
 
 import { WorkspaceRequestError, messageFromDetail } from "./errors";
@@ -206,6 +211,35 @@ const q = encodeURIComponent;
 
   return {
     clientId: options.clientId,
+    assistant: {
+      capabilities: (o) => json<AssistantCapabilities>(`/v1/assistant/capabilities${o?.presentationId ? `?presentation_id=${q(o.presentationId)}${o.slideId ? `&slide_id=${q(o.slideId)}` : ""}${o.locale ? `&locale=${q(o.locale)}` : ""}` : ""}`, { ...o }),
+      start: (body, o) => json<AssistantRun>("/v1/assistant/runs", { ...o, body }),
+      get: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}`, { ...o }),
+      list: (id, o) => json<{ runs: AssistantRun[] }>(`/v1/assistant/runs?presentation_id=${q(id)}`, { ...o }),
+      events: (id, after = 0, o) => json<{ events: AssistantEvent[] }>(`/v1/assistant/runs/${q(id)}/events?after=${after}`, { ...o }),
+      cancel: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/cancel`, { ...o, body: {} }),
+      resume: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/resume`, { ...o, body: {} }),
+      approveMetadata: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/approve-metadata`, { ...o, body: {} }),
+      designCheck: (id, slide, o) => json<DesignCheckResult>(`/v1/presentations/${q(id)}/design-check${slide ? `?slide_id=${q(slide)}` : ""}`, { ...o }),
+      assetList: (request, o) => {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(request)) if (value !== undefined) params.set(key, String(value));
+        return json<{ assets: AssistantAsset[]; next_cursor: string | null }>(`/v1/assets?${params}`, { ...o });
+      },
+      assetView: (id, max = 512, o, crop) => {
+        const params = new URLSearchParams({ max_px: String(max) });
+        if (crop) for (const [key, value] of Object.entries(crop)) params.set(key, String(value));
+        return json(`/v1/assets/${q(id)}/view?${params}`, { ...o });
+      },
+      assetUpdate: (id, body, o) => json<AssistantAsset>(`/v1/assets/${q(id)}`, { ...o, method: "PATCH", body }),
+      assetRevert: (id, change, o) => json<AssistantAsset>(`/v1/assets/${q(id)}/changes/${q(change)}/revert`, { ...o, body: {} }),
+      assetDuplicates: (workspace, cursor, o) => {
+        const params = new URLSearchParams();
+        if (workspace) params.set("workspace_id", workspace);
+        if (cursor) params.set("cursor", cursor);
+        return json(`/v1/assets/duplicates?${params}`, { ...o });
+      },
+    },
 
     health: (request) => json<HealthReport>("/health", { auth: false, ...request }),
 
@@ -383,6 +417,24 @@ const q = encodeURIComponent;
         ).blob(),
     },
 
+    languages: {
+      status: (request) => json<LanguagesStatus>("/v1/languages/status", { cache: "no-store", ...request }),
+      translate: (presentationId, locale, body, request) =>
+        json<TranslateResult>(`/v1/presentations/${q(presentationId)}/locales/${q(locale)}/translate`, {
+          body,
+          fallback: "The translation could not be made.",
+          ...request,
+        }),
+      voices: (locale, request) =>
+        json<{ voices: Voice[] }>(`/v1/speech/voices?locale=${q(locale)}`, { ...request }).then((answer) => answer.voices),
+      synthesize: (presentationId, body, request) =>
+        json<SynthesizeResult>(`/v1/presentations/${q(presentationId)}/narration/synthesize`, {
+          body,
+          fallback: "The narration could not be voiced.",
+          ...request,
+        }),
+    },
+
     assets: {
       directUrl: (storageKey) => {
         // Only where the browser can authenticate the request by itself, which
@@ -418,6 +470,8 @@ const q = encodeURIComponent;
             kind: body.kind ?? "image",
             ...(body.width ? { width: body.width } : {}),
             ...(body.height ? { height: body.height } : {}),
+            ...(body.durationMs ? { duration_ms: Math.round(body.durationMs) } : {}),
+            ...(body.waveformPeaks?.length === 256 ? { waveform_peaks: body.waveformPeaks } : {}),
           },
           fallback: "That file could not be uploaded.",
           ...request,
@@ -501,6 +555,9 @@ const q = encodeURIComponent;
           ...request,
         });
       },
+      // An <img> or <audio> can load this cross-origin with no header, which is
+      // why the shared route takes no session: the token in the path is it.
+      assetUrl: (token, assetId) => `${baseUrl}/v1/shared/${q(token)}/assets/${q(assetId)}`,
       redeem: (token, request) =>
         json<SharedDocument>(`/v1/shared/${q(token)}`, {
           // Expired, revoked and never-existed answer alike on purpose; the client

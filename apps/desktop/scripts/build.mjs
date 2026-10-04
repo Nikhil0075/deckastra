@@ -1,5 +1,5 @@
 import { copyFile, mkdir, readFile, readdir, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { builtinModules, createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { recordBundledPackages } from "./bundled-packages.mjs";
 import { fileURLToPath } from "node:url";
@@ -125,13 +125,23 @@ const mcp = await esbuild({
   },
 });
 
+const assistantDesign = await esbuild({
+  ...shared,
+  entryPoints: [join(root, "..", "..", "scripts", "assistant-design-check.ts")],
+  outfile: join(out, "worker/assistant-design-check.cjs"),
+  format: "cjs",
+});
+
 for (const [label, built] of [
   ["exporter", worker],
   ["MCP server", mcp],
 ]) {
   const staticExternals = Object.values(built.metafile.outputs)
     .flatMap((output) => output.imports)
-    .filter((entry) => entry.external && entry.kind === "import-statement" && !entry.path.startsWith("node:"))
+    // A Node built-in is always there, prefixed or not ("fs", which fontkit
+    // imports, is the same module as "node:fs"); anything else is a package an
+    // installed app does not ship.
+    .filter((entry) => entry.external && entry.kind === "import-statement" && !entry.path.startsWith("node:") && !builtinModules.includes(entry.path))
     .map((entry) => entry.path);
   if (staticExternals.length > 0) {
     console.error(
@@ -163,25 +173,51 @@ const measurer = await esbuild({
 // names; `DECKASTRA_FONTS_DIR` points there. The list is read from the library
 // itself rather than restated, so a font added there is shipped here.
 const library = await readFile(join(root, "..", "..", "packages", "renderer", "src", "font-library.ts"), "utf8");
-const stylesheets = [...library.matchAll(/css: "([^"]+)"/g)].map((match) => match[1]);
-if (stylesheets.length === 0) {
+// Each entry's stylesheet and the script subsets it embeds (`subsets: [...]`).
+const fonts = [...library.matchAll(/css: "([^"]+)"(?:, subsets: \[([^\]]*)\])?/g)].map((match) => ({
+  css: match[1],
+  subsets: [...(match[2] ?? "").matchAll(/"([^"]+)"/g)].map((subset) => subset[1]),
+}));
+if (fonts.length === 0) {
   console.error("desktop: no bundled fonts found in font-library.ts");
   process.exit(1);
 }
-const requireFrom = createRequire(join(root, "..", "..", "packages", "editor-ui", "package.json"));
-for (const css of stylesheets) {
+const requireFrom = createRequire(join(root, "..", "..", "apps", "worker", "package.json"));
+async function copyStylesheet(css, subsets) {
   const source = requireFrom.resolve(css);
   const target = join(out, "worker", "fonts", css);
   await mkdir(join(dirname(target), "files"), { recursive: true });
   await copyFile(source, target);
-  for (const file of await readdir(join(dirname(source), "files"))) {
-    if (/-(latin|latin-ext)-/.test(file) && file.endsWith(".woff2")) {
-      await copyFile(join(dirname(source), "files", file), join(dirname(target), "files", file));
-    }
+  // Latin always, and the script a script face exists for: a packaged Hindi
+  // export used to carry no Devanagari file at all, because only Latin was copied.
+  const wanted = new RegExp(`-(latin|latin-ext${subsets.map((subset) => `|${subset}`).join("")})-`);
+  // Only the files the stylesheet names: a package folder also holds width
+  // axes and woff copies nothing here ever loads.
+  const named = new Set([...(await readFile(source, "utf8")).matchAll(/url\(\.\/files\/([^)]+\.woff2)\)/g)].map((match) => match[1]));
+  for (const file of named) {
+    if (wanted.test(file)) await copyFile(join(dirname(source), "files", file), join(dirname(target), "files", file));
   }
   // The licence travels with the files it covers.
   await copyFile(join(dirname(source), "LICENSE"), join(dirname(target), "LICENSE")).catch(() => undefined);
 }
+let staticSheets = 0;
+for (const { css, subsets } of fonts) {
+  await copyStylesheet(css, subsets);
+  // The static weights the exporter declares instead (`staticPackage` in
+  // apps/worker/src/fonts.ts): a variable face embeds in a PDF as Type3, whose
+  // shaped glyphs copy out as U+0000.
+  const pkg = css.replace("@fontsource-variable/", "@fontsource/").replace(/\/[^/]+\.css$/, "");
+  for (const weight of [100, 200, 300, 400, 500, 600, 700, 800, 900]) {
+    try {
+      requireFrom.resolve(`${pkg}/${weight}.css`);
+    } catch {
+      continue;
+    }
+    await copyStylesheet(`${pkg}/${weight}.css`, subsets);
+    staticSheets += 1;
+  }
+}
+const stylesheets = fonts;
 // KaTeX's stylesheet and its woff2 faces, for equations (`EQUATION_STYLESHEET`).
 {
   const source = requireFrom.resolve("katex/dist/katex.min.css");
@@ -193,7 +229,7 @@ for (const css of stylesheets) {
   }
   await copyFile(join(dirname(source), "..", "LICENSE"), join(target, "..", "LICENSE")).catch(() => undefined);
 }
-console.log(`desktop: ${stylesheets.length} bundled fonts and the equation faces copied for the exporter`);
+console.log(`desktop: ${stylesheets.length} bundled fonts (${staticSheets} static weights) and the equation faces copied for the exporter`);
 
 const renderer = await vite({ root, configFile: join(root, "vite.config.ts") });
 
@@ -201,7 +237,7 @@ const renderer = await vite({ root, configFile: join(root, "vite.config.ts") });
 // bundlers' own records — the list the SBOM and the notices are made from, so
 // neither describes what was merely installed (register item 33).
 const bundled = recordBundledPackages({
-  esbuild: { main, preload, exporter: worker, mcp, measurer },
+  esbuild: { main, preload, exporter: worker, mcp, measurer, assistantDesign },
   vite: renderer,
   cwd: process.cwd(),
   out: join(out, "bundled-packages.json"),

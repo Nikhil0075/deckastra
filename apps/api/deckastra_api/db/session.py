@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from starlette.requests import Request
 
 from .models import Base
+from .. import assistant_models  # register additive assistant tables for create_all
 
 DEFAULT_URL = "postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra"
 

@@ -93,6 +93,7 @@ export interface Capabilities {
    * Optional because an older server says nothing.
    */
   generation?: GenerationStatus;
+  assistant?: import("./assistant").AssistantCapabilities;
 }
 
 /**
@@ -102,7 +103,7 @@ export interface Capabilities {
  * checkout answers it; `none` is an installed product with nothing set up.
  */
 export interface GenerationStatus {
-  provider: "cloud" | "local" | "stub" | "none" | "unavailable" | "misconfigured";
+  provider: "cloud" | "local" | "hybrid" | "vertex" | "stub" | "none" | "unavailable" | "misconfigured";
   available: boolean;
   reason: string | null;
 }

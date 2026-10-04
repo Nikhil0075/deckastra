@@ -139,10 +139,12 @@ def main() -> int:
         "Still verified against the digest the repository publishes.",
     )
     parser.add_argument("--sha256", default=None, help="Expected digest, when the repository cannot be reached")
+    parser.add_argument("--revision", default="main", help="Pinned model repository commit for reproducible packs")
+    parser.add_argument("--projector-file", default=None, help="Optional verified vision projector from the same repository")
     arguments = parser.parse_args()
 
     try:
-        with urllib.request.urlopen(f"{HF}/api/models/{arguments.repo}", timeout=60) as answer:
+        with urllib.request.urlopen(f"{HF}/api/models/{arguments.repo}/revision/{arguments.revision}", timeout=60) as answer:
             model = json.load(answer)
     except Exception as error:  # noqa: BLE001
         if not arguments.from_file:
@@ -162,7 +164,7 @@ def main() -> int:
 
     directory = Path(arguments.root) / arguments.id
     directory.mkdir(parents=True, exist_ok=True)
-    weights_url = f"{HF}/{arguments.repo}/resolve/main/{arguments.file}"
+    weights_url = f"{HF}/{arguments.repo}/resolve/{arguments.revision}/{arguments.file}"
 
     size = 0
     expected_digest = arguments.sha256 or ""
@@ -230,13 +232,28 @@ def main() -> int:
     try:
         if arguments.from_file and not size:
             raise RuntimeError("the repository is not reachable")
-        license_url = f"{HF}/{arguments.repo}/resolve/main/{license_name}"
+        license_url = f"{HF}/{arguments.repo}/resolve/{arguments.revision}/{license_name}"
         download(license_url, directory / "LICENSE.txt", int(head(license_url)["_size"]))
         license_file = "LICENSE.txt"
     except Exception as error:  # noqa: BLE001 - an absent license file is not fatal
         print(f"  no license file fetched ({error}); the manifest still names the terms")
         license_file = None
+        if declared == "apache-2.0":
+            with urllib.request.urlopen("https://www.apache.org/licenses/LICENSE-2.0.txt", timeout=60) as answer:
+                (directory / "LICENSE.txt").write_bytes(answer.read(65536))
+            license_file = "LICENSE.txt"
 
+    projector_digest = None
+    if arguments.projector_file:
+        url = f"{HF}/{arguments.repo}/resolve/{arguments.revision}/{arguments.projector_file}"
+        projector_headers = head(url)
+        projector_digest = (projector_headers.get("x-linked-etag") or "").strip('"').removeprefix("sha256:")
+        if len(projector_digest) != 64:
+            raise SystemExit("The vision projector must have a published SHA-256 digest.")
+        target = directory / "mmproj.gguf"
+        download(url, target, int(projector_headers["_size"]))
+        if sha256(target) != projector_digest:
+            raise SystemExit("The vision projector did not match its published digest.")
     manifest = {
         "id": arguments.id,
         "name": arguments.name or arguments.id,
@@ -246,7 +263,11 @@ def main() -> int:
         "license": declared,
         "source": f"{arguments.repo}/{arguments.file}",
         "sha256": expected_digest or None,
+        "source_revision": arguments.revision,
+        "capabilities": ["text", "structured"] + (["vision"] if projector_digest else []),
     }
+    if projector_digest:
+        manifest.update(vision_projector="mmproj.gguf", projector_sha256=projector_digest)
     if arguments.min_ram_mb:
         manifest["min_ram_mb"] = arguments.min_ram_mb
     if license_file:

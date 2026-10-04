@@ -34,6 +34,8 @@ redis>=5.0,<7
 # rather than accidental.
 cryptography>=42,<51
 httpx>=0.27,<1
+# Mints and renews Google tokens from a named credentials file (google_credentials.py).
+google-auth>=2.30,<3
 # Standards-based OIDC bearer verification for production email/social login.
 # `cryptography` provides the RSA implementation; naming PyJWT here avoids
 # relying on an unrelated package to install the security boundary transitively.

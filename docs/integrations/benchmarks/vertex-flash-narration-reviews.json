@@ -1,0 +1,302 @@
+{
+  "narration-00": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "d67a6d31c2bea1e0e078fb1e52905c328fe0e44e44d97436bb7b750573697d3a",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-01": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "f4391315c74f5f46e57e7a6a9eb73e648d38ce41c6b03acf7fdd3b8ba4d85e49",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-02": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "ca579927743467d9a1478aae23fcfb76ef19a695763b804039287eab25cb765d",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-03": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "6c8fbe6f2ffac8c2dea1583889a4cf29a4d749bad98430e5af9050a12c1d1973",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-04": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "d6429d51218514af0cac3dcee78728589975e88ba2452f2a5a75382ca1f95228",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-05": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "86f03c533c51cb64848357e817e74ca46ea43ebd2bec32d4c754d8767ce13d89",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-06": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "a83f345be503eadd98b3bfed428f9bcc92206a55955018ca0d64582d99dc8c2b",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-07": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "d163fec405be64057df9892b30267d505873f9633f49cf7ab8b03880cdacb252",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-08": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "b365991517dcf5e085644cc1d423bb6359bef7ee4f5c81046f965d01cf9166eb",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-09": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "c8a3e63b65af999856142dc839463314ea41798aad5ecee11ace82532ddd9d66",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-10": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "eb9ec1264751c5767d98853b416a595aba1ac6100320f5c984406b372d696324",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-11": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "055cea2da25680d1a589c78993bda8e81f27f2d0c1ca6818450f2c38c451e7bc",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-12": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "f9fb73a33c56ea644f931a7b4dd77663df39cbb6928b58fc1f15455446aeb7d3",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-13": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "8f8dc01c60d0bcfc73a6622b66eb20e9fd521f5cef227dd017ab71c6936bc001",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-14": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "7e08b6f2b72b6114ec2de665da8bb582434f18729aaf1d48f39cbbd55d2c5b1f",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-15": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "3c9f36bf5c8d61e122a837244eda7bff360da3783c8cc36735d78967cf88605b",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-16": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "d3593da706e742d75e1271147aba37d1c2d47d708a2e4fe2e6e7e6868159830a",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-17": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "99c09a3d53997391b9b16277b659e8f8c6f268932441dc685b5ff53a4d893603",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-18": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "c56b8a0a25cce93d1a276b00ef70465e21de1fc6f4edf0041d150b1e3beda180",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  },
+  "narration-19": {
+    "reviewer": "Codex manual review, independent of generating Vertex model, 2026-10-03",
+    "result_sha256": "9e8b676647abfdb73581a1b0980d4828d8c753a31b0a80bca981e4c11c6e1379",
+    "scores": {
+      "factual_grounding": 0.95,
+      "narrative_quality": 0.95,
+      "visual_consistency": 1,
+      "translation": 1,
+      "accessibility": 0.95,
+      "instruction_adherence": 0.95
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "rationale": "Read the complete saved cue. It concisely introduces the supplied Deckastra architecture or bilingual deck. Each patch adds only a step-zero narration cue, preserves all visual content, and introduces no numbers, timings, unsupported recordings or new click steps. Visual consistency and translation are neutral because unchanged."
+  }
+}

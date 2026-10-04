@@ -1,0 +1,22 @@
+{
+  "packaged_service_started": true,
+  "available_tasks": [
+    "tidy",
+    "narration",
+    "image",
+    "speech",
+    "export"
+  ],
+  "design_check_status": 200,
+  "asset_list_status": 200,
+  "spend": {
+    "ceiling_usd": 5.0,
+    "used_usd": 4.7505635,
+    "reserved_usd": 0.2013205,
+    "remaining_usd": 0.048115999999999826,
+    "calls": 278
+  },
+  "paid_inference_calls": 0,
+  "input_deck": "stub",
+  "server_identity_loaded": true
+}

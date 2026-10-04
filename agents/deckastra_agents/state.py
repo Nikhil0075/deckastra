@@ -77,6 +77,7 @@ class EditScope(TypedDict, total=False):
 
 
 class PresentationAgentState(TypedDict, total=False):
+    source_inputs: list[dict[str, Any]]
     run_id: str
     user_id: str
     project_id: str

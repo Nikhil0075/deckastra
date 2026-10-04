@@ -30,6 +30,7 @@ the OpenAI surface both runtimes expose.
 from __future__ import annotations
 
 import os
+import atexit
 import socket
 import subprocess
 import sys
@@ -39,6 +40,9 @@ from collections import deque
 from pathlib import Path
 
 from . import processes
+from .process_job import ChildJob
+
+_child_job = None
 from deckastra_agents.model_packs import ModelPack, selected_pack
 from deckastra_agents.router import (
     PROVIDER_LOCAL,
@@ -97,6 +101,7 @@ def _idle_seconds() -> float:
 
 
 def _command(pack: ModelPack, port: int) -> list[str]:
+    verify_pack(pack)
     template = os.environ.get(SERVER_COMMAND_ENV, "").strip()
     if not template:
         raise ModelUnavailable(
@@ -115,13 +120,44 @@ def _command(pack: ModelPack, port: int) -> list[str]:
         parts = [part.strip('"') for part in shlex.split(template, posix=False)]
     else:
         parts = shlex.split(template)
-    return [
-        part.replace("{model}", str(pack.weights))
+    command = [
+        part.replace("{model}", str(pack.weights.resolve()))
         .replace("{port}", str(port))
         .replace("{context}", str(pack.context_tokens))
         .replace("{python}", sys.executable)
         for part in parts
     ]
+    if pack.vision_projector and "--mmproj" not in command:
+        command.extend(["--mmproj", str(pack.vision_projector)])
+    if pack.chat_template and "--chat-template-file" not in command:
+        command.extend(["--chat-template-file", str(pack.chat_template)])
+    return command
+
+
+_verified_artifacts = set()
+
+
+def diagnostics():
+    return {"loaded_pack": _pack_id, "runtime_stderr_tail": list(_stderr), "active_requests": _active}
+
+
+def verify_pack(pack):
+    """Verify declared digests before first load, again if the files change."""
+    import hashlib, json
+    manifest = json.loads((pack.directory / "pack.json").read_text(encoding="utf-8"))
+    for path, digest in ((pack.weights, pack.sha256), (pack.vision_projector, manifest.get("projector_sha256"))):
+        if path is None or not digest:
+            continue  # older manually installed packs retain their original behavior
+        stamp = (str(path.resolve()), path.stat().st_size, path.stat().st_mtime_ns, digest)
+        if stamp in _verified_artifacts:
+            continue
+        actual = hashlib.sha256()
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+                actual.update(chunk)
+        if actual.hexdigest() != digest:
+            raise ModelUnavailable("A model artifact failed SHA-256 verification. Reinstall the pinned pack.")
+        _verified_artifacts.add(stamp)
 
 
 def _drain(process: subprocess.Popen) -> None:
@@ -148,17 +184,18 @@ def _answering(base_url: str, timeout: float = 2.0) -> bool:
 
 
 def _stop_locked(reason: str = "") -> None:
-    global _process, _base_url, _pack_id
+    global _process, _base_url, _pack_id, _child_job
     process = _process
     _process = None
     _base_url = None
     _pack_id = None
-    if process is None or process.poll() is not None:
-        return
-
-    # The tree, for the same reason the exporter kills one: a runtime that started
-    # a helper leaves it holding the port and the VRAM.
-    processes.terminate_tree(process, grace=10)
+    try:
+        if process is not None and process.poll() is None:
+            processes.terminate_tree(process, grace=10)
+    finally:
+        if _child_job is not None:
+            _child_job.close()
+            _child_job = None
 
 
 def last_output() -> list[str]:
@@ -174,6 +211,9 @@ def last_output() -> list[str]:
 def stop(reason: str = "") -> None:
     with _lock:
         _stop_locked(reason)
+
+
+atexit.register(stop, "parent shutdown")
 
 
 def _reap() -> None:
@@ -199,9 +239,9 @@ def _reap() -> None:
                 return
 
 
-def ensure_ready() -> str:
+def ensure_ready(budget=None) -> str:
     """The URL of a runtime that is answering, starting one if needed."""
-    global _process, _base_url, _pack_id, _last_used, _reaper
+    global _process, _base_url, _pack_id, _last_used, _reaper, _child_job
 
     pack = selected_pack()
     if pack is None:
@@ -229,6 +269,7 @@ def ensure_ready() -> str:
         command = _command(pack, port)
 
         try:
+            _child_job = ChildJob()
             process = subprocess.Popen(
                 command,
                 stdout=subprocess.DEVNULL,
@@ -238,17 +279,36 @@ def ensure_ready() -> str:
                 # or raise on a byte cp1252 does not define.
                 encoding="utf-8",
                 errors="replace",
-                cwd=str(Path(pack.directory)),
+                cwd=str(Path(pack.directory).resolve()),
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
             )
+            try:
+                _child_job.assign(process)
+            except OSError:
+                processes.terminate_tree(process)
+                raise
         except OSError as error:
+            if _child_job is not None:
+                _child_job.close()
+                _child_job = None
             raise ModelUnavailable(
                 f"The local model runtime could not be started ({command[0]}): {error}"
             ) from error
 
         threading.Thread(target=_drain, args=(process,), daemon=True).start()
+        _process, _base_url, _pack_id = process, base_url, pack.id
 
-        deadline = time.monotonic() + _startup_timeout()
+        loading_from = time.monotonic()
+        deadline = loading_from + _startup_timeout()
         while time.monotonic() < deadline:
+            if budget is not None:
+                # Only cancellation here: loading has its own bound (the deadline
+                # above), and its time is handed back to the run below.
+                try:
+                    getattr(budget, "check_cancelled", budget.check_clock)()
+                except Exception:
+                    _stop_locked("cancelled during startup")
+                    raise
             if process.poll() is not None:
                 said = "\n".join(_stderr)
                 raise ModelUnavailable(
@@ -267,6 +327,9 @@ def ensure_ready() -> str:
                 if _reaper is None or not _reaper.is_alive():
                     _reaper = threading.Thread(target=_reap, daemon=True)
                     _reaper.start()
+                exclude = getattr(budget, "exclude_time", None)
+                if exclude is not None:
+                    exclude(time.monotonic() - loading_from)
                 return base_url
             time.sleep(0.5)
 
@@ -300,6 +363,22 @@ class _KeptAlive:
     def __init__(self, inner: ModelClient) -> None:
         self._inner = inner
 
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def stream(self, request, budget):
+        global _last_used, _active
+        with _lock:
+            _active += 1
+        try:
+            base_url = ensure_ready(budget)
+            self._inner.retarget(base_url)
+            yield from self._inner.stream(request, budget)
+        finally:
+            with _lock:
+                _active -= 1
+                _last_used = time.monotonic()
+
     def complete(self, request, budget):
         # Three things, and the first version of this did only the first.
         #
@@ -308,11 +387,6 @@ class _KeptAlive:
         # shutdown went on addressing a port nothing was listening on, and the
         # next generation failed with "the local model server is not answering"
         # on a machine where it was.
-        base_url = ensure_ready()
-        retarget = getattr(self._inner, "retarget", None)
-        if retarget is not None:
-            retarget(base_url)
-
         # Registering the request is what "in use" actually means. Refreshing the
         # timer on the way in leaves the window running down *during* the call,
         # which is how the four benchmark crashes happened and how they went on
@@ -322,6 +396,10 @@ class _KeptAlive:
         with _lock:
             _active += 1
         try:
+            base_url = ensure_ready(budget)
+            retarget = getattr(self._inner, "retarget", None)
+            if retarget is not None:
+                retarget(base_url)
             return self._inner.complete(request, budget)
         finally:
             # In a `finally`, so a refusal or a cancellation releases the runtime
@@ -340,6 +418,16 @@ def build_client(fallback=None) -> ModelClient:
     will not, and the failure — a local install answering from the stub — is the
     exact one D3's selection exists to refuse.
     """
+    if selected_provider() in ("hybrid", "vertex"):
+        from deckastra_agents.hybrid_model import configured_client
+        from deckastra_agents.local_model import local_client
+        def local():
+            client = local_client()
+            expected = os.environ.get("DECKASTRA_ASSISTANT_PACK", "gemma4-e2b-q4")
+            if client.pack.id != expected:
+                raise ModelUnavailable(f"Select the measured assistant pack {expected} with DECKASTRA_MODEL_PACK.")
+            return _KeptAlive(client)
+        return configured_client(local_factory=local)
     if selected_provider() == PROVIDER_LOCAL:
         ensure_ready()
         return _KeptAlive(default_client(fallback=fallback))

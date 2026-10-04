@@ -1,0 +1,1152 @@
+{
+  "provider": "local",
+  "deployment_signature": "2cb5ea4e983226e844e55801ff496c6fe8586516dfdb42224d110229582db725",
+  "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 32.27057049993891,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "authoring": {
+      "task": "authoring",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 31.609476200072095,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "planning": {
+      "task": "planning",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 116.82751189998817,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "critique": {
+      "task": "critique",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 66.80998579994775,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "translation": {
+      "task": "translation",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.5,
+        "task_success": 0.0,
+        "p95_seconds": 41.61325269995723,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "narration": {
+      "task": "narration",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 31.92182320007123,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "vision": {
+      "task": "vision",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.5,
+        "task_success": 0.0,
+        "p95_seconds": 90.24877230008133,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 113.41163180000149,
+      "ram_mb": 2450.36328125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5686,
+        "input_tokens": 5240,
+        "output_tokens": 446,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 113.41,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-01",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 32.27057049993891,
+      "ram_mb": 2537.98828125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4843,
+        "input_tokens": 4422,
+        "output_tokens": 421,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 32.27,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "authoring-00",
+      "task": "authoring",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 31.609476200072095,
+      "ram_mb": 2569.859375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5131,
+        "input_tokens": 4801,
+        "output_tokens": 330,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 31.61,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "authoring-01",
+      "task": "authoring",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 20.61267780000344,
+      "ram_mb": 2568.98046875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4236,
+        "input_tokens": 3983,
+        "output_tokens": 253,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 20.61,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "planning-00",
+      "task": "planning",
+      "temperature_class": "warm",
+      "result": {
+        "title": "One deck, every language the room speaks",
+        "narrative_arc": "Beginning: Introduction to the concept. Middle: The three core steps of the process. End: The final execution and multilingual capability.",
+        "slides": [
+          {
+            "layout": "title",
+            "purpose": "Opening slide establishing the theme.",
+            "key_message": "One deck, every language the room speaks",
+            "headline": "One deck, every language",
+            "eyebrow": "One deck, every language",
+            "subtitle": "Translated words, the same layout",
+            "body": "Translated words, the same layout",
+            "bullets": [],
+            "metrics": [],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "Welcome everyone. This deck is narrated in English and Hindi.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "statement",
+            "purpose": "Thesis slide introducing the core methodology.",
+            "key_message": "The core process of multilingual deck creation.",
+            "headline": "Write, translate, narrate",
+            "eyebrow": "Write, translate, narrate",
+            "subtitle": "How it works",
+            "body": "Write it once",
+            "bullets": [
+              "Write it once",
+              "Translate the words",
+              "Narrate every step"
+            ],
+            "metrics": [],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "First, you write the deck once. Then the words are translated, and the layout stays. Finally, every click step has its own narration.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "bullets",
+            "purpose": "Detailing the three steps.",
+            "key_message": "The three steps that make the process work.",
+            "headline": "Three ideas make this work",
+            "eyebrow": "Three ideas make this work",
+            "subtitle": "The workflow",
+            "body": "Write it once",
+            "bullets": [
+              "Write it once",
+              "Translate the words",
+              "Narrate every step"
+            ],
+            "metrics": [],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "This slide outlines the three core ideas that make this multilingual process possible.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "metrics",
+            "purpose": "Presenting the multilingual capability as a result.",
+            "key_message": "Demonstrating language support.",
+            "headline": "Multilingual support status",
+            "eyebrow": "Multilingual support status",
+            "subtitle": "Language readiness",
+            "body": "Hindi: Reviewed, Arabic: Draft",
+            "bullets": [
+              "Hindi: Reviewed",
+              "Arabic: Draft"
+            ],
+            "metrics": [
+              {
+                "value": "1",
+                "label": "Language Statuses"
+              }
+            ],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "This shows the current status of the language translations within the system.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "split",
+            "purpose": "Showing the structure vs. the content.",
+            "key_message": "Layout consistency across languages.",
+            "headline": "Layout consistency",
+            "eyebrow": "Layout consistency",
+            "subtitle": "Structure vs. Content",
+            "body": "The structure remains fixed while the content is localized.",
+            "bullets": [
+              "Structure: Fixed",
+              "Content: Localized"
+            ],
+            "metrics": [],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "The key takeaway here is that the presentation structure is preserved, allowing for easy localization.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "quote",
+            "purpose": "Highlighting the principle of preservation.",
+            "key_message": "The principle of maintaining layout integrity.",
+            "headline": "Preserve the layout",
+            "eyebrow": "Preserve the layout",
+            "subtitle": "Core principle",
+            "body": "The layout stays",
+            "bullets": [],
+            "metrics": [],
+            "quote": "One deck, every language",
+            "attribution": "db-guide",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "This is the fundamental rule: the design structure is the constant element across all language versions.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "title",
+            "purpose": "Conclusion/Summary slide.",
+            "key_message": "The final outcome: a fully multilingual, narrated deck.",
+            "headline": "Final result: Multilingual deck",
+            "eyebrow": "Final result: Multilingual deck",
+            "subtitle": "Complete workflow",
+            "body": "Write, Translate, Narrate",
+            "bullets": [
+              "Write once",
+              "Translate",
+              "Narrate"
+            ],
+            "metrics": [],
+            "quote": "",
+            "attribution": "",
+            "code": "",
+            "language": "en",
+            "caption": "",
+            "speaker_notes": "By following these three steps, we achieve a fully multilingual presentation where the design is unified, and the narration is personalized for each language.",
+            "source_ids": [
+              "db-guide"
+            ]
+          }
+        ],
+        "embedded_instructions_found": false
+      },
+      "automatic_valid": true,
+      "seconds": 76.76556209998671,
+      "ram_mb": 2538.1171875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 9840,
+        "input_tokens": 8429,
+        "output_tokens": 1411,
+        "structured_requests": [
+          {
+            "stage": "planning",
+            "contract": "StoryPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 76.77,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b136f84f72f6292129ee4f6941b53b055d02d1fe847cc11d6f4445e9e7bf8d75",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "planning-01",
+      "task": "planning",
+      "temperature_class": "warm",
+      "result": {
+        "title": "Database Migrations Explained",
+        "narrative_arc": "Beginning: Introducing the concept of schema changes. Middle: Detailing the role of the migration record. End: Summarizing the process and its importance.",
+        "slides": [
+          {
+            "layout": "title",
+            "purpose": "Opening slide setting the stage.",
+            "key_message": "Understanding Database Migrations",
+            "headline": "Managing Schema Evolution in Deckastra",
+            "eyebrow": "Database Migrations",
+            "subtitle": "A guide for new colleagues on how the system tracks changes.",
+            "body": "Welcome to the team. This presentation outlines the process of database migrations within our system.",
+            "bullets": [
+              "What is a migration?",
+              "Why do we need them?",
+              "How are changes recorded?",
+              "The role of the migration record"
+            ],
+            "metrics": [
+              {
+                "value": "1",
+                "label": "Schema Changes Recorded"
+              }
+            ],
+            "quote": "A migration records schema changes.",
+            "attribution": "db-guide",
+            "code": "No code sample required for this introductory slide.",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "We start by defining what a database migration is in the context of Deckastra. Essentially, it's the structured way we track and apply changes to the underlying database schema over time. This ensures consistency across all environments.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "statement",
+            "purpose": "Turning point: Stating the core function.",
+            "key_message": "Migrations are the official record of schema changes.",
+            "headline": "The Migration Record: Schema Change Tracking",
+            "eyebrow": "The migration record is the source of truth.",
+            "subtitle": "Every structural update is logged.",
+            "body": "The core function of a migration is to serve as an immutable log of every schema change applied to the database.",
+            "bullets": [
+              "Records the exact schema changes.",
+              "Provides a history of the database structure.",
+              "Ensures reproducibility of database states.",
+              "Acts as the single source of truth for structure."
+            ],
+            "metrics": [
+              {
+                "value": "1",
+                "label": "Schema Changes Recorded"
+              }
+            ],
+            "quote": "A migration records schema changes.",
+            "attribution": "db-guide",
+            "code": "N/A",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "Think of the migration record as the official ledger for our database structure. It doesn't just show *what* the final state is; it shows *how* we got there. This is crucial for debugging and understanding the evolution of our data models.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "bullets",
+            "purpose": "Explaining the process flow.",
+            "key_message": "The migration lifecycle in simple steps.",
+            "headline": "The Migration Process Flow",
+            "eyebrow": "From change proposal to deployment.",
+            "subtitle": "A high-level view of the workflow.",
+            "body": "The process involves proposing a change, generating the migration artifact, and applying it to the database.",
+            "bullets": [
+              "Propose a schema change.",
+              "Generate the migration artifact.",
+              "Apply the artifact to the target database.",
+              "The record is updated upon successful application."
+            ],
+            "metrics": [
+              {
+                "value": "4",
+                "label": "Key Process Steps"
+              }
+            ],
+            "quote": "The migration record is the source of truth.",
+            "attribution": "db-guide",
+            "code": "N/A",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "When you work on a new feature that requires a database change, you follow this path. The key takeaway here is that the record is updated *after* the change is successfully applied, cementing its role as the historical anchor for our database structure.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "split",
+            "purpose": "Comparing the concept to a real-world scenario.",
+            "key_message": "Migration vs. Manual Change",
+            "headline": "Automated vs. Manual Schema Updates",
+            "eyebrow": "Why automate the process?",
+            "subtitle": "The benefit of structured recording.",
+            "body": "Manual changes are risky; migrations are controlled and traceable.",
+            "bullets": [
+              "Manual: High risk of inconsistency.",
+              "Manual: Difficult to audit history.",
+              "Migration: Controlled and versioned.",
+              "Migration: Fully auditable history."
+            ],
+            "metrics": [
+              {
+                "value": "1",
+                "label": "Control Level"
+              }
+            ],
+            "quote": "Automated vs. Manual Schema Updates",
+            "attribution": "db-guide",
+            "code": "N/A",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "The biggest win with migrations is control. Instead of developers manually running SQL scripts, we use the migration system. This means every change is versioned, tested, and applied predictably, drastically reducing the risk of human error.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "quote",
+            "purpose": "Highlighting the primary fact.",
+            "key_message": "The fundamental fact of the migration.",
+            "headline": "The Core Principle of Migration",
+            "eyebrow": "What is the fundamental rule?",
+            "subtitle": "The migration record is the source of truth.",
+            "body": "This principle is explicitly stated in our documentation.",
+            "bullets": [
+              "The migration record is the source of truth."
+            ],
+            "metrics": [
+              {
+                "value": "1",
+                "label": "Source of Truth"
+              }
+            ],
+            "quote": "A migration records schema changes.",
+            "attribution": "db-guide",
+            "code": "N/A",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "This is the single most important sentence for anyone new to the topic. It’s not a suggestion; it’s a fact. When we talk about database structure, the migration record is the definitive, unchangeable history of that structure.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "code",
+            "purpose": "Showing the structure of the record.",
+            "key_message": "Structure of the migration record.",
+            "headline": "Migration Record Structure",
+            "eyebrow": "What does the record contain?",
+            "subtitle": "A snapshot of the change.",
+            "body": "The record itself contains metadata about the schema version and the change applied.",
+            "bullets": [
+              "Schema Version",
+              "Unique ID",
+              "Metadata"
+            ],
+            "metrics": [
+              {
+                "value": "3",
+                "label": "Key Record Fields"
+              }
+            ],
+            "quote": "A migration records schema changes.",
+            "attribution": "db-guide",
+            "code": "{\n  \"schemaVersion\": \"1.1.0\",\n  \"id\": \"doc_01JB8Z9K2QW4RN7F3X01006700\"\n}",
+            "language": "json",
+            "caption": "Source: db-guide",
+            "speaker_notes": "This snippet shows you the basic structure of the record. You'll see fields like the schema version and a unique ID. These elements allow us to track exactly which version of the database structure corresponds to which change.",
+            "source_ids": [
+              "db-guide"
+            ]
+          },
+          {
+            "layout": "title",
+            "purpose": "Conclusion and next steps.",
+            "key_message": "Summary and Next Steps",
+            "headline": "Conclusion: Mastering Database Migrations",
+            "eyebrow": "Key takeaways for success.",
+            "subtitle": "Your path forward.",
+            "body": "In summary, migrations provide control, history, and reliability for our database structure.",
+            "bullets": [
+              "Migrations provide control through automation.",
+              "The record is the single source of truth.",
+              "Always check the migration history before making changes."
+            ],
+            "metrics": [
+              {
+                "value": "3",
+                "label": "Core Benefits"
+              }
+            ],
+            "quote": "Always check the migration history before making changes.",
+            "attribution": "db-guide",
+            "code": "N/A",
+            "language": "N/A",
+            "caption": "Source: db-guide",
+            "speaker_notes": "To wrap up: migrations are our disciplined approach to database evolution. They ensure that every structural change is intentional, documented, and reversible. Familiarize yourself with the migration history in every project you touch.",
+            "source_ids": [
+              "db-guide"
+            ]
+          }
+        ],
+        "embedded_instructions_found": true
+      },
+      "automatic_valid": true,
+      "seconds": 116.82751189998817,
+      "ram_mb": 2454.01171875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 11484,
+        "input_tokens": 9320,
+        "output_tokens": 2164,
+        "structured_requests": [
+          {
+            "stage": "planning",
+            "contract": "StoryPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 116.83,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "5917e24cd474f1b13b3932159c43d5f8c3f4938f4da9b61bd517637aa014d7e7",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "critique-00",
+      "task": "critique",
+      "temperature_class": "warm",
+      "result": {
+        "verdict": "pass",
+        "scores": {
+          "hierarchy": 0.9,
+          "readability": 0.9,
+          "contrast": 1.0,
+          "alignment": 1.0,
+          "density": 0.8,
+          "consistency": 1.0,
+          "narrative_clarity": 0.9,
+          "motion_quality": 0.8
+        },
+        "issues": [
+          {
+            "slide_id": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "severity": "minor",
+            "category": "narrative",
+            "message": "The title slide message 'One deck, every language the room speaks' is slightly abstract; while the concept is clear, it could be more direct about the deck's function for the audience (locale, narration, sound test suites).",
+            "suggested_fix": "Slightly rephrase the subtitle to explicitly mention the audience or the core deliverable."
+          },
+          {
+            "slide_id": "sld_01JB8Z9K2QW4RN7F3X04001400",
+            "severity": "minor",
+            "category": "narrative",
+            "message": "The narrative flow is clear (Write, Translate, Narrate), but the transition between the three steps could be enhanced with stronger visual cues beyond the simple click animations.",
+            "suggested_fix": "Ensure the visual representation of the three steps is highly distinct and memorable."
+          }
+        ],
+        "summary": "The deck is well-structured, adheres to the specified technical theme, and maintains strong visual consistency. The narrative clearly outlines the three-step process. The layout is clean and readable, and the motion is used effectively to emphasize key points. It is ready for use."
+      },
+      "automatic_valid": true,
+      "seconds": 66.80998579994775,
+      "ram_mb": 2390.26171875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 8975,
+        "input_tokens": 8531,
+        "output_tokens": 444,
+        "structured_requests": [
+          {
+            "stage": "critique",
+            "contract": "CriticResult",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 66.81,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3ffaa914ef40f1e8c7575db99448c25efaa358a5e1816f208d2af705bb4a56b6",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "critique-01",
+      "task": "critique",
+      "temperature_class": "warm",
+      "result": {
+        "verdict": "revise_story",
+        "scores": {
+          "hierarchy": 0.9,
+          "readability": 0.8,
+          "contrast": 0.9,
+          "alignment": 1.0,
+          "density": 0.7,
+          "consistency": 0.9,
+          "narrative_clarity": 0.6,
+          "motion_quality": 0.5
+        },
+        "issues": [
+          {
+            "slide_id": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "severity": "major",
+            "category": "narrative",
+            "message": "The title slide is too dense with technical jargon and lacks a clear, immediate narrative hook for a new colleague. It needs to immediately establish the 'why' and 'what' in a way that resonates with someone new to the project.",
+            "suggested_fix": "Simplify the headline to focus on the core value proposition: 'Deckastra: Turning Repositories into Editable Presentations.' The subtitle should then clearly state the main benefit: 'How the document model keeps humans in control of AI edits.'"
+          },
+          {
+            "slide_id": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "severity": "major",
+            "category": "narrative",
+            "message": "The narrative flow of the architecture slide is purely descriptive of the pipeline. It needs a clearer story about *why* the separation of concerns (e.g., Agent vs. Transaction Service) is critical for maintainability and safety, rather than just listing the steps.",
+            "suggested_fix": "Frame the 'Agent graph' section around the concept of 'Safety and Reviewability.' Use the diagram to show the flow, but use accompanying text to explicitly state: 'No agent writes directly to the store; every change goes through the transaction service, ensuring a human checkpoint.'"
+          },
+          {
+            "slide_id": "sld_01JB8Z9K2QW4RN7F3X01006100",
+            "severity": "minor",
+            "category": "narrative",
+            "message": "The key message 'An agent changes one property, not a whole slide' is good, but the supporting text needs to be more explicit about the technical consequence. It needs to explain *why* this narrow change is reviewable (i.e., it's a targeted operation, not a full document rewrite).",
+            "suggested_fix": "Expand the caption to explain the mechanism: 'AI edits are scoped to a single property path (e.g., font size), allowing for granular, reviewable patches rather than monolithic document rewrites.'"
+          }
+        ],
+        "summary": "The deck has strong technical content and good visual consistency, but the narrative structure is currently too descriptive rather than persuasive. The story needs to focus on the core value proposition—how the system maintains human control through its architectural separation—to make the concepts immediately understandable and engaging for a new colleague."
+      },
+      "automatic_valid": true,
+      "seconds": 58.4791261999635,
+      "ram_mb": 2125.5390625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 10137,
+        "input_tokens": 9422,
+        "output_tokens": 715,
+        "structured_requests": [
+          {
+            "stage": "critique",
+            "contract": "CriticResult",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 58.48,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d114d13d8d123f40f713d0a334d0214803af014da878e5ec31b727593f56a0ca",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "translation-00",
+      "task": "translation",
+      "temperature_class": "warm",
+      "error": "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.",
+      "automatic_valid": false,
+      "seconds": 26.34502339991741,
+      "ram_mb": 2262.23046875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 26.35,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "translation-01",
+      "task": "translation",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None. The request was feasible."
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 41.61325269995723,
+      "ram_mb": 2250.6015625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4807,
+        "input_tokens": 4002,
+        "output_tokens": 805,
+        "structured_requests": [
+          {
+            "stage": "translation",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 41.61,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d395e669adbc894fcee77b7d25ab7e6d1462d9c45d3815f852120f3087bd1e26",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "narration-00",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 31.92182320007123,
+      "ram_mb": 2263.90234375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4917,
+        "input_tokens": 4811,
+        "output_tokens": 106,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 31.92,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "narration-01",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 20.081479200045578,
+      "ram_mb": 2124.00390625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4265,
+        "input_tokens": 3993,
+        "output_tokens": 272,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 20.08,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "vision-00",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 90.24877230008133,
+      "ram_mb": 2046.9375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6865,
+        "input_tokens": 5933,
+        "output_tokens": 932,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 90.25,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "vision-01",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "Design Check runtime unavailable. Configure DECKASTRA_DESIGN_CHECK_CMD.",
+      "automatic_valid": false,
+      "seconds": 26.24075500003528,
+      "ram_mb": 2006.68359375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 26.24,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ],
+  "runtime_diagnostics": {
+    "loaded_pack": "gemma4-e2b-q4",
+    "runtime_stderr_tail": [
+      "9.21.692.136 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.309 (> 0.100 thold), f_keep = 0.309",
+      "9.21.745.521 I slot launch_slot_: id  0 | task 7042 | processing task, is_child = 0",
+      "9.27.051.709 I slot print_timing: id  0 | task 7042 | prompt processing, n_tokens =   1631, progress = 0.34, t =   5.31 s / 307.38 tokens per second",
+      "9.33.208.221 I slot print_timing: id  0 | task 7042 | prompt processing, n_tokens =   3679, progress = 0.76, t =  11.46 s / 320.96 tokens per second",
+      "9.37.257.698 I slot print_timing: id  0 | task 7042 | prompt processing, n_tokens =   4295, progress = 0.89, t =  15.51 s / 276.88 tokens per second",
+      "9.37.787.616 I slot print_timing: id  0 | task 7042 | prompt processing, n_tokens =   4807, progress = 1.00, t =  16.04 s / 299.65 tokens per second",
+      "9.42.767.299 I slot print_timing: id  0 | task 7042 | prompt eval time =   18112.15 ms /  4811 tokens (    3.76 ms per token,   265.62 tokens per second)",
+      "9.42.767.309 I slot print_timing: id  0 | task 7042 |        eval time =    2909.45 ms /   106 tokens (   27.71 ms per token,    36.09 tokens per second)",
+      "9.42.767.312 I slot print_timing: id  0 | task 7042 |       total time =   21021.60 ms /  4917 tokens",
+      "9.42.767.313 I slot print_timing: id  0 | task 7042 |    graphs reused =       7047",
+      "9.42.801.408 I slot      release: id  0 | task 7042 | stop processing: n_tokens = 4916, truncated = 0",
+      "9.47.360.137 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.413 (> 0.100 thold), f_keep = 0.336",
+      "9.47.404.002 I slot launch_slot_: id  0 | task 7153 | processing task, is_child = 0",
+      "9.53.490.280 I slot print_timing: id  0 | task 7153 | prompt processing, n_tokens =   1847, progress = 0.87, t =   6.09 s / 303.48 tokens per second",
+      "9.54.767.291 I slot print_timing: id  0 | task 7153 | prompt processing, n_tokens =   2359, progress = 1.00, t =   7.36 s / 320.38 tokens per second",
+      "9.59.786.799 I slot print_timing: id  0 | task 7153 | n_gen =    135, tg =  44.20 t/s, tg_3s =  44.53 t/s",
+      "10.02.794.322 I slot print_timing: id  0 | task 7153 | n_gen =    262, tg =  43.22 t/s, tg_3s =  42.23 t/s",
+      "10.03.010.574 I slot print_timing: id  0 | task 7153 | prompt eval time =    9351.19 ms /  2363 tokens (    3.96 ms per token,   252.70 tokens per second)",
+      "10.03.010.585 I slot print_timing: id  0 | task 7153 |        eval time =    6255.22 ms /   272 tokens (   23.08 ms per token,    43.32 tokens per second)",
+      "10.03.010.587 I slot print_timing: id  0 | task 7153 |       total time =   15606.41 ms /  2635 tokens",
+      "10.03.010.609 I slot print_timing: id  0 | task 7153 |    graphs reused =       7316",
+      "10.03.011.009 I slot      release: id  0 | task 7153 | stop processing: n_tokens = 4264, truncated = 0",
+      "10.13.671.988 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.250 (> 0.100 thold), f_keep = 0.348",
+      "10.13.750.139 I slot launch_slot_: id  0 | task 7429 | processing task, is_child = 0",
+      "10.19.069.638 I slot print_timing: id  0 | task 7429 | prompt processing, n_tokens =   1642, progress = 0.28, t =   5.32 s / 308.68 tokens per second",
+      "10.25.235.258 I slot print_timing: id  0 | task 7429 | prompt processing, n_tokens =   3690, progress = 0.62, t =  11.48 s / 321.29 tokens per second",
+      "10.33.494.666 I slot print_timing: id  0 | task 7429 | prompt processing, n_tokens =   5417, progress = 0.91, t =  19.74 s / 274.36 tokens per second",
+      "10.34.388.033 I slot print_timing: id  0 | task 7429 | prompt processing, n_tokens =   5850, progress = 0.99, t =  20.64 s / 283.46 tokens per second",
+      "11.11.094.299 I slot print_timing: id  0 | task 7429 | prompt processing, n_tokens =   5929, progress = 1.00, t =  57.34 s / 103.39 tokens per second",
+      "11.14.154.847 I slot print_timing: id  0 | task 7429 | n_gen =    122, tg =  40.08 t/s, tg_3s =  40.42 t/s",
+      "11.17.157.666 I slot print_timing: id  0 | task 7429 | n_gen =    233, tg =  38.53 t/s, tg_3s =  36.97 t/s",
+      "11.20.175.604 I slot print_timing: id  0 | task 7429 | n_gen =    386, tg =  42.64 t/s, tg_3s =  50.89 t/s",
+      "11.23.165.289 I slot print_timing: id  0 | task 7429 | n_gen =    535, tg =  44.39 t/s, tg_3s =  49.65 t/s",
+      "11.26.169.072 I slot print_timing: id  0 | task 7429 | n_gen =    685, tg =  45.50 t/s, tg_3s =  49.94 t/s",
+      "11.29.184.728 I slot print_timing: id  0 | task 7429 | n_gen =    830, tg =  45.93 t/s, tg_3s =  48.08 t/s",
+      "11.31.665.484 I slot print_timing: id  0 | task 7429 | prompt eval time =   57385.62 ms /  5933 tokens (    9.67 ms per token,   103.39 tokens per second)",
+      "11.31.665.499 I slot print_timing: id  0 | task 7429 |        eval time =   20529.17 ms /   932 tokens (   22.05 ms per token,    45.35 tokens per second)",
+      "11.31.665.502 I slot print_timing: id  0 | task 7429 |       total time =   77914.79 ms /  6865 tokens",
+      "11.31.665.503 I slot print_timing: id  0 | task 7429 |    graphs reused =       8243",
+      "11.31.791.047 I slot      release: id  0 | task 7429 | stop processing: n_tokens = 6864, truncated = 0"
+    ],
+    "active_requests": 0
+  }
+}

@@ -1,0 +1,1049 @@
+{
+  "provider": "local",
+  "deployment_signature": "27cef36e95a8619807ffc9ce125231860023d5421e81022d556badfa69e177f7",
+  "dataset_sha256": "0cd7c94b42d1b70cae9a4546c932ecf336cb0cafe696bc2a50f40f24f5e3bdb8",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "0cd7c94b42d1b70cae9a4546c932ecf336cb0cafe696bc2a50f40f24f5e3bdb8",
+      "metrics": {
+        "samples": 20,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 63.43275140004698,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 102.08640130003914,
+      "ram_mb": 2457.30859375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6177,
+        "input_tokens": 5368,
+        "output_tokens": 809,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 102.09,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-01",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "No refusal."
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 51.41927850001957,
+      "ram_mb": 2488.890625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6374,
+        "input_tokens": 4550,
+        "output_tokens": 1824,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 51.42,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "060995e4168e2800626b3ef5ed436389de65b8754bd2fc5120c4591b8a5cc72a",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-02",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 37.12279839999974,
+      "ram_mb": 2407.63671875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5634,
+        "input_tokens": 4546,
+        "output_tokens": 1088,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 37.12,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-03",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 36.154151900089346,
+      "ram_mb": 2443.9375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6241,
+        "input_tokens": 5368,
+        "output_tokens": 873,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 36.15,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-04",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/x",
+            "value": 120
+          },
+          {
+            "op": "replace",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X01000200/transform/y",
+            "value": 320
+          }
+        ],
+        "summary": "Fixed layout finding W104 by adjusting the position of the 'Eyebrow' text element to keep it within the slide's safe area.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 33.6086441000225,
+      "ram_mb": 2554.18359375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5432,
+        "input_tokens": 4549,
+        "output_tokens": 883,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 33.61,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "083dac6e2f4ed8e2bd7775b98d9fb160f1fd69a3538d3e93998d59ef6ce5de7f",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-05",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 28.186357100028545,
+      "ram_mb": 2568.796875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5196,
+        "input_tokens": 4547,
+        "output_tokens": 649,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 28.19,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-06",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 29.824801700073294,
+      "ram_mb": 2643.05078125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5734,
+        "input_tokens": 5366,
+        "output_tokens": 368,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 29.82,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-07",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 23.575382200069726,
+      "ram_mb": 2583.80078125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4973,
+        "input_tokens": 4545,
+        "output_tokens": 428,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 23.58,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-08",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 60.435860699974,
+      "ram_mb": 2637.73046875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6691,
+        "input_tokens": 4548,
+        "output_tokens": 2143,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 60.44,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-09",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 32.50242479995359,
+      "ram_mb": 2656.79296875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5940,
+        "input_tokens": 5366,
+        "output_tokens": 574,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 32.5,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-10",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 36.15654859994538,
+      "ram_mb": 2623.3984375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5506,
+        "input_tokens": 4549,
+        "output_tokens": 957,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 36.16,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-11",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 52.36525949998759,
+      "ram_mb": 2606.484375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6191,
+        "input_tokens": 4547,
+        "output_tokens": 1644,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 52.37,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-12",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None. The requested changes are feasible."
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 27.771068800007924,
+      "ram_mb": 2469.41015625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5643,
+        "input_tokens": 5367,
+        "output_tokens": 276,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 27.77,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "4ac4e76aedc0e6a168eb862e5a9f2f0d78b77ccae92ef1cd8c8e63c215df9d25",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-13",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 26.569996299920604,
+      "ram_mb": 2349.04296875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 4975,
+        "input_tokens": 4547,
+        "output_tokens": 428,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 26.57,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-14",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 37.544695399934426,
+      "ram_mb": 2261.109375,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5196,
+        "input_tokens": 4551,
+        "output_tokens": 645,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 37.54,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-15",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 31.7551611000672,
+      "ram_mb": 2182.453125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 5847,
+        "input_tokens": 5368,
+        "output_tokens": 479,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 31.76,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-16",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 53.12382399989292,
+      "ram_mb": 1835.640625,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6121,
+        "input_tokens": 4547,
+        "output_tokens": 1574,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 53.12,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-17",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 54.94863939995412,
+      "ram_mb": 1827.1171875,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 9935,
+        "input_tokens": 9104,
+        "output_tokens": 831,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 54.95,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-18",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 37.7351763000479,
+      "ram_mb": 976.8828125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6236,
+        "input_tokens": 5369,
+        "output_tokens": 867,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 37.74,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    },
+    {
+      "id": "cleanup-19",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [],
+        "warnings": [
+          "None"
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 63.43275140004698,
+      "ram_mb": 967.78125,
+      "vram_mb": 1708.0,
+      "usage": {
+        "used_tokens": 6607,
+        "input_tokens": 4548,
+        "output_tokens": 2059,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 63.43,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b07ddcbf07683c2b6478a58d863b7f276b2719e4b842376ec1da061c8d02ae97",
+      "review": {},
+      "reviewed": false,
+      "quality_pass": false,
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ],
+  "runtime_diagnostics": {
+    "loaded_pack": "gemma4-e2b-q4",
+    "runtime_stderr_tail": [
+      "12.09.392.445 I slot launch_slot_: id  0 | task 16565 | processing task, is_child = 0",
+      "12.15.962.789 I slot print_timing: id  0 | task 16565 | prompt processing, n_tokens =   2049, progress = 0.70, t =   6.57 s / 311.86 tokens per second",
+      "12.22.643.428 I slot print_timing: id  0 | task 16565 | prompt processing, n_tokens =   3119, progress = 0.90, t =  13.25 s / 235.38 tokens per second",
+      "12.22.955.605 I slot print_timing: id  0 | task 16565 | prompt processing, n_tokens =   3631, progress = 1.00, t =  13.56 s / 267.71 tokens per second",
+      "12.28.324.483 I slot print_timing: id  0 | task 16565 | n_gen =    139, tg =  44.69 t/s, tg_3s =  45.01 t/s",
+      "12.31.342.710 I slot print_timing: id  0 | task 16565 | n_gen =    262, tg =  42.74 t/s, tg_3s =  40.75 t/s",
+      "12.34.354.836 I slot print_timing: id  0 | task 16565 | n_gen =    408, tg =  44.63 t/s, tg_3s =  48.47 t/s",
+      "12.37.357.786 I slot print_timing: id  0 | task 16565 | n_gen =    551, tg =  45.37 t/s, tg_3s =  47.62 t/s",
+      "12.40.377.752 I slot print_timing: id  0 | task 16565 | n_gen =    698, tg =  46.03 t/s, tg_3s =  48.68 t/s",
+      "12.43.380.704 I slot print_timing: id  0 | task 16565 | n_gen =    841, tg =  46.30 t/s, tg_3s =  47.62 t/s",
+      "12.44.241.081 I slot print_timing: id  0 | task 16565 | prompt eval time =   15843.73 ms /  3635 tokens (    4.36 ms per token,   229.43 tokens per second)",
+      "12.44.241.098 I slot print_timing: id  0 | task 16565 |        eval time =   19004.77 ms /   867 tokens (   21.95 ms per token,    45.57 tokens per second)",
+      "12.44.241.100 I slot print_timing: id  0 | task 16565 |       total time =   34848.50 ms /  4502 tokens",
+      "12.44.241.102 I slot print_timing: id  0 | task 16565 |    graphs reused =      17224",
+      "12.44.241.608 I slot      release: id  0 | task 16565 | stop processing: n_tokens = 6235, truncated = 0",
+      "12.47.362.528 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, f_sim_best = 0.383 (> 0.100 thold), f_keep = 0.280",
+      "12.47.398.950 I slot launch_slot_: id  0 | task 17437 | processing task, is_child = 0",
+      "12.55.426.457 I slot print_timing: id  0 | task 17437 | prompt processing, n_tokens =   2049, progress = 0.83, t =   8.03 s / 255.25 tokens per second",
+      "12.57.924.897 I slot print_timing: id  0 | task 17437 | prompt processing, n_tokens =   2298, progress = 0.89, t =  10.53 s / 218.32 tokens per second",
+      "12.59.368.708 I slot print_timing: id  0 | task 17437 | prompt processing, n_tokens =   2810, progress = 1.00, t =  11.94 s / 235.44 tokens per second",
+      "13.04.698.628 I slot print_timing: id  0 | task 17437 | n_gen =    112, tg =  36.98 t/s, tg_3s =  37.32 t/s",
+      "13.07.853.881 I slot print_timing: id  0 | task 17437 | n_gen =    232, tg =  42.04 t/s, tg_3s =  38.03 t/s",
+      "13.10.854.249 I slot print_timing: id  0 | task 17437 | n_gen =    373, tg =  40.62 t/s, tg_3s =  46.99 t/s",
+      "13.13.859.383 I slot print_timing: id  0 | task 17437 | n_gen =    508, tg =  41.69 t/s, tg_3s =  44.92 t/s",
+      "13.16.866.067 I slot print_timing: id  0 | task 17437 | n_gen =    658, tg =  43.31 t/s, tg_3s =  49.89 t/s",
+      "13.19.879.689 I slot print_timing: id  0 | task 17437 | n_gen =    799, tg =  43.89 t/s, tg_3s =  46.79 t/s",
+      "13.22.880.996 I slot print_timing: id  0 | task 17437 | n_gen =    948, tg =  44.70 t/s, tg_3s =  49.65 t/s",
+      "13.25.884.602 I slot print_timing: id  0 | task 17437 | n_gen =   1091, tg =  45.06 t/s, tg_3s =  47.61 t/s",
+      "13.28.901.905 I slot print_timing: id  0 | task 17437 | n_gen =   1218, tg =  44.74 t/s, tg_3s =  42.09 t/s",
+      "13.31.906.215 I slot print_timing: id  0 | task 17437 | n_gen =   1371, tg =  45.35 t/s, tg_3s =  50.93 t/s",
+      "13.34.914.144 I slot print_timing: id  0 | task 17437 | n_gen =   1492, tg =  44.89 t/s, tg_3s =  40.23 t/s",
+      "13.37.940.109 I slot print_timing: id  0 | task 17437 | n_gen =   1637, tg =  45.14 t/s, tg_3s =  47.92 t/s",
+      "13.40.946.666 I slot print_timing: id  0 | task 17437 | n_gen =   1758, tg =  44.77 t/s, tg_3s =  40.25 t/s",
+      "13.43.949.931 I slot print_timing: id  0 | task 17437 | n_gen =   1895, tg =  44.83 t/s, tg_3s =  45.62 t/s",
+      "13.46.962.094 I slot print_timing: id  0 | task 17437 | n_gen =   2039, tg =  45.02 t/s, tg_3s =  47.81 t/s",
+      "13.47.556.331 I slot print_timing: id  0 | task 17437 | prompt eval time =   14298.14 ms /  2814 tokens (    5.08 ms per token,   196.81 tokens per second)",
+      "13.47.556.344 I slot print_timing: id  0 | task 17437 |        eval time =   45859.06 ms /  2059 tokens (   22.28 ms per token,    44.88 tokens per second)",
+      "13.47.556.346 I slot print_timing: id  0 | task 17437 |       total time =   60157.20 ms /  4873 tokens",
+      "13.47.556.348 I slot print_timing: id  0 | task 17437 |    graphs reused =      19273",
+      "13.47.556.898 I slot      release: id  0 | task 17437 | stop processing: n_tokens = 6606, truncated = 0"
+    ],
+    "active_requests": 0
+  }
+}

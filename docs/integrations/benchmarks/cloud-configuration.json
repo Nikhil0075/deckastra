@@ -1,0 +1,44 @@
+{
+  "DECKASTRA_VERTEX_PROJECT": "deckastra",
+  "DECKASTRA_VERTEX_LOCATION": "global",
+  "DECKASTRA_ASSISTANT_MAX_COST_USD": "5",
+  "status": "text_qualification_withdrawn",
+  "reason": "Advanced audit exposed insufficient coverage and system-author reviews. New functional qualification and independent review are required.",
+  "remaining_configuration": [
+    "qualification of authoring, planning, critique, translation and vision",
+    "web deployment qualification",
+    "end-to-end ten-slide generation latency measurement",
+    "consistency and asset organization qualification",
+    "grounded research qualification"
+  ],
+  "candidates": [
+    "gemini-3.8-flash",
+    "gemini-3.1-pro-preview"
+  ],
+  "DECKASTRA_VERTEX_PRICES": "{\"gemini-3.8-flash\": {\"input\": 1.5, \"output\": 7.5}, \"gemini-3.1-pro-preview\": {\"input\": 2, \"output\": 12, \"input_long\": 4, \"output_long\": 18}, \"gemini-3.1-flash-image\": {\"input\": 0.5, \"output\": 3, \"image_output\": 60}}",
+  "pricing_source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+  "pricing_checked": "2026-10-03",
+  "pricing_note": "Flash ceiling uses standard rates conservatively, without promotional credits.",
+  "project_number": "524807414967",
+  "billing_enabled": true,
+  "enabled_apis": [
+    "aiplatform.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "texttospeech.googleapis.com",
+    "cloudbilling.googleapis.com"
+  ],
+  "spend": {
+    "ceiling_usd": 5,
+    "used_usd": 4.7505635,
+    "reserved_usd": 0.2013205,
+    "remaining_usd": 0.048115999999999826,
+    "calls": 278
+  },
+  "DECKASTRA_VERTEX_MODELS": "{\"image\":\"gemini-3.1-flash-image\"}",
+  "DECKASTRA_VERTEX_THINKING": "{\"gemini-3.8-flash\": \"LOW\", \"gemini-3.1-pro-preview\": \"LOW\"}",
+  "DECKASTRA_SPEECH": "google",
+  "DECKASTRA_SPEECH_USD_PER_MILLION": "30",
+  "authorized_identity_verified": true,
+  "tracked_provider_operations": 278,
+  "spend_note": "Conservative usage cost estimates, not a billing invoice. Uncertain reservations remain held."
+}

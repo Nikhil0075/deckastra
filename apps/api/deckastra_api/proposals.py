@@ -30,7 +30,7 @@ from . import store
 from .db.models import TransactionRow
 from .ids import new_id
 from .patch import PatchError, apply_patch
-from .risk import assess_risk
+from .risk import assess_risk, RiskAssessment
 from .schema import validate_document
 
 #: Doc 02 §31.6. Long enough to come back after a meeting, short enough that a
@@ -71,6 +71,8 @@ def create_proposal(
     source_ids: list[str] | None = None,
     user_instruction: str | None = None,
     expected_version_id: str | None = None,
+    model_authored: bool = False,
+    review_reason: str | None = None,
 ) -> dict[str, Any]:
     """Record an agent's change, applying it now or parking it for approval.
 
@@ -94,6 +96,12 @@ def create_proposal(
             code="E310",
         )
     assessment = assess_risk(operations)
+    if model_authored and not assessment.requires_approval:
+        assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, "Model-authored changes need semantic review"], behavior="pendingPreview")
+    # Deterministic changes can still undo authored work (an engine replacing a
+    # person's animation); the caller names why, and the person decides.
+    if review_reason and not assessment.requires_approval:
+        assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, review_reason], behavior="pendingPreview")
 
     # Dry run first, always. A proposal that cannot apply is not a proposal, and
     # discovering that at approval time wastes the user's decision.

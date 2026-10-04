@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..contracts import EditPlan
-from ..envelope import Source, envelope
+from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
 
@@ -119,7 +119,7 @@ def edit(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
     user = "\n\n".join(
         [
             "The user asked for this change:",
-            envelope(str(request.get("instruction", "")), Source(id="request", kind="user-brief")),
+            user_brief(str(request.get("instruction", ""))),
             "The selected elements:",
             *described,
         ]

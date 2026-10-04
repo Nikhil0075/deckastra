@@ -1,0 +1,61 @@
+{
+  "speech": {
+    "valid": true,
+    "seconds": 3.043810800067149,
+    "media": {
+      "kind": "audio",
+      "extension": "mp3",
+      "content_type": "audio/mpeg",
+      "duration_ms": 4656,
+      "provider": "google",
+      "voice": "en-US-Chirp3-HD-Kore",
+      "text_hash": "fnv1a64:bf98b665823b6032",
+      "slide_id": "sld_demo",
+      "cue_id": "nar_demo"
+    },
+    "path": "media-demo.mp3",
+    "bytes": 18624,
+    "usage": {
+      "used_tokens": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "structured_requests": [],
+      "max_total_tokens": 30000,
+      "revisions": 0,
+      "max_revisions": 3,
+      "elapsed_seconds": 3.04,
+      "used_cost_usd": 0.0021,
+      "reserved_cost_usd": 0.0,
+      "max_cost_usd": 5,
+      "warnings": []
+    }
+  },
+  "image": {
+    "valid": true,
+    "seconds": 11.117721499991603,
+    "media": {
+      "kind": "image",
+      "content_type": "image/png",
+      "extension": "png",
+      "width": 1408,
+      "height": 768,
+      "provider": "gemini-3.1-flash-image"
+    },
+    "path": "media-demo.png",
+    "bytes": 575157,
+    "usage": {
+      "used_tokens": 1328,
+      "input_tokens": 208,
+      "output_tokens": 1120,
+      "structured_requests": [],
+      "max_total_tokens": 30000,
+      "revisions": 0,
+      "max_revisions": 3,
+      "elapsed_seconds": 11.12,
+      "used_cost_usd": 0.067304,
+      "reserved_cost_usd": 0.0,
+      "max_cost_usd": 5,
+      "warnings": []
+    }
+  }
+}

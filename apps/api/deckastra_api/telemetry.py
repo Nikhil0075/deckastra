@@ -231,6 +231,9 @@ class TracedModelClient:
     def __init__(self, client: Any, run_id: str) -> None:
         self._client, self._run_id = client, run_id
 
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)
+
     def complete(self, request: Any, budget: Any) -> Any:
         with span("agent.model", **{RUN_ID: self._run_id, "task_type": request.task_type}) as current:
             response = self._client.complete(request, budget)

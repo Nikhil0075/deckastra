@@ -9,6 +9,7 @@ import type { PanelVisibility } from "../../lib/panels";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
 import { SaveIndicator } from "./SaveIndicator";
+import { LanguageMenu } from "./LanguageMenu";
 
 export interface AppBarProps {
   editor: EditorApi;
@@ -27,6 +28,8 @@ export interface AppBarProps {
    * 2026-09-26).
    */
   onHistory?: () => void;
+  /** Open the Languages panel (integration plan 01 §3.2). Absent: no switcher. */
+  onManageLanguages?: () => void;
 }
 
 /**
@@ -35,7 +38,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels, onHistory }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels, onHistory, onManageLanguages }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -86,13 +89,14 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
             value: entry.value,
             label: entry.label,
             "data-testid": `mode-${entry.value}`,
-            badge: entry.value === "code" ? <span className="dk-appbar__hint">read-only</span> : undefined,
+            badge: entry.value === "code" ? <span className="dk-appbar__hint">JSON</span> : undefined,
           }))}
         />
       </div>
 
       <div className="dk-appbar__end">
         {extras}
+        {onManageLanguages ? <LanguageMenu editor={editor} onManage={onManageLanguages} /> : null}
         {onHistory ? (
           // An icon, named in its tooltip and accessible name: a labelled button
           // here pushed the bar's end group across the mode switch.

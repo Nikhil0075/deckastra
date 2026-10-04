@@ -1,0 +1,658 @@
+{
+  "provider": "local",
+  "deployment_signature": "6b58b9da0c5579f582b5a60986e9d0980eb5694fc97685d84c1ba3e74fdd41b8",
+  "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+  "tasks": {
+    "cleanup": {
+      "task": "cleanup",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 11.924740300048143,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "authoring": {
+      "task": "authoring",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 99.72371449996717,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "planning": {
+      "task": "planning",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 1.2445734000066295,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "critique": {
+      "task": "critique",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 1.0721134999766946,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "translation": {
+      "task": "translation",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 22.329455800005235,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "narration": {
+      "task": "narration",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 23.47516629996244,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "vision": {
+      "task": "vision",
+      "model_id": "gemma4-e2b-q4",
+      "runtime_id": "b11146-cuda12.4",
+      "hardware_id": "NVIDIA GeForce GTX 1650, 4096 MiB",
+      "dataset_sha256": "390dd0a5ea265442cf64e4550bbc2d8bf3821b29ae871b0617660c179482174d",
+      "metrics": {
+        "samples": 2,
+        "first_attempt_validity": 0.0,
+        "task_success": 0.0,
+        "p95_seconds": 3.216346500092186,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "cleanup-00",
+      "task": "cleanup",
+      "temperature_class": "cold",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (5242 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":5242,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 113.33677769999485,
+      "ram_mb": 2534.46875,
+      "vram_mb": 1588.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 113.34,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "cleanup-01",
+      "task": "cleanup",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (4424 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":4424,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 11.924740300048143,
+      "ram_mb": 2688.78515625,
+      "vram_mb": 1588.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "cleanup",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 11.92,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "authoring-00",
+      "task": "authoring",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (4803 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":4803,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 3.30410120007582,
+      "ram_mb": 2672.09765625,
+      "vram_mb": 1588.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 3.3,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "authoring-01",
+      "task": "authoring",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour response failed the output schema. Return corrected JSON.",
+      "automatic_valid": false,
+      "seconds": 99.72371449996717,
+      "ram_mb": 2767.92578125,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 8192,
+        "input_tokens": 7982,
+        "output_tokens": 210,
+        "structured_requests": [
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          },
+          {
+            "stage": "authoring",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 99.72,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "planning-00",
+      "task": "planning",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (8431 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":8431,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 1.2445734000066295,
+      "ram_mb": 2558.5390625,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "planning",
+            "contract": "StoryPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.24,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "planning-01",
+      "task": "planning",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (9322 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":9322,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 1.0306902999291196,
+      "ram_mb": 2624.0859375,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "planning",
+            "contract": "StoryPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.03,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "critique-00",
+      "task": "critique",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (8533 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":8533,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 1.0721134999766946,
+      "ram_mb": 2614.14453125,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "critique",
+            "contract": "CriticResult",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.07,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "critique-01",
+      "task": "critique",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (9424 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":9424,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 0.907297799945809,
+      "ram_mb": 2616.22265625,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "critique",
+            "contract": "CriticResult",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 0.91,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "translation-00",
+      "task": "translation",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (4822 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":4822,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 5.431201200000942,
+      "ram_mb": 2751.26953125,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "translation",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.43,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "translation-01",
+      "task": "translation",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour response failed the output schema. Return corrected JSON.",
+      "automatic_valid": false,
+      "seconds": 22.329455800005235,
+      "ram_mb": 2751.18359375,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 8192,
+        "input_tokens": 8020,
+        "output_tokens": 172,
+        "structured_requests": [
+          {
+            "stage": "translation",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          },
+          {
+            "stage": "translation",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 22.33,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "narration-00",
+      "task": "narration",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (4813 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":4813,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 4.2981849000789225,
+      "ram_mb": 2744.32421875,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 4.3,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "narration-01",
+      "task": "narration",
+      "temperature_class": "warm",
+      "error": "No validated change was produced after bounded repair. \nYour response failed the output schema. Return corrected JSON.",
+      "automatic_valid": false,
+      "seconds": 23.47516629996244,
+      "ram_mb": 2790.0078125,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 8192,
+        "input_tokens": 8002,
+        "output_tokens": 190,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          },
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "invalid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 23.48,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "vision-00",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (5935 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":5935,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 3.216346500092186,
+      "ram_mb": 2803.25390625,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 3.22,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    },
+    {
+      "id": "vision-01",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "'Gemma 4 E2B QAT Q4' could not constrain its output to this contract ({\"error\":{\"code\":400,\"message\":\"request (5491 tokens) exceeds the available context size (4096 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":5491,\"n_ctx\":4096}}). The schema is beyond what this runtime can turn into a grammar.",
+      "automatic_valid": false,
+      "seconds": 2.4077296999748796,
+      "ram_mb": 2866.4453125,
+      "vram_mb": 1624.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "provider_error"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 2.41,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": null,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification."
+  ]
+}

@@ -19,6 +19,8 @@ is no longer doing what the user asked:
 from __future__ import annotations
 
 import time
+import threading
+from typing import Callable
 from dataclasses import dataclass, field
 
 
@@ -26,13 +28,18 @@ class BudgetExceeded(RuntimeError):
     """A hard ceiling was hit. Carries what the run produced up to that point."""
 
     def __init__(self, budget: str, limit: float, used: float) -> None:
+        amounts = f"US${used:.4f} required; US${limit:.4f} ceiling" if "cost" in budget else f"{used:.0f} of {limit:.0f}"
         super().__init__(
-            f"The {budget} budget is exhausted ({used:.0f} of {limit:.0f}). "
+            f"The {budget} budget is exhausted ({amounts}). "
             "The run stopped here; what it produced so far is kept."
         )
         self.budget = budget
         self.limit = limit
         self.used = used
+
+
+class RunCancelled(RuntimeError):
+    """Cancellation is a stop, never a reason to change providers."""
 
 
 @dataclass
@@ -64,6 +71,14 @@ class RunBudget:
     revisions_by_slide: dict[str, int] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
     started_at: float = field(default_factory=time.monotonic)
+    #: Time spent loading a local model, kept off the run's clock (see `exclude_time`).
+    startup_seconds: float = 0.0
+    cancelled: Callable[[], bool] = field(default=lambda: False, repr=False)
+    max_cost_usd: float | None = None
+    used_cost_usd: float = 0.0
+    reserved_cost_usd: float = 0.0
+    cost_observer: Callable[[str, float, float], None] | None = field(default=None, repr=False)
+    _cost_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     # ------------------------------------------------------------- hard stops
 
@@ -75,9 +90,54 @@ class RunBudget:
             raise BudgetExceeded("token", self.max_total_tokens, self.used_tokens)
 
     def check_clock(self) -> None:
+        if self.cancelled():
+            raise RunCancelled("The run was cancelled; completed changes and usage are retained.")
         elapsed = time.monotonic() - self.started_at
         if elapsed > self.max_wall_clock_seconds:
             raise BudgetExceeded("time", self.max_wall_clock_seconds, elapsed)
+
+    def check_cancelled(self) -> None:
+        """Cancellation without the clock, for waits that have their own bound."""
+        if self.cancelled():
+            raise RunCancelled("The run was cancelled; completed changes and usage are retained.")
+
+    def exclude_time(self, seconds: float) -> None:
+        """Keep a local model's start-up off the run's clock.
+
+        Loading weights is the machine's cost, not the job's, and it has its own
+        bound (the supervisor's start-up timeout). Counting it here meant a cold
+        start spent most of a one-slide job's time before the model saw the
+        slide, and the job then timed out on work that had barely begun.
+        """
+        if seconds > 0:
+            self.started_at += seconds
+            self.startup_seconds += seconds
+
+    def reserve_cost(self, operation_id: str, maximum: float) -> None:
+        """Unknown paid outcomes retain their reservation, preventing blind retries."""
+        import math
+        self.check_clock()
+        if not math.isfinite(maximum) or maximum < 0:
+            raise ValueError("A reservation must be a finite nonnegative amount.")
+        with self._cost_lock:
+            total = self.used_cost_usd + self.reserved_cost_usd + maximum
+            if self.max_cost_usd is None or total > self.max_cost_usd:
+                raise BudgetExceeded("cost", self.max_cost_usd or 0, total)
+            if self.cost_observer:
+                self.cost_observer(operation_id, maximum, -1)
+            self.reserved_cost_usd += maximum
+
+    def reconcile_cost(self, operation_id: str, reserved: float, actual: float) -> None:
+        import math
+        if not math.isfinite(actual) or actual < 0:
+            raise ValueError("Reported cost must be finite and nonnegative.")
+        with self._cost_lock:
+            if self.cost_observer:
+                self.cost_observer(operation_id, reserved, actual)
+            self.reserved_cost_usd = max(0.0, self.reserved_cost_usd - reserved)
+            self.used_cost_usd += actual
+        if self.max_cost_usd is not None and self.used_cost_usd + self.reserved_cost_usd > self.max_cost_usd:
+            raise BudgetExceeded("cost", self.max_cost_usd, self.used_cost_usd + self.reserved_cost_usd)
 
     # ---------------------------------------------------------- degradations
 
@@ -135,5 +195,9 @@ class RunBudget:
             "revisions": self.revisions_this_run,
             "max_revisions": self.max_revisions_per_run,
             "elapsed_seconds": round(self.elapsed_seconds, 2),
+            "startup_seconds": round(self.startup_seconds, 2),
+            "used_cost_usd": self.used_cost_usd,
+            "reserved_cost_usd": self.reserved_cost_usd,
+            "max_cost_usd": self.max_cost_usd,
             "warnings": list(self.warnings),
         }

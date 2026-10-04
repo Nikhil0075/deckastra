@@ -20,7 +20,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
@@ -369,6 +369,16 @@ class AuthorOperation(BaseModel):
     path: str = Field(description="An id-addressed JSON Pointer, e.g. /slides/id:sld_x/elements/id:el_y/transform/x")
     value_json: str = Field(default="", description="The value for add/replace, as JSON text. Empty for remove/move.")
     from_path: str = Field(default="", description="The source path, for move. Empty otherwise.")
+
+    @model_validator(mode="after")
+    def valid_value(self):
+        import json
+        if self.op in {"add", "replace"}:
+            try:
+                json.loads(self.value_json, parse_constant=lambda value: (_ for _ in ()).throw(ValueError("Non-finite JSON")))
+            except (ValueError, TypeError) as exc:
+                raise ValueError("value_json must contain a complete JSON value") from exc
+        return self
 
 
 class AuthorPlan(BaseModel):

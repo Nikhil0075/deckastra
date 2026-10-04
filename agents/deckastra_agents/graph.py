@@ -150,7 +150,7 @@ def _after_orchestrate(state: PresentationAgentState) -> str:
         return END
 
     stages = _stages(state)
-    if "research" in stages:
+    if "research" in stages or state.get("source_inputs"):
         return RESEARCH
     if "story" in stages:
         return STORY

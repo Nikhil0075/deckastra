@@ -1,6 +1,9 @@
 import type { SceneNode, SlideScene } from "./scene";
 import { CONTRAST_LARGE, CONTRAST_NORMAL, LARGE_TEXT_BOLD_PX, LARGE_TEXT_PX } from "./accessibility";
 import { contrastRatio, parseColor, type SemanticIssue } from "./semantic";
+import { BUNDLED_FONTS } from "./font-library";
+import { scriptsIn } from "./script-rules";
+import type { Script } from "@deckastra/presentation-schema";
 
 /**
  * The layout half of the editor's Design Check (design review, 2026-09-27).
@@ -27,7 +30,8 @@ export interface LayoutIssue extends SemanticIssue {
     | { kind: "smallText"; size: number; minimum: number }
     | { kind: "contrast"; ratio: number; required: number; behind: string; foreground: string; target: "text" | "label" | "tableHeader" | "tableBody" | "chart" }
     | { kind: "contrastUnknown"; reason: "picture" }
-    | { kind: "diagram"; coverage: number; labelSize: number; used: { x: number; y: number; width: number; height: number } };
+    | { kind: "diagram"; coverage: number; labelSize: number; used: { x: number; y: number; width: number; height: number } }
+    | { kind: "glyphs"; script: Script; families: string[] };
 }
 
 export interface LayoutCheckOptions {
@@ -131,6 +135,35 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
   const pictureReported = new Set<string>();
   for (const node of all) {
     const payload = node.renderPayload;
+
+    // --- glyphs no shipped face can draw (W325), integration plan 01 §3.9.
+    // A browser falls back per glyph to whatever the machine has, so Hindi
+    // typed into an Inter box looks fine on the author's laptop and draws as
+    // boxes on the export host, which has only the faces this build ships.
+    const runs: { text: string; family?: string }[] =
+      payload.kind === "text"
+        ? [{ text: blocksText(payload.blocks), family: payload.typography.fontFamily }]
+        : payload.kind === "shape" && payload.label
+          ? [{ text: blocksText(payload.label), family: payload.labelTypography?.fontFamily }]
+          : [];
+    for (const run of runs) {
+      for (const script of scriptsIn(run.text)) {
+        const faces = SHIPPED_FACES.get(script) ?? [];
+        const stack = (run.family ?? "").toLowerCase();
+        if (faces.some((face) => stack.includes(face.toLowerCase()))) continue;
+        issues.push({
+          code: "W325",
+          severity: "warning",
+          slideId: slide.slideId,
+          elementId: node.id,
+          message: faces.length
+            ? `This text is in ${scriptName(script)}, and its font does not draw it. It may look right here and print as empty boxes elsewhere.`
+            : `This text is in ${scriptName(script)}, and this build ships no face that draws it. Install the language pack, or the text will depend on the machine.`,
+          suggestedFix: faces.length ? `Add the language to the deck, or choose ${faces[0]!.replace(/ Variable$/, "")}.` : "Install the language pack for this script.",
+          detail: { kind: "glyphs", script, families: faces.map((face) => face.replace(/ Variable$/, "")) },
+        });
+      }
+    }
 
     // --- small text (W216)
     if (payload.kind === "text") {
@@ -280,6 +313,26 @@ export function readableColor(background: string, candidates: readonly string[])
 }
 
 // ------------------------------------------------------------------ helpers
+
+/** The faces this build ships that draw each script, by registered name. */
+const SHIPPED_FACES = (() => {
+  const map = new Map<Script, string[]>();
+  for (const font of BUNDLED_FONTS) {
+    for (const subset of font.subsets ?? []) {
+      const script = subset as Script;
+      map.set(script, [...(map.get(script) ?? []), font.face]);
+    }
+  }
+  return map;
+})();
+
+function scriptName(script: Script): string {
+  return script.charAt(0).toUpperCase() + script.slice(1);
+}
+
+function blocksText(blocks: ReadonlyArray<{ spans: ReadonlyArray<{ text: string }> }>): string {
+  return blocks.map((block) => block.spans.map((span) => span.text).join("")).join("\n");
+}
 
 function flatten(nodes: SceneNode[]): SceneNode[] {
   const out: SceneNode[] = [];

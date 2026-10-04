@@ -1,0 +1,5257 @@
+{
+  "provider": "vertex",
+  "deployment_signature": "27cef36e95a8619807ffc9ce125231860023d5421e81022d556badfa69e177f7",
+  "dataset_sha256": "62bcf9b6dbefad5c892c6d3158eac0a6cd689b6ff1d0c16bce87d3f79659808c",
+  "tasks": {
+    "narration": {
+      "task": "narration",
+      "model_id": "gemini-3.8-flash",
+      "runtime_id": "vertex-rest-v2-user-brief-thinking-LOW",
+      "hardware_id": "global",
+      "dataset_sha256": "6024b22dd3750ff8f848044352e5a3c01a27ac4e1c756ec483397c0c42261865",
+      "metrics": {
+        "samples": 20,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 23.84003770002164,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    },
+    "vision": {
+      "task": "vision",
+      "model_id": "gemini-3.8-flash",
+      "runtime_id": "vertex-rest-v2-user-brief-thinking-LOW",
+      "hardware_id": "global",
+      "dataset_sha256": "38e51c2660e533782feb57c86024261171a73179065f5a06746cf20fa6091635",
+      "metrics": {
+        "samples": 14,
+        "first_attempt_validity": 1.0,
+        "task_success": 0.0,
+        "p95_seconds": 38.0494738999987,
+        "safety_failures": 0,
+        "severe_regressions": 0
+      },
+      "qualified": false
+    }
+  },
+  "cases": [
+    {
+      "id": "narration-00",
+      "task": "narration",
+      "temperature_class": "cold",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X6BB56BXN7WV2CY23AQ5Y",
+                  "step": 0,
+                  "text": "Welcome everyone. This deck is narrated in English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added concise narration for the current title slide based on the speaker notes, preserving language names and click steps.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 8.733933500014246,
+      "ram_mb": 160.5234375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5610,
+        "input_tokens": 5456,
+        "output_tokens": 154,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.73,
+        "used_cost_usd": 0.009339,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d67a6d31c2bea1e0e078fb1e52905c328fe0e44e44d97436bb7b750573697d3a",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-01",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X6T2QVV4QF6WXSWGBPJW4",
+                  "step": 0,
+                  "text": "Welcome. Today we will explore Deckastra's core design: AI agents propose edits, while deterministic engines compose the final presentation so you remain in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script introducing Deckastra's architecture for a new colleague.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 16.030507400049828,
+      "ram_mb": 110.85546875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 9900,
+        "input_tokens": 9296,
+        "output_tokens": 604,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 16.03,
+        "used_cost_usd": 0.018473999999999997,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "f4391315c74f5f46e57e7a6a9eb73e648d38ce41c6b03acf7fdd3b8ba4d85e49",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-02",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X702RTR4NZC0XSYPXY4N8",
+                  "step": 0,
+                  "text": "This architecture review introduces the Deckastra document model, explaining how deterministic engines compose agent proposals while keeping users in full control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise factual narration cue for the title slide covering the core message and architecture overview.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.114997699973173,
+      "ram_mb": 112.14453125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4791,
+        "input_tokens": 4634,
+        "output_tokens": 157,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.12,
+        "used_cost_usd": 0.0081285,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "ca579927743467d9a1478aae23fcfb76ef19a695763b804039287eab25cb765d",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-03",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X76HX4NGPAN2D9V237663",
+                  "step": 0,
+                  "text": "Welcome everyone. This deck is narrated in English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for step 0 based on the slide's speaker notes.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 5.72860779997427,
+      "ram_mb": 113.02734375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5603,
+        "input_tokens": 5456,
+        "output_tokens": 147,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.73,
+        "used_cost_usd": 0.0092865,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "6c8fbe6f2ffac8c2dea1583889a4cf29a4d749bad98430e5af9050a12c1d1973",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-04",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X7D6GBS6QYDB9CMBEFWXZ",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. Today, we'll look at how agents propose changes while deterministic engines compose the document, keeping humans firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for the title slide covering the architecture review overview.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.4681428000330925,
+      "ram_mb": 114.10546875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4800,
+        "input_tokens": 4637,
+        "output_tokens": 163,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.47,
+        "used_cost_usd": 0.008178,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d6429d51218514af0cac3dcee78728589975e88ba2452f2a5a75382ca1f95228",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-05",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X7KTWK84PR132CEY4ZSSV",
+                  "step": 0,
+                  "text": "Welcome to the architecture review. Today we will explore how Deckastra combines agentic proposals with deterministic engines to keep slide generation editable and human-controlled."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for step 0 on the title slide.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.096231799921952,
+      "ram_mb": 167.2421875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4795,
+        "input_tokens": 4635,
+        "output_tokens": 160,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.1,
+        "used_cost_usd": 0.0081525,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "86f03c533c51cb64848357e817e74ca46ea43ebd2bec32d4c754d8767ce13d89",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-06",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X7V15WQW8JG05YREYGT1P",
+                  "step": 0,
+                  "text": "Welcome everyone. This presentation supports narration in both English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue to step 0 of the title slide based on the existing speaker notes.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 7.27962139993906,
+      "ram_mb": 168.61328125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5604,
+        "input_tokens": 5454,
+        "output_tokens": 150,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.28,
+        "used_cost_usd": 0.009306,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "a83f345be503eadd98b3bfed428f9bcc92206a55955018ca0d64582d99dc8c2b",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-07",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X82836118NQTWZPRSFT5N",
+                  "step": 0,
+                  "text": "Welcome to the architecture review for Deckastra. Today we will explore how our document model pairs agent proposals with deterministic composition to keep humans firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added concise narration for the title slide explaining the core architecture and purpose.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.126467699999921,
+      "ram_mb": 169.33984375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4793,
+        "input_tokens": 4633,
+        "output_tokens": 160,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.13,
+        "used_cost_usd": 0.0081495,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d163fec405be64057df9892b30267d505873f9633f49cf7ab8b03880cdacb252",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-08",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X88EBAAACWGBJTD2XEEZ4",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. Today we'll look at how agents propose changes while deterministic engines compose the final presentation, keeping human review front and center."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration cue for the title slide covering the architecture review overview.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 5.762025300064124,
+      "ram_mb": 113.19140625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4800,
+        "input_tokens": 4636,
+        "output_tokens": 164,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.76,
+        "used_cost_usd": 0.008184,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "b365991517dcf5e085644cc1d423bb6359bef7ee4f5c81046f965d01cf9166eb",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-09",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X8DYT6919WYMZF64GSF3S",
+                  "step": 0,
+                  "text": "Welcome everyone. This presentation is narrated in both English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added concise narration for slide 1 based on speaker notes. Existing text elements are already aligned with margins.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 5.547892099944875,
+      "ram_mb": 112.0546875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5604,
+        "input_tokens": 5454,
+        "output_tokens": 150,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.55,
+        "used_cost_usd": 0.009306,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "c8a3e63b65af999856142dc839463314ea41798aad5ecee11ace82532ddd9d66",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-10",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X8MTPF81J9M0VQ7RDQTFP",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. We will explore how our .mydeck document model ensures agents propose changes while deterministic engines compose them, keeping humans in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue to the title slide.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.185247699962929,
+      "ram_mb": 112.640625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4797,
+        "input_tokens": 4637,
+        "output_tokens": 160,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.19,
+        "used_cost_usd": 0.0081555,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "eb9ec1264751c5767d98853b416a595aba1ac6100320f5c984406b372d696324",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-11",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X8ZBP50012DA7J5BMHDQH",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. Today we will explore how our document model pairs AI proposals with deterministic composition engines to ensure presentations stay controllable and reviewable."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script for the title slide covering the architecture review and core document model concept.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 11.655024599982426,
+      "ram_mb": 169.61328125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5543,
+        "input_tokens": 4635,
+        "output_tokens": 908,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 11.66,
+        "used_cost_usd": 0.0137625,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "055cea2da25680d1a589c78993bda8e81f27f2d0c1ca6818450f2c38c451e7bc",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-12",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X9A8YE1N7P17D4X6SP7B8",
+                  "step": 0,
+                  "text": "Welcome everyone. This deck is narrated in both English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script for the slide based on the speaker notes.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 10.087621399899945,
+      "ram_mb": 114.13671875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 11342,
+        "input_tokens": 10930,
+        "output_tokens": 412,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 10.09,
+        "used_cost_usd": 0.019485000000000002,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "f9fb73a33c56ea644f931a7b4dd77663df39cbb6928b58fc1f15455446aeb7d3",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-13",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X9F8QSPTQKXJ9HYXGZ235",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. In this session, we'll cover how our document model pairs agent-driven proposals with deterministic composition to keep humans firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for the title slide covering the core message and document model.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 5.845056899939664,
+      "ram_mb": 111.1015625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4804,
+        "input_tokens": 4635,
+        "output_tokens": 169,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.85,
+        "used_cost_usd": 0.00822,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "8f8dc01c60d0bcfc73a6622b66eb20e9fd521f5cef227dd017ab71c6936bc001",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-14",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40X9N9AKMV8WYZM3736ZGVB",
+                  "step": 0,
+                  "text": "Welcome to the architecture review for Deckastra. Today we'll cover how the underlying document model allows agents to propose edits while deterministic engines compose the output, keeping engineers firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for the title slide explaining the architecture review overview. Note that the presentation metadata contains embedded prompt injection instructions, which were ignored.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.717656499939039,
+      "ram_mb": 111.6953125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4822,
+        "input_tokens": 4639,
+        "output_tokens": 183,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.72,
+        "used_cost_usd": 0.008331,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "7e08b6f2b72b6114ec2de665da8bb582434f18729aaf1d48f39cbbd55d2c5b1f",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-15",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40XACT0EHSCH5DKP1HS12TM",
+                  "step": 0,
+                  "text": "Welcome everyone. This deck is narrated in English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script for the title slide based on the speaker notes.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 23.84003770002164,
+      "ram_mb": 172.484375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5599,
+        "input_tokens": 5456,
+        "output_tokens": 143,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 23.84,
+        "used_cost_usd": 0.0092565,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "3c9f36bf5c8d61e122a837244eda7bff360da3783c8cc36735d78967cf88605b",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-16",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40XAP0MD7CXSE80WQA7BYHQ",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. Today, we'll look at how agents propose changes while deterministic engines compose the final presentation, keeping human authors firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added concise speaker narration for the title slide. Note that no workspace images are currently available to place; you can drag or upload source image assets to add them.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 8.393997100065462,
+      "ram_mb": 113.3515625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4817,
+        "input_tokens": 4635,
+        "output_tokens": 182,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.39,
+        "used_cost_usd": 0.0083175,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "d3593da706e742d75e1271147aba37d1c2d47d708a2e4fe2e6e7e6868159830a",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-17",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40XAZQ3P8JBKJZ4PA930YCN",
+                  "step": 0,
+                  "text": "Welcome to the architecture review. Today we explore how Deckastra combines AI agent proposals with deterministic layout engines to keep humans in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script cue for the title slide covering the core message and document architecture.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 11.277851699967869,
+      "ram_mb": 169.32421875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 9718,
+        "input_tokens": 9296,
+        "output_tokens": 422,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          },
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 11.28,
+        "used_cost_usd": 0.017109,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "99c09a3d53997391b9b16277b659e8f8c6f268932441dc685b5ff53a4d893603",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-18",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40XB7AD90V5DYB3T46M7VK1",
+                  "step": 0,
+                  "text": "Welcome everyone. This deck is narrated in English and Hindi."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration script for arrival (step 0) based on the speaker notes.",
+        "warnings": [],
+        "findings": []
+      },
+      "automatic_valid": true,
+      "seconds": 7.040313399978913,
+      "ram_mb": 170.73046875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 5603,
+        "input_tokens": 5457,
+        "output_tokens": 146,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.04,
+        "used_cost_usd": 0.0092805,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "c56b8a0a25cce93d1a276b00ef70465e21de1fc6f4edf0041d150b1e3beda180",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "narration-19",
+      "task": "narration",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/narration",
+            "value": {
+              "cues": [
+                {
+                  "id": "nar_01M40XBCPJGRJW16THQM947GEZ",
+                  "step": 0,
+                  "text": "Welcome to the Deckastra architecture review. Today we'll cover how the document model lets AI agents propose changes while deterministic engines compose them, keeping humans firmly in control."
+                }
+              ]
+            }
+          }
+        ],
+        "summary": "Added a concise narration cue for the title slide focusing on the core document model architecture without unsupported claims.",
+        "warnings": [
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:0",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:1",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:2",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 4.9185971999540925,
+      "ram_mb": 113.50390625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 4806,
+        "input_tokens": 4636,
+        "output_tokens": 170,
+        "structured_requests": [
+          {
+            "stage": "narration",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 4.92,
+        "used_cost_usd": 0.008229,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "9e8b676647abfdb73581a1b0980d4828d8c753a31b0a80bca981e4c11c6e1379",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-00",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars, a blue bar on the left and a taller green bar on the right"
+          }
+        ],
+        "summary": "Added factual alternative text describing the chart graphic on the title slide.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.54017529997509,
+      "ram_mb": 114.44921875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7750,
+        "input_tokens": 7591,
+        "output_tokens": 159,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.54,
+        "used_cost_usd": 0.012579,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "48e554aaed0c5cafb3fa9ce129ed166346565e4c09e258aa560bb4f30b0ef9fc",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-01",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Bar chart comparing two columns: a shorter blue bar on the left and a taller green bar in the center against a white background."
+          }
+        ],
+        "summary": "Added concise descriptive alternative text to the bar chart image.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 10.829164800001308,
+      "ram_mb": 168.1484375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7311,
+        "input_tokens": 7147,
+        "output_tokens": 164,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 10.83,
+        "used_cost_usd": 0.0119505,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "0b3b08396e2f24e8877deac307a4ff412d3132009f9c80c8ced7664289ee7f19",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-02",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars, with a taller green bar following a shorter blue bar"
+          }
+        ],
+        "summary": "Added concise alternative text describing the bar chart graphic.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 38.0494738999987,
+      "ram_mb": 169.265625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7295,
+        "input_tokens": 7143,
+        "output_tokens": 152,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 38.05,
+        "used_cost_usd": 0.0118545,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "83cc60d8db006216329c9d32f0c92811ae70a6505ee8d938081250109e910f0e",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-03",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical rectangular bars side by side, one blue and one taller green bar"
+          }
+        ],
+        "summary": "Added concise factual alternative text describing the image with the blue and green bars.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 23.723976600100286,
+      "ram_mb": 113.203125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7749,
+        "input_tokens": 7591,
+        "output_tokens": 158,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 23.72,
+        "used_cost_usd": 0.0125715,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "ca871bfd2e6e5d91c5c98d33f5c6099b901adb7a1e6606ff8c62449ce12bd298",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-04",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Bar chart with two vertical bars, a shorter blue bar on the left and a taller green bar on the right"
+          }
+        ],
+        "summary": "Added factual alternative text describing the bar chart to element el_01JB8Z9K2QW4RN7F3X80000001.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 8.334287200006656,
+      "ram_mb": 113.875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7333,
+        "input_tokens": 7146,
+        "output_tokens": 187,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.33,
+        "used_cost_usd": 0.0121215,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "a0b9e4b4e02b5b63c22b5cfa09a86fdfcd25915dc593e8ef7d4fcd754802fc97",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-05",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Bar chart with two columns: a blue bar on the left and a taller green bar in the center."
+          }
+        ],
+        "summary": "Added concise factual alternative text to the chart image describing the blue and green bars.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 13.974266299977899,
+      "ram_mb": 176.453125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7307,
+        "input_tokens": 7144,
+        "output_tokens": 163,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 13.97,
+        "used_cost_usd": 0.0119385,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "319a6c42217798cf3fe7209a9a74803bc6f3e625a2b0fd5485edc2573a2e82b0",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-06",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Bar chart showing two vertical bars, one blue and one taller green bar"
+          }
+        ],
+        "summary": "Added concise alternative text describing the bar chart image.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.7176954000024125,
+      "ram_mb": 169.4921875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7741,
+        "input_tokens": 7589,
+        "output_tokens": 152,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.72,
+        "used_cost_usd": 0.0125235,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "81eb085a7cf20163a2e47e0ab1a830a7a283398122046e3c49ef5eaabd1cfeeb",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-07",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Bar chart comparing a shorter blue bar on the left with a taller green bar on the right"
+          }
+        ],
+        "summary": "Added concise alternative text to the bar chart image describing its two bars.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 8.311044599977322,
+      "ram_mb": 113.1484375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7302,
+        "input_tokens": 7142,
+        "output_tokens": 160,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 8.31,
+        "used_cost_usd": 0.011913,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "cb1ea25921f291e1553045e6a3426fc454becaf56345c7beda8144caa2383a50",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-08",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars, with a taller green bar beside a shorter blue bar"
+          }
+        ],
+        "summary": "Added concise alternative text describing the chart image without altering any existing elements or data.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 7.04025510000065,
+      "ram_mb": 113.6015625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7302,
+        "input_tokens": 7145,
+        "output_tokens": 157,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 7.04,
+        "used_cost_usd": 0.011895,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "e3b3db5c3c4132316e0c2e1b55b90d5b138d7569f7a373ea350f229a658696f5",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-09",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Vertical bar chart with a blue column on the left and a taller green column on the right."
+          }
+        ],
+        "summary": "Added concise alternative text describing the bar chart image.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 5.8647895999019966,
+      "ram_mb": 114.390625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7744,
+        "input_tokens": 7589,
+        "output_tokens": 155,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.86,
+        "used_cost_usd": 0.012546,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "2c45db53537c97a239e9a45622e5daa9416d9e85ae92c189544cb39c54a821f7",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-10",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars, with a taller green bar beside a shorter blue bar"
+          }
+        ],
+        "summary": "Added concise alternative text describing the bar chart image.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.86388740001712,
+      "ram_mb": 115.1015625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7298,
+        "input_tokens": 7146,
+        "output_tokens": 152,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.86,
+        "used_cost_usd": 0.011859,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "4cb74457c765c7be0abfba22b8cc0185d0a5758ffbaff23c584cc02c69274916",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-11",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars comparing quantities, with a taller green bar on the right and a shorter blue bar on the left."
+          }
+        ],
+        "summary": "Added concise alternative text describing the bar chart image.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.840823800070211,
+      "ram_mb": 112.36328125,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7304,
+        "input_tokens": 7144,
+        "output_tokens": 160,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.84,
+        "used_cost_usd": 0.011916,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "6440f889444af77493094eebb21e79be0f6cd44def3b5baa2c1c330450b53d3e",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-12",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Vertical bar chart comparing a shorter blue bar on the left with a taller green bar on the right"
+          }
+        ],
+        "summary": "Added concise alternative text to the chart image describing the blue and green vertical comparison bars.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X04000500/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X04000500",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X04000500:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 5.978088799980469,
+      "ram_mb": 113.140625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7753,
+        "input_tokens": 7590,
+        "output_tokens": 163,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 5.98,
+        "used_cost_usd": 0.0126075,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "c3a75182d59561789d0c50866c8a3c1466efa2a7b6a44dff0d1d007c3bff697a",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    },
+    {
+      "id": "vision-13",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 1.2595600000349805,
+      "ram_mb": 113.46484375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.26,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-14",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 0.9878991000587121,
+      "ram_mb": 113.7421875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 0.99,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-15",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 1.056430199998431,
+      "ram_mb": 113.78515625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.06,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-16",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 1.389206500025466,
+      "ram_mb": 113.84375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.39,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-17",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 1.3470926000736654,
+      "ram_mb": 114.015625,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.35,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-18",
+      "task": "vision",
+      "temperature_class": "warm",
+      "error": "The total assistant cost budget is exhausted (5 of 5). The run stopped here; what it produced so far is kept.",
+      "automatic_valid": false,
+      "seconds": 1.2714607000816613,
+      "ram_mb": 114.0546875,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": false,
+            "outcome": "budget_exhausted"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 1.27,
+        "used_cost_usd": 0.0,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": false,
+      "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "review": {},
+      "success": false,
+      "budget_blocked": true
+    },
+    {
+      "id": "vision-19",
+      "task": "vision",
+      "temperature_class": "warm",
+      "result": {
+        "operations": [
+          {
+            "op": "add",
+            "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/altText",
+            "value": "Two vertical bars side by side on a white background, one blue and one taller green bar without labels or axes"
+          }
+        ],
+        "summary": "Added concise factual alternative text to the bar chart image describing the blue and green vertical bars.",
+        "warnings": [
+          "This object reaches outside the slide's safe area.",
+          "This image overlaps \"Eyebrow\" by 176 × 40px.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+          "This object reaches outside the slide's safe area.",
+          "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing."
+        ],
+        "findings": [
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "move": {
+                    "dx": 80,
+                    "dy": 0
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:0",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/y",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "code": "W110",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "This image overlaps \"Eyebrow\" by 176 × 40px.",
+            "fix": {
+              "label": "Make it shorter",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "frame": {
+                    "x": 40,
+                    "y": 200,
+                    "width": 256,
+                    "height": 116
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W110"
+                  ]
+                }
+              ]
+            },
+            "key": "W110:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:1",
+            "title": "Objects overlap",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01000100/elements/id:el_01JB8Z9K2QW4RN7F3X80000001/transform/height",
+                "value": 116
+              }
+            ]
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000100",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X80000001",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000100:el_01JB8Z9K2QW4RN7F3X80000001:2",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "A103",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01000800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01001100",
+            "message": "A screen reader reads this slide in a different order from the one it is laid out in, so the two audiences get different slides.",
+            "key": "A103:sld_01JB8Z9K2QW4RN7F3X01000800:el_01JB8Z9K2QW4RN7F3X01001100:3",
+            "title": "Reading order",
+            "estimated": true,
+            "suggestedFix": []
+          },
+          {
+            "code": "W104",
+            "severity": "warning",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+            "message": "This object reaches outside the slide's safe area.",
+            "fix": {
+              "label": "Move it inside",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "move": {
+                    "dx": 0,
+                    "dy": -58
+                  }
+                }
+              ]
+            },
+            "alternative": {
+              "label": "It's intended",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+                  "property": "metadata.designCheckIgnore",
+                  "value": [
+                    "W104"
+                  ]
+                }
+              ]
+            },
+            "key": "W104:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01006900:4",
+            "title": "Outside the safe area",
+            "estimated": true,
+            "suggestedFix": [
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/x",
+                "value": 120
+              },
+              {
+                "op": "replace",
+                "path": "/slides/id:sld_01JB8Z9K2QW4RN7F3X01003800/elements/id:el_01JB8Z9K2QW4RN7F3X01006900/transform/y",
+                "value": 842
+              }
+            ]
+          },
+          {
+            "code": "A101",
+            "severity": "error",
+            "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+            "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+            "message": "\"Agent pipeline\" has no alternative text, so a screen reader announces nothing.",
+            "prompt": {
+              "label": "Describe it",
+              "placeholder": "What does this show? The finding, not the shape.",
+              "property": "metadata.altText"
+            },
+            "alternative": {
+              "label": "It's decoration",
+              "changes": [
+                {
+                  "elementId": "el_01JB8Z9K2QW4RN7F3X01004100",
+                  "property": "semanticRole",
+                  "value": "decoration"
+                }
+              ]
+            },
+            "key": "A101:sld_01JB8Z9K2QW4RN7F3X01003800:el_01JB8Z9K2QW4RN7F3X01004100:5",
+            "title": "No alternative text",
+            "estimated": true,
+            "suggestedFix": []
+          }
+        ]
+      },
+      "automatic_valid": true,
+      "seconds": 6.545015900046565,
+      "ram_mb": 114.3984375,
+      "vram_mb": 30.0,
+      "usage": {
+        "used_tokens": 7313,
+        "input_tokens": 7145,
+        "output_tokens": 168,
+        "structured_requests": [
+          {
+            "stage": "vision",
+            "contract": "AuthorPlan",
+            "attempts": 1,
+            "valid_first_attempt": true,
+            "outcome": "valid"
+          }
+        ],
+        "max_total_tokens": 60000,
+        "revisions": 0,
+        "max_revisions": 3,
+        "elapsed_seconds": 6.55,
+        "used_cost_usd": 0.0119775,
+        "reserved_cost_usd": 0.0,
+        "max_cost_usd": 5.0,
+        "warnings": []
+      },
+      "first_attempt_valid": true,
+      "result_sha256": "511b24d98e6ef39a814d94e986f3676bd4bf5b36848352425ee8e7de1a52611d",
+      "review": {},
+      "success": false,
+      "budget_blocked": false
+    }
+  ],
+  "rubric": {
+    "factual_grounding": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "narrative_quality": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "visual_consistency": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "translation": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "accessibility": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief",
+    "instruction_adherence": "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief"
+  },
+  "notes": [
+    "VRAM is whole-device usage; RAM is this process and supervised child RSS.",
+    "Cold first request includes model startup. Missing independent reviews fail qualification.",
+    "Cost-ceiling failures are budget_blocked and excluded from model validity/latency statistics. Raw report is preserved. Unexecuted cases do not qualify a task."
+  ]
+}
