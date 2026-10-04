@@ -187,10 +187,6 @@ function registerHandlers(): void {
     }
   });
 
-  // The home's "Open .mydeck file": the same path as File › Open, dialog and
-  // all. Nothing from the page is read; the person chooses the file.
-  handleFromWindow(IPC.openDeckFile, () => openDeckFile());
-
   handleFromWindow(
     IPC.openPresentation,
     async (_window, payload): Promise<CurrentPresentation> => {
