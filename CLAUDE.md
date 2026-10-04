@@ -3045,8 +3045,10 @@ rendering is untouched: none of this reaches `SlideView` in export mode.
 actions and the keyboard. The layout is in `components/shell/` (AppBar,
 ToolRail, SlideStrip, CanvasStage, ModePanels) and `components/inspector/`.
 Mode (Design/AI/Motion/Code) and zoom are editor state (`lib/editor-layout.ts`)
-and never reach the document. Code mode is read-only canonical JSON, because an
-editable view would be a second mutation path. Rules that are easy to undo:
+and never reach the document. Code mode edits canonical JSON, but remains a
+second view rather than a second mutation path: strict JSON is parsed, locked
+identity fields are checked, the complete candidate is validated and an
+id-addressed patch is handed to `editor.apply`. Rules that are easy to undo:
 
 - **The desktop harness finds controls by `data-testid`, not text.** The rail
   is icons, so exact-text lookups for "Rect", "Undo" or "+ Slide" find nothing.
@@ -3460,10 +3462,15 @@ focused control, and it beat the palette's blue because both are `:where()` and
 it came later. It now excludes anything inside a `dk-` element, and the
 palette's rule covers unclassed descendants too (a native checkbox in a panel).
 
-*Code mode* (`ModePanels.CodePanel`) shows the canonical JSON of the selection
-or, with Show: Slide, the whole slide. Still read-only: an editable JSON view
-would be a second mutation path. Copy writes exactly what is shown and says
-"Could not copy" when the clipboard refuses, rather than looking like it worked.
+*Code mode* (`shell/CodePanel`) edits canonical JSON in exactly two scopes: the
+whole deck and the current slide. It is never a second mutation path: text is
+strictly parsed, security-limited, checked for locked identity/asset fields,
+validated as a complete document and diffed into id-addressed operations before
+one `editor.apply` call. Apply is explicit (Ctrl/Cmd+Enter), is one undo step,
+and a zero-change round trip emits no transaction. Dirty drafts are journalled;
+if the deck changes underneath one, Apply pauses until a three-way merge or a
+discard. Copy is available only for a clean canonical view and reports clipboard
+failure rather than looking successful.
 
 *The application menu* (`apps/desktop/src/main/menu.ts`): File (New deck,
 Generate, All decks), Edit (Undo, Redo, Version history), View (modes, Theme,
@@ -4047,6 +4054,153 @@ a weak design assistant. Each part below is one commit. Concepts are in
   different migrations" when `dist/build-manifest.json` is left over from an
   earlier packaging. After adding a migration, run `npm run manifest` in
   `apps/desktop`.
+
+### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
+
+The plan is `docs/integrations/01_MULTILINGUAL_DECKS_NARRATION_AND_SOUND.md`.
+Rules that are easy to undo:
+
+- **A language is an overlay, not a copy** (`presentation-schema/src/locales.ts`).
+  `document.locales[tag].entries` maps a text slot's id-addressed path to the
+  words in that language, with `sourceHash` (FNV-1a 64 of the source's plain
+  text) so a changed source reads as *outdated*. The allowlist of slot paths is
+  a regex list; an entry outside it is E320, one whose target has gone is kept
+  and warned (W320). Codes are E320–E322 and W320–W326, not E31x: the API
+  already answers `E310` for a version conflict.
+- **Showing a language is `localeOperations` applied to a copy**
+  (`presentation-core/src/locales.ts`). Which language is showing is editor
+  state (`useEditor.locale`, remembered per deck in localStorage) and an export
+  parameter (`options.locale`); never document state. The copy's
+  `metadata.language` names the locale, which is how the scene picks the
+  script's font fallback, typography rules and direction.
+- **The editor writes through a lens** (`editor-ui/src/lib/locale-lens.ts`).
+  `editor.document` is the copy; `apply` rewrites what surfaces author against
+  it: an edit in a text slot becomes that language's entry, everything else is
+  shared geometry. A whole-object write (duplicate, replace) is applied, then
+  every slot whose *source* words it changed is repaired: the slot's own
+  translation is put back to its source, another slot's translation is carried
+  over as a new entry. `/metadata/language` is never written back.
+- **Python reads slots too, and is held to TypeScript** by
+  `tests/test_locale_conformance.py` (runs `scripts/locale_slots_reference.ts`
+  over every fixture). Patterns and hash samples come down
+  `generated/locale-rules.json` under the drift gate.
+- **Risk counts the slides a translation rewords** (`computeRiskTier` and
+  `risk.py`, kept identical). Overlay entries live under `/locales`, and without
+  this a forty-slide translation counted as touching no slide.
+- **Translation and voicing are proposals** (`language_routes.py`). Providers
+  are chosen, never fallen back to: `DECKASTRA_TRANSLATION` = stub | model |
+  google, `DECKASTRA_SPEECH` = stub | google. Unset in a checkout is the stub
+  (visibly `[hi-IN] …` and soft tones); in an installed product it refuses.
+  Protected spans (numbers, links, `{{placeholders}}`, kept words) are masked;
+  a translator that loses one is refused for that slot. An agent's own
+  translation is stamped with the real `sourceHash` by `author_service`.
+- **Narration belongs to a click step** (`slide.narration.cues[].step`); a take
+  per locale records the hash of the script it says (stale is W322). The
+  schedule is compiled (`animation-engine/src/narration.ts`): a step advances at
+  max(motion, voice) + gap, and positions are *set* from it on seek.
+- **The audience window plays narration** (`NarrationDirector`), like motion.
+  Presenter windows send `mute`; the audience reports the line being spoken.
+  Entering a slide backwards plays nothing.
+- **Durations are read from the file** (`audio.py`: WAV, Ogg, MP3 headers).
+  Browser recordings are re-encoded to 24kHz WAV, because MediaRecorder's WebM
+  has no duration. The desktop grants the microphone to an editor window's main
+  frame only (`main/media-permission.ts`), and the CSP allows `media-src 'self'
+  blob:`.
+- **Library sounds are synthesis recipes** (`renderer/src/sound-library.ts`),
+  deterministic and self-written, so no notices and byte-stable PPTX audio.
+- **PowerPoint carries narration**: media parts, `p:pic` audio objects off the
+  slide, `mediacall` play commands in each click step, media nodes beside the
+  sequence. Only the exported language's takes are sent (`audio_for_export`).
+  PDF reports that sound was dropped.
+- **Script faces ship with the app** (Noto for Indic, Arabic, Hebrew; Mukta,
+  Hind, Baloo 2), embedded in exports by their script subset. Found while
+  testing: the export page's `*{font-family: Inter}` overrode every paragraph's
+  own family, so all PDFs drew text in Inter; it is now on `body`.
+- **Google is held to its documented contract without being called**
+  (`tests/test_google_providers.py`, a stand-in transport). Deck tags become
+  the codes Cloud Translation lists (`google_language`: `hi-IN` → `hi`, only
+  `zh-CN`/`zh-TW`/`pt-PT`/`fr-CA` and a few scripts keep a suffix); a user
+  token carries `x-goog-user-project`; voices match by language, the deck's
+  region first, and a request speaks in its voice's own tag. Verified live on
+  2026-10-03 against project `deckastra`; the live run found that masking a
+  digit inside a word ("Q3" → "Q⟦1⟧") let Google translate it away, so a word
+  containing a digit is now protected whole.
+- **Adding an empty language has two doors and one operation**: the editor's
+  Add language and the MCP `locale_add` tool both build `addLocaleOperations`;
+  there is deliberately no HTTP route of its own.
+- **A recording's waveform is decoded from the file** (`lib/audio-peaks.ts`),
+  not read from the peaks the service stored at upload, so a replaced take can
+  never keep an old drawing. Cached per asset id; a failure is asked once.
+- **Google credentials are named, never inherited** (`google_credentials.py`):
+  a token, a credentials file (`DECKASTRA_GOOGLE_CREDENTIALS`, tokens minted
+  and renewed from it) or a key. The machine's default gcloud login is not
+  consulted, because it is usually for some other project.
+  `scripts/setup-google-cloud.ps1` signs in inside a gcloud configuration of
+  Deckastra's own (`%APPDATA%\Deckastra\gcloud`), enables the two APIs and
+  sets the variables; `scripts/check-google-cloud.py` is the live check.
+- **Google voices are MP3**, because PowerPoint cannot carry Ogg Opus; the
+  voicing cache's file names follow the provider's format.
+- **Pronunciations ("Say names as") are a per-person preference** sent with
+  each Voice request; only the pairs a line uses enter its cache key, so editing
+  the list does not re-voice the deck. Google gets SSML `<sub>`, every other
+  piece escaped; the stand-in substitutes the words.
+- **A take can be trimmed (0 to −30 dB) and swapped** for any audio file in the
+  deck (`takeChoices`), each one ordinary patch.
+- **A share link takes `?lang=`** and the page applies the overlay to a copy;
+  pictures and recordings load through `/v1/shared/{token}/assets/{id}`
+  (`client.shares.assetUrl`).
+- **The `narration` step records through Chromium's fake microphone**
+  (switches set in `app.ts` only for that step), through the app's own
+  permission handler.
+- **A voiced take records which pronunciations it used** (`take.sayAs`,
+  `sayAsFingerprint` in `presentation-schema/src/pronunciation.ts`, twin
+  `speech.say_as_fingerprint`). A changed "Say names as" list makes exactly the
+  voiced lines that say a changed name due, in the panel's count
+  (`lib/narration-due.ts`) and in the service's selection alike; recordings and
+  uploaded files never are. Matching is a code-point scan in both languages
+  (letters, **marks**, digits and `_` are word characters), because Python's
+  `re` has no property classes and a vowel sign read as a word boundary found
+  "डेक" inside "डेकास्ट्रा". Both are pinned to the same fixed vectors.
+- **Speech controls are text and a preference, not new schema** (2026-10-03).
+  A pause is a marker in the script — `[pause]`, `[pause 1.5s]`, `[pause 800ms]`
+  (`PAUSE_PATTERN`, twin `speech.PAUSE`) — sent as SSML `<break>`, kept by the
+  translator like a number, hidden by `scriptForDisplay` wherever a person
+  reads a script, and counted by the timeline's estimate and the stand-in
+  voice. A name written `Nguyễn = /ŋwiən/` is sent as `<phoneme alphabet="ipa">`.
+  The speaking rate is the person's (`speech` preference) and enters `sayAs`
+  when it is not 1, so a new rate makes voiced takes due. All three were
+  checked live on Chirp 3 HD and Neural2 voices. **`tests/conftest.py` clears
+  the live provider variables for every test**: after the setup script's
+  `-Persist` they are in every new shell, and a test that inherited them
+  called Google.
+- **W323 is judged in `validateDocument`** (`clickStepCount`), not only by the
+  editor's Design Check, so the Critic, exports and agents see an orphaned
+  line. `animation-engine/tests/click-steps.test.ts` holds the count to the
+  compiler's segments on every fixture.
+- **Italic is decided by the words** (`italicAllowed`, applied in the scene):
+  a span or quote in a script with no italic is drawn upright on the canvas,
+  in the PDF and in PowerPoint; a Latin word beside it keeps its slant.
+- **The export page uses static font files**, declared under the variable
+  face's name (`apps/worker/src/fonts.ts` `bundledFontCss`, `@fontsource/*` in
+  the worker). Chromium embeds a variable font as Type3, whose character map
+  is the cmap alone: shaped glyphs copied out as U+0000 and Latin lost its
+  spaces. **`repairPdfText`** (`pdf-unicode.ts`) then names the glyphs the cmap
+  does not, by walking the full font's GSUB backwards, and fills Chromium's
+  `<glyph> <0000>` entries in place; a font whose existing map disagrees with
+  the walk is left alone. Glyphs that are only half of a pair (Noto Arabic's
+  dot marks: ض is ص's glyph plus a dot) stay blank on purpose: per-glyph
+  mapping cannot say which letter, and Chromium already writes the exact text
+  as `/ActualText`, which Poppler, Acrobat and pdf.js read. The desktop build
+  copies the static weights and, now, each script face's own subset files.
+- **The motion timeline follows the 2026-10-03 concept**: the ruler is the
+  scrubber (a range input over it, its thumb the playhead knob), ticks are
+  recomputed across the whole timeline including narration (`rulerTicks`), lanes
+  are named by icon, kind and words (`LaneName`), and every surface measures
+  from the `--dk-lane-gutter` token. Sounds stay neutral, not the concept's
+  amber: yellow means "waiting on a human".
+- **Narration is the first section of the Motion panel**, above whatever motion
+  panel the host supplies: below it, it was a scroll away.
+- Desktop acceptance steps `languages` and `narration` drive all of it.
 
 ### Validation is a product surface
 
