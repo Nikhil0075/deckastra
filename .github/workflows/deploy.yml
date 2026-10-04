@@ -16,8 +16,8 @@ permissions:
   contents: read
   id-token: write
 concurrency:
-  group: cloud-backend-${{ inputs.environment || 'dev' }}
-  cancel-in-progress: false
+  group: cloud-backend-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || inputs.environment || 'dev' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   validate:
     runs-on: ubuntu-latest
