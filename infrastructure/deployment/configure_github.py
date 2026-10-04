@@ -35,6 +35,8 @@ def configure(cloud, repository):
     # gcloud verifies bucket metadata before uploading source; object permissions
     # alone do not include storage.buckets.get. Scope this to the source bucket.
     cloud.run("storage", "buckets", "add-iam-policy-binding", f"gs://{cloud.project}-build-source", f"--member=serviceAccount:{email}", "--role=roles/storage.legacyBucketReader")
+    cloud.run("artifacts", "repositories", "add-iam-policy-binding", "deckastra", f"--location={cloud.region}",
+        f"--member=serviceAccount:{email}", "--role=roles/artifactregistry.reader")
     print(json.dumps({"repository": repository, "repository_id": repo_id, "project_number": number,
         "provider": f"projects/{number}/locations/global/workloadIdentityPools/{pool}/providers/{provider}", "service_account": email}, indent=2))
 

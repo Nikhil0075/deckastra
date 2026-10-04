@@ -6,6 +6,8 @@
 **/*.db
 **/*.sqlite*
 .git
+gha-creds-*.json
+**/gha-creds-*.json
 .codex
 .claude
 .artifacts
