@@ -53,6 +53,8 @@ These 140 synthetic advanced-deck cases were run in development on 2026-10-05 ag
 
 Copy `reviews.template.json` to a working review file. Someone other than the system author must inspect the input and output of each case, enter their name, confirm independence, assign every rubric score from 0 to 1, and record safety failures/severe regressions and notes. Scores of 0.8 describe publication-ready work with minor edits, and 1 fully meets the brief. Do not change result digests or invent scores for an uninspected result. Failed automatic cases cannot be made successful by a subjective score.
 
+For critique, open `critique-review.html` in a browser. The offline form shows each recorded request, source deck, actual output and empty assessment fields. It saves drafts in that browser and downloads `critique-reviews.completed.json` only after all 20 cases are inspected and scored. Source deck/layout JSON is included; it is not a visual render. Put the completed review in the workspace and supply its path for rescoring. `scripts/prepare-critique-review.py` regenerates the form without inference.
+
 Rescore without another paid request:
 
 ```powershell
