@@ -88,8 +88,16 @@ jobs:
           gcloud config configurations create deckastra --no-activate
           gcloud config set project "$GCP_PROJECT" --configuration=deckastra
           gcloud config set auth/credential_file_override "$GOOGLE_GHA_CREDS_PATH" --configuration=deckastra
+      - name: Verify build source excludes temporary credentials
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess
+          files = subprocess.check_output(['gcloud', 'meta', 'list-files-for-upload'], text=True).splitlines()
+          if any(pathlib.PurePosixPath(p).name.startswith('gha-creds-') and p.endswith('.json') for p in files):
+              raise SystemExit('Temporary workflow credentials cannot be uploaded as build source.')
+          print('PASS: temporary workflow credentials excluded from build source.')
+          PY
       - name: Build immutable images
-        # Credential files created by the auth action must never enter build source.
         run: >-
           gcloud builds submit --project="$GCP_PROJECT" --configuration=deckastra
           --suppress-logs
