@@ -24,6 +24,8 @@ Google and email-link providers are configured in Identity Platform. Google OAut
 
 The local backend suite passed 825 tests (28 skipped, 14 slow tests deselected). Additional focused checks cover the new OAuth exchange, package import/export, font integrity and desktop credential handling. Hosted checks exercise verified identity, 60 initial credits, authenticated blank-deck creation, queued PDF export, private GCS download, `.mydeck` export and import as a copy, font-pack links, disabled AI, and deletion requests with immediate bearer-token denial. A Cloud Run check job verified PostgreSQL migration upgrade/downgrade and concurrent credit reservations against the real SQL service. Real Google browser PKCE sign-in successfully reached the account credits endpoint. Development active-data erasure has also completed after the signed-link grace period.
 
+GitHub CI at `94b597a` passed TypeScript/web build, PostgreSQL, Python schema/API/agent/integration checks, export end-to-end, Windows frozen-service acceptance and the database/asset restore rehearsal. The pixel baseline gate also fails on the original `main` baseline; its existing renderer discrepancy remains open. Hosted smoke checks additionally require the deterministic Design Check runtime bundled into the cloud image. The backend implementation is merged in PR #1; the final container/deployment correction is tracked in PR #2.
+
 ## Deployment and operations
 
 Use `gcloud --configuration=deckastra` locally. `bootstrap.py` takes an explicit project and never assumes the active gcloud project. The scripts require Python dependencies from `apps/api/requirements.txt` and an authenticated deployment identity.
