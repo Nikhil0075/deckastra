@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 COPY tsconfig.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/worker ./apps/worker
+COPY scripts/assistant-design-check.ts ./scripts/assistant-design-check.ts
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/desktop/package.json ./apps/desktop/package.json
 COPY apps/mcp-server/package.json ./apps/mcp-server/package.json
