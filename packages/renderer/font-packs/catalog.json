@@ -1,0 +1,82 @@
+{
+  "japanese": {
+    "family": "Noto Sans JP",
+    "license": "SIL Open Font License 1.1",
+    "source_commit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "source_sha256": "f4b373b226668ee33a6e54b02823dcd2d1209f17159f777421ae8c2275160369",
+    "files": [
+      {
+        "name": "japanese-400.woff2",
+        "bytes": 2303248,
+        "sha256": "f44ac37300dc3e74fd4910cd12d9486a1b0fca93051d29fcbaa818911c70cea1",
+        "weight": 400
+      },
+      {
+        "name": "japanese-700.woff2",
+        "bytes": 2351564,
+        "sha256": "c800d739ca0e8f34bfe04047b8a7df9f087380ff5bca52ea65f47d2c4d5cc4d0",
+        "weight": 700
+      }
+    ]
+  },
+  "korean": {
+    "family": "Noto Sans KR",
+    "license": "SIL Open Font License 1.1",
+    "source_commit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "source_sha256": "9e1d729e7e2b36f9ef439da102f8c134c10aabe46f1c843bf0aca5c043b86f76",
+    "files": [
+      {
+        "name": "korean-400.woff2",
+        "bytes": 2072156,
+        "sha256": "2b9aabf8289611db7efc0b839894d99e14171b3df940cdb866e32defc88835bf",
+        "weight": 400
+      },
+      {
+        "name": "korean-700.woff2",
+        "bytes": 2122000,
+        "sha256": "d98fd4f487b7bfb67f76f5813417aab638770ad4f741382bcdd64652842dac78",
+        "weight": 700
+      }
+    ]
+  },
+  "chinese": {
+    "family": "Noto Sans SC",
+    "license": "SIL Open Font License 1.1",
+    "source_commit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "source_sha256": "d68bafcb48a2707749396aa12bbbd833cb70401f3a9a689fd2902c7e0d295964",
+    "files": [
+      {
+        "name": "chinese-400.woff2",
+        "bytes": 4192952,
+        "sha256": "3ac4d1999d082323900f177edf8d6656f955f5886ae2208ccab2be8da5aa409c",
+        "weight": 400
+      },
+      {
+        "name": "chinese-700.woff2",
+        "bytes": 4314452,
+        "sha256": "0cca28576b4689f5908556a2ba086276df6009e6c2e9b73f5cfc55256e122b82",
+        "weight": 700
+      }
+    ]
+  },
+  "chinese-traditional": {
+    "family": "Noto Sans SC",
+    "license": "SIL Open Font License 1.1",
+    "source_commit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "source_sha256": "ac091cc8cd19e848202afc8fe6d3809b4526c8fdbdb4be82da20c4f785949591",
+    "files": [
+      {
+        "name": "chinese-traditional-400.woff2",
+        "bytes": 2910356,
+        "sha256": "54f17762fc595aaf9ef3571f659559bcbaf47f3e3e71d2ef83ebe61268bac7ae",
+        "weight": 400
+      },
+      {
+        "name": "chinese-traditional-700.woff2",
+        "bytes": 2987664,
+        "sha256": "95319cf5591be5bff6ecc1750e42259a50f256739af35f7ad3652def7a1965aa",
+        "weight": 700
+      }
+    ]
+  }
+}

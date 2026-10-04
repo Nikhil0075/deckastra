@@ -145,7 +145,8 @@ def configure(
     explicit = trace_exporter is not None or metric_exporter is not None
     if _enabled and not force and not explicit:
         return True
-    requested = os.environ.get("DECKASTRA_TELEMETRY", "").lower() in {"1", "on", "true"}
+    cloud_export = os.environ.get("DECKASTRA_TELEMETRY_GCP") == "1"
+    requested = cloud_export or os.environ.get("DECKASTRA_TELEMETRY", "").lower() in {"1", "on", "true"}
     endpoints = any(os.environ.get(key) for key in (
         "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
     ))
@@ -169,8 +170,18 @@ def configure(
         if not explicit:
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
             from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-            trace_exporter = OTLPSpanExporter()
-            metric_exporter = OTLPMetricExporter()
+            if cloud_export:
+                import google.auth
+                from google.auth.transport.requests import AuthorizedSession
+                credentials, project = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+                project = os.environ.get("GOOGLE_CLOUD_PROJECT") or project
+                trace_exporter = OTLPSpanExporter(endpoint="https://telemetry.googleapis.com/v1/traces",
+                    session=AuthorizedSession(credentials), headers={"x-goog-user-project": project}, timeout=10)
+                # Cloud Run supplies service metrics; OTLP Telemetry API accepts traces.
+                metric_exporter = None
+            else:
+                trace_exporter = OTLPSpanExporter()
+                metric_exporter = OTLPMetricExporter()
     except ImportError:
         shutdown()
         logger.warning("Telemetry SDK/exporter unavailable; telemetry is disabled.")
@@ -181,7 +192,8 @@ def configure(
         return False
     shutdown()
     try:
-        resource = Resource({"service.name": SERVICE_NAME})
+        resource = Resource.create({"service.name": SERVICE_NAME,
+            **({"gcp.project_id": os.environ["GOOGLE_CLOUD_PROJECT"]} if cloud_export and os.environ.get("GOOGLE_CLOUD_PROJECT") else {})})
         tracer_provider = TracerProvider(resource=resource)
         _providers = (tracer_provider,)
         if trace_exporter is not None:

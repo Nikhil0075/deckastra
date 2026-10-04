@@ -27,6 +27,7 @@ export function dataEntries(root) {
     [join(root, "infrastructure", "database", "alembic.ini"), "infrastructure/database"],
     // The generated schema artifact the API validates every document against.
     [join(root, "packages", "presentation-schema", "generated"), "packages/presentation-schema/generated"],
+    [join(root, "packages", "renderer", "font-packs"), "packages/renderer/font-packs"],
     // Prompts the agent system loads as files.
     [join(root, "agents", "deckastra_agents", "prompts"), "deckastra_agents/prompts"],
   ];

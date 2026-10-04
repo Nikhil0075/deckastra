@@ -19,7 +19,7 @@ from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from deckastra_agents.budgets import RunBudget, RunCancelled
-from deckastra_agents.hybrid_model import configured_client
+from deckastra_agents.vertex_router import configured_client
 from deckastra_agents.router import ModelUnavailable
 from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales
 from .assistant_assets import MetadataUpdate, update_metadata, fingerprints, describe as describe_asset
@@ -151,16 +151,7 @@ SLIDE_SECONDS_ENV = "DECKASTRA_ASSISTANT_SLIDE_SECONDS"
 
 def runs_locally(task):
     """Whether this task's model calls go to the local runtime, as routing will decide."""
-    if task in ENGINE_TASKS:
-        return False
-    mode = os.environ.get("DECKASTRA_ASSISTANT_MODE", "hybrid")
-    if mode != "hybrid":
-        return mode == "local"
-    from deckastra_agents.router import ModelRequest
-    try:
-        return configured_client(mode=mode).route(ModelRequest("structured", "", [], stage=STAGES.get(task, task))) == "local"
-    except (ModelUnavailable, ImportError, ValueError):
-        return False
+    return False
 
 
 def job_seconds(task, slide_count):
@@ -182,14 +173,7 @@ def job_seconds(task, slide_count):
 
 
 def model_client(emit_provider):
-    from .model_server import _KeptAlive
-    from deckastra_agents.local_model import local_client
-    def local():
-        inner = local_client()
-        if inner.pack.id != os.environ.get("DECKASTRA_ASSISTANT_PACK", "gemma4-e2b-q4"):
-            raise ModelUnavailable("Select the measured Gemma E2B pack using DECKASTRA_MODEL_PACK.")
-        return _KeptAlive(inner)
-    return configured_client(local_factory=local, emit=emit_provider, mode=os.environ.get("DECKASTRA_ASSISTANT_MODE", "hybrid"))
+    return configured_client(emit=emit_provider)
 
 
 def computed_checkpoint(value):
@@ -233,17 +217,14 @@ class CheckpointClient:
 
 
 def capabilities():
-    mode = os.environ.get("DECKASTRA_ASSISTANT_MODE", "hybrid")
+    mode = os.environ.get("DECKASTRA_ASSISTANT_MODE", "vertex")
     reason = None
     client = None
-    if mode not in ("local", "hybrid", "vertex"):
-        reason = "Assistant mode must be local, hybrid or vertex."
+    if mode != "vertex":
+        reason = "Assistant mode must be vertex."
     else:
         try:
             client = configured_client(mode=mode)
-            if mode == "local":
-                from deckastra_agents.local_model import local_client
-                local_client()
         except (ModelUnavailable, ImportError, ValueError) as exc:
             reason = str(exc)
     from deckastra_agents.router import ModelRequest
@@ -252,9 +233,10 @@ def capabilities():
     tasks = {}
     spend = None
     try:
-        ceiling = float(os.environ["DECKASTRA_ASSISTANT_MAX_COST_USD"])
-        from deckastra_agents.cost_ledger import CostLedger
-        spend = CostLedger(ceiling).snapshot()
+        if os.environ.get("DECKASTRA_CREDITS_ENABLED") != "1":
+            ceiling = float(os.environ["DECKASTRA_ASSISTANT_MAX_COST_USD"])
+            from deckastra_agents.cost_ledger import CostLedger
+            spend = CostLedger(ceiling).snapshot()
     except (KeyError, ValueError, OSError):
         pass
     for task in AssistantRequest.model_fields["task"].annotation.__args__:
@@ -290,14 +272,6 @@ def capabilities():
                     reservation_estimate = paid_client.estimate_reservation(probe)
                     if spend is not None and reservation_estimate > spend["remaining_usd"]:
                         raise ModelUnavailable(f"This task needs at least US${reservation_estimate:.4f} reserved; US${spend['remaining_usd']:.4f} remains. Existing uncertain usage still counts against the ceiling.")
-                else:
-                    from deckastra_agents.local_model import local_client
-                    pack = local_client().pack
-                    model = pack.id
-                    if task == "image":
-                        raise ModelUnavailable("Image generation requires Vertex access.")
-                    if task == "alt_text" and "vision" not in pack.capabilities:
-                        raise ModelUnavailable("Install a verified vision projector for this model pack.")
                 task_reason = None
             except (ModelUnavailable, ImportError, ValueError) as exc:
                 task_reason = str(exc)
@@ -728,10 +702,21 @@ def _execute(run_id):
             return row is None or row.cancel_requested or row.status != "running" or row.owner_id != _owner
     ledger = None
     configured_ceiling = os.environ.get("DECKASTRA_ASSISTANT_MAX_COST_USD")
-    if configured_ceiling and math.isfinite(float(configured_ceiling)) and float(configured_ceiling) > 0:
+    if os.environ.get("DECKASTRA_CREDITS_ENABLED") != "1" and configured_ceiling and math.isfinite(float(configured_ceiling)) and float(configured_ceiling) > 0:
         from deckastra_agents.cost_ledger import CostLedger
         ledger = CostLedger(float(configured_ceiling))
-    def observe(operation, reserved, actual):
+    def observe(operation, reserved, actual, *, task=None, model=""):
+        if os.environ.get("DECKASTRA_CREDITS_ENABLED") == "1":
+            from .credits import observer
+            observer(principal.user_id, task=task or request["task"], model=model)(operation, reserved, actual)
+            with session_scope() as session:
+                if actual < 0:
+                    session.add(AssistantReservation(operation_id=operation, run_id=run_id, reserved_usd=reserved))
+                else:
+                    reservation = session.get(AssistantReservation, operation)
+                    if reservation:
+                        reservation.actual_usd = actual
+            return
         if ledger:
             ledger.observe(operation, reserved, actual)
         try:
@@ -740,6 +725,7 @@ def _execute(run_id):
             if ledger and actual < 0:
                 ledger.observe(operation, reserved, 0)  # no provider request was sent
             raise
+    observe.for_call = lambda task, model: lambda *args: observe(*args, task=task, model=model)
     def observe_workspace(operation, reserved, actual):
         with session_scope() as session:
             if actual < 0:

@@ -16,6 +16,7 @@ It is also where the two policies that must not live in an agent are applied:
 """
 
 from __future__ import annotations
+from deckastra_agents import router as model_router
 
 import logging
 import os
@@ -41,7 +42,7 @@ from deckastra_agents.tools.presentation import register_presentation_tools
 from deckastra_agents.tools.repository import register_repository_tools
 from sqlalchemy.orm import Session
 
-from . import model_server, retrieval, telemetry
+from . import retrieval, telemetry
 from .compose import compose_document
 from .db.models import Repository
 from .models import GenerateRequest, StoryPlan
@@ -524,7 +525,7 @@ def run_deck_generation(
     # were two answers: with local intelligence selected, a keyless install is a
     # local-model install, and this line would have quietly run the stub instead —
     # which is the failure the whole D3 selection exists to refuse.
-    client = model_server.build_client(fallback=lambda: _stub_answers(request, repositories))
+    client = model_router.default_client(fallback=lambda: _stub_answers(request, repositories))
     emitter = _emitter(run_id)
     produced: dict[str, Any] = {}
 
@@ -629,7 +630,7 @@ def resume_deck_generation(
     produced: dict[str, Any] = {}
     emitter = _emitter(run_id)
     run = AgentRun(
-        client=telemetry.TracedModelClient(model_server.build_client(fallback=lambda: _stub_answers(request)), run_id),
+        client=telemetry.TracedModelClient(model_router.default_client(fallback=lambda: _stub_answers(request)), run_id),
         registry=build_registry(lambda: document),
         compose=_composer(
             request,

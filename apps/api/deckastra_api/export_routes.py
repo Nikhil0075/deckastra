@@ -13,7 +13,7 @@ import os
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/v1")
 
 
 class ExportRequest(BaseModel):
-    kind: Literal["pdf", "pptx"]
+    kind: Literal["pdf", "pptx", "mydeck"]
     slide_ids: list[str] = Field(default_factory=list, max_length=500)
     include_hidden_slides: bool = False
     include_notes: bool = False
@@ -148,13 +148,22 @@ def export_status(
     return export_service.describe(_authorised(session, principal, export_id))
 
 
-@router.get("/exports/{export_id}/download")
+@router.get("/exports/{export_id}/download", response_model=None)
 def download_export(
     export_id: str,
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
-) -> FileResponse:
+) -> FileResponse | RedirectResponse:
     job = _authorised(session, principal, export_id)
+
+    if job.status == "completed" and (job.artifact_path or "").startswith("gs://"):
+        from .gcs_storage import export_url
+        try:
+            return RedirectResponse(export_url(job.artifact_path), status_code=307)
+        except (ValueError, FileNotFoundError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(status_code=503, detail="Cloud export storage is unavailable.") from error
 
     try:
         path = export_service.artifact_of(job)

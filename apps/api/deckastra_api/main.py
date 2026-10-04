@@ -47,6 +47,11 @@ from deckastra_agents.router import MODELS as router_models
 from . import agent_service, agent_store, provenance, quotas, repository_service, telemetry
 from .agent_routes import router as agent_router
 from .export_routes import router as export_router
+from .gateway_routes import router as gateway_router
+from .account_deletion import router as deletion_router
+from .mydeck_import import router as import_router
+from .font_packs import router as font_pack_router
+from .oauth_routes import router as oauth_router
 from .repository_routes import router as repository_router
 from .workspace_routes import router as workspace_router
 from .language_routes import router as language_router
@@ -79,8 +84,6 @@ async def _lifespan(application: FastAPI):
         yield
     finally:
         assistant_stop.set()
-        from .model_server import stop
-        stop("service shutdown")
         telemetry.shutdown()
 
 
@@ -122,18 +125,34 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip().rstrip("/") for origin in os.environ.get("DECKASTRA_WEB_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip() and origin.strip() != "*"],
     allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-Deckastra-Device"],
 )
 
 app.include_router(v1_router)
 app.include_router(agent_router)
 app.include_router(repository_router)
 app.include_router(export_router)
+app.include_router(gateway_router)
+app.include_router(deletion_router)
+app.include_router(import_router)
+app.include_router(font_pack_router)
+app.include_router(oauth_router)
 app.include_router(workspace_router)
 app.include_router(language_router)
 app.include_router(assistant_router)
 app.include_router(assistant_assets_router)
 app.include_router(assistant_design_router)
+
+
+@app.get("/ready")
+def ready(session: Session = Depends(get_session)):
+    from sqlalchemy import text
+    try:
+        session.execute(text("SELECT 1"))
+        session.execute(text("SELECT user_id FROM credit_accounts LIMIT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database or schema is not ready.") from exc
+    return {"status": "ready"}
 
 
 @app.get("/health")

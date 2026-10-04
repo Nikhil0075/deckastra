@@ -113,7 +113,7 @@ class RunBudget:
             self.started_at += seconds
             self.startup_seconds += seconds
 
-    def reserve_cost(self, operation_id: str, maximum: float) -> None:
+    def reserve_cost(self, operation_id: str, maximum: float, *, task: str = "", model: str = "") -> None:
         """Unknown paid outcomes retain their reservation, preventing blind retries."""
         import math
         self.check_clock()
@@ -124,7 +124,10 @@ class RunBudget:
             if self.max_cost_usd is None or total > self.max_cost_usd:
                 raise BudgetExceeded("cost", self.max_cost_usd or 0, total)
             if self.cost_observer:
-                self.cost_observer(operation_id, maximum, -1)
+                observer = self.cost_observer
+                if task and hasattr(observer, "for_call"):
+                    observer = observer.for_call(task, model)
+                observer(operation_id, maximum, -1)
             self.reserved_cost_usd += maximum
 
     def reconcile_cost(self, operation_id: str, reserved: float, actual: float) -> None:

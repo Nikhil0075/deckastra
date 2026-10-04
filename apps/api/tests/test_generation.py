@@ -220,132 +220,58 @@ def test_layout_vocabulary_is_closed():
 # ------------------------------------------------------------------ model path
 
 
-class _FakeResponse:
-    def __init__(self, text: str, *, stop_reason: str = "end_turn", stop_details=None):
-        self.content = [SimpleNamespace(type="text", text=text)]
-        self.stop_reason = stop_reason
-        self.stop_details = stop_details
-        self.usage = SimpleNamespace(input_tokens=100, output_tokens=200)
-
-
-class _FakeMessages:
-    def __init__(self, responses):
-        self._responses = list(responses)
-        self.calls = []
-
-    def create(self, **kwargs):
-        self.calls.append(kwargs)
-        return self._responses.pop(0)
-
-
-class _FakeClient:
-    def __init__(self, responses):
-        self.messages = _FakeMessages(responses)
-
-
 def _valid_plan_json() -> str:
-    plan = stub_story_plan(GenerateRequest(instruction="Caching", slide_count=3))
-    return plan.model_dump_json(by_alias=False)
+    return stub_story_plan(GenerateRequest(instruction="Caching", slide_count=3)).model_dump_json()
 
 
 @pytest.fixture
-def fake_anthropic(monkeypatch):
-    """Install a fake `anthropic` module and pretend a key is configured."""
-
-    def install(responses):
-        client_holder = {}
-
-        class _APIStatusError(Exception):
-            def __init__(self, message="", status_code=500):
-                super().__init__(message)
-                self.message = message
-                self.status_code = status_code
-
-        class _APIConnectionError(Exception):
-            pass
-
-        def _Anthropic():
-            client = _FakeClient(responses)
-            client_holder["client"] = client
-            return client
-
-        fake = SimpleNamespace(
-            Anthropic=_Anthropic,
-            APIStatusError=_APIStatusError,
-            APIConnectionError=_APIConnectionError,
-        )
-        monkeypatch.setitem(sys.modules, "anthropic", fake)
-        monkeypatch.setattr(story_module, "api_key_available", lambda: True)
-        return client_holder
-
+def fake_vertex(monkeypatch):
+    from deckastra_agents import router
+    from deckastra_agents.router import ModelResponse
+    def install(answers):
+        class Client:
+            calls = []
+            def complete(self, request, budget):
+                self.calls.append(request)
+                return answers.pop(0)
+        client = Client()
+        monkeypatch.setenv("DECKASTRA_INTELLIGENCE", "vertex")
+        monkeypatch.setattr(router, "default_client", lambda: client)
+        return client
     return install
 
 
-def test_model_path_sends_a_json_schema_and_returns_a_plan(fake_anthropic):
-    holder = fake_anthropic([_FakeResponse(_valid_plan_json())])
-
-    plan, diagnostics = story_module.generate_story_plan(
-        GenerateRequest(instruction="Explain caching", slide_count=3)
-    )
-
-    assert diagnostics.source == "model"
-    assert diagnostics.attempts == 1
-    assert diagnostics.plan_valid_first_attempt is True
+def test_model_path_uses_the_task_factory_and_a_schema(fake_vertex):
+    from deckastra_agents.router import ModelResponse
+    client = fake_vertex([ModelResponse(_valid_plan_json(), model="gemini-pinned")])
+    plan, diagnostics = story_module.generate_story_plan(GenerateRequest(instruction="Caching", slide_count=3))
     assert len(plan.slides) == 3
-
-    call = holder["client"].messages.calls[0]
-    assert call["model"] == "claude-opus-5"
-    assert call["output_config"]["format"]["type"] == "json_schema"
-    # Refusal fallbacks on by default: a policy decline would otherwise end the
-    # request with no deck and no explanation.
-    assert call["fallbacks"] == "default"
+    assert diagnostics.source == "model" and diagnostics.model == "gemini-pinned"
+    assert client.calls[0].stage == "story"
+    assert client.calls[0].response_schema == story_module._plan_schema()
 
 
-def test_model_path_retries_once_with_the_validation_errors(fake_anthropic):
-    holder = fake_anthropic(
-        [_FakeResponse('{"nope": true}'), _FakeResponse(_valid_plan_json())]
-    )
-
-    plan, diagnostics = story_module.generate_story_plan(
-        GenerateRequest(instruction="Explain caching", slide_count=3)
-    )
-
-    assert diagnostics.attempts == 2
-    assert diagnostics.plan_valid_first_attempt is False
-    assert diagnostics.valid_first_attempt is False
-    assert diagnostics.validation_errors
+def test_model_path_repairs_once_with_validation_errors(fake_vertex):
+    from deckastra_agents.router import ModelResponse
+    client = fake_vertex([ModelResponse('{}'), ModelResponse(_valid_plan_json())])
+    plan, diagnostics = story_module.generate_story_plan(GenerateRequest(instruction="Caching", slide_count=3))
+    assert diagnostics.attempts == 2 and diagnostics.valid_first_attempt is False
     assert len(plan.slides) == 3
-
-    # The retry hands the model its own errors rather than re-asking blind.
-    retry_messages = holder["client"].messages.calls[1]["messages"]
-    assert "did not validate" in retry_messages[-1]["content"]
+    assert "did not validate" in client.calls[1].messages[0]["content"]
 
 
-def test_model_path_gives_up_after_two_attempts(fake_anthropic):
-    fake_anthropic([_FakeResponse("not json"), _FakeResponse("still not json")])
-
-    with pytest.raises(story_module.StoryGenerationError) as excinfo:
+def test_model_path_gives_up_after_two_attempts(fake_vertex):
+    from deckastra_agents.router import ModelResponse
+    fake_vertex([ModelResponse('bad'), ModelResponse('bad')])
+    with pytest.raises(story_module.StoryGenerationError, match="two attempts"):
         story_module.generate_story_plan(GenerateRequest(instruction="x", slide_count=3))
 
-    assert "two attempts" in str(excinfo.value)
 
-
-def test_refusal_is_reported_rather_than_parsed(fake_anthropic):
-    # stop_reason must be checked before reading content; a refused response has
-    # no plan in it, and parsing the text would produce a confusing error.
-    fake_anthropic(
-        [
-            _FakeResponse(
-                "", stop_reason="refusal", stop_details=SimpleNamespace(category="cyber")
-            )
-        ]
-    )
-
-    with pytest.raises(story_module.StoryGenerationError) as excinfo:
+def test_refusal_is_reported_rather_than_parsed(fake_vertex):
+    from deckastra_agents.router import ModelResponse
+    fake_vertex([ModelResponse('', refusal="SAFETY")])
+    with pytest.raises(story_module.StoryGenerationError, match="declined"):
         story_module.generate_story_plan(GenerateRequest(instruction="x", slide_count=3))
-
-    assert "declined" in str(excinfo.value)
-    assert "cyber" in str(excinfo.value)
 
 
 def test_prompt_frames_the_brief_as_data_not_instructions():
@@ -377,7 +303,7 @@ def test_stub_produces_a_valid_deck_without_credentials(monkeypatch):
 
     assert diagnostics.source == "stub"
     # Nobody should mistake a stub deck for a generated one.
-    assert any("ANTHROPIC_API_KEY" in w for w in diagnostics.warnings)
+    assert any("stub planner" in w for w in diagnostics.warnings)
     assert validate_document(compose_document(plan)) == []
 
 

@@ -1,6 +1,5 @@
 # Deckastra API.
 
-anthropic>=1.4,<2
 fastapi>=0.115,<1
 uvicorn[standard]>=0.32,<1
 pydantic>=2.9,<3
@@ -42,6 +41,7 @@ google-auth>=2.30,<3
 PyJWT[crypto]>=2.10,<3
 # S3-compatible asset storage (AWS S3 in production, MinIO locally).
 boto3>=1.40,<2
+google-cloud-storage>=3.0,<4
 
 # Export verification (Phase 8).
 #
@@ -55,6 +55,7 @@ pypdf>=5,<7
 # (`assets.representative_frame`). Already installed through python-pptx; named
 # because the service imports it directly.
 pillow>=11,<13
+fonttools[woff]==4.66.1
 
 # Observability: API handles alone do not export anything. These matching SDK
 # and HTTP/protobuf exporter versions are exercised by local collector tests.

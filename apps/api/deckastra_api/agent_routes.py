@@ -12,6 +12,7 @@ layer" is true here because there is no route that would let them.
 """
 
 from __future__ import annotations
+from deckastra_agents import router as model_router
 
 import json
 import logging
@@ -27,7 +28,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from . import agent_service, agent_store, author_service, model_server, proposals, store
+from . import agent_service, agent_store, author_service, proposals, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import Presentation, TransactionRow
 from .db.session import get_session
@@ -156,7 +157,7 @@ def agent_edit(
     budget = RunBudget()
 
     registry: ToolRegistry = agent_service.build_registry(lambda: loaded.document)
-    client = model_server.build_client(fallback=lambda: _stub_edit_client(request, loaded.document))
+    client = model_router.default_client(fallback=lambda: _stub_edit_client(request, loaded.document))
 
     state = initial_state(
         run_id=run_row.id,

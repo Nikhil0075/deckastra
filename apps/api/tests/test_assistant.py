@@ -416,7 +416,7 @@ def test_cleanup_qualification_does_not_enable_other_job_contracts(monkeypatch, 
             if stage not in {"cleanup", "narration", "image"}:
                 raise ModelUnavailable(f"No qualified Vertex model configured for {stage}.")
             return SimpleNamespace(model="qualified-model", estimate_reservation=lambda request: .1)
-    monkeypatch.setenv("DECKASTRA_ASSISTANT_MODE", "hybrid")
+    monkeypatch.setenv("DECKASTRA_ASSISTANT_MODE", "vertex")
     monkeypatch.setenv("DECKASTRA_ASSISTANT_MAX_COST_USD", "5")
     monkeypatch.setenv("DECKASTRA_ASSISTANT_COST_LEDGER", str(tmp_path / "ledger.sqlite"))
     monkeypatch.setattr(assistant_routes, "configured_client", lambda **kwargs: Configured())
@@ -725,9 +725,8 @@ def test_failed_run_shows_plain_reason_and_keeps_the_diagnostic(client, auth, de
 # ---- Job time (2026-10-04 recheck: single-slide jobs timed out at 180 s)
 
 @pytest.mark.parametrize("mode,task,slides,expected", [
-    ("local", "edit", 1, (360, 360)),       # room for a local repair attempt
-    ("local", "alt_text", 3, (1080, 360)),
-    ("local", "consistency", 21, (3600, 360)),  # local ceiling
+    ("vertex", "alt_text", 3, (540, 180)),       # room for a local repair attempt
+    ("vertex", "consistency", 21, (1800, 180)),  # local ceiling
     ("vertex", "edit", 1, (180, 180)),
     ("vertex", "edit", 21, (1800, 180)),
     ("local", "tidy", 1, (180, 180)),        # engine tasks call no model
@@ -740,22 +739,13 @@ def test_job_time_follows_where_the_model_runs(monkeypatch, mode, task, slides, 
     assert assistant_routes.job_seconds(task, slides) == expected
 
 
-def test_hybrid_job_time_asks_the_router(monkeypatch):
-    class Router:
-        def route(self, request):
-            return "local" if request.stage == "authoring" else "vertex"
-    monkeypatch.setenv("DECKASTRA_ASSISTANT_MODE", "hybrid")
-    monkeypatch.setattr(assistant_routes, "configured_client", lambda **kwargs: Router())
-    assert assistant_routes.job_seconds("edit", 1) == (360, 360)
-    assert assistant_routes.job_seconds("narration", 1) == (180, 180)
-
 
 def test_slide_allowance_can_be_set_and_bad_values_are_ignored(monkeypatch):
     monkeypatch.setenv("DECKASTRA_ASSISTANT_MODE", "local")
     monkeypatch.setenv(assistant_routes.SLIDE_SECONDS_ENV, "600")
     assert assistant_routes.job_seconds("edit", 2) == (1200, 600)
     monkeypatch.setenv(assistant_routes.SLIDE_SECONDS_ENV, "-5")
-    assert assistant_routes.job_seconds("edit", 1) == (360, 360)
+    assert assistant_routes.job_seconds("edit", 1) == (180, 180)
 
 
 def test_running_out_of_time_keeps_the_slides_already_done(monkeypatch):

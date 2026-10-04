@@ -652,7 +652,7 @@ class ExportJob(Base, TimestampMixin):
 
     __tablename__ = "export_jobs"
     __table_args__ = (
-        CheckConstraint("kind IN ('pdf', 'pptx')", name="ck_export_kind"),
+        CheckConstraint("kind IN ('pdf', 'pptx', 'mydeck')", name="ck_export_kind"),
         CheckConstraint(
             "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
             name="ck_export_status",

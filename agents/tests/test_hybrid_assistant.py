@@ -3,7 +3,6 @@ import httpx
 import pytest
 from pydantic import BaseModel
 from deckastra_agents.budgets import RunBudget, BudgetExceeded, RunCancelled
-from deckastra_agents.hybrid_model import HybridClient
 from deckastra_agents.qualification import qualifies
 from deckastra_agents.router import ModelRequest, ModelResponse, ModelError, ImageInput, ModelTool
 from deckastra_agents.vertex_model import VertexClient
@@ -12,7 +11,7 @@ from deckastra_agents.tools.registry import ToolRegistry
 
 
 def record(task="cleanup"):
-    return dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": True}, coverage={"distinct_slides": 6, "feature_groups": 5}, task=task, model_id="e2b", runtime_id="r1", hardware_id="gpu", dataset_sha256="fixture-hash", metrics=dict(samples=20, functional_first_attempt_validity=.95, first_attempt_validity=.95, task_success=.9, p95_seconds=20, safety_failures=0, severe_regressions=0))
+    return dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": True}, coverage={"distinct_slides": 6, "feature_groups": 5}, task=task, model_id="e2b", runtime_id="r1", location="global", dataset_sha256="fixture-hash", metrics=dict(samples=20, functional_first_attempt_validity=.95, first_attempt_validity=.95, task_success=.9, p95_seconds=20, safety_failures=0, severe_regressions=0))
 
 
 class Scripted:
@@ -22,21 +21,17 @@ class Scripted:
         return ModelResponse(next(self.answers))
 
 
-def hybrid(local, vertex, *, report=None, local_only=False):
-    return HybridClient(lambda: local, lambda task: vertex, report or {}, "e2b", "r1", "gpu", local_only=local_only)
-
-
 def test_qualification_is_per_deployment_and_requires_samples():
     item = record()
-    assert qualifies(item, model_id="e2b", runtime_id="r1", hardware_id="gpu")
-    assert not qualifies(item, model_id="e2b", runtime_id="r2", hardware_id="gpu")
+    assert qualifies(item, model_id="e2b", runtime_id="r1", location="global")
+    assert not qualifies(item, model_id="e2b", runtime_id="r2", location="global")
     item["metrics"]["samples"] = 1
-    assert not qualifies(item, model_id="e2b", runtime_id="r1", hardware_id="gpu")
+    assert not qualifies(item, model_id="e2b", runtime_id="r1", location="global")
 
 
 def test_narrow_or_self_reviewed_evidence_does_not_qualify():
     for changes in ({"qualification_contract": "legacy"}, {"review": {"independent_of_system_author": False}}, {"coverage": {"distinct_slides": 2, "feature_groups": 1}}):
-        assert not qualifies({**record(), **changes}, model_id="e2b", runtime_id="r1", hardware_id="gpu")
+        assert not qualifies({**record(), **changes}, model_id="e2b", runtime_id="r1", location="global")
 
 
 def test_uncertain_cost_requires_audited_authoritative_evidence(tmp_path):
@@ -51,32 +46,6 @@ def test_uncertain_cost_requires_audited_authoritative_evidence(tmp_path):
     ledger.reconcile_evidence(evidence)  # idempotent operator reconciliation
     assert not ledger.outstanding()
     assert ledger.snapshot()["used_usd"] == .03
-
-
-def test_one_local_repair_then_one_vertex_escalation():
-    class Output(BaseModel): value: str
-    local, vertex = Scripted(["{}", "bad JSON"]), Scripted(['{"value":"valid"}'])
-    client = hybrid(local, vertex, report={"tasks": {"cleanup": record()}})
-    ctx = NodeContext(client, RunBudget(), lambda e: None, ToolRegistry())
-    answer = ask_model(ctx, stage="cleanup", task_type="structured", system="", user="", model=Output)
-    assert answer.value == "valid"
-    assert (local.calls, vertex.calls) == (2, 1)
-
-
-def test_unqualified_task_goes_directly_to_vertex():
-    local, vertex = Scripted([]), Scripted(["ok"])
-    assert hybrid(local, vertex).complete(ModelRequest("structured", "", [], stage="cleanup"), RunBudget()).text == "ok"
-    assert local.calls == 0
-
-
-def test_local_only_never_calls_vertex_and_cancellation_never_escalates():
-    local, vertex = Scripted(["local"]), Scripted([])
-    client = hybrid(local, vertex, local_only=True)
-    request = ModelRequest("structured", "", [], stage="cleanup")
-    assert client.complete(request, RunBudget()).text == "local"
-    with pytest.raises(ModelError): client.escalate(request, RunBudget(), "bad")
-    with pytest.raises(RunCancelled): client.complete(request, RunBudget(cancelled=lambda: True))
-    assert vertex.calls == 0
 
 
 def test_cost_reservations_enforce_total_including_uncertain_calls():

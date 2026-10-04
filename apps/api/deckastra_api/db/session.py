@@ -19,6 +19,9 @@ from starlette.requests import Request
 
 from .models import Base
 from .. import assistant_models  # register additive assistant tables for create_all
+from .. import credit_models  # register hosted account accounting tables
+from .. import account_models  # register cloud erasure queue
+from .. import import_models  # exchange package jobs and opaque extras
 
 DEFAULT_URL = "postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra"
 

@@ -1,0 +1,12 @@
+.git
+.gitignore
+.gcloudignore
+#!include:.dockerignore
+**/tests
+**/*.log
+**/*.png
+**/*.jpg
+**/*.mp3
+.venv
+venv
+deckastra.db*

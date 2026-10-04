@@ -173,6 +173,25 @@ MAX_RENDER_ASSET_BYTES = 8 * 1024 * 1024
 MAX_RENDER_TOTAL_BYTES = 32 * 1024 * 1024
 
 
+def inline_for_package(session, *, presentation_id, document):
+    """Read original bytes of every cited asset, scoped to the source workspace."""
+    workspace_id = session.scalar(select(Project.workspace_id).join(Presentation, Presentation.project_id == Project.id)
+        .where(Presentation.id == presentation_id))
+    rows = {row.id: row for row in session.scalars(select(Asset).where(Asset.workspace_id == workspace_id))}
+    result, total = [], 0
+    for asset_id in sorted(referenced_ids(document)):
+        row = rows.get(asset_id)
+        if row is None or row.bytes > 200 * 1024 ** 2:
+            raise AssetError("M010: A cited asset is missing or exceeds the package limit.")
+        total += row.bytes
+        import os
+        if total > int(os.environ.get("DECKASTRA_PACKAGE_MAX_BYTES", str(128 * 1024 ** 2))):
+            raise AssetError("M003: Package exceeds the total size limit.")
+        data, content_type = object_storage.read(row.storage_key)
+        result.append({"assetId": row.id, "data": base64.b64encode(data).decode(), "mimeType": content_type})
+    return result
+
+
 def audio_for_export(document: dict[str, Any], locale: str | None) -> set[str]:
     """The audio an export in `locale` plays: that language's takes and the slides' sounds.
 
@@ -394,6 +413,11 @@ def recount_references(session: Session, workspace_id: str) -> int:
         for asset_id in referenced_ids(document):
             live[asset_id] = live.get(asset_id, 0) + 1
 
+    from .import_models import PackageExtras
+    for package in session.scalars(select(PackageExtras).join(Presentation).join(Project).where(Project.workspace_id == workspace_id)):
+        for asset_id in package.assets_json.values():
+            live[asset_id] = live.get(asset_id, 0) + 1
+
     changed = 0
     for asset in session.query(Asset).filter(Asset.workspace_id == workspace_id).all():
         count = live.get(asset.id, 0)
@@ -439,6 +463,11 @@ def cited_elsewhere(
             ).document
         needed |= referenced_ids(document)
 
+    from .import_models import PackageExtras
+    for package in session.scalars(select(PackageExtras).join(Presentation).join(Project).where(
+        Project.workspace_id == workspace_id, PackageExtras.presentation_id != except_presentation_id)):
+        needed.update(package.assets_json.values())
+
     return needed
 
 
@@ -463,6 +492,11 @@ def cited_by_history(session: Session, presentation_id: str) -> set[str]:
                 session, presentation_id, at_version=version.id
             ).document
         cited |= referenced_ids(document)
+
+    from .import_models import PackageExtras
+    package = session.get(PackageExtras, presentation_id)
+    if package:
+        cited.update(package.assets_json.values())
 
     return cited
 

@@ -2,7 +2,7 @@ import { app } from "electron";
 
 import type { ServiceStatus } from "../shared/ipc";
 import { buildManifest } from "./build-manifest";
-import { cloudKeyState } from "./cloud-key";
+import { accountState } from "./account";
 import { readAgentAccess } from "./agent-access";
 import { logsDir, tail } from "./logs";
 
@@ -31,7 +31,7 @@ export interface Diagnostics {
   logsDir: string;
   service: { state: string; detail?: string; kind?: string; attempt: number };
   generation: { provider: string; available: boolean; reason: string | null } | { error: string };
-  cloudKey: { set: boolean; updatedAt: string | null; storable: boolean };
+  account: { signedIn: boolean; configured: boolean };
   agentAccess: { allowed: boolean; expiresAt: string | null; decidedAt: string | null };
   logs: { app: string[]; service: string[] };
 }
@@ -80,7 +80,7 @@ export async function collectDiagnostics(input: {
       attempt: input.status.attempt,
     },
     generation: await generation(input.service),
-    cloudKey: await cloudKeyState(),
+    account: await accountState().then(({ signedIn, configured }) => ({ signedIn, configured })),
     // Whether an agent may reach this install, and until when. Never the grant.
     agentAccess: { allowed: access.allowed, expiresAt: access.expiresAt, decidedAt: access.decidedAt },
     logs: { app: tail("app"), service: tail("service") },
