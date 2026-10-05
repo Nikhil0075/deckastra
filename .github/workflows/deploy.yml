@@ -7,6 +7,10 @@ on:
         type: choice
         options: [dev, prod]
         default: dev
+      deploy_web:
+        description: Also deploy the finished web frontend
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ['apps/api/**', 'apps/worker/**', 'agents/**', 'integrations/**', 'packages/**', 'infrastructure/**', 'package*.json', '.github/workflows/deploy.yml']
@@ -105,9 +109,21 @@ jobs:
           --substitutions="_REGION=asia-south1,_TAG=$GITHUB_SHA"
           --service-account="projects/$GCP_PROJECT/serviceAccounts/deckastra-build@$GCP_PROJECT.iam.gserviceaccount.com"
           --gcs-source-staging-dir="gs://$GCP_PROJECT-build-source/source"
-      - name: Migrate and deploy
+      - name: Migrate, verify candidate workflows and promote
         run: python infrastructure/deployment/bootstrap.py deploy --project "$GCP_PROJECT" --tag "$GITHUB_SHA"
       - name: Verify readiness
         run: |
           API_URL=$(gcloud run services describe deckastra-api --region=asia-south1 --project="$GCP_PROJECT" --configuration=deckastra --format='value(status.url)')
           curl --fail --retry 5 --retry-delay 5 "$API_URL/ready"
+      - name: Build selected web environment
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_web
+        run: |
+          API_URL=$(gcloud run services describe deckastra-api --region=asia-south1 --project="$GCP_PROJECT" --configuration=deckastra --format='value(status.url)')
+          gcloud builds submit --project="$GCP_PROJECT" --configuration=deckastra --suppress-logs \
+            --config=infrastructure/deployment/cloudbuild-web.yaml \
+            --substitutions="_REGION=asia-south1,_TAG=$GITHUB_SHA,_API_URL=$API_URL" \
+            --service-account="projects/$GCP_PROJECT/serviceAccounts/deckastra-build@$GCP_PROJECT.iam.gserviceaccount.com" \
+            --gcs-source-staging-dir="gs://$GCP_PROJECT-build-source/source"
+      - name: Connect web origin and promote tested web revision
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_web
+        run: python infrastructure/deployment/web_hosting.py --project "$GCP_PROJECT" --tag "$GITHUB_SHA"
