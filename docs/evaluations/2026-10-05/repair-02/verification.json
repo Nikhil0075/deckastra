@@ -72,5 +72,15 @@
       "error": "Command '['gcloud.cmd', 'auth', 'print-access-token', '--configuration=deckastra']' returned non-zero exit status 1."
     }
   ],
-  "report_hash_encoding": "UTF-8 bytes with CRLF normalized to LF"
+  "report_hash_encoding": "UTF-8 bytes with CRLF normalized to LF",
+  "human_preview": {
+    "manifest": "preview-manifest.json",
+    "manifest_sha256": "55a2d1368bfdf7f227c2f55bab157eab140f64d3f6556d8d80cd3ced4babf267",
+    "frame": "final",
+    "source_slide_count": 21,
+    "cases": 20,
+    "original_evaluation_results_unchanged": true,
+    "model_received_rendered_images": false,
+    "model_received_local_fixture_image_bytes": false
+  }
 }

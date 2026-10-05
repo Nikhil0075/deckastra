@@ -5,7 +5,16 @@ These 140 synthetic advanced-deck cases were evaluated against gemini-3.8-flash.
 
 Copy `reviews.template.json` to a working review file. Someone other than the system author must inspect the input and output of each case, enter their name, confirm independence, assign every rubric score from 0 to 1, and record safety failures/severe regressions and notes. Scores of 0.8 describe publication-ready work with minor edits, and 1 fully meets the brief. Do not change result digests or invent scores for an uninspected result. Failed automatic cases cannot be made successful by a subjective score.
 
-For critique, open `critique-review.html` in a browser. The offline form shows each recorded request, source deck, actual output and empty assessment fields. It saves drafts in that browser and downloads `critique-reviews.completed.json` only after all 20 cases are inspected and scored. Source deck/layout JSON is included; it is not a visual render. Put the completed review in the workspace and supply its path for rescoring. `scripts/prepare-critique-review.py` regenerates the form without inference.
+For critique, open `critique-review.html` in a browser. The form now includes rendered previews of all 21 source slides, thumbnails, slide navigation and zoom. Each case opens its selected slide; gold outlines identify selected elements. The form shows the recorded request and actual critique alongside the source data. It preserves browser drafts and downloads `critique-reviews.completed.json` only after all 20 cases are inspected and scored. Put the completed review in the workspace and supply its path for rescoring.
+
+These are static final-frame renders made with the production headless renderer. Known local fixture images are supplied for human inspection; missing assets remain placeholders and renderer warnings are retained. The AI did not see these rendered images or fixture bytes during the evaluation. Motion sequence and narration timing still need inspection of the source data. `preview-manifest.json` binds each case to its recorded document, rendered slide hashes, selection geometry and supplied fixture asset hashes. The original recorded inputs, results and result hashes have not changed.
+
+Regenerate previews and the form without inference:
+
+```powershell
+node node_modules/tsx/dist/cli.mjs scripts/render-assistant-review.ts docs/evaluations/2026-10-05/repair-02
+python scripts/prepare-critique-review.py --directory docs/evaluations/2026-10-05/repair-02
+```
 
 Rescore without another paid request:
 
