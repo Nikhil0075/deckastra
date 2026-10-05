@@ -19,6 +19,30 @@ Initialize Firebase Auth with the public `projectId`, `authDomain` and `apiKey`;
 
 Do not show an active subscription or purchased-credit balance until Track 3's payment verification exists.
 
+## Repaired assistant contracts
+
+The backend accepts `task: "critique"` through `POST /v1/assistant/runs`. This is
+read-only and accepts a read credential and viewer presentation access. Send
+the current `expected_version_id`, a unique operation key, explicit selected
+scope and the requested `locale`. Poll the run and display `result.critique`,
+`result.summary` and `result.evidence`; critique does not create edit operations.
+Each issue has supplied evidence IDs. Surface the recorded limitations: this
+review uses source data and deterministic Design Check, not rendered-slide
+vision. Add the task to the frontend shared task types and label mapping when
+integrating this API. It remains unavailable until qualification is completed.
+
+Wording tools return validated proposals and retain text formatting, links and
+numbers. Narration preserves existing cue steps and recordings; localized
+scripts and alt text use draft language entries with source hashes. Show draft
+status and require normal proposal review. Generation now accepts an explicit
+`locale` and records it as the generated document's source language. Appending a
+different source language is rejected before inference; the UI can offer
+replacement generation or translation overlays.
+
+All AI availability must continue to follow the account capability response.
+Automatic benchmark checks alone do not enable a task. The new independent
+review pack is described in `docs/AI_RELIABILITY.md`.
+
 ## Files and export
 
 Create an export with `POST /v1/presentations/{id}/exports`, JSON `{"kind":"pdf"|"pptx"|"mydeck"}` plus supported options. Poll `GET /v1/exports/{id}` and use `/v1/exports/{id}/download` only when completed. Downloads redirect to short-lived private GCS signed URLs. A failed job returns a safe error; do not surface internal object paths.

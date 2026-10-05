@@ -43,11 +43,14 @@ def score_case(case, review):
     scores = review.get("scores", {})
     digest = hashlib.sha256(json.dumps(case.get("result"), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     case["result_sha256"] = digest
-    reviewed = bool(review.get("reviewer")) and review.get("independent_of_system_author") is True and review.get("result_sha256") == digest and all(isinstance(scores.get(k), (int, float)) and math.isfinite(scores[k]) and 0 <= scores[k] <= 1 for k in DIMENSIONS)
+    reviewed = (isinstance(review.get("reviewer"), str) and bool(review["reviewer"].strip())
+                and review.get("independent_of_system_author") is True and review.get("result_sha256") == digest
+                and all(type(scores.get(k)) in (int, float) and math.isfinite(scores[k]) and 0 <= scores[k] <= 1 for k in DIMENSIONS)
+                and all(type(review.get(k)) is int and review[k] >= 0 for k in ("safety_failures", "severe_regressions")))
     case["review"] = review
     case["reviewed"] = reviewed
     case["quality_pass"] = bool(reviewed and all(scores[k] >= .8 for k in DIMENSIONS))
-    case["success"] = case["automatic_valid"] and case["quality_pass"] and not review.get("safety_failures") and not review.get("severe_regressions")
+    case["success"] = bool(case["automatic_valid"] is True and case["quality_pass"] and not review.get("safety_failures") and not review.get("severe_regressions"))
     return reviewed
 
 
@@ -58,7 +61,7 @@ def rescore(report, reviews):
         cases = [c for c in report["cases"] if c["task"] == task and not c.get("budget_blocked")]
         record["metrics"].update(task_success=sum(c["success"] for c in cases) / len(cases) if cases else 0, safety_failures=sum(c["review"].get("safety_failures", 0) for c in cases), severe_regressions=sum(c["review"].get("severe_regressions", 0) for c in cases))
         record["review"] = {"independent_of_system_author": bool(cases) and all(c["reviewed"] for c in cases)}
-        record["qualified"] = qualifies(record, model_id=record["model_id"], runtime_id=record["runtime_id"], location=record["location"])
+        record["qualified"] = qualifies(record, model_id=record["model_id"], runtime_id=record["runtime_id"], location=record["location"], task=task)
     return report
 SCENARIOS = (
     "Preserve all numbers and proper names.", "Make the message understandable to a new colleague.",
@@ -128,23 +131,37 @@ def fixture(task, index):
         image_element = next((e for e in slide["elements"] if e.get("type") == "image"), None)
         if image_element is None:
             asset_id = "ast_01JB8Z9K2QW4RN7F3X80000001"
-            slide["elements"].append({"id": "el_01JB8Z9K2QW4RN7F3X80000001", "type": "image", "assetId": asset_id, "transform": {"x": 40, "y": 200, "width": 256, "height": 160}})
+            image_element = {"id": "el_01JB8Z9K2QW4RN7F3X80000001", "type": "image", "assetId": asset_id, "transform": {"x": 40, "y": 200, "width": 256, "height": 160}}
+            slide["elements"].append(image_element)
             document.setdefault("assets", []).append({"id": asset_id, "type": "image", "storageKey": "benchmark/chart.png", "mimeType": "image/png", "byteSize": len(output.getvalue())})
         else:
             asset_id = image_element["assetId"]; image_element.pop("altText", None)
         vision = [{"asset_id": asset_id, "base64": base64.b64encode(output.getvalue()).decode()}]
     request = {"task": {"authoring": "edit", "cleanup": "tidy", "vision": "alt_text"}.get(task, task), "instruction": instruction, "presentation_id": document["id"], "scope": {"kind": "slide", "slide_ids": [slide["id"]], "element_ids": []}, "locale": "hi", "slide_count": 10}
+    # Include actual element selections as well as whole slides. A passing
+    # slide-only corpus must not qualify an untested group/element tool path.
+    if index % 4 == 0 and task in {"authoring", "critique", "translation", "vision"}:
+        from deckastra_agents.validation import walk_elements
+        if task == "vision":
+            element = image_element
+        else:
+            text_ids = {e["id"] for e in walk_elements(slide["elements"]) if e.get("type") == "text"}
+            groups = [e for e in slide["elements"] if e.get("type") == "group" and any(c["id"] in text_ids for c in walk_elements(e.get("children", [])))]
+            element = next(iter(groups), next((e for e in slide["elements"] if e["id"] in text_ids), slide["elements"][0]))
+        request["scope"].update(kind="elements", element_ids=[element["id"]])
     snapshot = {"document": document, "images": [], "assets": [], "vision": vision, "sources": [], "run_id": f"benchmark-{task}-{index}"}
     return request, snapshot
 
 
 def perform(task, request, snapshot, client, budget):
-    if task in ("planning", "critique"):
-        module, contract = (story, StoryPlan) if task == "planning" else (critic, CriticResult)
+    if task == "planning":
         context = NodeContext(client, budget, lambda e: None, agent_service.build_registry(lambda: snapshot["document"]))
-        source = ("A migration records schema changes.\n" if task == "planning" else "") + json.dumps(snapshot["document"], ensure_ascii=False)
-        value = ask_model(context, stage=task, task_type="planning" if task == "planning" else "critique", system=module.SYSTEM, user=user_brief(request["instruction"]) + "\n" + envelope(source, Source(id="db-guide", kind="document")), model=contract, max_tokens=16000 if task == "planning" else 6000, max_attempts=1)
-        return value.model_dump(mode="json")
+        # Exercise the real planner. An unrelated existing deck is not evidence
+        # for a migration brief. The previous harness bypassed request context,
+        # slide-count checks and the production planner's repair path.
+        state = {"request": request, "research": {"sources": [{"id": "db-guide"}],
+                 "context_blocks": [envelope("A migration records schema changes.", Source(id="db-guide", kind="document"))]}}
+        return story.story(state, context)["story_plan"]
     return assistant_tasks.compute(request, snapshot, client, budget, lambda e: None)
 
 
@@ -173,15 +190,34 @@ def main():
     task_digests = {task: hashlib.sha256(json.dumps([case for case in all_cases if case[0] == task], sort_keys=True, ensure_ascii=False).encode()).hexdigest() for task in args.tasks}
     report = {"provider": args.provider, "dataset_sha256": digest, "tasks": {}, "cases": [], "rubric": {dimension: "0 = failed; 0.8 = publication ready with minor edits; 1 = fully meets the brief" for dimension in DIMENSIONS}, "notes": ["VRAM is whole-device usage; RAM is this process and supervised child RSS.", "Cold first request includes model startup. Missing independent reviews fail qualification."]}
     output = Path(args.output); output.parent.mkdir(parents=True, exist_ok=True)
+    report["environment"] = {"vertex_ip_family": client.config.get("ip_family", "auto"),
+                             "latency_scope": "local evaluation host; not Cloud Run end-to-end"}
     try:
         for task, index, request, snapshot in all_cases:
+            if vertex_runtime_id(args.model, client.config) != runtime_id:
+                report["stopped_reason"] = "The implementation changed during evaluation; this report cannot qualify a deployment."
+                for record in report["tasks"].values(): record["qualified"] = False
+                output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+                break
             case_id = f"{task}-{index:02}"
             budget = RunBudget(max_wall_clock_seconds=180, max_total_tokens=60000, max_cost_usd=float(os.environ["DECKASTRA_ASSISTANT_MAX_COST_USD"]) if os.environ.get("DECKASTRA_ASSISTANT_MAX_COST_USD") else None, cost_observer=ledger.observe if ledger else None)
-            selected = next(s for s in snapshot["document"]["slides"] if s["id"] in request["scope"]["slide_ids"])
-            groups = {e["type"] for e in selected["elements"]}
+            from deckastra_agents.validation import scoped_document, walk_elements
+            selected = scoped_document(snapshot["document"], request["scope"])["slides"][0]
+            groups = {e["type"] for e in walk_elements(selected["elements"])}
             if selected.get("narration", {}).get("cues"): groups.add("existing_narration")
             if selected["id"] == "sld_01JDAQNSVZBRYAS8SDZ8088HY7": groups.add("mixed_scripts")
-            started = time.monotonic(); case = {"id": case_id, "task": task, "slide_id": selected["id"], "feature_groups": sorted(groups), "temperature_class": "cold" if not report["cases"] else "warm"}
+            started = time.monotonic(); case = {"id": case_id, "task": task, "slide_id": selected["id"], "scope_kind": request["scope"]["kind"], "feature_groups": sorted(groups), "temperature_class": "cold" if not report["cases"] else "warm"}
+            # This corpus is synthetic. Preserve actual returned attempts so a
+            # failed validation can be diagnosed and independently inspected.
+            # Never capture auth headers, opaque signatures or hidden thoughts.
+            returned = []
+            original_complete = client.complete
+            def observed_complete(model_request, run_budget):
+                response = original_complete(model_request, run_budget)
+                returned.append({"stage": model_request.stage, "text": response.text[:200_000],
+                                 "refusal": response.refusal})
+                return response
+            client.complete = observed_complete
             with Resources() as resources:
                 try:
                     case["result"] = perform(task, request, snapshot, client, budget)
@@ -192,6 +228,9 @@ def main():
                         report["stopped_reason"] = str(exc)
                 except Exception as exc:
                     case["error"] = str(getattr(exc, "detail", exc))[:2000]; case["automatic_valid"] = False
+                finally:
+                    client.complete = original_complete
+            case["model_attempts"] = returned
             case.update(seconds=time.monotonic() - started, ram_mb=resources.ram_mb or None, vram_mb=resources.vram_mb or None, usage=budget.report())
             observations = budget.structured_requests
             case["first_attempt_valid"] = bool(observations) and all(o["valid_first_attempt"] for o in observations)
@@ -202,8 +241,9 @@ def main():
             warm = sorted(c["seconds"] for c in cases if c["temperature_class"] == "warm") or [case["seconds"]]
             first_valid = sum(c["first_attempt_valid"] and c["automatic_valid"] for c in cases) / len(cases) if cases else 0
             metrics = {"samples": len(cases), "first_attempt_validity": first_valid, "functional_first_attempt_validity": first_valid, "task_success": sum(c["success"] for c in cases) / len(cases) if cases else 0, "p95_seconds": warm[max(0, math.ceil(.95 * len(warm)) - 1)], "safety_failures": sum(c["review"].get("safety_failures", 0) for c in cases), "severe_regressions": sum(c["review"].get("severe_regressions", 0) for c in cases)}
-            record = dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": all(c["reviewed"] for c in cases)}, coverage={"distinct_slides": len({c["slide_id"] for c in cases}), "feature_groups": len({g for c in cases for g in c["feature_groups"]})}, task=task, model_id=model_id, runtime_id=runtime_id, location=location, dataset_sha256=task_digests[task], metrics=metrics)
-            record["qualified"] = qualifies(record, model_id=model_id, runtime_id=runtime_id, location=location)
+            record = dict(qualification_contract="assistant-v2-functional", review={"independent_of_system_author": all(c["reviewed"] for c in cases)}, coverage={"distinct_slides": len({c["slide_id"] for c in cases}), "feature_groups": len({g for c in cases for g in c["feature_groups"]})}, task=task, model_id=model_id, runtime_id=runtime_id, thinking=client.config.get("thinking", {}).get(model_id, "default"), location=location, dataset_sha256=task_digests[task], metrics=metrics)
+            record["coverage"]["scope_kinds"] = sorted({c["scope_kind"] for c in cases})
+            record["qualified"] = qualifies(record, model_id=model_id, runtime_id=runtime_id, location=location, task=task)
             report["tasks"][task] = record
             output.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
             print(f"{case_id}: {case['seconds']:.1f}s, valid={case['automatic_valid']}, reviewed={reviewed}, qualified={record['qualified']}", flush=True)

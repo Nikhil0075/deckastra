@@ -214,10 +214,12 @@ def test_the_story_agent_reports_but_never_follows_embedded_instructions():
     assert produced["story_plan"]["slides"]  # the run continued
 
 
-def test_a_short_plan_is_flagged():
+def test_a_short_plan_is_rejected_after_bounded_repair():
     ctx, _ = context(stub(planning=STORY_PLAN))
-    produced = story(state(request={"instruction": "x", "slide_count": 5}), ctx)
-    assert any("Asked for 5 slides" in warning for warning in produced["warnings"])
+    from deckastra_agents.nodes._common import NodeFailure
+    with pytest.raises(NodeFailure, match="exactly 5 slides"):
+        story(state(request={"instruction": "x", "slide_count": 5}), ctx)
+    assert ctx.budget.structured_requests[-1]["attempts"] == 2
 
 
 def test_the_authenticated_brief_is_distinct_from_untrusted_sources():

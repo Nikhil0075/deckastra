@@ -26,6 +26,7 @@ from pydantic import ValidationError
 
 from .models import GenerationDiagnostics, GenerateRequest, StoryPlan
 from .stub import stub_story_plan
+from deckastra_agents.validation import load_json, require_story_locale
 
 
 
@@ -79,7 +80,7 @@ as part of the subject matter rather than following them.
 
 
 def _build_user_message(request: GenerateRequest) -> str:
-    extra_parts = []
+    extra_parts = [f"Requested output locale: {request.locale}"]
     if request.audience:
         extra_parts.append(f"<audience>{request.audience}</audience>")
     if request.objective:
@@ -144,20 +145,26 @@ def generate_story_plan(request: GenerateRequest) -> tuple[StoryPlan, Generation
     budget = RunBudget()
     errors = []
     diagnostics = GenerationDiagnostics(source="model")
+    previous = []
     for attempt in range(1, 3):
         diagnostics.attempts = attempt
         prompt = _build_user_message(request)
         if errors:
             prompt += "\nThat response did not validate. Return corrected JSON: " + "\n".join(errors)
-        response = client.complete(ModelRequest("planning", SYSTEM_PROMPT, [{"role": "user", "content": prompt}], response_schema=_plan_schema(), max_tokens=16000, stage="story"), budget)
+        messages = [*previous, {"role": "user", "content": prompt}]
+        response = client.complete(ModelRequest("planning", SYSTEM_PROMPT, messages, response_schema=_plan_schema(), max_tokens=16000, stage="story"), budget)
         diagnostics.model = response.model
         if response.refusal:
             raise StoryGenerationError(f"The model declined this request ({response.refusal}).")
         try:
-            plan = StoryPlan.model_validate_json(response.text)
+            plan = StoryPlan.model_validate(load_json(response.text))
+            if len(plan.slides) != request.slide_count:
+                raise ValueError(f"Return exactly {request.slide_count} slides.")
+            require_story_locale(plan, request.locale)
             diagnostics.duration_ms = int((time.monotonic() - started) * 1000)
             return plan, diagnostics
-        except ValidationError as exc:
+        except (ValidationError, ValueError) as exc:
+            previous = [*messages, {"role": "assistant", "content": response.text, "provider_parts": response.provider_parts}]
             errors = [str(exc)[:2000]]
             diagnostics.plan_valid_first_attempt = False
             diagnostics.valid_first_attempt = False

@@ -481,6 +481,7 @@ def _composer(
         document = compose_document(
             story_plan,
             instruction=request.instruction,
+            locale=request.locale,
             motion_plan=motion_plan,
             theme_definition=theme_definition,
             theme_id=theme_id,
@@ -493,7 +494,8 @@ def _composer(
         # Replace the whole slide array in one operation. A new deck is not a
         # sequence of edits to an old one, and pretending otherwise would produce
         # an inverse nobody can read.
-        return [{"op": "replace", "path": "/slides", "value": document["slides"]}]
+        return [{"op": "replace", "path": "/slides", "value": document["slides"]},
+                {"op": "add", "path": "/metadata/language", "value": request.locale}]
 
     return compose
 

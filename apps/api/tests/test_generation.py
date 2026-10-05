@@ -257,7 +257,9 @@ def test_model_path_repairs_once_with_validation_errors(fake_vertex):
     plan, diagnostics = story_module.generate_story_plan(GenerateRequest(instruction="Caching", slide_count=3))
     assert diagnostics.attempts == 2 and diagnostics.valid_first_attempt is False
     assert len(plan.slides) == 3
-    assert "did not validate" in client.calls[1].messages[0]["content"]
+    assert "did not validate" in client.calls[1].messages[-1]["content"]
+    assert client.calls[1].messages[-2]["role"] == "assistant"
+    assert client.calls[1].messages[-2]["content"] == "{}"
 
 
 def test_model_path_gives_up_after_two_attempts(fake_vertex):

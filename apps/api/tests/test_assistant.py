@@ -878,7 +878,7 @@ def _organise(answer):
             return ModelResponse(text=_json.dumps(answer), model="test")
 
     assets = [{"id": "ast_chart", "filename": "adoption.png", "metadata_version": 0}, {"id": "ast_swoosh", "filename": "swoosh.png", "metadata_version": 0}]
-    snapshot = {"document": {"slides": []}, "assets": assets, "vision": []}
+    snapshot = {"document": {"slides": []}, "assets": assets, "vision": [{"asset_id": a["id"], "base64": "fixture-pixels"} for a in assets]}
     return assistant_tasks.compute({"task": "organise", "scope": {"kind": "deck", "slide_ids": [], "element_ids": []}}, snapshot, Scripted(), RunBudget(), lambda e: None)
 
 

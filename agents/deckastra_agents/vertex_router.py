@@ -41,12 +41,15 @@ class TaskVertexClient:
             raise ModelUnavailable(f"No evaluated Vertex model is pinned for {task}.") from exc
         evidence = load_report(os.environ.get("DECKASTRA_VERTEX_QUALIFICATION"))
         record = evidence.get("tasks", {}).get(task, {})
-        if not qualifies(record, model_id=model, runtime_id=runtime_id(model, config), location=config["location"]):
+        if not qualifies(record, model_id=model, runtime_id=runtime_id(model, config), location=config["location"], task=task):
             raise ModelUnavailable(f"Vertex {task} requires 20 representative cases and independent review for the exact model and thinking setting.")
         with self.lock:
-            if model not in self.clients:
-                self.clients[model] = VertexClient(model, config)
-            return self.clients[model]
+            # A thinking/identity/pricing change must not reuse an old client
+            # merely because its model ID is unchanged.
+            key = (model, json.dumps(config, sort_keys=True))
+            if key not in self.clients:
+                self.clients[key] = VertexClient(model, config)
+            return self.clients[key]
 
     def _prepare(self, request, budget):
         task = task_of(request)
