@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Callable
 
 from pydantic import BaseModel, ValidationError
 
@@ -21,6 +21,7 @@ from ..memory import ProjectMemory
 from ..router import ModelClient, ModelError, ModelRequest, ModelResponse
 from ..state import PresentationAgentState
 from ..tools.registry import ToolRegistry
+from ..validation import load_json
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -94,6 +95,7 @@ def ask_model(
     max_tokens: int = 8_000,
     images: list[Any] | None = None,
     max_attempts: int | None = None,
+    validate: Callable[[T], None] | None = None,
 ) -> T:
     """One structured request, validated into a contract, with one repair attempt.
 
@@ -166,13 +168,19 @@ def ask_model(
             )
 
         try:
-            validated = model.model_validate(json.loads(response.text))
+            validated = model.model_validate(load_json(response.text))
+            if validate:
+                validate(validated)
             observation["valid_first_attempt"] = attempt == 1
             observation["outcome"] = "valid"
             return validated
-        except (json.JSONDecodeError, ValidationError) as exc:
+        except (ValueError, ValidationError) as exc:
             observation["outcome"] = "invalid"
             errors = [str(exc)[:600]]
+            # A repair must see the actual answer that failed, not just the brief
+            # again. Preserve opaque provider parts/signatures on Gemini turns.
+            request.messages.append({"role": "assistant", "content": response.text,
+                                     **({"provider_parts": response.provider_parts} if response.provider_parts else {})})
             if attempt == attempts:
                 raise NodeFailure(
                     stage,

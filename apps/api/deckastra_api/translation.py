@@ -49,6 +49,7 @@ import httpx
 from deckastra_agents.budgets import RunBudget
 from deckastra_agents.contracts import strict_schema
 from deckastra_agents.envelope import POLICY, envelope
+from deckastra_agents.validation import load_json
 from deckastra_agents.router import (
     TASK_STRUCTURED,
     ModelClient,
@@ -186,7 +187,9 @@ class ModelTranslator:
             system=system,
             messages=[{"role": "user", "content": "Items to translate:\n" + envelope(payload)}],
             response_schema=strict_schema(_TranslationBatch),
-            max_tokens=min(16_000, 400 + sum(len(item.text) for item in items) * 4),
+            # Gemini's output limit includes thinking as well as the JSON. Tiny
+            # batches previously had too little space even for a valid answer.
+            max_tokens=max(6000, min(16_000, 400 + sum(len(item.text) for item in items) * 4)),
             stage=self.stage,
         )
         if self.feedback:
@@ -210,12 +213,14 @@ class ModelTranslator:
                 observation["outcome"] = "refusal"
                 raise TranslationError(f"The model declined to translate ({response.refusal}).")
             try:
-                batch = _TranslationBatch.model_validate(json.loads(response.text))
-            except (json.JSONDecodeError, ValidationError) as error:
+                batch = _TranslationBatch.model_validate(load_json(response.text))
+            except (ValueError, ValidationError) as error:
                 errors = [str(error)[:600]]
                 observation["outcome"] = "invalid"
                 if attempt == self.max_attempts:
                     raise TranslationError("The model did not return a valid translation after bounded repair.") from error
+                request.messages.append({"role": "assistant", "content": response.text,
+                                         **({"provider_parts": response.provider_parts} if response.provider_parts else {})})
                 continue
             wanted = {item.id for item in items}
             received = [entry.id for entry in batch.translations]
@@ -224,6 +229,8 @@ class ModelTranslator:
                 observation["outcome"] = "invalid"
                 if attempt == self.max_attempts:
                     raise TranslationError(errors[0])
+                request.messages.append({"role": "assistant", "content": response.text,
+                                         **({"provider_parts": response.provider_parts} if response.provider_parts else {})})
                 continue
             observation.update(valid_first_attempt=attempt == 1, outcome="valid")
             return {entry.id: entry.text for entry in batch.translations if entry.id in wanted}

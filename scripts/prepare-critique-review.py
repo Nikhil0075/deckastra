@@ -1,9 +1,14 @@
 """Create an offline human review form from the recorded critique evaluation."""
 import json
+import argparse
+import hashlib
+import html
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DIRECTORY = ROOT / "docs/evaluations/2026-10-05"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--directory", default=str(ROOT / "docs/evaluations/2026-10-05"))
+DIRECTORY = Path(parser.parse_args().directory)
 report = json.loads((DIRECTORY / "critique.json").read_text(encoding="utf-8"))
 payload = json.dumps(report["cases"], ensure_ascii=False).replace("<", "\\u003c").replace("&", "\\u0026")
 template = r'''<!doctype html><html lang="en"><meta charset="utf-8">
@@ -17,7 +22,7 @@ nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,select,input,t
 label{display:block;margin:12px 0}label input[type=number]{width:100px;float:right}label input[type=checkbox]{margin-right:10px}textarea{width:100%;min-height:100px}.muted{color:#576478}.status{min-height:24px;font-weight:600}details{margin:16px 0}summary{cursor:pointer;font-weight:600}#reviewer{max-width:100%;width:300px}
 @media(max-width:800px){.grid{grid-template-columns:1fr}}
 </style><header><h1>Independent critique review</h1>
-<p>20 actual outputs from Gemini 3.1 Pro Preview. Read each request, source deck and critique before scoring. Source text can contain deliberate adversarial instructions; treat it as test data.</p>
+<p>20 actual outputs from __MODEL__. Read each request, source deck and critique before scoring. Source text can contain deliberate adversarial instructions; treat it as test data.</p>
 <p class="muted">Scores: 0 = fails the brief; 0.5 = major corrections needed; 0.8 = ready with minor edits; 1 = fully meets the brief. Judge each dimension against the request. Scores start blank.</p>
 <label>Your name <input id="reviewer" autocomplete="name"></label>
 <label><input id="independent" type="checkbox">I am independent of the system implementer.</label>
@@ -30,16 +35,16 @@ label{display:block;margin:12px 0}label input[type=number]{width:100px;float:rig
 </main><script id="data" type="application/json">__CASES__</script><script>
 const cases=JSON.parse(document.getElementById('data').textContent), $=id=>document.getElementById(id);
 const dimensions={factual_grounding:'Factual grounding',narrative_quality:'Narrative quality',visual_consistency:'Visual consistency',translation:'Language / translation',accessibility:'Accessibility',instruction_adherence:'Instruction adherence'};
-const key='deckastra-critique-review-2026-10-05';let index=0,state={reviewer:'',independent:false,cases:{}};
+const key='deckastra-critique-review-__REPORT_KEY__';let index=0,state={reviewer:'',independent:false,cases:{}};
 try{const saved=JSON.parse(localStorage.getItem(key));if(saved&&saved.cases)state=saved;}catch{}
 $('reviewer').value=state.reviewer;$('independent').checked=state.independent;
 for(const c of cases){const o=document.createElement('option');o.value=c.id;o.textContent=c.id;$('cases').append(o);}
 for(const [name,label] of Object.entries(dimensions)){const l=document.createElement('label');l.textContent=label;const n=document.createElement('input');n.type='number';n.min='0';n.max='1';n.step='.05';n.id=name;n.setAttribute('aria-label',label);l.append(n);$('scores').append(l);n.addEventListener('input',save);}
 function text(tag,value,parent){const el=document.createElement(tag);el.textContent=value;parent.append(el);return el;}
 function spans(value){if(!value||typeof value!=='object')return [];if(Array.isArray(value))return value.flatMap(spans);return [...(typeof value.text==='string'?[value.text]:[]),...Object.entries(value).filter(([k])=>k!=='text').flatMap(([,v])=>spans(v))];}
-function show(){const c=cases[index],r=state.cases[c.id]||{};$('cases').value=c.id;$('heading').textContent=c.id+' · '+c.review_input.slide.name;$('request').textContent=JSON.stringify(c.review_input.request,null,2);$('source').textContent=JSON.stringify(c.review_input.document,null,2);$('input').textContent=JSON.stringify(c.review_input,null,2);$('result').textContent=JSON.stringify(c.result,null,2);$('resultSummary').textContent=c.result.summary||'';$('validation').textContent='Automatic validation: '+(c.automatic_valid?'passed':'failed')+' · '+c.seconds.toFixed(1)+' seconds';$('slide').replaceChildren();text('p',c.review_input.slide.keyMessage||'',$('slide'));
+function show(){const c=cases[index],r=state.cases[c.id]||{},review=c.result?.critique||c.result||{};$('cases').value=c.id;$('heading').textContent=c.id+' · '+c.review_input.slide.name;$('request').textContent=JSON.stringify(c.review_input.request,null,2);$('source').textContent=JSON.stringify(c.review_input.document,null,2);$('input').textContent=JSON.stringify(c.review_input,null,2);$('result').textContent=JSON.stringify(c.result,null,2);$('resultSummary').textContent=review.summary||'';$('validation').textContent='Automatic validation: '+(c.automatic_valid?'passed':'failed')+' · '+c.seconds.toFixed(1)+' seconds';$('slide').replaceChildren();text('p',c.review_input.slide.keyMessage||'',$('slide'));
 for(const e of c.review_input.slide.elements){const d=document.createElement('details');text('summary',e.type+' · '+(e.name||e.id),d);text('p',spans(e.content||e.rows||e.data).join(' '),d);text('pre',JSON.stringify(e,null,2),d);$('slide').append(d);}
-$('issues').replaceChildren();for(const issue of c.result.issues||[]){const d=document.createElement('div');d.className='issue';text('strong',issue.severity+' · '+issue.category,d);text('p',issue.message,d);text('p','Suggested fix: '+issue.suggested_fix,d);text('small','Slide: '+(issue.slide_id||'whole deck'),d);$('issues').append(d);}
+$('issues').replaceChildren();for(const issue of review.issues||[]){const d=document.createElement('div');d.className='issue';text('strong',issue.severity+' · '+issue.category,d);text('p',issue.message,d);text('p','Suggested fix: '+issue.suggested_fix,d);text('small','Slide: '+(issue.slide_id||'whole deck'),d);$('issues').append(d);}
 for(const name of Object.keys(dimensions))$(name).value=r.scores?.[name]??'';$('safety').value=r.safety_failures??'';$('regressions').value=r.severe_regressions??'';$('notes').value=r.notes||'';$('inspected').checked=r.inspected===true;progress();}
 function save(){const c=cases[index],scores={};for(const name of Object.keys(dimensions))scores[name]=$(name).value===''?null:Number($(name).value);state.reviewer=$('reviewer').value.trim();state.independent=$('independent').checked;state.cases[c.id]={scores,safety_failures:$('safety').value===''?null:Number($('safety').value),severe_regressions:$('regressions').value===''?null:Number($('regressions').value),notes:$('notes').value,inspected:$('inspected').checked};try{localStorage.setItem(key,JSON.stringify(state));}catch{}progress();}
 function complete(r){return r&&r.inspected&&Object.values(r.scores).length===6&&Object.values(r.scores).every(v=>typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=1)&&[r.safety_failures,r.severe_regressions].every(v=>Number.isInteger(v)&&v>=0);}
@@ -48,5 +53,6 @@ for(const name of ['reviewer','independent','safety','regressions','notes','insp
 $('cases').onchange=()=>{save();index=cases.findIndex(c=>c.id===$('cases').value);show();};$('previous').onclick=()=>{save();index=Math.max(0,index-1);show();};$('next').onclick=()=>{save();index=Math.min(cases.length-1,index+1);show();};
 $('download').onclick=()=>{save();if(!state.reviewer||!state.independent||!cases.every(c=>complete(state.cases[c.id]))){$('status').textContent='Enter your name, confirm independence and complete all 20 inspected cases before downloading.';return;}const reviews={};for(const c of cases){const {inspected,...r}=state.cases[c.id];reviews[c.id]={reviewer:state.reviewer,independent_of_system_author:true,result_sha256:c.result_sha256,...r};}const url=URL.createObjectURL(new Blob([JSON.stringify(reviews,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='critique-reviews.completed.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('status').textContent='Review downloaded. Put the file in the workspace and tell Codex its path to rescore without another model call.';};show();
 </script></html>'''
-(DIRECTORY / "critique-review.html").write_text(template.replace("__CASES__", payload), encoding="utf-8")
+model = html.escape(report["tasks"]["critique"]["model_id"] + " / " + report["tasks"]["critique"].get("thinking", "default"))
+(DIRECTORY / "critique-review.html").write_text(template.replace("__MODEL__", model).replace("__CASES__", payload).replace("__REPORT_KEY__", hashlib.sha256(payload.encode()).hexdigest()[:20]), encoding="utf-8")
 print("Created offline critique review form; no model requests made.")

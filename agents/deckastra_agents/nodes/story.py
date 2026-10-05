@@ -20,6 +20,7 @@ from ..contracts import StoryPlan
 from ..envelope import Source, envelope, user_brief
 from ..state import PresentationAgentState
 from ._common import NodeContext, ask_model, completed, started
+from ..validation import require_story_locale
 
 AGENT_ID = "story"
 STAGE = "story"
@@ -40,6 +41,8 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         "",
         user_brief(str(request.get("instruction", ""))),
     ]
+    if request.get("locale"):
+        parts += [f"Requested output locale: {request['locale']}. Write title, narrative arc, headlines, slide copy and notes in this locale. Keep source IDs, code, identifiers and proper names exact."]
 
     for field, kind in (("audience", "audience"), ("objective", "objective"), ("tone", "tone")):
         value = request.get(field)
@@ -78,6 +81,17 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
 
     memory_context = ctx.memory.prompt_context() if ctx.memory else ""
 
+    known_sources = {s["id"] for s in research.get("sources", [])}
+    def validate(plan):
+        if len(plan.slides) != slide_count:
+            raise ValueError(f"Return exactly {slide_count} slides; do not silently shorten the requested presentation.")
+        if any(set(s.source_ids) - known_sources for s in plan.slides):
+            raise ValueError("Cite only actual supplied research source IDs; do not invent sources.")
+        if not plan.title.strip() or any(not s.headline.strip() or not s.key_message.strip() for s in plan.slides):
+            raise ValueError("Every slide needs a nonempty headline and primary message.")
+        if request.get("locale"):
+            require_story_locale(plan, request["locale"])
+
     plan = ask_model(
         ctx,
         stage=STAGE,
@@ -87,6 +101,7 @@ def story(state: PresentationAgentState, ctx: NodeContext) -> dict[str, Any]:
         model=StoryPlan,
         context=[memory_context] if memory_context else None,
         max_tokens=16_000,
+        validate=validate,
     )
 
     warnings: list[str] = []

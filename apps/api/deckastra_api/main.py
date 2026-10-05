@@ -522,6 +522,7 @@ def generate(
         document = compose_document(
             plan,
             instruction=request.instruction,
+            locale=request.locale,
             theme_definition=setup.theme_definition,
             theme_id=setup.theme_id,
         )

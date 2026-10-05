@@ -621,6 +621,7 @@ def compose_document(
     plan: StoryPlan,
     *,
     instruction: str = "",
+    locale: str = "en",
     motion_plan: dict[str, Any] | None = None,
     theme_definition: dict[str, Any] | None = None,
     theme_id: str | None = None,
@@ -654,7 +655,7 @@ def compose_document(
             "title": plan.title,
             **({"themeId": theme_id} if theme_id is not None else {}),
             "description": plan.narrative_arc,
-            "language": "en",
+            "language": locale,
             "presentationType": "technical",
             # Read by the Story Agent for vocabulary and by the Critic for density
             # judgement (doc 02 §5.1). A deck without them forces every agent to

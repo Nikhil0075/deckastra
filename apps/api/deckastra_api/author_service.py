@@ -27,6 +27,7 @@ from .db.models import Asset, Presentation, Project
 from .ids import new_id
 from .patch import PatchError, apply_patch
 from .schema import validate_document
+from deckastra_agents.validation import load_json
 
 #: How many attempts the agent gets: the first, and two repairs. A patch that
 #: is still wrong after being told exactly why twice is not converging.
@@ -102,9 +103,9 @@ def materialise(
         if op in ("add", "replace"):
             text = str(raw.get("value_json") or "")
             try:
-                operation["value"] = json.loads(real(text))
-            except json.JSONDecodeError as error:
-                raise ValueError(f"operation {index + 1}: value_json is not valid JSON ({error.msg}).") from error
+                operation["value"] = load_json(real(text))
+            except ValueError as error:
+                raise ValueError(f"operation {index + 1}: value_json is not valid JSON.") from error
         if op == "move":
             operation["from"] = real(str(raw.get("from_path") or ""))
         operations.append(operation)

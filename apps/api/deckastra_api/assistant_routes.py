@@ -64,7 +64,7 @@ class Scope(BaseModel):
 
 class AssistantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    task: Literal["generate", "edit", "tidy", "alt_text", "consistency", "translation", "narration", "motion", "organise", "research", "image", "speech", "export"]
+    task: Literal["generate", "edit", "tidy", "alt_text", "consistency", "translation", "narration", "motion", "organise", "research", "image", "speech", "export", "critique"]
     presentation_id: str = Field(min_length=1, max_length=64)
     expected_version_id: str = Field(min_length=1, max_length=64)
     operation_key: str = Field(min_length=8, max_length=64)
@@ -335,10 +335,10 @@ def assistant_capabilities(presentation_id: str | None = None, slide_id: str | N
 
 @router.post("/runs", status_code=202)
 def create_run(request: AssistantRequest, background: BackgroundTasks, principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
-    required = "export" if request.task == "export" else "read" if request.task == "research" else "write"
+    required = "export" if request.task == "export" else "read" if request.task in ("research", "critique") else "write"
     if required not in principal.scopes:
         raise HTTPException(403, f"This task requires {required} scope.")
-    access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=request.presentation_id, require=Role.VIEWER if request.task in ("research", "export") else Role.EDITOR)
+    access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=request.presentation_id, require=Role.VIEWER if request.task in ("research", "export", "critique") else Role.EDITOR)
     payload = request.model_dump(mode="json")
     existing = session.scalar(select(AssistantRun).where(AssistantRun.created_by == principal.user_id, AssistantRun.operation_key == request.operation_key))
     if existing:
@@ -631,7 +631,7 @@ def _execute(run_id):
         row = session.get(AssistantRun, run_id)
         request, checkpoint = dict(row.request_json), computed_checkpoint(row.checkpoint_json)
         principal = Principal(row.created_by, "", frozenset(row.scopes_json))
-        access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export") else Role.EDITOR)
+        access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export", "critique") else Role.EDITOR)
         loaded = store.load_presentation(session, row.presentation_id)
         snapshot = {"run_id": run_id, "user_id": row.created_by, "project_id": access.project.id, "workspace_id": access.workspace_id, "document": loaded.document, "images": author_service.workspace_images(session, row.presentation_id)}
         snapshot["assets"] = [describe_asset(a) for a in session.scalars(select(Asset).where(Asset.workspace_id == access.workspace_id, Asset.deleted_at.is_(None)).limit(40)).all()]
@@ -825,7 +825,7 @@ def _execute(run_id):
             row = session.get(AssistantRun, run_id)
             if row.cancel_requested or row.status != "running" or row.owner_id != _owner:
                 raise RunCancelled("Cancelled before applying the validated result.")
-            access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export") else Role.EDITOR)
+            access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export", "critique") else Role.EDITOR)
             current = store.load_presentation(session, row.presentation_id)
             if current.version_id != request["expected_version_id"]:
                 raise HTTPException(409, "The deck changed before the result could be proposed.")

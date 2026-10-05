@@ -86,6 +86,7 @@ class GenerateRequest(BaseModel):
     objective: str = ""
     slide_count: int = Field(default=5, ge=1, le=20)
     tone: str = ""
+    locale: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
     """Where to put the deck. Defaults to the caller's first project."""
     project_id: str | None = None
     #: Repositories to ground the deck in (Journey B). Resolved against the

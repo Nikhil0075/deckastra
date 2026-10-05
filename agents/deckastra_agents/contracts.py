@@ -20,7 +20,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
@@ -365,6 +365,7 @@ class AuthorOperation(BaseModel):
     parses it and the document validator decides whether it is right.
     """
 
+    model_config = ConfigDict(extra="forbid")
     op: Literal["add", "remove", "replace", "move"]
     path: str = Field(description="An id-addressed JSON Pointer, e.g. /slides/id:sld_x/elements/id:el_y/transform/x")
     value_json: str = Field(default="", description="The value for add/replace, as JSON text. Empty for remove/move.")
@@ -372,10 +373,10 @@ class AuthorOperation(BaseModel):
 
     @model_validator(mode="after")
     def valid_value(self):
-        import json
+        from .validation import load_json
         if self.op in {"add", "replace"}:
             try:
-                json.loads(self.value_json, parse_constant=lambda value: (_ for _ in ()).throw(ValueError("Non-finite JSON")))
+                load_json(self.value_json)
             except (ValueError, TypeError) as exc:
                 raise ValueError("value_json must contain a complete JSON value") from exc
         return self
@@ -391,6 +392,7 @@ class AuthorPlan(BaseModel):
     and a large change waits for a person exactly as an external agent's does.
     """
 
+    model_config = ConfigDict(extra="forbid")
     summary: str = Field(description="One or two plain sentences for the person: what this change does.")
     operations: list[AuthorOperation]
     refusal: str = Field(default="", description="Why nothing was changed. Empty when operations were written.")

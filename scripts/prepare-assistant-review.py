@@ -24,7 +24,7 @@ def main():
         report = json.loads(path.read_text(encoding="utf-8"))
         if "tasks" not in report or "cases" not in report:
             continue
-        fixture_cases = [(task, index, *benchmark.fixture(task, index)) for task in report["tasks"] for index in range(20)]
+        fixture_cases = [(task, index, *benchmark.fixture(task, index)) for task in report["tasks"] for index in range(int(report["tasks"][task]["metrics"]["samples"]))]
         digest = hashlib.sha256(json.dumps(fixture_cases, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         if digest != report["dataset_sha256"]:
             raise ValueError("The corpus changed since evaluation; do not reconstruct review inputs from it.")
@@ -34,7 +34,7 @@ def main():
             case["review_input"] = {"request": request, "metadata": snapshot["document"]["metadata"],
                 "slide": next(s for s in snapshot["document"]["slides"] if s["id"] == case["slide_id"]),
                 "vision": snapshot["vision"], "planning_fact": "A migration records schema changes; source db-guide." if case["task"] == "planning" else None}
-            if case["task"] in ("planning", "critique"):
+            if case["task"] == "critique":
                 case["review_input"]["document"] = snapshot["document"]
             reviews[case["id"]] = {"reviewer": "", "independent_of_system_author": False,
                 "result_sha256": case["result_sha256"], "scores": {name: None for name in DIMENSIONS},
@@ -47,9 +47,9 @@ def main():
                 "metrics": record["metrics"], "qualified": record["qualified"]})
     (output / "reviews.template.json").write_text(json.dumps(reviews, indent=2), encoding="utf-8")
     (output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (output / "README.md").write_text("""# Independent assistant review
-
-These 140 synthetic advanced-deck cases were run in development on 2026-10-05 against `gemini-3.1-pro-preview`, `global`, thinking `MEDIUM`. No task is qualified by this unreviewed report. The source corpus digest was checked again while creating this review pack. Each task report contains the actual result, automatic validation errors, usage and reconstructed scoped input.
+    models = sorted({item["model"] for item in summary})
+    heading = f"These {len(reviews)} synthetic advanced-deck cases were evaluated against {', '.join(models)}. Exact runtime IDs, locations and thinking settings are in the task reports. No task is qualified by this unreviewed report. The source corpus digest was checked while preparing the review pack. Each task report contains the actual result, automatic validation errors, usage and reconstructed scoped input.\n"
+    (output / "README.md").write_text("# Independent assistant review\n\n" + heading + """
 
 Copy `reviews.template.json` to a working review file. Someone other than the system author must inspect the input and output of each case, enter their name, confirm independence, assign every rubric score from 0 to 1, and record safety failures/severe regressions and notes. Scores of 0.8 describe publication-ready work with minor edits, and 1 fully meets the brief. Do not change result digests or invent scores for an uninspected result. Failed automatic cases cannot be made successful by a subjective score.
 
@@ -63,8 +63,8 @@ python scripts/benchmark-assistant.py --rescore docs/evaluations/2026-10-05/crit
 
 Repeat for each task. Qualification also requires the pinned model/runtime/location, 20 cases, corpus coverage, first-attempt validity, task success, latency and zero safety/severe regression findings. Cleanup uses deterministic engines and made no model calls; its result does not qualify a Vertex cleanup model. The remaining unqualified tasks stay disabled. No automatic retry or fallback model is implied by this report.
 
-The approved evaluation budget was US$30 total; the model ledger used a US$25 ceiling, leaving US$5 headroom. Configured standard Vertex pricing was US$2/12 per million input/output tokens, and US$4/18 for long contexts. Recorded model usage is an estimate, not a billing invoice; interrupted calls remain reserved until authoritative usage evidence is available. See [official pricing](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing) and [model configuration](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-1-pro), checked 2026-10-05.
-""", encoding="utf-8")
+The approved evaluation budget is US$30 total; the shared model ledger uses a US$25 ceiling, leaving US$5 headroom. Candidate pricing is pinned in docs/integrations/benchmarks/cloud-configuration.json and conservatively uses standard rates. Recorded model usage is an estimate, not a billing invoice; interrupted calls remain reserved until authoritative usage evidence is available. See [official pricing](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing) and [model configuration](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/3-1-pro), checked 2026-10-05.
+""".replace("docs/evaluations/2026-10-05/critique.json", str(output / "critique.json").replace("\\", "/")), encoding="utf-8")
     print(f"Prepared {len(reviews)} review cases in {output}.")
 
 

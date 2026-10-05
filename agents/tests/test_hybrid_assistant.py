@@ -29,9 +29,42 @@ def test_qualification_is_per_deployment_and_requires_samples():
     assert not qualifies(item, model_id="e2b", runtime_id="r1", location="global")
 
 
+def test_pooled_vertex_requests_refresh_identity_and_keep_separate_usage():
+    calls = []
+    tokens = iter(["first-identity", "refreshed-identity"])
+    def respond(request):
+        calls.append(request)
+        payload = {"candidates": [{"content": {"parts": [{"text": "{}"}]}}],
+                   "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 5}}
+        return httpx.Response(200, text="data: " + json.dumps(payload) + "\n\n")
+    client = VertexClient("gemini-pinned", vertex_config(), lambda: next(tokens), httpx.MockTransport(respond))
+    first = RunBudget(max_cost_usd=1)
+    second = RunBudget(max_cost_usd=1, max_wall_clock_seconds=10)
+    request = ModelRequest("structured", "", [], stage="authoring")
+    assert client.complete(request, first).text == "{}"
+    pool = client._http
+    assert client.complete(request, second).text == "{}" and client._http is pool
+    assert [r.headers["Authorization"] for r in calls] == ["Bearer first-identity", "Bearer refreshed-identity"]
+    assert calls[1].extensions["timeout"]["read"] <= 10
+    assert first.used_tokens == second.used_tokens == 15
+    assert first.reserved_cost_usd == second.reserved_cost_usd == 0
+    client.close()
+    assert pool.is_closed
+
+
 def test_narrow_or_self_reviewed_evidence_does_not_qualify():
     for changes in ({"qualification_contract": "legacy"}, {"review": {"independent_of_system_author": False}}, {"coverage": {"distinct_slides": 2, "feature_groups": 1}}):
         assert not qualifies({**record(), **changes}, model_id="e2b", runtime_id="r1", location="global")
+
+
+def test_qualification_requires_task_identity_scope_coverage_and_numeric_metrics():
+    item = record("critique")
+    assert not qualifies(item, model_id="e2b", runtime_id="r1", location="global", task="critique")
+    item["coverage"]["scope_kinds"] = ["slide", "elements"]
+    assert qualifies(item, model_id="e2b", runtime_id="r1", location="global", task="critique")
+    assert not qualifies(item, model_id="e2b", runtime_id="r1", location="global", task="planning")
+    item["metrics"]["first_attempt_validity"] = True
+    assert not qualifies(item, model_id="e2b", runtime_id="r1", location="global", task="critique")
 
 
 def test_uncertain_cost_requires_audited_authoritative_evidence(tmp_path):
@@ -115,3 +148,24 @@ def test_pinned_thinking_configuration_is_sent():
     config = vertex_config(); config["thinking"] = {"gemini-pinned": "LOW"}
     client = VertexClient("gemini-pinned", config, lambda: "token")
     assert client._body(ModelRequest("structured", "", [{"role": "user", "content": "Edit"}]))["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "LOW"}
+
+
+def test_gemini_three_uses_supported_thinking_without_legacy_sampling():
+    config = vertex_config()
+    config["prices"]["gemini-3.8-flash"] = {"input": 1.5, "output": 7.5}
+    config["thinking"] = {"gemini-3.8-flash": "LOW"}
+    client = VertexClient("gemini-3.8-flash", config, lambda: "token")
+    body = client._body(ModelRequest("structured", "", [{"role": "user", "content": "Edit"}], response_schema={"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}))
+    assert "temperature" not in body["generationConfig"]
+    assert body["generationConfig"]["responseSchema"]["propertyOrdering"] == ["answer"]
+
+
+def test_connection_failure_refunds_but_read_timeout_retains_reservation():
+    def connect(request): raise httpx.ConnectTimeout("Before HTTP", request=request)
+    def read(request): raise httpx.ReadTimeout("After HTTP", request=request)
+    for handler, reserved in ((connect, False), (read, True)):
+        client = VertexClient("gemini-pinned", vertex_config(), lambda: "token", httpx.MockTransport(handler))
+        budget = RunBudget()
+        with pytest.raises(ModelError): client.complete(ModelRequest("structured", "", [{"role": "user", "content": "Hello"}]), budget)
+        assert bool(budget.reserved_cost_usd) is reserved
+        assert budget.used_cost_usd == 0
