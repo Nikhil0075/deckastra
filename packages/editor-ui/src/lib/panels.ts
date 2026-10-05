@@ -14,23 +14,44 @@
 
 import type { HostCommand } from "@deckastra/workspace-contracts";
 
-export type PanelName = "tools" | "slides" | "inspector" | "notes" | "dock";
+import { dockShows, toggleDockTab, type DockState, type DockTab } from "./dock";
+
+/**
+ * The regions beside the slide. Notes and the timeline are not here: they are
+ * the two tabs of the dock (`dock.ts`), which each mode remembers for itself.
+ */
+export type PanelName = "tools" | "slides" | "inspector";
 
 export type PanelVisibility = Record<PanelName, boolean>;
+
+/** Everything around the slide that can be put away: the side regions and this mode's dock. */
+export interface Chrome {
+  panels: PanelVisibility;
+  dock: DockState;
+}
 
 export const PANELS: ReadonlyArray<{ name: PanelName; label: string; shortcut: string }> = [
   { name: "tools", label: "Insert tools", shortcut: "Ctrl+Alt+1" },
   { name: "slides", label: "Slides", shortcut: "Ctrl+Alt+2" },
   { name: "inspector", label: "Side panel", shortcut: "Ctrl+Alt+3" },
-  { name: "notes", label: "Speaker notes", shortcut: "Ctrl+Alt+4" },
-  { name: "dock", label: "Timeline", shortcut: "Ctrl+Alt+5" },
 ];
 
-export const ALL_VISIBLE: PanelVisibility = { tools: true, slides: true, inspector: true, notes: true, dock: true };
+/** The dock's tabs as the Panels menu and Ctrl+Alt+4/5 name them. */
+export const DOCK_PANELS: ReadonlyArray<{ tab: DockTab; label: string; shortcut: string }> = [
+  { tab: "notes", label: "Speaker notes", shortcut: "Ctrl+Alt+4" },
+  { tab: "timeline", label: "Timeline", shortcut: "Ctrl+Alt+5" },
+];
+
+export const ALL_VISIBLE: PanelVisibility = { tools: true, slides: true, inspector: true };
 
 const STORAGE_KEY = "deckastra.panels";
 
-/** The saved layout, or everything visible when nothing usable is saved. */
+/**
+ * The saved side regions, or all of them when nothing usable is saved. An older
+ * build also stored `notes` and `dock` here; those are ignored, because the dock
+ * now belongs to each mode and an old "notes: true" would reopen the squeezed
+ * canvas this change exists to end.
+ */
 export function loadPanels(storage: Pick<Storage, "getItem"> | undefined = safeStorage()): PanelVisibility {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
@@ -65,63 +86,79 @@ export function togglePanel(visibility: PanelVisibility, name: PanelName): Panel
 }
 
 /** Nothing but the slide. */
-export const FOCUSED: PanelVisibility = { tools: false, slides: false, inspector: false, notes: false, dock: false };
+export const FOCUSED: PanelVisibility = { tools: false, slides: false, inspector: false };
 
-export function isFocused(visibility: PanelVisibility): boolean {
-  return PANELS.every(({ name }) => !visibility[name]);
+export function isFocused(chrome: Chrome): boolean {
+  return PANELS.every(({ name }) => !chrome.panels[name]) && !chrome.dock.open;
+}
+
+export function showsEverything(chrome: Chrome): boolean {
+  return PANELS.every(({ name }) => chrome.panels[name]) && chrome.dock.open;
+}
+
+/** Every side region, and the dock open on whichever tab it last showed. */
+export function showEverything(chrome: Chrome): Chrome {
+  return { panels: { ...ALL_VISIBLE }, dock: { ...chrome.dock, open: true } };
 }
 
 /**
  * Focus mode: nothing but the slide, or everything back.
  *
- * Everything, including the notes and the timeline: the canvas fits the slide
- * to the smaller of its width and height, and in a wide window the height is
- * the limit, so hiding only the side panels freed room the slide could not use.
- * "Back" means everything, not "what was open before": a toggle that restores a
- * remembered subset reads as random to someone who does not remember it.
+ * The dock too: the canvas fits the slide to the smaller of its width and
+ * height, and in a wide window the height is the limit, so hiding only the side
+ * panels freed room the slide could not use. "Back" means everything, not "what
+ * was open before": a toggle that restores a remembered subset reads as random
+ * to someone who does not remember it.
  */
-export function toggleFocus(visibility: PanelVisibility): PanelVisibility {
-  return isFocused(visibility) ? { ...ALL_VISIBLE } : { ...FOCUSED };
+export function toggleFocus(chrome: Chrome): Chrome {
+  return isFocused(chrome) ? showEverything(chrome) : { panels: { ...FOCUSED }, dock: { ...chrome.dock, open: false } };
+}
+
+/** Whether a Panels menu entry is checked. */
+export function dockPanelShown(chrome: Chrome, tab: DockTab): boolean {
+  return dockShows(chrome.dock, tab);
 }
 
 /** What a host (application menu) command means for the panels, if anything. */
-export function panelsForCommand(command: HostCommand, visibility: PanelVisibility): PanelVisibility | null {
+export function panelsForCommand(command: HostCommand, chrome: Chrome): Chrome | null {
   switch (command) {
     case "panel-tools":
-      return togglePanel(visibility, "tools");
+      return { ...chrome, panels: togglePanel(chrome.panels, "tools") };
     case "panel-slides":
-      return togglePanel(visibility, "slides");
+      return { ...chrome, panels: togglePanel(chrome.panels, "slides") };
     case "panel-inspector":
-      return togglePanel(visibility, "inspector");
+      return { ...chrome, panels: togglePanel(chrome.panels, "inspector") };
     case "panel-notes":
-      return togglePanel(visibility, "notes");
+      return { ...chrome, dock: toggleDockTab(chrome.dock, "notes") };
     case "panel-dock":
-      return togglePanel(visibility, "dock");
+      return { ...chrome, dock: toggleDockTab(chrome.dock, "timeline") };
     case "panels-focus":
-      return toggleFocus(visibility);
+      return toggleFocus(chrome);
     case "panels-all":
-      return { ...ALL_VISIBLE };
+      return showEverything(chrome);
     default:
       return null;
   }
 }
 
 /**
- * The keyboard's panel shortcuts: Ctrl+Alt+1..5 toggle one panel, Ctrl+.
- * toggles focus mode. Read by `code` rather than `key` for the digits, because
- * Ctrl+Alt is AltGr on many layouts and `key` then reports a symbol.
+ * The keyboard's panel shortcuts: Ctrl+Alt+1..3 toggle a side region, 4 and 5
+ * the dock's notes and timeline, and Ctrl+. toggles focus mode. Read by `code`
+ * rather than `key` for the digits, because Ctrl+Alt is AltGr on many layouts
+ * and `key` then reports a symbol.
  */
 export function panelsForKey(
   event: Pick<KeyboardEvent, "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "key" | "code">,
-  visibility: PanelVisibility,
-): PanelVisibility | null {
+  chrome: Chrome,
+): Chrome | null {
   const primary = event.ctrlKey || event.metaKey;
   if (!primary || event.shiftKey) return null;
-  if (!event.altKey && event.key === ".") return toggleFocus(visibility);
+  if (!event.altKey && event.key === ".") return toggleFocus(chrome);
   if (!event.altKey) return null;
   const digit = /^Digit([1-5])$/.exec(event.code)?.[1];
   if (!digit) return null;
-  return togglePanel(visibility, PANELS[Number(digit) - 1]!.name);
+  const commands: HostCommand[] = ["panel-tools", "panel-slides", "panel-inspector", "panel-notes", "panel-dock"];
+  return panelsForCommand(commands[Number(digit) - 1]!, chrome);
 }
 
 function safeStorage(): Storage | undefined {

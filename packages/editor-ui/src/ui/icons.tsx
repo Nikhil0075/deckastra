@@ -66,6 +66,7 @@ const PATHS = {
     </>
   ),
   chevronDown: <path d="m4 6 4 4 4-4" />,
+  chevronUp: <path d="m4 10 4-4 4 4" />,
   chevronRight: <path d="m6 4 4 4-4 4" />,
   chevronLeft: <path d="m10 4-4 4 4 4" />,
   play: <path d="M4.5 3v10l8-5Z" fill="currentColor" stroke="none" />,
@@ -142,6 +143,18 @@ const PATHS = {
     </>
   ),
   comment: <path d="M2.5 3h11v7.5H7L4 13v-2.5H2.5Z" />,
+  person: (
+    <>
+      <circle cx="8" cy="5.5" r="2.5" />
+      <path d="M3 13.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4" />
+    </>
+  ),
+  signOut: (
+    <>
+      <path d="M6.5 2.5h-4v11h4" />
+      <path d="M10 5l3 3-3 3M13 8H6" />
+    </>
+  ),
   trash: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9" />,
   duplicate: <path d="M5.5 5.5h8v8h-8ZM10.5 5.5v-3h-8v8h3" />,
   external: <path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v4h-9v-9h4" />,

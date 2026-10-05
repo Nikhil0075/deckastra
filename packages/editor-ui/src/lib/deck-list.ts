@@ -68,11 +68,11 @@ export function projectSummary(decks: readonly PresentationSummary[], now: numbe
  * Recent is most recently changed first — the order the API returns — with the
  * title as the tie-break so equal times do not shuffle between renders.
  */
-export function visibleDecks(
-  decks: readonly PresentationSummary[],
+export function visibleDecks<T extends PresentationSummary>(
+  decks: readonly T[],
   query: string,
   sort: DeckSort,
-): PresentationSummary[] {
+): T[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   const matching = words.length
     ? decks.filter((deck) => {

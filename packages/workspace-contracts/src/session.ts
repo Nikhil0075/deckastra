@@ -79,6 +79,48 @@ export interface AccountWorkspace {
  * keys on. A cloud server's own workspaces are `local` in the D5.1 sense and
  * share perfectly well.
  */
+/**
+ * The signed-in account's AI credits (`GET /v1/account/credits`, roadmap 08
+ * §3.3). Read and shown, never computed by a client: the ledger reserves and
+ * reconciles on the server. `plan` is the account's plan name ("free").
+ */
+export interface CreditBalance {
+  plan: string;
+  monthly_allowance: number;
+  remaining_credits: number;
+  period_start: string;
+  period_end: string;
+}
+
+/**
+ * What each hosted AI task can do right now (`GET /v1/account/capabilities`).
+ *
+ * The model map is empty until a model is qualified, so every task may be
+ * unavailable with a reason. Render that honestly; never guess a model.
+ */
+export interface AccountTaskCapability {
+  available: boolean;
+  model: string | null;
+  reason: string | null;
+  /** The smallest reservation one call makes, in US dollars. Present only when available. */
+  minimum_reservation_usd?: number;
+}
+
+export interface AccountCapabilities {
+  provider: string;
+  tasks: Record<string, AccountTaskCapability>;
+}
+
+/**
+ * A cloud account deletion request (`DELETE /v1/account`). The receipt is
+ * readable without a session, because the request ends the session.
+ */
+export interface AccountDeletion {
+  id: string;
+  status: string;
+  message?: string;
+}
+
 export interface Capabilities {
   sharing: boolean;
   /**

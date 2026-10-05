@@ -12,21 +12,15 @@
  * The editor's modes (doc 01 §6). Present is not one of them: it replaces the
  * whole window and is entered with a button, not switched to from a panel.
  */
-export type EditorMode = "design" | "ai" | "motion" | "code";
+export type EditorMode = "design" | "motion" | "code";
 
 export const EDITOR_MODES: ReadonlyArray<{ value: EditorMode; label: string }> = [
   { value: "design", label: "Design" },
-  { value: "ai", label: "AI" },
   { value: "motion", label: "Motion" },
   // Read-only in V1 (doc 01 §6.4): a view of the canonical JSON, never an editor
   // of it. Editing JSON directly would be a second mutation path.
   { value: "code", label: "Code" },
 ];
-
-/** How tall the motion dock is in each mode, in px. Motion mode gives it room to work. */
-export function dockHeightFor(mode: EditorMode): number {
-  return mode === "motion" ? 320 : 176;
-}
 
 // ----------------------------------------------------------------------- zoom
 

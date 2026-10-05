@@ -21,7 +21,7 @@ import { Button, StatusChip } from "../ui";
  * act on; a red banner would train the user to ignore the one that matters.
  */
 
-type Kind = "pdf" | "pptx";
+type Kind = "pdf" | "pptx" | "mydeck";
 
 type State =
   | { phase: "idle" }
@@ -199,6 +199,12 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
         </Button>
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("pptx")}>
           {busyKind === "pptx" ? "Exporting…" : "PowerPoint"}
+        </Button>
+        {/* A copy someone opens in Deckastra: the whole deck, pictures and
+            sounds included, nothing flattened. Saved like any other export;
+            sending it anywhere is the person's choice, not an upload. */}
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("mydeck")} data-testid="export-mydeck">
+          {busyKind === "mydeck" ? "Saving…" : "Deckastra file"}
         </Button>
       </div>
 

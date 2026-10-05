@@ -14,7 +14,9 @@ import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { validateDocument, type PatchOperation, type PresentationDocument, type RichTextDocument } from "@deckastra/presentation-schema";
 import { applyPatch } from "@deckastra/transactions";
 
+import { Dock } from "../src/components/shell/Dock";
 import { SpeakerNotes } from "../src/components/shell/SpeakerNotes";
+import type { DockState } from "../src/lib/dock";
 import type { EditorApi } from "../src/lib/useEditor";
 
 const base = loadFixture("technical");
@@ -32,9 +34,10 @@ let applied: Array<{ operations: PatchOperation[]; coalesceKey?: string }>;
 let setSlide: (index: number) => void;
 let current: () => PresentationDocument;
 
-function Harness({ initial }: { initial: PresentationDocument }) {
+function Harness({ initial, docked = false }: { initial: PresentationDocument; docked?: boolean }) {
   const [document, setDocument] = useState(initial);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [dock, setDock] = useState<DockState>({ open: true, tab: "notes" });
   setSlide = setSlideIndex;
   current = () => document;
   const editor = {
@@ -46,6 +49,9 @@ function Harness({ initial }: { initial: PresentationDocument }) {
       setDocument((doc) => applyPatch(doc, operations).document);
     },
   } as unknown as EditorApi;
+  if (docked) {
+    return <Dock state={dock} onChange={setDock} height={168} panels={{ notes: <SpeakerNotes editor={editor} />, timeline: null }} />;
+  }
   return <SpeakerNotes editor={editor} />;
 }
 
@@ -118,11 +124,19 @@ describe("the speaker notes field", () => {
     expect(current().slides[1]!.speakerNotes).toBe(second!.speakerNotes);
   });
 
-  it("commits a draft when the notes are collapsed, though the field is gone", () => {
-    render(<Harness initial={withNotes("Plain")} />);
+  it("commits a draft when the dock is put away, though the field is gone", () => {
+    render(<Harness initial={withNotes("Plain")} docked />);
     type("<div>Before collapsing</div>");
-    fireEvent.click(screen.getByRole("button", { name: "Collapse speaker notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hide the dock" }));
+    expect(screen.queryByTestId("speaker-notes")).toBeNull();
     expect(current().slides[0]!.speakerNotes).toBe("Before collapsing");
+  });
+
+  it("commits a draft when the dock switches to the timeline", () => {
+    render(<Harness initial={withNotes("Plain")} docked />);
+    type("<div>Before the timeline</div>");
+    fireEvent.click(screen.getByRole("tab", { name: "Timeline" }));
+    expect(current().slides[0]!.speakerNotes).toBe("Before the timeline");
   });
 
   it("does not rebuild the field after its own commit, so the caret stays put", () => {

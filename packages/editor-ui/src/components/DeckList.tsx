@@ -8,9 +8,11 @@ import type { AccountContext, AccountWorkspace, PresentationSummary } from "@dec
 
 import { useAssetUrls } from "../lib/asset-urls";
 import { latestRequests } from "../lib/latest-request";
+import { importDeckFile } from "../lib/import-deck";
+import { loadView, viewKey, viewTitle, type DeckView, type ListedDeck } from "../lib/deck-views";
 import { setThemePreference } from "../lib/chrome-theme";
 import { themeForCommand, type DeckListCommand, type HostCommand, type SubscribeHostCommands } from "../lib/host-commands";
-import { deckSummary, projectSummary, visibleDecks, type DeckSort } from "../lib/deck-list";
+import { deckSummary, projectSummary, relativeTime, visibleDecks, type DeckSort } from "../lib/deck-list";
 import { useBrowserMeasurer } from "../lib/measurer";
 import {
   Button,
@@ -26,8 +28,10 @@ import {
 import { cx } from "../ui/cx";
 import { ExportPanel } from "./ExportPanel";
 import { FinalFrameSlide } from "./FinalFrameSlide";
+import { CreditsMeter } from "./CreditsMeter";
 import { GenerateDeck } from "./GenerateDeck";
-import { ThemeMenu } from "./shell/ThemeMenu";
+import { CommandPalette } from "./shell/CommandPalette";
+import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
 
 /**
  * The deck list per project (Figma: "the deck list per project").
@@ -68,6 +72,12 @@ export interface DeckListProps {
    * nowhere to create a deck before then.
    */
   startWith?: DeckListCommand | null;
+  /** Open the host's Settings (signing in lives there on the desktop). */
+  onOpenSettings?: () => void;
+  /** Open a `.mydeck` file through the host's own dialog. Absent: not offered. */
+  onOpenFile?: () => void;
+  /** Who is signed in, and signing out, for the bar's account menu. */
+  accountMenu?: { identity?: AccountIdentity | null; onSignOut?: () => void };
 }
 
 interface Located {
@@ -84,12 +94,19 @@ export function DeckList({
   commands,
   startWith,
   onSetUpGeneration,
+  onOpenSettings,
+  onOpenFile,
+  accountMenu,
 }: DeckListProps) {
   const client = useWorkspaceClient();
   const [account, setAccount] = useState<AccountContext | null>(null);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(initialProjectId ?? null);
-  const [decks, setDecks] = useState<PresentationSummary[] | null>(null);
+  const [decks, setDecks] = useState<ListedDeck[] | null>(null);
+  // What the main area shows (concept 08-home.png): one project, every deck,
+  // the recent ones, or the trash. `projectId` stays the project new decks go
+  // to, whichever view is showing.
+  const [view, setView] = useState<DeckView | null>(initialProjectId ? { kind: "project", projectId: initialProjectId } : null);
   const [listError, setListError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<DeckSort>("recent");
@@ -98,7 +115,10 @@ export function DeckList({
   const [moving, setMoving] = useState<PresentationSummary | null>(null);
   const [exporting, setExporting] = useState<PresentationSummary | null>(null);
   const [newProject, setNewProject] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
+  // Bumped to put the caret in the home's prompt (File › Generate).
+  const [promptFocus, setPromptFocus] = useState(0);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [promptSeed, setPromptSeed] = useState<{ text: string; token: number } | undefined>();
   const [now, setNow] = useState(() => Date.now());
 
   // "edited 2h ago" should not stay "just now" all afternoon.
@@ -122,7 +142,9 @@ export function DeckList({
   useEffect(() => {
     void loadAccount().then((next) => {
       if (!next) return;
-      setProjectId((current) => current ?? next.workspaces.flatMap((workspace) => workspace.projects)[0]?.id ?? null);
+      const first = next.workspaces.flatMap((workspace) => workspace.projects)[0]?.id ?? null;
+      setProjectId((current) => current ?? first);
+      setView((current) => current ?? (first ? { kind: "project", projectId: first } : null));
     });
   }, [loadAccount]);
 
@@ -139,39 +161,55 @@ export function DeckList({
   // answers. Refreshes run after a duplicate, a delete, an undo or a move, any of
   // which can finish after the person has moved to another project, and an undo
   // button can be pressed long after the closure behind it was made.
-  const selectedProject = useRef(projectId);
-  selectedProject.current = projectId;
+  const selectedView = useRef(view);
+  selectedView.current = view;
+  const accountRef = useRef(account);
+  accountRef.current = account;
   const requests = useRef(latestRequests());
 
   const loadDecks = useCallback(async () => {
-    const asked = selectedProject.current;
-    if (!asked) return;
+    const asked = selectedView.current;
+    const known = accountRef.current;
+    if (!asked || !known) return;
     const current = requests.current.begin();
     // Current only if nothing newer was asked for *and* the answer is still for
-    // the project on screen. The second half is not implied by the first: a
-    // refresh can be the newest request and still be for a project the person
+    // the view on screen. The second half is not implied by the first: a
+    // refresh can be the newest request and still be for a view the person
     // has since left, if they left without anything asking for the new one yet.
-    const stillWanted = () => current() && selectedProject.current === asked;
+    const stillWanted = () => current() && selectedView.current !== null && viewKey(selectedView.current) === viewKey(asked);
     try {
-      const listed = await client.documents.list(asked, { fresh: true });
+      const listed = await loadView(client, known, asked, { fresh: true });
       if (!stillWanted()) return;
       setDecks(listed);
       setListError(null);
     } catch (error) {
       if (!stillWanted()) return;
-      setListError(error instanceof Error ? error.message : "The decks in this project could not be read.");
+      setListError(error instanceof Error ? error.message : "These decks could not be read.");
     }
   }, [client]);
 
+  const shownView = view ? viewKey(view) : null;
   useEffect(() => {
-    // A new project starts from "loading", never from the last one's cards or
+    // A new view starts from "loading", never from the last one's cards or
     // its error.
     setDecks(null);
     setListError(null);
     void loadDecks();
-  }, [loadDecks, projectId]);
+  }, [loadDecks, shownView, account]);
 
-  const shown = useMemo(() => visibleDecks(decks ?? [], query, sort), [decks, query, sort]);
+  const showProject = (id: string) => {
+    setProjectId(id);
+    setView({ kind: "project", projectId: id });
+  };
+
+  // The trash keeps its own order, most recently deleted first: "recent" there
+  // means when it was thrown away, not when it was last edited.
+  const shown = useMemo(() => {
+    const listed = decks ?? [];
+    if (view?.kind !== "trash" || sort !== "recent") return visibleDecks(listed, query, sort);
+    const kept = new Set(visibleDecks(listed, query, sort));
+    return listed.filter((deck) => kept.has(deck));
+  }, [decks, query, sort, view]);
 
   // ---------------------------------------------------------------- actions
 
@@ -185,6 +223,25 @@ export function DeckList({
       setBusy(false);
     }
   };
+
+  // Opening a `.mydeck` file. The host's own dialog where it has one (the
+  // desktop's main process); otherwise the browser's file picker and the
+  // service's import, where the client offers one (the web app).
+  const fileInput = useRef<HTMLInputElement>(null);
+  const browserImport = !onOpenFile && Boolean(client.imports);
+  const openFile = onOpenFile ?? (browserImport ? () => fileInput.current?.click() : undefined);
+  const importFile = (file: File) =>
+    run(async () => {
+      if (!projectId) return;
+      setBanner({ tone: "notice", text: `Opening “${file.name}”…` });
+      const outcome = await importDeckFile(client, projectId, file);
+      if (outcome.kind === "failed") {
+        setBanner({ tone: "danger", text: outcome.message });
+        return;
+      }
+      setBanner(null);
+      onOpen(outcome.presentationId);
+    });
 
   const createDeck = () =>
     run(async () => {
@@ -216,6 +273,13 @@ export function DeckList({
       await loadDecks();
     });
 
+  const restoreDeck = (deck: PresentationSummary) =>
+    run(async () => {
+      await client.documents.restore(deck.id);
+      setBanner({ tone: "notice", text: `Restored “${deck.title}”.` });
+      await loadDecks();
+    });
+
   const createProject = () =>
     run(async () => {
       const name = newProject?.trim();
@@ -223,7 +287,7 @@ export function DeckList({
       const created = await client.session.createProject(located.workspace.id, name);
       setNewProject(null);
       await loadAccount();
-      setProjectId(created.id);
+      showProject(created.id);
     });
 
   // ------------------------------------------------------------------ render
@@ -237,8 +301,25 @@ export function DeckList({
     const theme = themeForCommand(command);
     if (theme) setThemePreference(theme);
     else if (command === "new-deck" && editable && !busy) void createDeck();
-    else if (command === "generate-deck" && editable) setGenerating(true);
+    else if (command === "generate-deck" && editable) {
+      if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
+      setPromptFocus((count) => count + 1);
+    } else if (command === "all-decks") setView({ kind: "all" });
+    else if (command === "open-settings") onOpenSettings?.();
+    else if (command === "command-palette") setPaletteOpen(true);
   };
+  // Ctrl+K on the home too (roadmap 08 §1.5), so the palette is one key
+  // wherever someone is. Typing in a field still gets Ctrl+K: there is no
+  // field here where it means anything else.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+      event.preventDefault();
+      setPaletteOpen((open) => !open);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   useEffect(() => commands?.((command) => onCommand.current(command)), [commands]);
   const started = useRef(false);
   useEffect(() => {
@@ -271,46 +352,35 @@ export function DeckList({
         </span>
         <span className="dk-decks__bar-end">
           {barExtras}
-          <ThemeMenu />
-          <Button
-            variant="secondary"
-            icon="ai"
-            onClick={() => setGenerating(true)}
-            disabled={!editable}
-            aria-expanded={generating}
-            data-testid="generate-deck"
-          >
-            Generate
-          </Button>
-          <Button variant="primary" icon="plus" onClick={() => void createDeck()} disabled={!editable || busy} data-testid="new-deck">
-            New deck
-          </Button>
+          <AccountMenu {...accountMenu} onOpenSettings={onOpenSettings} />
         </span>
       </header>
 
       {notices}
 
-      {projectId ? (
-        <GenerateDeck
-          // One drawer per project: nothing typed or paused for one project is
-          // shown under another (final package review, item 02).
-          key={projectId}
-          open={generating}
-          onClose={() => setGenerating(false)}
-          projectId={projectId}
-          workspaceId={located?.workspace.id}
-          reviewAvailable={account?.capabilities.checkpoints === true}
-          generation={account?.capabilities.generation}
-          onSetUp={onSetUpGeneration}
-          onGenerated={(presentationId) => {
-            setGenerating(false);
-            onOpen(presentationId);
-          }}
-        />
-      ) : null}
-
       <div className="dk-decks__body">
-        <nav className="dk-decks__projects" aria-label="Projects">
+        <nav className="dk-decks__projects" aria-label="Decks and projects">
+          <ul className="dk-decks__project-list dk-decks__views">
+            {(
+              [
+                { kind: "all", label: "All decks", icon: "grid" },
+                { kind: "recent", label: "Recent", icon: "history" },
+              ] as const
+            ).map((entry) => (
+              <li key={entry.kind}>
+                <button
+                  type="button"
+                  className={cx("dk-decks__project", view?.kind === entry.kind && "dk-decks__project--current")}
+                  aria-current={view?.kind === entry.kind ? "true" : undefined}
+                  onClick={() => setView({ kind: entry.kind })}
+                  data-testid={`view-${entry.kind}`}
+                >
+                  <Icon name={entry.icon} size={14} />
+                  {entry.label}
+                </button>
+              </li>
+            ))}
+          </ul>
           {accountError ? <p className="dk-decks__error">{accountError}</p> : null}
           {account?.workspaces.map((workspace) => (
             <section key={workspace.id} className="dk-decks__workspace">
@@ -323,9 +393,9 @@ export function DeckList({
                   <li key={candidate.id}>
                     <button
                       type="button"
-                      className={cx("dk-decks__project", candidate.id === projectId && "dk-decks__project--current")}
-                      aria-current={candidate.id === projectId ? "true" : undefined}
-                      onClick={() => setProjectId(candidate.id)}
+                      className={cx("dk-decks__project", view?.kind === "project" && candidate.id === view.projectId && "dk-decks__project--current")}
+                      aria-current={view?.kind === "project" && candidate.id === view.projectId ? "true" : undefined}
+                      onClick={() => showProject(candidate.id)}
                     >
                       {candidate.name}
                     </button>
@@ -357,13 +427,72 @@ export function DeckList({
               </span>
             </form>
           )}
+          <button
+            type="button"
+            className={cx("dk-decks__project", "dk-decks__trash", view?.kind === "trash" && "dk-decks__project--current")}
+            aria-current={view?.kind === "trash" ? "true" : undefined}
+            onClick={() => setView({ kind: "trash" })}
+            data-testid="view-trash"
+          >
+            <Icon name="trash" size={14} />
+            Trash
+          </button>
+          {/* The plan card (concept 08-home.png): what AI help has left this
+              month, at the foot of the projects. Absent without an account. */}
+          <div className="dk-decks__plan">
+            <CreditsMeter variant="card" onOpenSettings={onOpenSettings} />
+          </div>
         </nav>
 
         <main className="dk-decks__main">
+          {projectId && view?.kind !== "trash" ? (
+            // The home's prompt bar (roadmap 08 §1.3): every new deck starts
+            // here, described or blank. One per project: nothing typed or
+            // paused for one project is shown under another (item 02).
+            <GenerateDeck
+              key={projectId}
+              onClose={() => {}}
+              projectId={projectId}
+              workspaceId={located?.workspace.id}
+              reviewAvailable={account?.capabilities.checkpoints === true}
+              generation={account?.capabilities.generation}
+              onSetUp={onSetUpGeneration}
+              onGenerated={onOpen}
+              onBlank={() => void createDeck()}
+              blankDisabled={busy}
+              disabled={!editable}
+              focusToken={promptFocus}
+              seed={promptSeed}
+              onOpenFile={openFile}
+            />
+          ) : null}
+          {browserImport ? (
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".mydeck"
+              hidden
+              data-testid="open-deck-file-input"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                // Cleared so choosing the same file again still opens it.
+                event.target.value = "";
+                if (file) void importFile(file);
+              }}
+            />
+          ) : null}
           <div className="dk-decks__heading">
             <div>
-              <h2 className="dk-decks__title">{project?.name ?? "Decks"}</h2>
-              <p className="dk-muted">{decks ? projectSummary(decks, now) : "Loading…"}</p>
+              <h2 className="dk-decks__title">{view ? viewTitle(view, account) : "Decks"}</h2>
+              <p className="dk-muted">
+                {!decks
+                  ? "Loading…"
+                  : view?.kind === "trash"
+                    ? decks.length === 0
+                      ? "Empty"
+                      : `${decks.length} deleted deck${decks.length === 1 ? "" : "s"} · restore any of them`
+                    : projectSummary(decks, now)}
+              </p>
             </div>
             <Select
               label="Sort"
@@ -395,23 +524,32 @@ export function DeckList({
             {decks && decks.length === 0 ? (
               <div className="dk-decks__empty">
                 <span className="dk-accent-rule" aria-hidden="true" />
-                <p>No decks in this project yet.</p>
-                <Button variant="primary" icon="plus" onClick={() => void createDeck()} disabled={!editable || busy}>
-                  New deck
-                </Button>
+                <p>
+                  {view?.kind === "trash"
+                    ? "Nothing in the trash. Decks you delete wait here until you restore them."
+                    : view?.kind === "project"
+                      ? "No decks in this project yet. Describe one above, or start from a blank deck."
+                      : "No decks yet. Describe one above, or start from a blank deck."}
+                </p>
               </div>
             ) : null}
             {decks && decks.length > 0 && shown.length === 0 ? (
               <p className="dk-muted dk-decks__empty">No decks match “{query}”.</p>
             ) : null}
             <ul className="dk-decks__grid">
-              {shown.map((deck) => (
+              {shown.map((deck) =>
+                view?.kind === "trash" ? (
+                  <li key={deck.id}>
+                    <TrashCard deck={deck} now={now} onRestore={() => void restoreDeck(deck)} disabled={busy || !deck.editable} />
+                  </li>
+                ) : (
                 <li key={deck.id}>
                   <DeckCard
                     deck={deck}
                     now={now}
                     open={deck.id === openPresentationId}
-                    editable={editable}
+                    editable={deck.editable}
+                    where={view?.kind === "project" ? undefined : deck.projectName}
                     onOpen={() => onOpen(deck.id)}
                     onDuplicate={() => void duplicate(deck)}
                     onMove={() => setMoving(deck)}
@@ -419,16 +557,34 @@ export function DeckList({
                     onDelete={() => void remove(deck)}
                   />
                 </li>
-              ))}
+                ),
+              )}
             </ul>
           </ScrollArea>
         </main>
       </div>
 
+      <CommandPalette
+        open={paletteOpen}
+        place="home"
+        canExit
+        canOpenSettings={Boolean(onOpenSettings)}
+        onClose={() => setPaletteOpen(false)}
+        onCommand={(command) => {
+          setPaletteOpen(false);
+          onCommand.current(command);
+        }}
+        onAsk={(text) => {
+          setPaletteOpen(false);
+          if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
+          setPromptSeed((current) => ({ text, token: (current?.token ?? 0) + 1 }));
+        }}
+      />
+
       <MoveDialog
         deck={moving}
         account={account}
-        fromProjectId={projectId}
+        fromProjectId={moving && "projectId" in moving ? (moving as ListedDeck).projectId : projectId}
         onClose={() => setMoving(null)}
         onMoved={(message) => {
           setMoving(null);
@@ -458,6 +614,7 @@ function DeckCard({
   now,
   open,
   editable,
+  where,
   onOpen,
   onDuplicate,
   onMove,
@@ -468,6 +625,8 @@ function DeckCard({
   now: number;
   open: boolean;
   editable: boolean;
+  /** The project, in views that mix projects. */
+  where?: string;
   onOpen: () => void;
   onDuplicate: () => void;
   onMove: () => void;
@@ -507,7 +666,33 @@ function DeckCard({
         ) : null}
         {open ? <StatusChip tone="neutral">Open</StatusChip> : null}
       </div>
-      <p className="dk-card__summary">{deckSummary(deck, now)}</p>
+      <p className="dk-card__summary">{where ? `${where} · ${deckSummary(deck, now)}` : deckSummary(deck, now)}</p>
+    </article>
+  );
+}
+
+/**
+ * A deck in the trash. No thumbnail: every read treats a deleted deck as
+ * missing, which is the point of deleting it, so its slides cannot be drawn
+ * until it is restored.
+ */
+function TrashCard({ deck, now, onRestore, disabled }: { deck: ListedDeck; now: number; onRestore: () => void; disabled: boolean }) {
+  return (
+    <article className="dk-card dk-card--trash" data-testid="trash-card" data-deck-id={deck.id}>
+      <div className="dk-card__thumb dk-card__thumb--empty" aria-hidden="true">
+        <Icon name="trash" size={20} />
+      </div>
+      <div className="dk-card__meta">
+        <span className="dk-card__title" title={deck.title}>
+          {deck.title}
+        </span>
+        <Button size="sm" variant="secondary" onClick={onRestore} disabled={disabled} data-testid="restore-deck">
+          Restore
+        </Button>
+      </div>
+      <p className="dk-card__summary">
+        {deck.projectName} · deleted {relativeTime(deck.deleted_at, now)}
+      </p>
     </article>
   );
 }

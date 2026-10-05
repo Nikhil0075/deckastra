@@ -20,7 +20,7 @@ export interface AssistantRun {
   last_sequence: number; created_at: string; cancel_requested: boolean;
 }
 export interface AssistantEvent { sequence: number; status: string; message?: string; provider?: string; task?: string; reason?: string; at: string }
-export interface AssistantCapabilities { provider: string; available: boolean; reason: string | null; spend?: { ceiling_usd: number; used_usd: number; reserved_usd: number; remaining_usd: number; calls: number } | null; tasks: Record<AssistantTask, { available: boolean; provider: string; model?: string | null; inputs?: string[]; reason: string | null }> }
+export interface AssistantCapabilities { provider: string; available: boolean; reason: string | null; spend?: { ceiling_usd: number; used_usd: number; reserved_usd: number; remaining_usd: number; calls: number } | null; tasks: Record<AssistantTask, { available: boolean; provider: string; model?: string | null; inputs?: string[]; reason: string | null; minimum_reservation_usd?: number | null }> }
 export interface AssistantAsset { id: string; filename: string | null; kind?: string; content_type?: string | null; tags: string[]; description: string | null; metadata_version: number; sha256?: string | null; dhash64?: string | null; change_id?: string }
 export interface AssetMetadataUpdate { expected_metadata_version: number; filename?: string | null; tags?: string[]; description?: string | null }
 export interface DesignCheckResult { version_id: string; estimated: boolean; findings: { code: string; severity: string; slideId: string; elementId?: string; title: string; message: string; estimated: boolean; suggestedFix: PatchOperation[] }[] }

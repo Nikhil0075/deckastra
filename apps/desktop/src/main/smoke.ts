@@ -706,7 +706,8 @@ async function runExport(
   // not even reached the save queue — and the button is pressed from script,
   // which moves no focus. Only the export's own barrier can get this right.
   const marker = `Export smoke ${Date.now()}`;
-  record.openedExport = await window.webContents.executeJavaScript(clickTestId("open-export"));
+  await needDockTab(window, "notes");
+  record.openedExport = await window.webContents.executeJavaScript(clickTestId("open-share"));
   record.startedExport = await window.webContents.executeJavaScript(`(() => {
     const notes = document.querySelector('[data-testid="speaker-notes"]');
     if (!notes) return false;
@@ -858,10 +859,11 @@ async function runGrants(
 
   await until(window, `document.querySelectorAll("[data-element-id]").length > 0`, 30_000);
 
-  // Allowed the way a person allows it, through the chip and its popover.
+  // Allowed the way a person allows it, through Settings › Agents.
   if ((await read()) !== null) throw new Error("an attachment existed before anyone allowed one");
-  await window.webContents.executeJavaScript(clickTestId("agent-access-open"));
-  await window.webContents.executeJavaScript(clickTestId("agent-access-toggle"));
+  await openAgentSettings(window);
+  await window.webContents.executeJavaScript(clickTestId("settings-agent-toggle"));
+  await closeSettings(window);
   if (!(await waitFor(async () => (await read()) !== null))) {
     throw new Error("allowing agent access published no attachment");
   }
@@ -959,8 +961,9 @@ async function runGrants(
     record.accessLeftOn = true;
     return;
   }
-  await window.webContents.executeJavaScript(clickTestId("agent-access-open")).catch(() => false);
-  await window.webContents.executeJavaScript(clickTestId("agent-access-toggle")).catch(() => false);
+  await openAgentSettings(window).catch(() => {});
+  await window.webContents.executeJavaScript(clickTestId("settings-agent-toggle")).catch(() => false);
+  await closeSettings(window).catch(() => {});
   record.stoppedAtEnd = await waitFor(async () => (await read()) === null);
 }
 
@@ -1299,24 +1302,33 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
 
   await until(window, `document.querySelectorAll("[data-element-id]").length > 0`);
 
-  // Off by default, including on an install that used to work.
+  // Off by default, including on an install that used to work — and with no
+  // chip on the bar while it is off (roadmap 08 §1.4).
   record.publishedBeforeConsent = (await read()) !== null;
-  record.offerText = await window.webContents.executeJavaScript(AGENT_ACCESS_STATUS);
+  record.chipWhileOff = await window.webContents.executeJavaScript(`Boolean(document.querySelector('[data-testid="agent-access-open"]'))`);
+  if (record.chipWhileOff) throw new Error("The agent chip is on the bar while agents are off.");
 
-  // The switch is in a popover behind the top bar's "Agents off" chip — opened
-  // the way a person opens it, then pressed. The label is asserted, not just the
+  // The switch is in Settings › Agents, reached through the account menu the
+  // way a person reaches it, then pressed. The label is asserted, not just the
   // test id, because the words are the consent.
-  record.openedAgentAccess = await window.webContents.executeJavaScript(clickTestId("agent-access-open"));
-  record.allowLabel = await window.webContents.executeJavaScript(TEXT_OF("agent-access-toggle"));
+  await openAgentSettings(window);
+  record.openedAgentAccess = true;
+  record.offerText = await window.webContents.executeJavaScript(AGENT_ACCESS_STATUS);
+  record.allowLabel = await window.webContents.executeJavaScript(TEXT_OF("settings-agent-toggle"));
   if (record.allowLabel !== "Allow agent access") {
     throw new Error(`The agent-access switch read ${JSON.stringify(record.allowLabel)}, not "Allow agent access".`);
   }
-  record.allowed = await window.webContents.executeJavaScript(clickTestId("agent-access-toggle"));
+  record.allowed = await window.webContents.executeJavaScript(clickTestId("settings-agent-toggle"));
   if (!(await waitFor(async () => (await read()) !== null))) {
     throw new Error("Allowing agent access published no attachment.");
   }
   const granted = (await read())!;
   record.grantedText = await window.webContents.executeJavaScript(AGENT_ACCESS_STATUS);
+  // While a grant is live, the bar says so.
+  await closeSettings(window);
+  record.chipWhileOn = await until(window, `document.querySelector('[data-testid="agent-access-open"]')`, 10_000);
+  if (!record.chipWhileOn) throw new Error("No agent chip on the bar while agents can reach the app.");
+  await openAgentSettings(window);
   record.grantWorks = await reaches(granted);
 
   // And a capability the credential does not carry, refused by the service
@@ -1327,11 +1339,11 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
   );
   record.approvalRefused = approval.status;
 
-  record.stopLabel = await window.webContents.executeJavaScript(TEXT_OF("agent-access-toggle"));
+  record.stopLabel = await window.webContents.executeJavaScript(TEXT_OF("settings-agent-toggle"));
   if (record.stopLabel !== "Stop agent access") {
     throw new Error(`The agent-access switch read ${JSON.stringify(record.stopLabel)}, not "Stop agent access".`);
   }
-  record.stopped = await window.webContents.executeJavaScript(clickTestId("agent-access-toggle"));
+  record.stopped = await window.webContents.executeJavaScript(clickTestId("settings-agent-toggle"));
   if (!(await waitFor(async () => (await read()) === null))) {
     throw new Error("Stopping agent access left the attachment published.");
   }
@@ -1392,6 +1404,8 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
   // Something to animate, then an animation on it.
   await window.webContents.executeJavaScript(ADD_RECTANGLE);
   await until(window, 'document.querySelectorAll("[data-element-id]").length > 0');
+  // The timeline is a tab of the dock, closed while designing.
+  await needDockTab(window, "timeline");
 
   record.addedAnimation = await window.webContents.executeJavaScript(`(() => {
     const select = [...document.querySelectorAll("select")].find((one) =>
@@ -1675,6 +1689,8 @@ async function runTimeline(window: BrowserWindow, record: Record<string, unknown
  */
 async function runSlides(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
   await until(window, 'document.querySelector("[data-editor-canvas]")');
+  // Notes are a tab of the dock, closed while designing.
+  await needDockTab(window, "notes");
 
   const result = (await window.webContents.executeJavaScript(`(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1850,7 +1866,7 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
     await sleep(400);
   };
   const setTheme = async (name: "Light" | "Dark") => {
-    await click("theme-menu");
+    await click("account-menu");
     await page(`[...document.querySelectorAll('[role="menuitemradio"]')].find((item) => item.textContent.trim() === ${JSON.stringify(name)}).click()`);
     await sleep(300);
     const applied = await page(`document.documentElement.dataset.dkTheme`);
@@ -1902,7 +1918,8 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
   }
   const canvasTab = { selectedOnCanvas, leftAfter: presses, leftTo: await region() };
   record.keyboard = { tabFromButton, walk, canvasTab };
-  const expected = ["app bar", "tools", "slides", "canvas", "notes", "timeline", "panel", "app bar"];
+  // Notes and the timeline are one region now, the dock, whichever tab shows.
+  const expected = ["app bar", "tools", "slides", "canvas", "dock", "panel", "app bar", "tools"];
   if (!tabFromButton.moved || !tabFromButton.selectedNothing) {
     throw new Error("Tab on a button did not move focus, or selected an object: the keyboard trap is back.");
   }
@@ -1940,13 +1957,24 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
           if (await nothingSelected()) throw new Error("Tab on the canvas selected nothing");
         },
       ],
-      ["ai", async () => click("mode-ai")],
-      ["motion", async () => click("mode-motion")],
+      // The assistant beside Design (roadmap 08 §1.2 rule 2), then put away so
+      // the next views audit their own panels.
+      ["assistant", async () => click("open-assistant")],
+      [
+        "motion",
+        async () => {
+          await click("close-assistant");
+          await click("mode-motion");
+        },
+      ],
       ["code", async () => click("mode-code")],
       [
-        "intelligence",
+        // Settings (roadmap 08 §1.3), at AI and privacy: the old Intelligence
+        // drawer's content lives there now.
+        "settings",
         async () => {
-          await click("open-intelligence");
+          if (!(await page(OPEN_SETTINGS))) throw new Error("cannot open Settings from the account menu");
+          await click("settings-tab-ai");
           await until(window, `document.querySelector('[data-testid="intelligence-route"]')`, 20_000);
         },
       ],
@@ -1968,10 +1996,12 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
         },
       ],
       [
+        // The home's prompt bar (roadmap 08 §1.3), with its Options open so
+        // the audit covers them too.
         "generate",
         async () => {
-          await click("generate-deck");
           await until(window, `document.querySelector('[data-testid="generate-instruction"]')`, 10_000);
+          await page(`document.querySelector(".dk-home-prompt__options")?.setAttribute("open", "")`);
         },
       ],
     ];
@@ -1988,7 +2018,7 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
 
   // Leave the profile as found.
   await setTheme("Light");
-  await click("theme-menu");
+  await click("account-menu");
   await page(`[...document.querySelectorAll('[role="menuitemradio"]')].find((item) => item.textContent.trim() === "Match the system").click()`);
 
   record.findings = findings;
@@ -2221,7 +2251,8 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
   record.proposal = proposal;
   if (proposal.outcome !== "pending") throw new Error(`The proposal was ${proposal.outcome}, not pending (HTTP ${proposal.status}).`);
 
-  await page(clickTestId("mode-ai"));
+  // Pending changes live in the assistant now, under "Waiting for you".
+  await page(clickTestId("open-assistant"));
   const card = `document.querySelector('[data-testid="proposal-card"][data-proposal-id="${proposal.id}"]')`;
   if (!(await until(window, `${card}?.querySelector('[data-testid="proposal-after"] [data-slide-id], [data-testid="proposal-after"] .dk-final-frame, [data-testid="proposal-after"] div')`, 30_000))) {
     throw new Error("The pending change never appeared as a card with an After picture.");
@@ -2259,20 +2290,34 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
     `fetch("/__api/v1/account").then((r) => r.json()).then((a) => a.capabilities?.generation ?? null)`,
   )) as { provider?: string; available?: boolean; reason?: string } | null;
   record.generationCapability = generation;
-  if (app.isPackaged && generation && generation.available === false) {
+  // Since track 2 every desktop build routes AI through the signed-in account
+  // (`sidecar.ts` sets the hosted route), so a checkout that is not signed in
+  // cannot generate either. The home then says so and disables Create, which
+  // the step checks before it records the skip by name.
+  if (generation && generation.available === false) {
+    await page(clickTestId("open-deck-list"));
+    if (!(await until(window, `document.querySelector('[data-testid="generation-route"][data-available="false"]') && document.querySelector('[data-testid="generate-submit"]')?.disabled`, 20_000))) {
+      throw new Error("Generation is unavailable, and the home did not say so or still offered Create.");
+    }
     record.generationSkipped =
-      `generation is not configured on this build (${generation.reason ?? generation.provider ?? "no provider"}),` +
-      " which is what a packaged build does (items 19 and 20)";
+      `generation is not available here (${generation.reason ?? generation.provider ?? "no provider"}); ` +
+      "the home said so and Create was disabled (items 19 and 20, roadmap 08 track 2)";
+    // Put things back: the original deck open again, as the full journey ends.
+    // The home lists its decks a moment after it appears; wait for the card.
+    if (!(await until(window, `document.querySelector('[data-deck-id="${original}"] .dk-card__thumb')`, 20_000))) {
+      throw new Error("The home never listed the deck the step started on.");
+    }
+    await page(`document.querySelector('[data-deck-id="${original}"] .dk-card__thumb').click()`);
+    await until(window, `document.querySelector("[data-editor-canvas]")`, 20_000);
     return;
   }
 
   await page(clickTestId("open-deck-list"));
-  if (!(await until(window, `document.querySelector('[data-testid="generate-deck"]') && !document.querySelector('[data-testid="generate-deck"]').disabled`, 20_000))) {
-    throw new Error("The deck list offers no Generate.");
+  // Generation lives in the home's prompt bar now (roadmap 08 §1.3).
+  if (!(await until(window, `document.querySelector('[data-testid="generate-instruction"]') && !document.querySelector('[data-testid="generate-instruction"]').disabled`, 20_000))) {
+    throw new Error("The home offers no prompt to describe a deck.");
   }
-  await page(clickTestId("generate-deck"));
-  await until(window, `document.querySelector('[data-testid="generate-instruction"]')`, 10_000);
-  // What the drawer tells someone before they write a brief (item 19).
+  // What the prompt bar tells someone before they write a brief (item 19).
   record.generationRoute = await page(
     `document.querySelector('[data-testid="generation-route"]')?.innerText ?? null`,
   );
@@ -2288,11 +2333,11 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
   // is none — and put the drawer's own words in the record.
   await until(
     window,
-    `document.querySelector('[data-testid="story-checkpoint"]') || document.querySelector('[data-testid="generate-drawer"] [role="alert"]')`,
+    `document.querySelector('[data-testid="story-checkpoint"]') || document.querySelector('[data-testid="generate-drawer"] [role="alert"], [data-testid="home-prompt"] [role="alert"]')`,
     180_000,
   );
   const refusal = (await page(
-    `document.querySelector('[data-testid="generate-drawer"] [role="alert"]')?.textContent ?? null`,
+    `document.querySelector('[data-testid="generate-drawer"] [role="alert"], [data-testid="home-prompt"] [role="alert"]')?.textContent ?? null`,
   )) as string | null;
   record.generationRefusal = refusal;
   if (!(await page(`Boolean(document.querySelector('[data-testid="story-checkpoint"]'))`))) {
@@ -2364,6 +2409,8 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
  */
 async function runHistory(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
   await until(window, 'document.querySelector("[data-editor-canvas]")');
+  // Notes are a tab of the dock, closed while designing.
+  await needDockTab(window, "notes");
 
   await window.webContents.executeJavaScript(`(async () => {
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -2738,8 +2785,9 @@ async function runBackup(
   // document, not in the save queue and not in a journal. A backup taken now
   // used to carry every saved deck and not the sentence on screen.
   const note = `backed up at ${Date.now()}`;
+  await needDockTab(window, "notes");
   const typed = (await page(`(() => {
-    const notes = document.querySelector('[data-region="notes"] [contenteditable]');
+    const notes = document.querySelector('[data-testid="speaker-notes"]');
     if (!notes) throw new Error("no speaker notes field");
     notes.focus();
     document.execCommand("insertText", false, ${JSON.stringify(note)});
@@ -2887,6 +2935,27 @@ async function runMenu(
   press("mode-design");
   await expect("View > Design did not switch mode", `document.querySelector('[data-editor-mode="design"]')`);
   checks.push("modes");
+  // The assistant is beside a mode, not one of them (roadmap 08 §1.2 rule 2).
+  press("assistant");
+  await expect("View > Assistant did not open it", `document.querySelector('[data-testid="assistant-panel"]')`);
+  await expect("the assistant opened in another mode", `document.querySelector('[data-editor-mode="design"]')`);
+  checks.push("assistant");
+  // View > Command palette (Ctrl+K): it opens, and choosing a command by name
+  // runs it through the same dispatcher as the menu.
+  press("command-palette");
+  await expect("View > Command palette did not open it", `document.querySelector('[data-testid="command-palette-input"]')`);
+  await window.webContents.executeJavaScript(`(() => {
+    const input = document.querySelector('[data-testid="command-palette-input"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(input, "motion");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await expect("the palette did not find Motion", `document.querySelector('[data-testid="command-mode-motion"]')`);
+  await window.webContents.executeJavaScript(`document.querySelector('[data-testid="command-mode-motion"]').click()`);
+  await expect("choosing Motion in the palette did not switch mode", `document.querySelector('[data-editor-mode="motion"]') && !document.querySelector('[data-testid="command-palette"]')`);
+  press("mode-design");
+  await expect("View > Design did not switch back", `document.querySelector('[data-editor-mode="design"]')`);
+  checks.push("command palette");
 
   press("theme-dark");
   await expect("View > Theme > Dark did not apply", `document.documentElement.dataset.dkTheme === "dark"`);
@@ -2898,7 +2967,7 @@ async function runMenu(
   );
   checks.push("theme");
 
-  // View > Intelligence…: where decks are written, and what leaves the machine.
+  // View > Settings…: where decks are written, and what leaves the machine.
   // Help > Export diagnostics…: written by the main process, so the harness
   // saves it to its own directory rather than driving a native dialog (item 18).
   const reportFile = join(dir, "diagnostics.json");
@@ -2918,10 +2987,11 @@ async function runMenu(
   }
   checks.push("diagnostics");
 
-  press("open-intelligence");
-  await expect("View > Intelligence did not open", `document.querySelector('[data-testid="intelligence-drawer"]')`);
+  press("open-settings");
+  await expect("View > Settings did not open", `document.querySelector('[data-testid="settings"]')`);
+  await page(`document.querySelector('[data-testid="settings-tab-ai"]')?.click()`);
   // It reads the account when it opens, so the route arrives a moment later.
-  await expect("the Intelligence drawer never named the route", `document.querySelector('[data-testid="intelligence-route"]')`);
+  await expect("Settings never named the route", `document.querySelector('[data-testid="intelligence-route"]')`);
   record.intelligence = await page(`document.querySelector('[data-testid="intelligence-route"]').innerText`);
   await page(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
   checks.push("intelligence");
@@ -2939,7 +3009,7 @@ async function runMenu(
   if (!notices) throw new Error("Help > Third-party notices opened no window");
   // The window exists before its file has loaded; wait for the navigation
   // rather than a fixed half second, which a busy machine does not honour.
-  for (let i = 0; i < 20 && !notices.webContents.getURL(); i += 1) await new Promise((done) => setTimeout(done, 250));
+  for (let i = 0; i < 40 && !notices.webContents.getURL(); i += 1) await new Promise((done) => setTimeout(done, 250));
   const noticesUrl = notices.webContents.getURL();
   record.noticesUrl = noticesUrl;
   if (!/THIRD_PARTY_NOTICES\.txt$/.test(noticesUrl)) throw new Error(`the notices window shows ${noticesUrl}`);
@@ -3011,6 +3081,10 @@ async function runClose(
   record.killedService = kill;
   record.blocked = block;
   try {
+    if (!(await until(window, `document.querySelector("[data-editor-canvas]")`))) {
+      throw new Error("the editor never appeared");
+    }
+    await needDockTab(window, "notes");
     if (!(await until(window, `document.querySelector('[data-testid="speaker-notes"]')`))) {
       throw new Error("the notes field never appeared");
     }
@@ -3163,6 +3237,7 @@ async function runCloseVerify(window: BrowserWindow, dir: string, record: Record
     })()`)) as boolean;
     if (!found) await new Promise((done) => setTimeout(done, 500));
   }
+  await window.webContents.executeJavaScript(openDockTab("notes"));
   record.onScreen = await window.webContents.executeJavaScript(
     `document.querySelector('[data-testid="speaker-notes"]')?.innerText ?? null`,
   );
@@ -3198,7 +3273,8 @@ async function runIntelligence(window: BrowserWindow, record: Record<string, unk
   const route = () => page(`document.querySelector('[data-testid="intelligence-route"]')?.innerText ?? null`);
 
   await wait("the editor never opened", `document.querySelector("[data-editor-canvas]")`);
-  if (!(await page(clickTestId("open-intelligence")))) throw new Error("the Intelligence button is missing");
+  if (!(await page(OPEN_SETTINGS))) throw new Error("Settings did not open from the account menu");
+  await page(`document.querySelector('[data-testid="settings-tab-ai"]')?.click()`);
   await wait("the drawer never named a route", `document.querySelector('[data-testid="intelligence-route"]')`);
   record.before = await route();
 
@@ -3229,6 +3305,28 @@ const ADD_RECTANGLE = `(async () => {
   await settle();
   return added;
 })()`;
+
+/**
+ * Show one tab of the dock under the canvas (roadmap 08 §1.2). Notes and the
+ * timeline are closed in Design by default, so a step that types a note or
+ * drags a clip opens its tab first, through the tab a person presses. Resolves
+ * true once the tab's body is on screen.
+ */
+function openDockTab(tab: "notes" | "timeline"): string {
+  return `(async () => {
+    const shown = () => document.querySelector('[data-dock-panel="${tab}"]');
+    if (shown()) return true;
+    if (!${clickTestId(`dock-tab-${tab}`)}) return false;
+    for (let i = 0; i < 40 && !shown(); i += 1) await new Promise((done) => setTimeout(done, 50));
+    return Boolean(shown());
+  })()`;
+}
+
+async function needDockTab(window: BrowserWindow, tab: "notes" | "timeline"): Promise<void> {
+  if (!(await window.webContents.executeJavaScript(openDockTab(tab)))) {
+    throw new Error(`the dock's ${tab} tab could not be opened`);
+  }
+}
 
 function clickTestId(id: string): string {
   return `(() => {
@@ -3267,11 +3365,22 @@ export async function trustedClick(window: BrowserWindow, selector: string): Pro
   const point = (await window.webContents.executeJavaScript(`(async () => {
     const target = document.querySelector(${JSON.stringify(selector)});
     if (!target || target.disabled) return { error: "missing or disabled" };
-    target.scrollIntoView({ block: "nearest", inline: "nearest" });
-    // Scrolling can mount proposal thumbnails and move their action row. Let
-    // layout/focus refresh settle before measuring trusted pointer coordinates.
-    await new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
-    const rect = target.getBoundingClientRect();
+    // Scrolled into view, then measured once layout has settled — and again
+    // if it had not. Content above a control can finish loading after the
+    // scroll (a panel's list arriving), which pushes the control back out of
+    // the window between the scroll and the press; that is a timing, not the
+    // product, and a press must land where the control actually is.
+    const frames = () => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done)));
+    let rect = target.getBoundingClientRect();
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      target.scrollIntoView({ block: "nearest", inline: "nearest" });
+      await frames();
+      const before = rect;
+      rect = target.getBoundingClientRect();
+      const inView = rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth;
+      if (inView && attempt > 0 && Math.abs(rect.top - before.top) < 1) break;
+      if (inView && attempt === 0) { await frames(); const again = target.getBoundingClientRect(); if (Math.abs(again.top - rect.top) < 1) break; rect = again; }
+    }
     const style = getComputedStyle(target);
     if (!rect.width || !rect.height || style.visibility === "hidden" || style.display === "none") {
       return { error: "not visible" };
@@ -3279,7 +3388,23 @@ export async function trustedClick(window: BrowserWindow, selector: string): Pro
     const x = Math.round(rect.left + rect.width / 2);
     const y = Math.round(rect.top + rect.height / 2);
     const hit = document.elementFromPoint(x, y);
-    if (!hit || !(hit === target || target.contains(hit))) return { error: "not hit-testable" };
+    if (!hit || !(hit === target || target.contains(hit))) {
+      // Name what is in the way: "not hit-testable" alone sent a debugging
+      // session looking at the wrong panel.
+      const what = (node) => node ? node.tagName.toLowerCase() + (node.getAttribute("data-testid") ? "[" + node.getAttribute("data-testid") + "]" : "") + (typeof node.className === "string" && node.className ? "." + node.className.split(" ").join(".") : "") : "nothing";
+      const owner = hit?.closest?.("[data-testid]");
+      // And where the target sits: every ancestor that is taller than it shows,
+      // with its scroll position, so "below the window" says which box failed
+      // to scroll it into view.
+      const boxes = [];
+      for (let node = target.parentElement; node && node !== document.documentElement; node = node.parentElement) {
+        if (node.scrollHeight > node.clientHeight + 1) {
+          const r = node.getBoundingClientRect();
+          boxes.push(what(node).slice(0, 60) + " top=" + Math.round(r.top) + " h=" + Math.round(r.height) + " sh=" + node.scrollHeight + " st=" + Math.round(node.scrollTop) + " oy=" + getComputedStyle(node).overflowY);
+        }
+      }
+      return { error: "not hit-testable: at " + x + "," + y + " of " + innerWidth + "x" + innerHeight + " is " + what(hit) + (owner ? " inside " + what(owner) : "") + "; overflowing ancestors: " + (boxes.join(" | ") || "none") };
+    }
     const modal = [...document.querySelectorAll('[aria-modal="true"], [role="dialog"]')]
       .find((node) => { const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
     if (modal && !modal.contains(target)) return { error: "blocked by a modal" };
@@ -3303,7 +3428,43 @@ function TEXT_OF(id: string): string {
 const SLIDE_COUNT = `document.querySelectorAll('[data-testid="slide-thumb"]').length`;
 
 /** The agent-access status sentence, scoped so another status line cannot answer for it. */
-const AGENT_ACCESS_STATUS = `document.querySelector('.dk-agent-access [role=status]')?.textContent ?? null`;
+const AGENT_ACCESS_STATUS = `document.querySelector('[data-testid="settings-agent-status"]')?.textContent ?? null`;
+
+/**
+ * Open Settings the way a person does since roadmap 08 §1.4 took the gear off
+ * the bar: the avatar menu, then "Settings…". Resolves whether it opened.
+ */
+const OPEN_SETTINGS = `(async () => {
+  const wait = () => new Promise((done) => setTimeout(done, 50));
+  const trigger = document.querySelector('[data-testid="account-menu"]');
+  if (!trigger) return false;
+  trigger.click();
+  for (let i = 0; i < 40; i += 1) {
+    const item = [...document.querySelectorAll('[role="menuitem"]')].find((node) => /^Settings/.test(node.textContent.trim()));
+    if (item) { item.click(); break; }
+    await wait();
+  }
+  for (let i = 0; i < 40; i += 1) {
+    if (document.querySelector('[data-testid="settings"]')) return true;
+    await wait();
+  }
+  return false;
+})()`;
+
+/** Settings › Agents, open and showing its switch. The switch is where consent is given now. */
+async function openAgentSettings(window: BrowserWindow): Promise<void> {
+  if (!(await window.webContents.executeJavaScript(OPEN_SETTINGS))) throw new Error("Settings did not open from the account menu");
+  await window.webContents.executeJavaScript(clickTestId("settings-tab-agents"));
+  if (!(await until(window, `document.querySelector('[data-testid="settings-agent-toggle"]')`, 10_000))) {
+    throw new Error("Settings › Agents showed no switch");
+  }
+}
+
+async function closeSettings(window: BrowserWindow): Promise<void> {
+  await window.webContents.executeJavaScript(
+    `document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`,
+  );
+}
 
 const ELEMENT_COUNT = `document.querySelectorAll("[data-element-id]").length`;
 
@@ -3791,7 +3952,7 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     mark("present");
 
     // ---- export
-    await press("open-export");
+    await press("open-share");
     await pressText('[data-testid="export-popover"] button', "PDF");
     record.exportFinished = await until(
       window,
@@ -3906,22 +4067,37 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
 
   try {
     // ---- panels: each one away and back through the menu, then focus mode
-    const panels: Record<string, string> = {
-      "Insert tools": "tools",
-      Slides: "slides",
-      "Side panel": "panel",
-      "Speaker notes": "notes",
-      Timeline: "timeline",
+    // The dock's tabs start put away in Design (roadmap 08 §1.2) unless an
+    // earlier step on this profile opened them, so each panel is toggled from
+    // wherever it starts and must end there again.
+    const shown: Record<string, string> = {
+      "Insert tools": region("tools"),
+      Slides: region("slides"),
+      "Side panel": region("panel"),
+      "Speaker notes": `Boolean(document.querySelector('[data-dock-panel="notes"]'))`,
+      Timeline: `Boolean(document.querySelector('[data-dock-panel="timeline"]'))`,
     };
-    const toggled: string[] = [];
-    for (const [label, name] of Object.entries(panels)) {
-      await press("panels-menu");
-      await pressText('[role="menuitemcheckbox"]', new RegExp(`^${label}`));
-      if (await page<boolean>(region(name))) throw new Error(`design: hiding ${label} left it on screen`);
-      await press("panels-menu");
-      await pressText('[role="menuitemcheckbox"]', new RegExp(`^${label}`));
-      await need(`showing ${label} again did not bring it back`, region(name), 5_000);
-      toggled.push(name);
+    // Through the View menu: the bar's panels button is gone (roadmap 08 §1.4).
+    const menuItem: Record<string, string> = {
+      "Insert tools": "panel-tools",
+      Slides: "panel-slides",
+      "Side panel": "panel-inspector",
+      "Speaker notes": "panel-notes",
+      Timeline: "panel-dock",
+    };
+    const viewMenu = (label: string) => {
+      const item = Menu.getApplicationMenu()?.getMenuItemById(menuItem[label]!);
+      if (!item) throw new Error(`design: the View menu has no ${label} item`);
+      item.click();
+    };
+    const toggled: Array<{ panel: string; startedShown: boolean }> = [];
+    for (const [label, expression] of Object.entries(shown)) {
+      const before = await page<boolean>(expression);
+      viewMenu(label);
+      await need(`toggling ${label} did not ${before ? "hide" : "show"} it`, before ? `!(${expression})` : expression, 5_000);
+      viewMenu(label);
+      await need(`toggling ${label} again did not put it back`, before ? expression : `!(${expression})`, 5_000);
+      toggled.push({ panel: label, startedShown: before });
     }
     record.panelsToggled = toggled;
     await trustedClick(window, "[data-editor-canvas]");
@@ -4275,7 +4451,7 @@ async function runHandoff(window: BrowserWindow, dir: string, record: Record<str
     await key("Enter");
   };
   const exportAs = async (label: string, extension: string) => {
-    await trustedClick(window, '[data-testid="open-export"]');
+    await trustedClick(window, '[data-testid="open-share"]');
     const tag = `export-${extension}`;
     const found = await page<boolean>(`(() => {
       const button = [...document.querySelectorAll('[data-testid="export-popover"] button')].find((b) => b.textContent.trim().toLowerCase() === ${JSON.stringify(label.toLowerCase())});
@@ -4297,8 +4473,8 @@ async function runHandoff(window: BrowserWindow, dir: string, record: Record<str
 
   // ---- the person allows agent access, through the window
   const attachment = join(app.getPath("userData"), "attachment.json");
-  await trustedClick(window, '[data-testid="agent-access-open"]');
-  await trustedClick(window, '[data-testid="agent-access-toggle"]');
+  await openAgentSettings(window);
+  await trustedClick(window, '[data-testid="settings-agent-toggle"]');
   for (let i = 0; i < 60 && !(await readFile(attachment, "utf8").then(() => true, () => false)); i += 1) await sleep(250);
   await key("Escape");
 

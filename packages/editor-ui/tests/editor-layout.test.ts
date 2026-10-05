@@ -10,7 +10,6 @@ import {
   STAGE_PADDING,
   STAGE_TOP,
   ZOOM_STEPS,
-  dockHeightFor,
   fitScale,
   formatZoom,
   resolveScale,
@@ -57,10 +56,6 @@ describe("zoom steps", () => {
 
 describe("modes", () => {
   it("has the four Figma modes, with Present deliberately not one of them", () => {
-    expect(EDITOR_MODES.map((mode) => mode.value)).toEqual(["design", "ai", "motion", "code"]);
-  });
-
-  it("gives the motion dock room in Motion mode", () => {
-    expect(dockHeightFor("motion")).toBeGreaterThan(dockHeightFor("design"));
+    expect(EDITOR_MODES.map((mode) => mode.value)).toEqual(["design", "motion", "code"]);
   });
 });

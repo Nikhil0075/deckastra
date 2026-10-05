@@ -79,7 +79,17 @@ export function RepositoryPanel({
         </p>
       ) : null}
 
-      {repositories.length === 0 ? (
+      {list === null && !error ? (
+        // Loading is said, not shown as "nothing connected": that is a claim
+        // about the workspace this panel has not read yet (roadmap 08 rule 5).
+        <p className="dk-muted" role="status">
+          Reading connected repositories…
+        </p>
+      ) : list === null ? (
+        <button type="button" className="dk-btn dk-btn--secondary dk-btn--sm" onClick={() => void refresh()}>
+          Try again
+        </button>
+      ) : repositories.length === 0 ? (
         <p className="dk-muted">
           Nothing connected yet. A grounded deck cites the files it was written from, so every claim on it can be
           checked.
@@ -109,12 +119,11 @@ export function RepositoryPanel({
         <a href={list.github.install_url} className="dk-btn dk-btn--secondary dk-btn--sm">
           Connect a GitHub repository
         </a>
-      ) : (
-        <p className="dk-muted">
-          GitHub is not configured on this server. Set <code>GITHUB_APP_ID</code>, <code>GITHUB_APP_PRIVATE_KEY</code>{" "}
-          and <code>GITHUB_APP_SLUG</code> to enable the installation flow.
-        </p>
-      )}
+      ) : list ? (
+        // Whoever runs the server sets this up; a person reading the panel can
+        // do nothing with the setting names (roadmap 08 rule 4).
+        <p className="dk-muted">Connecting GitHub repositories is not set up on this server.</p>
+      ) : null}
 
       {list?.local_allowed ? (
         <div className="dk-repos__local">

@@ -6,7 +6,8 @@ import { ScaledSlide } from "@deckastra/renderer/react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { SharedDocument } from "@deckastra/workspace-contracts";
 
-import { deckLanguages, localizeDocument, PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
+import { deckLanguages, localizeDocument, PresentMode, useBrowserMeasurer, useChromeTheme } from "@deckastra/editor-ui";
+import { Button } from "@deckastra/editor-ui/ui";
 
 /**
  * A deck opened from a share link (gap register doc 01 S2).
@@ -92,6 +93,9 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   }, [client, token]);
 
   const measurer = useBrowserMeasurer();
+  const [stage, stageWidth] = useWidth();
+  // The viewer's light or dark choice, as everywhere else in the product.
+  useChromeTheme();
   const languages = useMemo(() => (state.phase === "ready" ? deckLanguages(state.deck.document) : []), [state]);
   const scene: DocumentScene | null = useMemo(() => {
     if (state.phase !== "ready") return null;
@@ -101,24 +105,23 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
 
   if (state.phase === "loading") {
     return (
-      <main style={centred}>
-        <p style={{ color: "var(--fg-subtle)" }}>Opening…</p>
+      <main className="dk-root dk-shared dk-shared--centred">
+        <p className="dk-muted" role="status">
+          Opening…
+        </p>
       </main>
     );
   }
 
   if (state.phase === "unavailable") {
     return (
-      <main style={centred}>
-        <div style={{ maxWidth: 420, textAlign: "center" }}>
-          <h1 style={{ fontSize: 22, margin: "0 0 10px" }}>This link is not available</h1>
+      <main className="dk-root dk-shared dk-shared--centred">
+        <div className="dk-shared__notice">
+          <h1 className="dk-shared__title">This link is not available</h1>
           {/* One message for expired, revoked and never-real alike. Which of the
               three it is would tell a holder that a deck exists behind the id
               they tried. */}
-          <p style={{ color: "var(--fg-muted)", margin: 0, fontSize: 15 }}>
-            It may have expired or been turned off. Ask whoever sent it for a new
-            one.
-          </p>
+          <p className="dk-muted">It may have expired or been turned off. Ask whoever sent it for a new one.</p>
         </div>
       </main>
     );
@@ -133,24 +136,19 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   const current = scene?.slides[selected];
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 64px" }}>
-      <header
-        style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 20 }}
-      >
-        <div>
-          <h1 style={{ fontSize: 26, margin: "0 0 4px" }}>{state.deck.title}</h1>
-          <p style={{ color: "var(--fg-subtle)", fontSize: 13, margin: 0 }}>
-            {scene?.slides.length} slides · shared with you
-          </p>
+    <main className="dk-root dk-shared">
+      <header className="dk-shared__header">
+        <div className="dk-shared__heading">
+          <h1 className="dk-shared__title">{state.deck.title}</h1>
+          <p className="dk-muted">{scene?.slides.length} slides · shared with you</p>
         </div>
-        <div style={{ flex: 1 }} />
         {languages.length > 1 ? (
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "var(--fg-muted)" }}>
-            Language
+          <label className="dk-field dk-shared__language">
+            <span className="dk-label">Language</span>
             <select
+              className="dk-input"
               value={locale ?? languages[0]!.tag}
               onChange={(event) => chooseLocale(languages.find((language) => language.tag === event.target.value)?.source ? null : event.target.value)}
-              style={{ padding: "8px 10px", fontSize: 15, borderRadius: 8, border: "1px solid var(--border)" }}
               data-testid="shared-language"
             >
               {languages.map((language) => (
@@ -163,14 +161,14 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
         ) : null}
         {/* Browsers refuse sound until someone clicks: presenting is that click,
             so a narrated deck says plainly that it will speak. */}
-        <button style={primary} onClick={() => setPresenting(true)}>
+        <Button variant="primary" icon="play" onClick={() => setPresenting(true)}>
           {narrated ? "Play with sound" : "Present"}
-        </button>
+        </Button>
       </header>
 
       {current ? (
-        <div style={{ border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "#000" }}>
-          <ScaledSlide scene={current} width={1040} mode="present" resolveAssetUrl={resolveAssetUrl} />
+        <div className="dk-shared__stage" ref={stage}>
+          {stageWidth > 0 ? <ScaledSlide scene={current} width={stageWidth} mode="present" resolveAssetUrl={resolveAssetUrl} /> : null}
         </div>
       ) : null}
 
@@ -179,7 +177,7 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
       <div
         role="listbox"
         aria-label="Slides"
-        style={{ display: "flex", gap: 10, overflowX: "auto", padding: "18px 0" }}
+        className="dk-shared__strip"
         onKeyDown={(event) => {
           if (event.key === "ArrowRight") setSelected((index) => Math.min(index + 1, (scene?.slides.length ?? 1) - 1));
           if (event.key === "ArrowLeft") setSelected((index) => Math.max(index - 1, 0));
@@ -192,15 +190,7 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
             aria-selected={index === selected}
             aria-label={`Slide ${index + 1}${slide.keyMessage ? `: ${slide.keyMessage}` : ""}`}
             onClick={() => setSelected(index)}
-            style={{
-              flex: "0 0 auto",
-              padding: 0,
-              border: `2px solid ${index === selected ? "var(--accent)" : "var(--border)"}`,
-              borderRadius: 8,
-              overflow: "hidden",
-              background: "#000",
-              lineHeight: 0,
-            }}
+            className="dk-shared__thumb"
           >
             <ScaledSlide scene={slide} width={168} mode="present" resolveAssetUrl={resolveAssetUrl} />
           </button>
@@ -210,19 +200,18 @@ export default function SharedPage({ params }: { params: Promise<{ token: string
   );
 }
 
-const centred: React.CSSProperties = {
-  minHeight: "100vh",
-  display: "grid",
-  placeItems: "center",
-  padding: 24,
-};
-
-const primary: React.CSSProperties = {
-  background: "var(--accent)",
-  color: "var(--accent-fg)",
-  border: "none",
-  borderRadius: 10,
-  padding: "11px 22px",
-  fontSize: 15,
-  fontWeight: 600,
-};
+/** The width of an element, kept current: the slide fills whatever the window gives it. */
+function useWidth(): [(element: HTMLDivElement | null) => void, number] {
+  const [width, setWidth] = useState(0);
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!element) return;
+    const measure = () => setWidth(Math.floor(element.clientWidth));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return [setElement, width];
+}

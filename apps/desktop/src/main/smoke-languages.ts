@@ -275,6 +275,8 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     await k.settle();
 
     // A line per step, typed into the Motion panel.
+    // The assistant (where Languages lives) sits over the mode's own panel.
+    await k.page(`document.querySelector('[data-testid="close-assistant"]')?.click()`);
     await k.press("mode-motion");
     await k.need("the narration panel did not appear", `document.querySelectorAll('[data-testid="narration-step"]').length === 4`, 10_000);
     const lines = ["Three steps make this work.", "First, write it.", "Then translate it.", "Finally, narrate it."];
@@ -297,11 +299,12 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     record.voiceMessage = await k.page<string>(`document.querySelector('[data-testid="narration-message"]').textContent`);
     stored = await k.stored(created);
     if (!stored.slides[0].narration.cues.every((cue: any) => cue.takes?.en)) {
-      await k.press("mode-ai");
+      await k.press("open-assistant");
       await k.need("the voices did not arrive as a proposal", `document.querySelector('[data-testid="proposal-apply"]')`, 20_000);
       await k.press("proposal-apply");
       await k.need("applying the voices did not clear the card", `!document.querySelector('[data-testid="proposal-card"]')`, 20_000);
       await k.settle();
+      await k.press("close-assistant");
       await k.press("mode-motion");
     }
     stored = await k.stored(created);

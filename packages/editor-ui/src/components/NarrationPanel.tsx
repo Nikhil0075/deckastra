@@ -1,5 +1,6 @@
 "use client";
 
+import { serviceWords } from "../lib/assistant-words";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_NARRATION_GAP_MS,
@@ -413,13 +414,22 @@ export function NarrationPanel({
               icon="narration"
               disabled={!missingTakes || busy !== null || status?.speech.available === false}
               onClick={() => void voiceMissing()}
-              title={status?.speech.reason ?? undefined}
+              title={status ? serviceWords(status.speech.reason, "Voices are not set up on this computer yet.") : undefined}
               data-testid="narration-voice"
             >
               {busy === "voice" ? "Voicing…" : `Voice ${missingTakes} line${missingTakes === 1 ? "" : "s"}`}
             </Button>
           </div>
-          {status ? <p className="dk-field__hint">{status.speech.available ? status.speech.reason : `Voices are not available: ${status.speech.reason}`}</p> : null}
+          {status ? (
+            <p className="dk-field__hint">
+              {status.speech.available
+                ? serviceWords(status.speech.reason, "The script is sent online to be voiced when you press Voice.")
+                : serviceWords(
+                    status.speech.reason && `Voices are not available: ${status.speech.reason}`,
+                    "Voices are not set up on this computer yet. You can still record narration.",
+                  )}
+            </p>
+          ) : null}
           <NumberField
             label="Speaking rate"
             value={rate}

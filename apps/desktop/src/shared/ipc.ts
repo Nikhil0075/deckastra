@@ -40,6 +40,12 @@ export const IPC = {
    * the wrong deck edits one nobody is looking at.
    */
   openPresentation: "deckastra:workspace:open",
+  /**
+   * Open a `.mydeck` file, from the home's "Open .mydeck file" (roadmap 08
+   * §1.3). No payload: the main process shows the dialog and reads the file,
+   * exactly as File › Open does, so the page never names a path.
+   */
+  openDeckFile: "deckastra:deck-file:open",
   /** Hand the user a file through a native save dialog. */
   saveFile: "deckastra:file:save",
   /** Put plain text on the operating-system clipboard. */
@@ -148,13 +154,14 @@ export const MENU_COMMANDS = [
   "version-history",
   "colors",
   "mode-design",
-  "mode-ai",
+  "assistant",
+  "command-palette",
   "mode-motion",
   "mode-code",
   "theme-system",
   "theme-light",
   "theme-dark",
-  "open-intelligence",
+  "open-settings",
   "panel-tools",
   "panel-slides",
   "panel-inspector",
@@ -298,6 +305,8 @@ export interface DesktopBridge {
   currentPresentation(): Promise<CurrentPresentation>;
   /** Make another deck the open one. Rejects if it does not exist or cannot be read. */
   openPresentation(request: OpenPresentationRequest): Promise<CurrentPresentation>;
+  /** Choose a `.mydeck` file in a native dialog and open it in a window of its own. */
+  openDeckFile(): Promise<void>;
   saveFile(request: SaveFileRequest): Promise<SaveFileResult>;
   writeClipboardText(text: string): Promise<void>;
   openPresenter(request: OpenPresenterRequest): void;
@@ -353,5 +362,7 @@ declare global {
   interface Window {
     /** Absent in a browser. Every consumer must handle that. */
     deckastra?: DesktopBridge;
+    /** Sign-in state only: never a token (FRONTEND_BACKEND_HANDOFF.md). Absent in a browser. */
+    deckastraAccount?: import("./account").AccountBridge;
   }
 }
