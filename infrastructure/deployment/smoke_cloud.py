@@ -12,12 +12,8 @@ import httpx
 from bootstrap import Cloud
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--project", default="deckastra")
-    args = parser.parse_args()
-    cloud = Cloud(args.project, "asia-south1", "deckastra")
-    url = cloud.run("run", "services", "describe", "deckastra-api", "--region=asia-south1", "--format=value(status.url)").stdout.strip()
+def run_smoke(cloud, url=None):
+    url = url or cloud.run("run", "services", "describe", "deckastra-api", f"--region={cloud.region}", "--format=value(status.url)").stdout.strip()
     config = cloud.rest("GET", f"https://identitytoolkit.googleapis.com/v2/projects/{cloud.project}/config")
     key = config["client"]["apiKey"]
     email = f"cloud-check-{uuid.uuid4().hex}@example.invalid"
@@ -27,8 +23,9 @@ def main():
     uid = identity["localId"]
     # Only the disposable identity and Deckastra ids are written for cleanup.
     state = Path(__file__).parent / "state" / f"smoke-{cloud.project}.json"
-    state.write_text(json.dumps({"uid": uid, "email": email}))
     try:
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(json.dumps({"uid": uid, "email": email}))
         with httpx.Client(timeout=90) as http:
             login = http.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={key}",
                 json={"email": email, "password": password, "returnSecureToken": True})
@@ -100,4 +97,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--region", default="asia-south1")
+    parser.add_argument("--configuration", default="deckastra")
+    args = parser.parse_args()
+    run_smoke(Cloud(args.project, args.region, args.configuration))

@@ -54,11 +54,16 @@ class Cloud:
 
 
 def provision(cloud, foundation_only=False):
+    from release_checks import service_snapshot, deployment_origins, validate_origins
+    from web_hosting import ensure_bucket_cors
     project, region = cloud.project, cloud.region
     print(f"Provisioning {project} in {region}", flush=True)
     services = ["run", "artifactregistry", "cloudbuild", "sqladmin", "secretmanager", "iamcredentials", "identitytoolkit",
                 "aiplatform", "translate", "texttospeech", "monitoring", "cloudtrace", "telemetry", "billingbudgets", "sts"]
     cloud.run("services", "enable", *(f"{s}.googleapis.com" for s in services))
+    deployed_api = service_snapshot(cloud, "deckastra-api")
+    web_origins = (deployment_origins(project, deployed_api) if deployed_api else
+                   validate_origins(os.environ.get("DECKASTRA_WEB_ORIGINS", "http://localhost:3000")))
     if not cloud.exists("artifacts", "repositories", "describe", "deckastra", f"--location={region}"):
         cloud.run("artifacts", "repositories", "create", "deckastra", f"--location={region}", "--repository-format=docker")
     accounts = {}
@@ -97,6 +102,8 @@ def provision(cloud, foundation_only=False):
             bindings = [(accounts["api"], "roles/storage.objectViewer"), (accounts["export-worker"], "roles/storage.objectViewer")]
         for email, role in bindings:
             cloud.run("storage", "buckets", "add-iam-policy-binding", f"gs://{bucket}", f"--member=serviceAccount:{email}", f"--role={role}")
+        if kind in ("assets", "exports"):
+            ensure_bucket_cors(cloud, web_origins.split(","), kinds=(kind,))
         if kind in ("exports", "build-source"):
             with tempfile.TemporaryDirectory() as temporary:
                 policy = Path(temporary) / "lifecycle.json"
@@ -156,6 +163,11 @@ def database(cloud):
 
 def deploy(cloud, tag):
     project, region = cloud.project, cloud.region
+    from release_checks import service_snapshot, deployment_origins, verify_and_promote, traffic_argument
+    previous = service_snapshot(cloud, "deckastra-api")
+    origins = deployment_origins(project, previous)
+    if previous:
+        traffic_argument(previous)  # Validate rollback evidence before any migration.
     image = f"{region}-docker.pkg.dev/{project}/deckastra"
     common = [f"--region={region}", f"--set-cloudsql-instances={project}:{region}:deckastra-postgres"]
     cloud.run("run", "jobs", "deploy", "deckastra-migrate", *common, f"--image={image}/migrate:{tag}",
@@ -171,11 +183,12 @@ def deploy(cloud, tag):
             "DECKASTRA_CREDITS_ENABLED": "1", "DECKASTRA_ACCOUNT_DELETION_ENABLED": "1", "DECKASTRA_TELEMETRY_GCP": "1", "DECKASTRA_GCS_ASSETS_BUCKET": f"{project}-assets",
             "DECKASTRA_GCS_EXPORTS_BUCKET": f"{project}-exports", "DECKASTRA_GCS_SERVICE_ACCOUNT": f"deckastra-api@{project}.iam.gserviceaccount.com",
             "DECKASTRA_OIDC_ISSUER": f"https://securetoken.google.com/{project}", "DECKASTRA_OIDC_AUDIENCE": project,
-            "DECKASTRA_WEB_ORIGINS": os.environ.get("DECKASTRA_WEB_ORIGINS", "http://localhost:3000")}
+            "DECKASTRA_WEB_ORIGINS": origins}
         env_file.write_text(json.dumps(env))
         # Existing service traffic stays on its old revision until readiness succeeds.
-        existing = cloud.exists("run", "services", "describe", "deckastra-api", f"--region={region}")
-        args = ["--no-traffic"] if existing else []
+        existing = previous is not None
+        candidate_tag = "check-" + secrets.token_hex(6)
+        args = ["--tag=" + candidate_tag, "--no-traffic"] if existing else ["--tag=" + candidate_tag]
         cloud.run("run", "deploy", "deckastra-api", *common, f"--image={image}/api:{tag}", f"--env-vars-file={env_file}",
             f"--service-account=deckastra-api@{project}.iam.gserviceaccount.com", "--allow-unauthenticated", "--cpu=1", "--memory=1Gi",
             "--min-instances=0", "--max-instances=3", "--concurrency=8", "--timeout=900", "--no-cpu-throttling",
@@ -191,8 +204,7 @@ def deploy(cloud, tag):
             "--no-allow-unauthenticated", "--cpu=1", "--memory=2Gi", "--min-instances=1", "--max-instances=1", "--concurrency=1",
             "--no-cpu-throttling", "--liveness-probe=httpGet.path=/health,periodSeconds=30,timeoutSeconds=5,failureThreshold=3",
             "--set-secrets=DATABASE_URL=deckastra-database-url:latest")
-        if existing:
-            cloud.run("run", "services", "update-traffic", "deckastra-api", f"--region={region}", "--to-latest")
+        verify_and_promote(cloud, candidate_tag, previous)
     print(cloud.run("run", "services", "describe", "deckastra-api", f"--region={region}", "--format=value(status.url)").stdout.strip(), flush=True)
 
 

@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-f', 'infrastructure/deployment/docker/web.Dockerfile', '--build-arg', 'NEXT_PUBLIC_DECKASTRA_CLOUD=$PROJECT_ID', '--build-arg', 'NEXT_PUBLIC_API_URL=${_API_URL}', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/deckastra/web:${_TAG}', '.']
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/deckastra/web:${_TAG}'
+substitutions:
+  _REGION: asia-south1
+  _TAG: unset
+  _API_URL: unset
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1200s

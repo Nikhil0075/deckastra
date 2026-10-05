@@ -105,7 +105,7 @@ jobs:
           --substitutions="_REGION=asia-south1,_TAG=$GITHUB_SHA"
           --service-account="projects/$GCP_PROJECT/serviceAccounts/deckastra-build@$GCP_PROJECT.iam.gserviceaccount.com"
           --gcs-source-staging-dir="gs://$GCP_PROJECT-build-source/source"
-      - name: Migrate and deploy
+      - name: Migrate, verify candidate workflows and promote
         run: python infrastructure/deployment/bootstrap.py deploy --project "$GCP_PROJECT" --tag "$GITHUB_SHA"
       - name: Verify readiness
         run: |
