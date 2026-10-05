@@ -10,6 +10,6 @@
  * so a non-React consumer — the MCP adapter, a script — does not pull in React to
  * make an HTTP call.
  */
-export { createHttpClient, type FetchLike, type HttpClientOptions } from "./http";
+export { createHttpClient, type BootstrapContext, type FetchLike, type HttpClientOptions } from "./http";
 export { WorkspaceRequestError, messageFromDetail } from "./errors";
 export { browserSessionStore, memorySessionStore, type SessionStore } from "./session-store";

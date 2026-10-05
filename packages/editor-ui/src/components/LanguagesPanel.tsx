@@ -1,5 +1,6 @@
 "use client";
 
+import { serviceWords } from "../lib/assistant-words";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { localeDirection, sameLanguage, sourceLocale } from "@deckastra/presentation-schema";
 import {
@@ -185,7 +186,12 @@ export function LanguagesPanel({
     <div className="dk-languages" data-testid="languages-panel">
       {status ? (
         <p className="dk-field__hint" data-testid="translation-route">
-          {status.translation.available ? status.translation.reason : `Translation is not available: ${status.translation.reason}`}
+          {status.translation.available
+            ? serviceWords(status.translation.reason, "Slide text is sent online to be translated when you press Translate.")
+            : serviceWords(
+                status.translation.reason && `Translation is not available: ${status.translation.reason}`,
+                "Translation is not set up on this computer yet.",
+              )}
         </p>
       ) : null}
 

@@ -150,3 +150,61 @@ describe("generating with the outline first", () => {
     expect(bodyOf(fetcher, "/v1/generate/review")).toEqual([]);
   });
 });
+
+describe("the home's prompt bar", () => {
+  it("is always there, and opens the drawer only once Create is pressed", async () => {
+    const fetcher = stub({ review: { run_id: "run_9", status: "awaiting_story", outline: OUTLINE } });
+    show();
+    expect(screen.getByTestId("home-prompt")).toBeTruthy();
+    expect(screen.queryByTestId("generate-drawer")).toBeNull();
+    expect(screen.getByTestId("home-prompt").hasAttribute("data-drawer-open")).toBe(false);
+    const input = screen.getByTestId("generate-instruction");
+    fireEvent.change(input, { target: { value: "Why we need a control tower" } });
+    // Enter creates; the brief is what was typed.
+    fireEvent.keyDown(input, { key: "Enter" });
+    await screen.findByTestId("story-checkpoint");
+    expect(screen.getByTestId("generate-drawer")).toBeTruthy();
+    // The home steps aside for the drawer rather than being covered by it.
+    expect(screen.getByTestId("home-prompt").hasAttribute("data-drawer-open")).toBe(true);
+    expect(bodyOf(fetcher, "/v1/generate/review")[0]).toMatchObject({ instruction: "Why we need a control tower" });
+  });
+
+  it("keeps a waiting outline one press away after the drawer is put away", async () => {
+    stub({ review: { run_id: "run_10", status: "awaiting_story", outline: OUTLINE } });
+    show();
+    ask("A short deck");
+    await screen.findByTestId("story-checkpoint");
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(screen.queryByTestId("story-checkpoint")).toBeNull();
+    fireEvent.click(await screen.findByTestId("outline-waiting"));
+    expect(await screen.findByTestId("story-checkpoint")).toBeTruthy();
+  });
+
+  it("offers a blank deck beside Create, and nothing to a viewer", () => {
+    stub({});
+    const onBlank = vi.fn();
+    const { view } = show({ onBlank });
+    fireEvent.click(screen.getByTestId("new-deck"));
+    expect(onBlank).toHaveBeenCalledOnce();
+    view.unmount();
+    show({ onBlank, disabled: true });
+    fireEvent.change(screen.getByTestId("generate-instruction"), { target: { value: "Anything" } });
+    expect((screen.getByTestId("generate-submit") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("new-deck") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("one deck at a time", () => {
+  it("will not start a second run while an outline waits, and says why", async () => {
+    const fetcher = stub({ review: { run_id: "run_11", status: "awaiting_story", outline: OUTLINE } });
+    show();
+    ask("The first deck");
+    await screen.findByTestId("story-checkpoint");
+    fireEvent.change(screen.getByTestId("generate-instruction"), { target: { value: "A second deck" } });
+    const create = screen.getByTestId("generate-submit") as HTMLButtonElement;
+    expect(create.disabled).toBe(true);
+    fireEvent.keyDown(screen.getByTestId("generate-instruction"), { key: "Enter" });
+    expect(screen.getByText(/before starting another/)).toBeTruthy();
+    expect(bodyOf(fetcher, "/v1/generate/review")).toHaveLength(1);
+  });
+});

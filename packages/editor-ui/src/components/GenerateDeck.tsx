@@ -108,7 +108,7 @@ export function resetGenerationRequestsForTests(): void {
 }
 
 export function GenerateDeck({
-  open,
+  open = true,
   onClose,
   projectId,
   workspaceId,
@@ -116,8 +116,16 @@ export function GenerateDeck({
   generation,
   onSetUp,
   onGenerated,
+  onBlank,
+  blankDisabled = false,
+  disabled = false,
+  focusToken = 0,
+  seed,
+  onOpenFile,
 }: {
-  open: boolean;
+  /** Whether the home is on screen. The prompt bar is always shown there; this is kept for hosts that hide it. */
+  open?: boolean;
+  /** Put away the drawer of what is happening after Create. */
   onClose: () => void;
   projectId: string;
   workspaceId?: string;
@@ -131,6 +139,17 @@ export function GenerateDeck({
   /** The host's own set-up screen, where it has one (the desktop's Intelligence drawer). */
   onSetUp?: () => void;
   onGenerated: (presentationId: string) => void;
+  /** Blank deck, beside Create. Absent: not offered here. */
+  onBlank?: () => void;
+  blankDisabled?: boolean;
+  /** The person cannot create decks in this project (a viewer). */
+  disabled?: boolean;
+  /** Bumped to put the caret in the prompt (File › Generate, the palette). */
+  focusToken?: number;
+  /** Words to put in the prompt (the home's command palette), with a token so the same words can be sent twice. */
+  seed?: { text: string; token: number };
+  /** Open a `.mydeck` file (the host's dialog). Absent: not offered. */
+  onOpenFile?: () => void;
 }) {
   const client = useWorkspaceClient();
   const instructionId = useId();
@@ -162,6 +181,20 @@ export function GenerateDeck({
   const [repositoryIds, setRepositoryIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The drawer of what happens after Create. Put away by the person; an
+  // outline still waiting is then offered from the prompt bar instead.
+  const [dismissed, setDismissed] = useState(false);
+  const prompt = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (focusToken) prompt.current?.focus();
+  }, [focusToken]);
+  // Filled, never sent: Create is still the person's to press, because it
+  // spends credits and starts a run.
+  useEffect(() => {
+    if (!seed) return;
+    setInstruction(seed.text);
+    prompt.current?.focus();
+  }, [seed]);
 
   // Another project's draft is not this one's. The phase starts again from the
   // form too: a phase left at "writing" when the person moved away would show
@@ -170,6 +203,7 @@ export function GenerateDeck({
   // run, which the effect below picks up.
   useEffect(() => {
     setOwned({ projectId, phase: FORM });
+    setDismissed(false);
     setError(null);
     setNotice(null);
     setInstruction("");
@@ -189,6 +223,8 @@ export function GenerateDeck({
       .then((answer) => {
         if (cancelled || !isCurrentRequest(origin, request)) return;
         setUnreachable(null);
+        // Shown as soon as it is found: an outline waiting on the person is a
+        // decision, and a decision is not hidden behind a chip.
         if (answer.outline) setPhaseFor(origin, { kind: "review", runId, outline: answer.outline });
       })
       .catch((caught: unknown) => {
@@ -244,6 +280,7 @@ export function GenerateDeck({
     setError(null);
     setNotice(null);
     setPhaseFor(origin, { kind: "writing" });
+    setDismissed(false);
     const body = {
       instruction: instruction.trim(),
       audience: audience.trim(),
@@ -290,7 +327,7 @@ export function GenerateDeck({
 
   const working =
     phase.kind === "writing"
-      ? "Writing the outline… With a local model this can take a few minutes."
+      ? "Writing the outline… With a model on this computer this can take a few minutes."
       : phase.kind === "deciding"
         ? phase.decision === "approve"
           ? "Building the deck from the approved outline…"
@@ -298,31 +335,147 @@ export function GenerateDeck({
             ? "Rewriting the outline…"
             : "Discarding…"
         : null;
+  const afterCreate = phase.kind !== "form";
+  const busy = phase.kind === "writing";
+  // One deck at a time per project. The prompt bar is always on screen, so
+  // without this a second Create while an outline waits would start a new run
+  // and silently replace the outline someone had not decided on yet — the
+  // project remembers one run (item 02), and the older one would be lost.
+  const canCreate = Boolean(instruction.trim()) && !afterCreate && !disabled && route?.available !== false;
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      title="Generate a deck"
-      modal={false}
-      width={420}
-      data-testid="generate-drawer"
-    >
-      <div className="dk-generate">
-        {working ? (
-          <p className="dk-generate__working" role="status">
-            {working}
-          </p>
-        ) : null}
-        {error ? (
+    <>
+      {/* The home's prompt bar (roadmap 08 §1.3, concept 08-home.png): the one
+          place a new deck starts, generated or blank. What leaves the computer
+          is said here, before Create (rule 6). */}
+      <section
+        className="dk-home-prompt"
+        aria-label="Draft a deck"
+        data-testid="home-prompt"
+        hidden={!open}
+        // The home makes room for the drawer while it is open (decks.css), so it
+        // never sits over Blank deck or Open .mydeck file.
+        data-drawer-open={open && afterCreate && !dismissed ? "" : undefined}
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (canCreate) void generate();
+          }}
+        >
+          <label className="dk-visually-hidden" htmlFor={instructionId}>
+            Describe a deck
+          </label>
+          <textarea
+            ref={prompt}
+            id={instructionId}
+            className="dk-home-prompt__input"
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            onKeyDown={(event) => {
+              // Enter creates; Shift+Enter is a new line.
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (canCreate) void generate();
+              }
+            }}
+            rows={2}
+            placeholder="Describe a deck and we'll draft it…"
+            disabled={busy || disabled}
+            data-testid="generate-instruction"
+          />
+          <div className="dk-home-prompt__row">
+            {route ? (
+              <div className="dk-home-prompt__route" data-testid="generation-route" data-available={route.available}>
+                <StatusChip tone={route.tone}>{route.title}</StatusChip>
+                <span className="dk-muted">{route.detail}</span>
+                {!route.available && route.offerSetUp && onSetUp ? (
+                  <Button size="sm" variant="ghost" onClick={onSetUp} data-testid="generation-set-up">
+                    Set up
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <span />
+            )}
+            <span className="dk-home-prompt__actions">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!canCreate}
+                title={afterCreate ? "Finish the deck already in progress first" : undefined}
+                data-testid="generate-submit"
+              >
+                {busy ? "Writing…" : reviewAvailable && review ? "Create" : "Create deck"}
+              </Button>
+              {onBlank ? (
+                <Button variant="secondary" onClick={onBlank} disabled={blankDisabled || disabled} data-testid="new-deck">
+                  Blank deck
+                </Button>
+              ) : null}
+              {onOpenFile ? (
+                <Button variant="ghost" icon="upload" onClick={onOpenFile} data-testid="open-deck-file">
+                  Open .mydeck file
+                </Button>
+              ) : null}
+            </span>
+          </div>
+          <details className="dk-home-prompt__options">
+            <summary>Options</summary>
+            <div className="dk-home-prompt__option-grid">
+              <TextField label="Audience" value={audience} onChange={setAudience} disabled={busy} />
+              <NumberField
+                label="Slides"
+                value={slideCount}
+                onCommit={setSlideCount}
+                min={1}
+                max={20}
+                integer
+                disabled={busy}
+              />
+            </div>
+            {reviewAvailable ? (
+              <label className="dk-generate__check">
+                <input
+                  type="checkbox"
+                  checked={review}
+                  onChange={(event) => setReview(event.target.checked)}
+                  disabled={busy}
+                  data-testid="generate-review"
+                />
+                Show me the outline before the deck is built
+              </label>
+            ) : null}
+            <Section title="Ground in a repository" meta={repositoryIds.length ? `${repositoryIds.length} chosen` : undefined}>
+              <RepositoryPanel selected={repositoryIds} onSelectionChange={setRepositoryIds} workspaceId={workspaceId} embedded />
+            </Section>
+          </details>
+        </form>
+
+        {!afterCreate && error ? (
           <p className="dk-generate__error" role="alert">
             {error}
           </p>
         ) : null}
-        {notice ? (
+        {!afterCreate && notice ? (
           <p className="dk-muted" role="status">
             {notice}
           </p>
+        ) : null}
+        {afterCreate ? (
+          <div className="dk-home-prompt__waiting" role="status">
+            <StatusChip tone="waiting">
+              {phase.kind === "review" ? "An outline is waiting for you" : "Working on your deck"}
+            </StatusChip>
+            <span className="dk-muted">
+              {phase.kind === "review" ? "Approve, revise or discard it before starting another." : "One deck at a time."}
+            </span>
+            {dismissed ? (
+              <Button size="sm" variant="secondary" onClick={() => setDismissed(false)} data-testid="outline-waiting">
+                {phase.kind === "review" ? "Review" : "Show"}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         {unreachable && unreachable.projectId === projectId && phase.kind === "form" ? (
           <div className="dk-generate__error" role="alert" data-testid="outline-unreachable">
@@ -335,83 +488,41 @@ export function GenerateDeck({
             </Button>
           </div>
         ) : null}
+      </section>
 
-        {route ? (
-          <div className="dk-generate__route" data-testid="generation-route" data-available={route.available}>
-            <span className="dk-label">Generated by</span>
-            <StatusChip tone={route.tone}>{route.title}</StatusChip>
-            <p className="dk-muted">{route.detail}</p>
-            {!route.available && route.offerSetUp && onSetUp ? (
-              <Button size="sm" variant="secondary" onClick={onSetUp} data-testid="generation-set-up">
-                Set up generation
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {phase.kind === "review" || phase.kind === "deciding" ? (
-          <>
-            <StoryCheckpoint outline={phase.outline} busy={phase.kind === "deciding"} onDecide={(d) => void decide(d)} />
-            <p className="dk-muted">This outline stays here until you decide, even if you close this panel.</p>
-          </>
-        ) : (
-          <form
-            className="dk-generate__form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (instruction.trim()) void generate();
-            }}
-          >
-            <label className="dk-label" htmlFor={instructionId}>
-              What is the deck about?
-            </label>
-            <textarea
-              id={instructionId}
-              className="dk-notes__input dk-generate__prompt"
-              value={instruction}
-              onChange={(event) => setInstruction(event.target.value)}
-              placeholder="Why our migration needs a control tower, for the engineering leads."
-              disabled={phase.kind === "writing"}
-              data-testid="generate-instruction"
-            />
-            <TextField label="Audience" value={audience} onChange={setAudience} disabled={phase.kind === "writing"} />
-            <NumberField
-              label="Slides"
-              value={slideCount}
-              onCommit={setSlideCount}
-              min={1}
-              max={20}
-              integer
-              disabled={phase.kind === "writing"}
-            />
-            {reviewAvailable ? (
-              <label className="dk-generate__check">
-                <input
-                  type="checkbox"
-                  checked={review}
-                  onChange={(event) => setReview(event.target.checked)}
-                  disabled={phase.kind === "writing"}
-                  data-testid="generate-review"
-                />
-                Show me the outline before the deck is built
-              </label>
-            ) : null}
-            <Section title="Ground in a repository" meta={repositoryIds.length ? `${repositoryIds.length} chosen` : undefined}>
-              <RepositoryPanel selected={repositoryIds} onSelectionChange={setRepositoryIds} workspaceId={workspaceId} embedded />
-            </Section>
-            <div className="dk-generate__actions">
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={!instruction.trim() || phase.kind === "writing" || route?.available === false}
-                data-testid="generate-submit"
-              >
-                {reviewAvailable && review ? "Write the outline" : "Generate"}
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
-    </Drawer>
+      {/* What happens after Create: progress, then the outline to approve,
+          revise or discard (StoryCheckpoint). Not modal, so the decks stay in
+          reach while a model writes. */}
+      <Drawer
+        open={open && afterCreate && !dismissed}
+        onClose={() => {
+          setDismissed(true);
+          onClose();
+        }}
+        title="Draft a deck"
+        modal={false}
+        width={420}
+        data-testid="generate-drawer"
+      >
+        <div className="dk-generate">
+          {working ? (
+            <p className="dk-generate__working" role="status">
+              {working}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="dk-generate__error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {phase.kind === "review" || phase.kind === "deciding" ? (
+            <>
+              <StoryCheckpoint outline={phase.outline} busy={phase.kind === "deciding"} onDecide={(d) => void decide(d)} />
+              <p className="dk-muted">This outline stays here until you decide, even if you close this panel.</p>
+            </>
+          ) : null}
+        </div>
+      </Drawer>
+    </>
   );
 }

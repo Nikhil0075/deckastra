@@ -104,6 +104,21 @@ export interface WorkspaceClient {
     /** Forget the cached session. The next `ensure` bootstraps again. */
     clear(): void;
     account(options?: RequestOptions): Promise<AccountContext>;
+    /**
+     * The account's AI credits. Optional: a service without an account (an
+     * older one, or a stand-in) offers none, and the meter is then absent.
+     */
+    credits?(options?: RequestOptions): Promise<import("./session").CreditBalance>;
+    /** Which hosted AI tasks are available, and why not. Optional, like credits. */
+    capabilities?(options?: RequestOptions): Promise<import("./session").AccountCapabilities>;
+    /**
+     * Ask the service to erase this cloud account. Optional: a local install has
+     * no cloud account to erase. Rejects with 409 when the person still owns a
+     * shared workspace.
+     */
+    deleteAccount?(options?: RequestOptions): Promise<import("./session").AccountDeletion>;
+    /** The status of a deletion request. Needs no session: the request ended it. */
+    deletionStatus?(receipt: string, options?: RequestOptions): Promise<{ status: string }>;
     createWorkspace(
       name: string,
       options?: RequestOptions,
@@ -274,6 +289,16 @@ export interface WorkspaceClient {
     ): Promise<AppliedChange>;
   };
 
+  /**
+   * Bringing a `.mydeck` file in. Optional: the desktop opens files through its
+   * main process instead, and a stand-in may offer neither.
+   */
+  readonly imports?: {
+    /** Begin, upload the bytes, and complete. Resolves once the service has the file queued. */
+    upload(projectId: string, file: Blob, options?: RequestOptions): Promise<import("./exports").DeckImport>;
+    status(importId: string, options?: RequestOptions): Promise<import("./exports").DeckImport>;
+  };
+
   readonly exports: {
     start(
       presentationId: string,
@@ -362,7 +387,7 @@ export interface WorkspaceClient {
         width?: number;
         height?: number;
         /** Defaults to an image. A font is `"font"` with its `font/*` type. */
-        kind?: "image" | "font" | "audio";
+        kind?: "image" | "font" | "audio" | "document";
         /**
          * Audio: what the browser decoded, used only when the service cannot
          * read the container itself, and 256 peaks for the timeline's waveform.

@@ -22,14 +22,17 @@
   flex: none;
 }
 .dk-decks__bar .dk-appbar__title {
-  flex: none;
+  flex: 0 1 auto;
   max-width: 320px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .dk-decks__search {
   display: flex;
   align-items: center;
   gap: var(--dk-space-2);
-  width: 320px;
+  flex: 0 1 320px;
+  min-width: 120px;
   margin-left: var(--dk-space-3);
   color: var(--dk-ink-muted);
 }
@@ -83,6 +86,27 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.dk-decks__project:has(svg) {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-decks__views {
+  padding-bottom: var(--dk-space-2);
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-decks__trash {
+  margin-top: var(--dk-space-3);
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-card__thumb--empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  background: var(--dk-sunk);
+  color: var(--dk-ink-muted);
+  cursor: default;
 }
 .dk-decks__project:hover {
   background: var(--dk-sunk);
@@ -237,4 +261,146 @@
   display: grid;
   gap: var(--dk-space-3);
   padding: var(--dk-space-4);
+}
+
+/* --- The home's prompt bar (GenerateDeck.tsx, roadmap 08 §1.3) -------------- */
+
+.dk-home-prompt {
+  /* On the same inset as the heading and the grid below it. */
+  flex: none;
+  margin: var(--dk-space-5) var(--dk-space-5) 0;
+  padding: var(--dk-space-4) var(--dk-space-4) var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-ink);
+  background: var(--dk-surface);
+}
+.dk-home-prompt[hidden] {
+  display: none;
+}
+.dk-home-prompt__input {
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+  line-height: 1.25;
+  resize: vertical;
+}
+.dk-home-prompt__input::placeholder {
+  color: var(--dk-ink-muted);
+}
+.dk-home-prompt__input:focus-visible {
+  outline: none;
+}
+.dk-home-prompt:focus-within {
+  border-color: var(--dk-blue);
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+}
+.dk-home-prompt__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-3);
+  margin-top: var(--dk-space-2);
+}
+.dk-home-prompt__route {
+  display: flex;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
+  font-size: var(--dk-text-sm);
+}
+.dk-home-prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-2);
+}
+.dk-home-prompt__options {
+  margin-top: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-home-prompt__options > summary {
+  cursor: pointer;
+  color: var(--dk-ink-muted);
+}
+.dk-home-prompt__options[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+.dk-home-prompt__option-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--dk-space-3);
+  margin-top: var(--dk-space-2);
+}
+.dk-home-prompt__waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  margin-top: var(--dk-space-2);
+}
+.dk-home-prompt .dk-generate__error {
+  margin: var(--dk-space-2) 0 0;
+}
+.dk-decks__plan {
+  margin-top: auto;
+}
+
+/*
+ * The outline drawer is not modal, so the decks stay usable while a model
+ * writes. On a wide window the home steps aside for it instead of being
+ * covered: the 420px is the drawer's width (GenerateDeck.tsx).
+ */
+@media (min-width: 1000px) {
+  .dk-decks__main:has(.dk-home-prompt[data-drawer-open]) {
+    padding-right: 420px;
+  }
+}
+
+/*
+ * A narrow window: the sidebar goes above the decks instead of beside them,
+ * and the page scrolls as one, so nothing is squeezed into a column a word
+ * wide or pushed past the edge.
+ */
+@media (max-width: 720px) {
+  .dk-decks {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+  .dk-decks__bar .dk-appbar__product,
+  .dk-decks__bar .dk-appbar__sep {
+    display: none;
+  }
+  .dk-decks__body {
+    flex-direction: column;
+  }
+  .dk-decks__projects {
+    width: auto;
+    gap: var(--dk-space-3);
+    border-right: 0;
+    border-bottom: var(--dk-line) solid var(--dk-rule);
+    overflow: visible;
+  }
+  .dk-decks__plan {
+    margin-top: 0;
+  }
+  .dk-decks__scroll {
+    padding: 0 var(--dk-space-4) var(--dk-space-4);
+  }
+  .dk-home-prompt {
+    margin: var(--dk-space-4) var(--dk-space-4) 0;
+  }
+  .dk-decks__heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: var(--dk-space-4) var(--dk-space-4) var(--dk-space-3);
+  }
 }

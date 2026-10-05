@@ -19,12 +19,13 @@ afterEach(() => {
 });
 
 const status = (over: Partial<GenerationStatus>): GenerationStatus =>
-  ({ provider: "cloud", available: true, reason: null, ...over }) as GenerationStatus;
+  ({ provider: "vertex", available: true, reason: null, ...over }) as GenerationStatus;
 
 describe("the route, in words", () => {
   it("says what leaves the machine on each route", () => {
-    expect(generationRoute(status({ provider: "cloud" }))!.detail).toContain("sent to Anthropic");
-    expect(generationRoute(status({ provider: "local" }))!.detail).toContain("Nothing is sent anywhere");
+    const hosted = generationRoute(status({ provider: "vertex" }))!;
+    expect(hosted.detail).toContain("sent to Google Cloud");
+    expect(hosted.detail).toContain("credits");
     // The stub writes a template. Saying so is the whole point of item 20.
     const stub = generationRoute(status({ provider: "stub" }))!;
     expect(stub.title).toContain("Demo planner");
@@ -36,6 +37,15 @@ describe("the route, in words", () => {
     expect(route.available).toBe(false);
     expect(route.detail).toBe("Generation is not set up.");
     expect(route.offerSetUp).toBe(true);
+  });
+
+  it("turns a signed-out answer into an action, and keeps setting names off the screen", () => {
+    const signedOut = generationRoute(status({ available: false, reason: "Sign in to use Deckastra AI credits." }))!;
+    expect(signedOut.title).toBe("Sign in to write decks with AI");
+    expect(signedOut.offerSetUp).toBe(true);
+    const unset = generationRoute(status({ available: false, reason: "Set DECKASTRA_VERTEX_PROJECT first." }))!;
+    expect(unset.detail).not.toMatch(/DECKASTRA_/);
+    expect(unset.detail).toMatch(/blank deck/);
   });
 
   it("does not offer a set-up screen for a mistyped setting, which it cannot fix", () => {
@@ -65,8 +75,8 @@ describe("the generate drawer", () => {
   };
 
   it("names the route before anything is written", () => {
-    show(status({ provider: "cloud" }));
-    expect(screen.getByTestId("generation-route").textContent).toContain("Anthropic");
+    show(status({ provider: "vertex" }));
+    expect(screen.getByTestId("generation-route").textContent).toContain("Google Cloud");
   });
 
   it("will not start a generation that cannot work, and offers the way to fix it", () => {

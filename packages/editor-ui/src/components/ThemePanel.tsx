@@ -234,6 +234,9 @@ function DeckThemePicker({
 function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
   const client = useWorkspaceClient();
   const [themes, setThemes] = useState<SavedTheme[]>([]);
+  // The list's own state, apart from the actions' messages: reading, read, or
+  // could not be read (roadmap 08 rule 5).
+  const [listState, setListState] = useState<"reading" | "read" | "failed">("reading");
   const [selected, setSelected] = useState("");
   const [name, setName] = useState("");
   const [makeDefault, setMakeDefault] = useState(false);
@@ -253,8 +256,8 @@ function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presen
   useEffect(() => {
     const controller = new AbortController();
     void list(controller.signal).then(result => {
-      if (!controller.signal.aborted) setThemes(result.themes);
-    }).catch(error => { if (!controller.signal.aborted) setMessage(error.message); });
+      if (!controller.signal.aborted) { setThemes(result.themes); setListState("read"); }
+    }).catch(error => { if (!controller.signal.aborted) { setListState("failed"); setMessage(error.message); } });
     return () => controller.abort();
   }, [list]);
 
@@ -269,9 +272,19 @@ function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presen
 
   return <section aria-label="Themes" className="dk-themes">
     <button className="dk-btn dk-btn--ghost dk-btn--sm" disabled={busy} onClick={() => void run(async () => {
-      const result = await list();
-      if (active.current) setThemes(result.themes);
-    })}>Refresh themes</button>
+      setListState("reading");
+      try {
+        const result = await list();
+        if (active.current) { setThemes(result.themes); setListState("read"); }
+      } catch (error) {
+        if (active.current) setListState("failed");
+        throw error;
+      }
+    })}>{listState === "failed" ? "Try again" : "Refresh themes"}</button>
+    {listState === "reading" ? <p role="status" className="dk-muted">Reading this workspace's themes…</p> : null}
+    {listState === "read" && themes.length === 0 ? (
+      <p className="dk-muted">No saved themes in this workspace yet. Save the current one below to reuse it.</p>
+    ) : null}
     <label className="dk-themes__field">
       Saved theme
       <select className="dk-input" value={selected} onChange={event => setSelected(event.target.value)} disabled={busy}>
@@ -310,7 +323,13 @@ function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presen
       setSelected(saved.id); setMessage("Theme saved to this workspace.");
     })}>Save theme</button>
     {busy ? <p role="status" className="dk-muted">Updating theme…</p> : null}
-    {message ? <p role="status" className="dk-muted">{message}</p> : null}
+    {message ? (
+      listState === "failed" ? (
+        <p role="alert" className="dk-export__error">The saved themes could not be read: {message}</p>
+      ) : (
+        <p role="status" className="dk-muted">{message}</p>
+      )
+    ) : null}
   </section>;
 }
 

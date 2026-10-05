@@ -3,6 +3,10 @@ import type {
   TransitionRequest,
   TransitionResult,
   AccountContext,
+  CreditBalance,
+  AccountCapabilities,
+  AccountDeletion,
+  DeckImport,
   AccountProject,
   AgentEditResult,
   AppliedChange,
@@ -53,11 +57,24 @@ import type {
   TranslateResult,
   Voice,
 } from "@deckastra/workspace-contracts";
+import { DECK_IMPORT_MAX_BYTES } from "@deckastra/workspace-contracts";
 
 import { WorkspaceRequestError, messageFromDetail } from "./errors";
 import { browserSessionStore, type SessionStore } from "./session-store";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+
+export interface BootstrapContext {
+  baseUrl: string;
+  fetch: FetchLike;
+  signal?: AbortSignal;
+  /**
+   * The service refused the session it was given. A sign-in whose tokens expire
+   * (an hour, for Identity Platform) must fetch a fresh one rather than hand the
+   * cached one back.
+   */
+  refresh?: boolean;
+}
 
 export interface HttpClientOptions {
   /** Origin of the authority. No trailing slash; one is stripped if present. */
@@ -77,7 +94,7 @@ export interface HttpClientOptions {
    * is disabled in production. A real sign-in and the desktop's launch-secret
    * session both replace this and nothing else.
    */
-  bootstrapSession?: (context: { baseUrl: string; fetch: FetchLike; signal?: AbortSignal }) => Promise<Session>;
+  bootstrapSession?: (context: BootstrapContext) => Promise<Session>;
   fetch?: FetchLike;
 }
 
@@ -98,22 +115,36 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
 
   let inflight: Promise<Session> | undefined;
 
-  async function ensureSession(request?: RequestOptions): Promise<Session> {
+  async function ensureSession(request?: RequestOptions, refresh = false): Promise<Session> {
     const cached = store.read();
-    if (cached) return cached;
+    if (cached && !refresh) return cached;
 
     // One request even if several components ask at once, so a fresh load does
     // not create three users.
-    inflight ??= bootstrap({ baseUrl, fetch: doFetch, ...(request?.signal ? { signal: request.signal } : {}) })
+    //
+    // And no one caller's signal goes into it. The bootstrap is shared, so a
+    // signal passed in belonged to whichever component asked first, and that
+    // component unmounting (React's development double mount does it on every
+    // load) aborted the session for everyone waiting on it: the deck list read
+    // "signal is aborted without reason" on a fresh load (2026-10-05). Each
+    // caller stops waiting on its own abort; the request runs on for the rest.
+    const shared = (inflight ??= bootstrap({ baseUrl, fetch: doFetch, ...(refresh ? { refresh: true } : {}) })
       .then((session) => {
         store.write(session);
         return session;
       })
       .finally(() => {
         inflight = undefined;
-      });
+      }));
 
-    return inflight;
+    const signal = request?.signal;
+    if (!signal) return shared;
+    if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+    return new Promise<Session>((resolve, reject) => {
+      const onAbort = () => reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      signal.addEventListener("abort", onAbort, { once: true });
+      shared.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+    });
   }
 
   interface SendInit extends RequestOptions {
@@ -127,7 +158,7 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
     fallback?: string;
   }
 
-  async function send(path: string, init: SendInit = {}): Promise<Response> {
+  async function send(path: string, init: SendInit = {}, retried = false): Promise<Response> {
     const headers: Record<string, string> = {};
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
     if (init.raw !== undefined) headers["Content-Type"] = init.raw.type || "application/octet-stream";
@@ -169,6 +200,20 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
           ? error.message
           : "Could not reach the workspace.",
       );
+    }
+
+    // A 401 on an authenticated request means the token was refused before
+    // anything was done, so asking once more with a fresh one is safe even for a
+    // write. Once: a second refusal is the answer (signed out, or deleted).
+    if (response.status === 401 && init.auth !== false && !retried) {
+      let renewed = false;
+      try {
+        await ensureSession(init, true);
+        renewed = true;
+      } catch {
+        /* No fresh session to be had: report the original refusal. */
+      }
+      if (renewed) return send(path, init, true);
     }
 
     if (!response.ok) {
@@ -247,6 +292,17 @@ const q = encodeURIComponent;
       ensure: ensureSession,
       clear: () => store.clear(),
       account: (request) => json<AccountContext>("/v1/account", { ...request }),
+      credits: (request) => json<CreditBalance>("/v1/account/credits", { ...request }),
+      capabilities: (request) => json<AccountCapabilities>("/v1/account/capabilities", { ...request }),
+      deleteAccount: (request) =>
+        json<AccountDeletion>("/v1/account", {
+          method: "DELETE",
+          body: { confirm: "DELETE" },
+          fallback: "Your account could not be deleted just now.",
+          ...request,
+        }),
+      deletionStatus: (receipt, request) =>
+        json<{ status: string }>(`/v1/account/deletions/${q(receipt)}`, { auth: false, fresh: true, ...request }),
       createWorkspace: (name, request) =>
         json<{ workspace_id: string; project_id: string }>("/v1/workspaces", {
           body: { name },
@@ -386,6 +442,39 @@ const q = encodeURIComponent;
           `/v1/presentations/${q(presentationId)}/transactions/${q(transactionId)}/revert`,
           { method: "POST", ...request },
         ),
+    },
+
+    imports: {
+      upload: async (projectId, file, request) => {
+        // The service checks the size too; refusing here saves sending 200MB
+        // to be told so.
+        if (file.size > DECK_IMPORT_MAX_BYTES) {
+          throw new WorkspaceRequestError(413, undefined, "Deckastra files up to 128 MB can be opened here.");
+        }
+        const begin = await json<{ id: string; upload_url: string; method: string; headers: Record<string, string> }>(
+          `/v1/projects/${q(projectId)}/imports`,
+          { body: { size_bytes: file.size, copy: true }, fallback: "That file could not be opened.", ...request },
+        );
+        // As for assets: an absolute URL is a signed storage URL whose signature
+        // is the credential, and it must be sent exactly the headers it was
+        // signed with. A relative one is this service's own route.
+        const absolute = /^https?:\/\//i.test(begin.upload_url);
+        const headers: Record<string, string> = { ...begin.headers };
+        if (!absolute) {
+          const cached = store.read();
+          headers.Authorization = `Bearer ${(cached ?? (await ensureSession(request ?? {}))).token}`;
+        }
+        const put: RequestInit = { method: begin.method || "PUT", headers, body: file };
+        if (request?.signal) put.signal = request.signal;
+        const stored = await doFetch(absolute ? begin.upload_url : `${baseUrl}${begin.upload_url}`, put);
+        if (!stored.ok) throw new WorkspaceRequestError(stored.status, undefined, "The file could not be uploaded.");
+        return json<DeckImport>(`/v1/imports/${q(begin.id)}/complete`, {
+          method: "POST",
+          fallback: "That file could not be opened.",
+          ...request,
+        });
+      },
+      status: (importId, request) => json<DeckImport>(`/v1/imports/${q(importId)}`, { fresh: true, ...request }),
     },
 
     exports: {
@@ -615,11 +704,7 @@ const q = encodeURIComponent;
  * replaceable because it is the one thing a real sign-in and the desktop's
  * launch-secret session both need to change.
  */
-async function devSessionBootstrap(context: {
-  baseUrl: string;
-  fetch: FetchLike;
-  signal?: AbortSignal;
-}): Promise<Session> {
+async function devSessionBootstrap(context: BootstrapContext): Promise<Session> {
   const init: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },

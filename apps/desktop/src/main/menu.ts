@@ -97,9 +97,13 @@ export function menuTemplate(
       label: "&View",
       submenu: [
         item("Design", "mode-design", "CmdOrCtrl+1"),
-        item("AI", "mode-ai", "CmdOrCtrl+2"),
-        item("Motion", "mode-motion", "CmdOrCtrl+3"),
-        item("Code", "mode-code", "CmdOrCtrl+4"),
+        item("Motion", "mode-motion", "CmdOrCtrl+2"),
+        item("Code", "mode-code", "CmdOrCtrl+3"),
+        // The page binds Ctrl+K (roadmap 08 §1.5): every command by name, and
+        // the assistant for anything that is not one.
+        pageOwned("Command palette…", "command-palette", "CmdOrCtrl+K"),
+        // Beside any mode rather than one of them (roadmap 08 §1.2 rule 2).
+        item("Assistant", "assistant"),
         { type: "separator" },
         {
           label: "Theme",
@@ -127,7 +131,7 @@ export function menuTemplate(
           ],
         },
         { type: "separator" },
-        item("Intelligence…", "open-intelligence"),
+        item("Settings…", "open-settings", "CmdOrCtrl+,"),
         { type: "separator" },
         { role: "togglefullscreen" },
       ],

@@ -59,7 +59,6 @@ export function SpeakerNotes({ editor }: { editor: EditorApi }) {
   const slideId = slide?.id;
   const stored = slide?.speakerNotes;
   const storedKey = JSON.stringify(stored ?? null);
-  const [open, setOpen] = useState(true);
   const [text, setText] = useState(() => notesPlainText(stored));
   const [marks, setMarks] = useState<Record<string, boolean>>({});
 
@@ -130,7 +129,7 @@ export function SpeakerNotes({ editor }: { editor: EditorApi }) {
     if (!composing.current) schedule();
   }, [schedule]);
 
-  // Slide change (or unmount, or the field being collapsed): commit what was
+  // Slide change (or unmount, which is also the dock being put away): commit what was
   // written to the slide it was written on, then show the new slide's notes.
   useEffect(() => {
     shown.current = slideId;
@@ -143,7 +142,7 @@ export function SpeakerNotes({ editor }: { editor: EditorApi }) {
     };
     // `stored` is deliberately not a dependency: it is read when the slide
     // changes, and outside edits to the same slide are the next effect's job.
-  }, [slideId, open, commit, seed]);
+  }, [slideId, commit, seed]);
 
   // Outside change to this slide's notes: adopt it only if nothing is unsaved,
   // and only if the field shows something different. The field's own commit
@@ -217,25 +216,14 @@ export function SpeakerNotes({ editor }: { editor: EditorApi }) {
   const characters = text.length;
 
   return (
-    <section className={open ? "dk-notes dk-notes--open" : "dk-notes"} aria-label="Speaker notes" data-region="notes">
-      <header className="dk-notes__head">
-        <span className="dk-notes__title" id={`${id}-title`}>
-          Speaker notes
-        </span>
-        <span className="dk-notes__meta">
-          Slide {editor.slideIndex + 1} · {speakingEstimate(text)}
-        </span>
-        <IconButton
-          icon={open ? "chevronDown" : "chevronRight"}
-          label={open ? "Collapse speaker notes" : "Expand speaker notes"}
-          size="sm"
-          aria-expanded={open}
-          aria-controls={`${id}-body`}
-          onClick={() => setOpen((value) => !value)}
-        />
-      </header>
-      {open ? (
-        <div className="dk-notes__body" id={`${id}-body`}>
+    // The dock (Dock.tsx) owns the tab name and the collapse. This is the
+    // field and its toolbar; putting the dock away unmounts it, and the
+    // unmount commits the draft.
+    <section className="dk-notes" aria-labelledby={`${id}-title`}>
+      <span className="dk-visually-hidden" id={`${id}-title`}>
+        Speaker notes
+      </span>
+      <div className="dk-notes__body">
           <div className="dk-notes__tools" role="toolbar" aria-label="Format speaker notes">
             {FORMATS.map((item) => (
               <IconButton
@@ -289,11 +277,10 @@ export function SpeakerNotes({ editor }: { editor: EditorApi }) {
               <span />
             )}
             <span>
-              {characters} character{characters === 1 ? "" : "s"}
+              Slide {editor.slideIndex + 1} · {speakingEstimate(text)} · {characters} character{characters === 1 ? "" : "s"}
             </span>
           </footer>
-        </div>
-      ) : null}
+      </div>
     </section>
   );
 }

@@ -71,19 +71,6 @@
 .dk-appbar__center .dk-segmented {
   width: 100%;
 }
-/* A colour, not an opacity: 0.7 over the checked blue measured 4.26:1 in the
-   a11y step, and the token test cannot see what an opacity does to a pair. */
-.dk-appbar__hint {
-  white-space: nowrap;
-  font-size: var(--dk-text-xs);
-  font-weight: 500;
-  color: var(--dk-ink-muted);
-  text-transform: none;
-  letter-spacing: 0;
-}
-.dk-segmented__item--checked .dk-appbar__hint {
-  color: var(--dk-on-blue);
-}
 .dk-brand {
   width: 20px;
   height: 20px;
@@ -124,6 +111,12 @@
   padding: var(--dk-space-3) 0;
   max-height: calc(100vh - var(--dk-bar-height) - var(--dk-space-4));
   overflow-y: auto;
+}
+
+/* The Share menu: the file first, then the link, ruled apart. */
+.dk-sharemenu .dk-export + .dk-share {
+  margin-top: var(--dk-space-3);
+  border-top: var(--dk-line) solid var(--dk-rule);
 }
 
 /* Save status: sentence case on purpose (see SaveIndicator). */
@@ -424,8 +417,6 @@
 /* --- Speaker notes ------------------------------------------------------- */
 
 .dk-notes {
-  flex: none;
-  border-top: var(--dk-line) solid var(--dk-rule);
   background: var(--dk-ground);
 }
 .dk-notes__head {
@@ -448,7 +439,7 @@
   text-align: right;
 }
 .dk-notes__body {
-  padding: 0 var(--dk-space-4) var(--dk-space-2);
+  padding: var(--dk-space-1) var(--dk-space-4) var(--dk-space-2);
 }
 .dk-notes__tools {
   display: flex;
@@ -513,14 +504,36 @@
   color: var(--dk-ochre);
 }
 
-/* --- Motion dock ----------------------------------------------------------- */
+/* --- Dock: notes and timeline under the canvas (Dock.tsx) ------------------ */
 
-.dk-dock {
+.dk-dockbar {
   flex: none;
-  overflow: auto;
-  padding: 0 var(--dk-space-2);
   border-top: var(--dk-line) solid var(--dk-rule);
   background: var(--dk-ground);
+}
+.dk-dockbar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--dk-space-2);
+}
+.dk-dockbar__tabs {
+  display: flex;
+}
+/* Collapsed, no tab is "showing", so none carries the active rule; the row is
+   only names. Open, the head is ruled off from the body. */
+.dk-dockbar--open .dk-dockbar__head {
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-dockbar__tab {
+  height: var(--dk-control-md);
+}
+.dk-dockbar__body {
+  overflow: auto;
+}
+
+.dk-dock {
+  padding: 0 var(--dk-space-2);
   scrollbar-width: thin;
   scrollbar-color: var(--dk-ink) transparent;
 }
@@ -1468,12 +1481,147 @@
   gap: var(--dk-space-2);
 }
 
-.dk-ask {
+/* --- Assistant (roadmap 08 §1.2 rule 2; AssistantPanel.tsx) ----------------- */
+
+.dk-assistant__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3) var(--dk-space-3) var(--dk-space-2);
+}
+.dk-assistant__title {
+  margin: 0;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+  font-weight: 600;
+}
+.dk-assistant__prompt {
+  margin: 0 var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-ink);
+  background: var(--dk-surface);
+}
+.dk-assistant__prompt:focus-within {
+  box-shadow: inset 0 0 0 1px var(--dk-blue);
+  border-color: var(--dk-blue);
+}
+.dk-assistant__input {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-md);
+  resize: vertical;
+}
+.dk-assistant__input:focus-visible {
+  outline: none;
+}
+.dk-assistant__input::placeholder {
+  color: var(--dk-ink-muted);
+}
+.dk-assistant__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2);
+}
+.dk-assistant__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--dk-space-2);
+  margin: var(--dk-space-3);
+}
+.dk-assistant__action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-1);
+  min-height: 64px;
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-assistant__action:hover:not(:disabled) {
+  border-color: var(--dk-ink);
+}
+.dk-assistant__action:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: -2px;
+}
+.dk-assistant__action:disabled {
+  cursor: not-allowed;
+  color: var(--dk-ink-muted);
+}
+.dk-assistant__action-label {
+  font-weight: 600;
+}
+.dk-assistant__action-meta {
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
+.dk-assistant__options {
+  margin: 0 var(--dk-space-3) var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant__options > summary {
+  cursor: pointer;
+  color: var(--dk-ink-muted);
+}
+.dk-assistant__options[open] {
   display: flex;
   flex-direction: column;
   gap: var(--dk-space-2);
 }
-.dk-ask__row {
+.dk-assistant__run,
+.dk-assistant__done {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  margin: 0 var(--dk-space-3) var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant__result,
+.dk-muted.dk-assistant__note {
+  margin: 0 var(--dk-space-3) var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant__research {
+  white-space: pre-wrap;
+}
+.dk-assistant__error {
+  margin: 0 var(--dk-space-3) var(--dk-space-2);
+  color: var(--dk-red);
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant > [role="status"].dk-muted {
+  margin: 0 var(--dk-space-3) var(--dk-space-2);
+}
+.dk-assistant__sent {
+  margin: 0 var(--dk-space-3) var(--dk-space-3);
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-assistant__history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant__history li {
   display: flex;
   align-items: center;
   gap: var(--dk-space-2);
@@ -3293,7 +3441,7 @@
 @media (max-width: 1500px) {
   /* The language code stays: like the agent chip, its words are its status
      ("HI" is which language is on the canvas), and it is two letters. */
-  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip) .dk-btn__label {
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) .dk-btn__label {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -3301,7 +3449,7 @@
     clip: rect(0 0 0 0);
     white-space: nowrap;
   }
-  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip) {
+  .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) {
     position: relative;
   }
 }
@@ -3699,4 +3847,401 @@
   width: auto;
   max-width: 3px;
   align-self: center;
+}
+.dk-assistant .dk-check {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+
+/* --- Command palette (CommandPalette.tsx, roadmap 08 §1.5) ------------------ */
+
+.dk-root.dk-palette__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--dk-z-drawer);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: var(--dk-scrim);
+}
+.dk-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - var(--dk-space-6)));
+  max-height: 60vh;
+  border: var(--dk-line) solid var(--dk-ink);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+}
+.dk-palette__field {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  padding: 0 var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-palette__input {
+  flex: 1;
+  height: var(--dk-control-lg);
+  border: 0;
+  background: transparent;
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-md);
+}
+.dk-palette__input:focus-visible {
+  outline: none;
+}
+.dk-palette__input::placeholder {
+  color: var(--dk-ink-muted);
+}
+.dk-palette__list {
+  margin: 0;
+  padding: var(--dk-space-1) 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.dk-palette__group {
+  padding: var(--dk-space-2) var(--dk-space-3) var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+  color: var(--dk-ink-muted);
+}
+.dk-palette__item {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2) var(--dk-space-3);
+  cursor: pointer;
+}
+.dk-palette__item--active {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-palette__label {
+  flex: 1;
+}
+.dk-palette__key {
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-xs);
+  color: inherit;
+}
+
+/* --- Assistant › Sources (AssistantPanel.tsx) -------------------------------- */
+
+.dk-assistant__sources {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  margin-bottom: var(--dk-space-3);
+}
+.dk-assistant__sources > p {
+  margin: 0;
+  font-size: var(--dk-text-sm);
+}
+.dk-assistant__source-list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-assistant__source-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  padding-left: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  font-size: var(--dk-text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* --- Account menu (shell/AccountMenu.tsx, roadmap 08 §1.4) ------------------- */
+
+.dk-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--dk-control-md);
+  height: var(--dk-control-md);
+  padding: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  cursor: pointer;
+}
+.dk-avatar:hover {
+  background: var(--dk-sunk);
+}
+.dk-avatar:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+
+/* --- Settings (SettingsShell.tsx, roadmap 08 §1.3) -------------------------- */
+
+.dk-settings {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 360px;
+}
+.dk-settings__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--dk-space-2) 0;
+  border-right: var(--dk-line) solid var(--dk-rule);
+}
+.dk-settings__tab {
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border: 0;
+  border-left: var(--dk-line-strong) solid transparent;
+  background: transparent;
+  color: var(--dk-ink-muted);
+  font: inherit;
+  font-size: var(--dk-text-md);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-settings__tab:hover {
+  color: var(--dk-ink);
+}
+.dk-settings__tab--active {
+  border-left-color: var(--dk-blue);
+  color: var(--dk-ink);
+  font-weight: 600;
+}
+.dk-settings__tab:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: -2px;
+}
+.dk-settings__panel {
+  padding: var(--dk-space-3) var(--dk-space-5);
+  overflow-y: auto;
+}
+.dk-settings__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  align-items: flex-start;
+}
+.dk-settings__section > p {
+  margin: 0;
+}
+.dk-settings__heading {
+  margin: var(--dk-space-3) 0 0;
+  font-size: var(--dk-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+}
+.dk-settings__heading:first-child {
+  margin-top: 0;
+}
+.dk-settings__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--dk-space-1) var(--dk-space-3);
+  margin: 0;
+}
+.dk-settings__facts dt {
+  color: var(--dk-ink-muted);
+}
+.dk-settings__facts dd {
+  margin: 0;
+}
+.dk-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-settings__list li {
+  display: flex;
+  gap: var(--dk-space-3);
+}
+.dk-settings__error {
+  margin: 0;
+  color: var(--dk-red);
+}
+
+.dk-settings__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  align-items: flex-start;
+}
+.dk-settings__confirm-actions {
+  display: flex;
+  gap: var(--dk-space-2);
+}
+
+/* --- A shared deck (apps/web shared/[token]) -------------------------------- */
+
+.dk-shared {
+  box-sizing: border-box;
+  min-height: 100vh;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--dk-space-5) var(--dk-space-4) var(--dk-space-6);
+  background: var(--dk-ground);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-md);
+}
+.dk-shared--centred {
+  display: grid;
+  place-items: center;
+  max-width: none;
+}
+.dk-shared__notice {
+  max-width: 420px;
+  text-align: center;
+}
+.dk-shared__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--dk-space-4);
+  margin-bottom: var(--dk-space-4);
+}
+.dk-shared__heading {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.dk-shared__heading > p,
+.dk-shared__notice > p {
+  margin: 0;
+}
+.dk-shared__title {
+  margin: 0 0 var(--dk-space-1);
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+  font-weight: 500;
+}
+.dk-shared__language {
+  width: 200px;
+}
+.dk-shared__stage {
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-backdrop);
+  line-height: 0;
+}
+.dk-shared__strip {
+  display: flex;
+  gap: var(--dk-space-2);
+  overflow-x: auto;
+  padding: var(--dk-space-4) 0;
+}
+.dk-shared__thumb {
+  flex: none;
+  padding: 0;
+  border: var(--dk-line-strong) solid var(--dk-rule-soft);
+  background: var(--dk-backdrop);
+  line-height: 0;
+  cursor: pointer;
+}
+.dk-shared__thumb[aria-selected="true"] {
+  border-color: var(--dk-blue);
+}
+.dk-shared__thumb:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+
+/* --- Signing in (apps/web SignIn.tsx) ---------------------------------------- */
+
+.dk-signin {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--dk-space-4);
+  background: var(--dk-ground);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-md);
+}
+.dk-signin__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  width: min(400px, 100%);
+  padding: var(--dk-space-5);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+}
+.dk-signin__card > p {
+  margin: 0;
+}
+.dk-signin__brand {
+  margin: 0;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+  font-weight: 600;
+}
+.dk-signin__title {
+  margin: 0;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-xl);
+  font-weight: 500;
+}
+.dk-signin__or {
+  color: var(--dk-ink-muted);
+  text-align: center;
+}
+.dk-signin__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+}
+
+/* --- AI credits (CreditsMeter.tsx, roadmap 08 §1.5) ------------------------- */
+
+.dk-credits--inline {
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-credits--card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  font-size: var(--dk-text-sm);
+}
+.dk-credits--card p {
+  margin: 0;
+}
+.dk-credits__plan {
+  font-weight: 700;
+}
+.dk-credits__bar {
+  display: block;
+  align-self: stretch;
+  height: var(--dk-space-1);
+  margin: var(--dk-space-1) 0;
+  background: var(--dk-sunk);
+}
+.dk-credits__fill {
+  display: block;
+  height: 100%;
+  background: var(--dk-blue);
+}
+.dk-assistant__head .dk-credits--inline {
+  margin-left: auto;
 }

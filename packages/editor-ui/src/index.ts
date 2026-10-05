@@ -19,9 +19,11 @@
 export { EditorShell } from "./components/EditorShell";
 export type { EditorShellProps, MotionAuthoringExtension, MotionAuthoringPanelProps } from "./components/EditorShell";
 export { PresentMode } from "./components/PresentMode";
-export { GenerationFailed, QuotaReached } from "./components/EmptyState";
-export { AccountPicker } from "./components/AccountPicker";
 export { DeckList } from "./components/DeckList";
+export { SettingsShell, AccountSettings, SETTINGS_SECTIONS, type SettingsSectionId } from "./components/SettingsShell";
+export { CreditsMeter } from "./components/CreditsMeter";
+export { useChromeTheme } from "./lib/chrome-theme";
+export { AccountDeletionSettings, AiTaskSettings, deletionProblem } from "./components/CloudAccountSettings";
 export type { DeckListProps } from "./components/DeckList";
 export type { DeckListCommand, HostCommand, SubscribeHostCommands } from "./lib/host-commands";
 export { duplicateSlideWithMagicMoveAction } from "./lib/slide-actions";

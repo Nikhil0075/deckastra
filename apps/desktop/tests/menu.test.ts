@@ -64,7 +64,7 @@ describe("the application menu", () => {
     // A registered Ctrl+Z would be taken before the page saw it, and undo the
     // deck from inside the notes field instead of undoing the typing.
     const byId = new Map(items(menuTemplate(() => {}, "win32", actions())).map((item) => [item.id, item]));
-    for (const id of ["undo", "redo", "present"]) {
+    for (const id of ["undo", "redo", "present", "command-palette"]) {
       expect(byId.get(id)?.accelerator).toBeTruthy();
       expect(byId.get(id)?.registerAccelerator).toBe(false);
     }
@@ -80,7 +80,7 @@ describe("the application menu", () => {
       .filter((item) => item.accelerator && item.registerAccelerator !== false)
       .map((item) => item.accelerator);
     // The editor's own bindings with a modifier (packages/editor/src/keyboard.ts).
-    const editor = ["D", "C", "X", "V", "A", "G", "Z", "Y", "]", "[", "L", "H", "P"];
+    const editor = ["D", "C", "X", "V", "A", "G", "Z", "Y", "]", "[", "L", "H", "P", "K"];
     for (const accelerator of registered) {
       const key = String(accelerator).split("+").pop();
       const plainOrShift = !String(accelerator).includes("Alt");

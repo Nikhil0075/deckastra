@@ -52,6 +52,8 @@ const bridge: DesktopBridge = {
   openPresentation: (request: OpenPresentationRequest) =>
     ipcRenderer.invoke(IPC.openPresentation, request) as Promise<CurrentPresentation>,
 
+  openDeckFile: () => ipcRenderer.invoke(IPC.openDeckFile) as Promise<void>,
+
   saveFile: (request: SaveFileRequest) =>
     ipcRenderer.invoke(IPC.saveFile, request) as Promise<SaveFileResult>,
 

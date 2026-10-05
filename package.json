@@ -22,6 +22,7 @@
     "schema:drift": "npm run schema:drift --workspace @deckastra/presentation-schema",
     "fixtures:build": "npm run fixtures:build --workspace @deckastra/presentation-schema",
     "dev:web": "npm run dev --workspace @deckastra/web",
+    "dev:web:cloud": "npm run dev:cloud --workspace @deckastra/web --",
     "dev:api": "python -m uvicorn deckastra_api.main:app --reload --port 8000 --app-dir apps/api",
     "db:migrate": "python -m alembic -c infrastructure/database/alembic.ini upgrade head",
     "db:revision": "python -m alembic -c infrastructure/database/alembic.ini revision --autogenerate -m",

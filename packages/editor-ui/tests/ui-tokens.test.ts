@@ -136,6 +136,28 @@ describe("the dark set", () => {
   });
 });
 
+/**
+ * Tokens v1, frozen 2026-10-04 (roadmap 08 §1.2, rule 3). Until launch the set
+ * may grow and may change value, and may not lose or rename a name: a rename is
+ * a find-and-replace across both shells and every host stylesheet, and the one
+ * place it is missed draws in the browser's default colour with nothing failing.
+ * `tokens.v1.json` is the record; never regenerate it to make this pass.
+ */
+const FROZEN = JSON.parse(readFileSync(join(here, "../src/styles/tokens.v1.json"), "utf8")) as {
+  light: string[];
+  dark: string[];
+};
+
+describe("tokens v1 are frozen", () => {
+  it("keeps every v1 name in the light set", () => {
+    expect(FROZEN.light.filter((name) => !TOKENS.has(name))).toEqual([]);
+  });
+
+  it("keeps a dark value for every v1 colour that had one", () => {
+    expect(FROZEN.dark.filter((name) => !DARK_OVERRIDES.has(name))).toEqual([]);
+  });
+});
+
 describe("palette rules", () => {
   it("yellow would fail as text on cream, which is why it never is", () => {
     // If this ever passes, the rule below can be relaxed deliberately — not by accident.

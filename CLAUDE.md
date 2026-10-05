@@ -3495,8 +3495,10 @@ full screen), Slide (Present). Rules:
 
 The legacy panels (motion dock and timeline, export, share, sources,
 accessibility, theme, critic, repositories, conflict recovery) are restyled onto
-the primitives, and `.dk-legacy-bridge` is gone. Only the web app's
-`AccountPicker` and `EmptyState` still use the old tokens.
+the primitives, and `.dk-legacy-bridge` is gone. The web home is the shared
+`DeckList` now (roadmap 08 track 1), so `AccountPicker` and `EmptyState` are
+deleted; only the web app's shared-link viewer and `EditorPage`'s status
+message still use the old tokens.
 
 The `a11y` smoke step loads axe-core 4.13 (a dev dependency, read from
 `node_modules` and never bundled) into the real window. It first drives the
@@ -4054,6 +4056,124 @@ a weak design assistant. Each part below is one commit. Concepts are in
   different migrations" when `dist/build-manifest.json` is left over from an
   earlier packaging. After adding a migration, run `npm run manifest` in
   `apps/desktop`.
+
+### Interface clean-up toward launch (roadmap 08 track 1, 2026-10-04)
+
+`packages/editor-ui/DESIGN.md` holds the seven design rules and names the test
+that enforces each one, or says that nothing enforces it yet. Rules that are
+easy to undo:
+
+- **Notes and the timeline are tabs of one dock** (`shell/Dock.tsx`,
+  `lib/dock.ts`).
+  - Each mode remembers its own dock in `deckastra.dock`. It is closed in
+    Design and Code, and open on the timeline in Motion.
+  - `deckastra.panels` now holds only the tool rail, the slide strip and the
+    side panel. Old `notes` and `dock` keys there are ignored.
+  - The dock is one F6 region (`dock`), whichever tab is showing.
+  - A smoke step that types a note or drags a clip in Design calls
+    `needDockTab` first.
+- **One assistant, beside any mode** (`AssistantPanel.tsx`). AI mode,
+  `AskPanel` and the task form are gone.
+  - It opens from the bar's Assistant button, View › Assistant and the
+    command palette (host command `assistant`, which replaced `mode-ai`). The modes are now
+    Design, Motion and Code, on Ctrl+1 to 3.
+  - The prompt box still calls `agent/edit`. A change the server holds back
+    shows under "Waiting for you" (`ProposalsPanel`) rather than as a second
+    card.
+  - Its words go through `lib/assistant-words.ts`. `plain()` replaces any
+    service sentence that carries engineering words or a setting name.
+  - The prompt textarea lets Ctrl+K through to the shell, so the palette opens
+    from inside it too.
+- **Ctrl+K is the command palette** (`CommandPalette.tsx`, `lib/commands.ts`),
+  not the assistant. Each entry is a `HostCommand`, run through `onCommand`,
+  the same dispatcher as the desktop menu, so the two cannot drift. "Ask the
+  assistant" fills the assistant's prompt and sends nothing.
+- **Settings replaced the Intelligence drawer** (`SettingsShell.tsx`, desktop
+  `DesktopSettings.tsx`, host command `open-settings`, which replaced
+  `open-intelligence`; View › Settings…, Ctrl+,). A section the host does not
+  pass is absent; Plans and billing appears with track 3. The own-key section
+  stays until track 2 replaces it. The agent chip is still in the bar, because
+  it shows a live grant at a glance and the `consent` smoke step drives it.
+- **Share and Export are one menu** (`open-share`, `export-popover`).
+- **One home for both shells** (`DeckList`). `apps/web/app/page.tsx` is only
+  the route now; `AccountPicker` and `EmptyState` are deleted.
+  - Its prompt bar is `GenerateDeck`, rendered inline: `generate-instruction`,
+    `generate-submit` (Create), `new-deck` (Blank deck), and audience, slides,
+    outline review and repositories under Options. The drawer
+    (`generate-drawer`) opens only after Create, for progress and the outline.
+    There is no `generate-deck` button; File › Generate focuses the prompt.
+  - **Create is refused while an outline waits.** The prompt is always on
+    screen, and a second run would replace the project's remembered run
+    (item 02), abandoning an outline nobody decided on.
+  - The web editor's exit carries New deck and Generate as `/?start=…`.
+- **Credits are read, never computed** (`CreditsMeter`, `lib/credits.ts`).
+  On the desktop `GET /v1/account/credits` on the local service answers from
+  the cloud account through the gateway (`gateway_routes.balance`, local mode
+  only), never from the local ledger, and a signed-out desktop gets 503 "Sign
+  in…", which the meter turns into a Sign in action. No purchase or
+  subscription is shown before track 3.
+- **Desktop sign-in lives in Settings › Account** (`DesktopSettings.tsx`,
+  `window.deckastraAccount`): state and email only, never a token. The own-key
+  field is gone; `product-words.test.ts`'s `STILL_TO_REMOVE` is empty.
+- **`.mydeck` from the interface**: Share › "Deckastra file" is an export of
+  kind `mydeck`; the home's "Open .mydeck file" (`open-deck-file`) is IPC
+  `openDeckFile` with no payload, so the main process shows the dialog, as
+  File › Open does. Absent on the web until its client can import.
+- **One caller's abort never cancels the shared session bootstrap**
+  (`workspace-client/src/http.ts` `ensureSession`). The bootstrap runs with no
+  caller's signal; each caller stops waiting on its own. A signal used to go
+  into it, so the first component to mount owned it, and React's development
+  double mount aborted the deck list's account read on every fresh load.
+- **The SQLite store waits for locks instead of failing** (`db/session.py`):
+  a 30-second busy timeout, and `ensure_physical_transaction` opens
+  `BEGIN IMMEDIATE`. A deferred `BEGIN` let two writers that each read first
+  deadlock, and SQLite refuses one of them at once whatever the timeout; the
+  `languages` smoke step lost its translation one run in three to it.
+- **The web app signs in to a hosted Deckastra when told which**
+  (`NEXT_PUBLIC_DECKASTRA_CLOUD=deckastra|deckastra-prod`, read from
+  `infrastructure/deployment/public-auth.json`; `apps/web/lib/auth.ts`).
+  Unset is the development sign-in against `NEXT_PUBLIC_API_URL`. Named, the
+  hosted API wins over `NEXT_PUBLIC_API_URL`, because its tokens are good
+  nowhere else and `.env.local` points at a local API.
+  - The session store answers with the token Firebase last handed over and
+    keeps workspace ids in memory only; a 401 makes the client re-bootstrap
+    once with `refresh` (a forced renewal), never more.
+  - `SignInGate` renders "Checking" on the server and the first browser render
+    alike, so the page hydrates; the SDK is created in an effect.
+  - Settings opens over the editor rather than leaving it. `AccountSettings`
+    takes `online`, because a server calls its own workspaces `local`.
+  - Deleting the account signs out and keeps the receipt in `localStorage`;
+    the signed-out page polls its status without a session.
+  - `.mydeck` opens through `client.imports` (begin, PUT to the signed URL with
+    exactly its headers, complete, poll); the home shows a file input only when
+    the host gives no `onOpenFile`. Locally, imports need the worker
+    (`python -m deckastra_api.export_worker`); plain uvicorn leaves them queued.
+- **The bars end in an account menu** (`shell/AccountMenu.tsx`, `account-menu`):
+  initials, light/dark/system, Settings…, Sign out where the host has one.
+  It replaced the contrast and Panels buttons and the desktop's gear; panels
+  are in the View menu and the command palette. The desktop's agent chip shows
+  only while access is on; consent is given in Settings › Agents
+  (`settings-agent-toggle`), which is what the `consent` step drives.
+- **The home has views** (`lib/deck-views.ts`): All decks, Recent (12) and
+  Trash are one request per project, merged, and a project that cannot be read
+  fails the view rather than vanishing from it. Trash cards have no thumbnail
+  (a deleted deck reads as missing) and a Restore button. `projectId` stays the
+  project new decks go to whatever view is showing.
+- **Ctrl+K works on the home too**, with `place="home"`: only commands marked
+  `home`, and words typed fill the prompt bar (never sent).
+- **Assistant › Sources attaches files** (`lib/assistant-sources.ts`): PDF, CSV
+  or text uploaded as `document` assets and sent as `source_asset_ids` by
+  Research files and Add slides. Repositories still ground only a new deck: the
+  assistant request has no repository field.
+- **Quick actions show their credit hold** ("Up to 3 credits") from
+  `minimum_reservation_usd` at US$0.005 a credit, only for paid, available tasks.
+- **A share link is outside the sign-in gate** (`app/providers.tsx`): it is its
+  own credential and is opened by people without an account.
+- **Tokens v1 are frozen** (`src/styles/tokens.v1.json`). A token may be added
+  or change its value. It may not be renamed or removed.
+- **No engineering words in the product** (`tests/product-words.test.ts`).
+  `STILL_TO_REMOVE` is a ratchet: the test fails when a listed file has gone
+  clean, so the list can only get shorter.
 
 ### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
 

@@ -72,15 +72,23 @@ export function ProposalsPanel({
 }: ProposalsPanelProps) {
   const client = useWorkspaceClient();
   const [proposals, setProposals] = useState<PendingProposal[] | null>(null);
+  // The last read failed. Kept apart from `proposals`, so a list already on
+  // screen stays while a later poll fails, and a first read that failed says
+  // so rather than "looking" for ever (roadmap 08 rule 5).
+  const [readFailed, setReadFailed] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
     try {
       const list = await client.agent.proposals(presentationId);
-      if (mounted.current) setProposals(list.filter((proposal) => proposal.status === "pending"));
+      if (mounted.current) {
+        setProposals(list.filter((proposal) => proposal.status === "pending"));
+        setReadFailed(false);
+      }
     } catch {
-      /* A failed poll is retried on the next tick; the list stays as it was. */
+      // Retried on the next tick and on focus; the list stays as it was.
+      if (mounted.current) setReadFailed(true);
     }
   }, [client, presentationId]);
 
@@ -149,7 +157,12 @@ export function ProposalsPanel({
 
   return (
     <div className="dk-proposals" aria-label="Pending changes">
-      {proposals === null ? <p className="dk-muted">Looking for pending changes…</p> : null}
+      {proposals === null && !readFailed ? <p className="dk-muted">Looking for pending changes…</p> : null}
+      {proposals === null && readFailed ? (
+        <p className="dk-muted" role="status" data-testid="proposals-unread">
+          Pending changes could not be checked just now. Trying again shortly.
+        </p>
+      ) : null}
       {proposals?.length === 0 && status.kind !== "done" ? (
         <p className="dk-muted">Nothing is waiting for you. Changes an agent proposes appear here.</p>
       ) : null}

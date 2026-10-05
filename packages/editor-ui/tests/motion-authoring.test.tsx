@@ -157,7 +157,9 @@ describe("in the shell (MA-24, MA-26)", () => {
 
   it("a scrubbed preview says so, and ends on Back to editing, on leaving Motion, and on a press on the canvas", async () => {
     const view = await mount();
-    const dock = view.container.querySelector("[data-region='timeline']") as HTMLElement;
+    // The timeline is a tab of the dock, put away while designing.
+    if (!view.container.querySelector("[data-dock-panel='timeline']")) fireEvent.click(screen.getByTestId("dock-tab-timeline"));
+    const dock = view.container.querySelector("[data-dock-panel='timeline']") as HTMLElement;
     const scrub = within(dock).getByLabelText("Scrub the slide timeline");
     fireEvent.change(scrub, { target: { value: "120" } });
     expect(await screen.findByTestId("motion-preview-banner")).toBeTruthy();
