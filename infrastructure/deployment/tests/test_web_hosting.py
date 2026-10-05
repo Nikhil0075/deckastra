@@ -53,3 +53,16 @@ def test_web_image_has_cloud_identity_and_api_build_inputs():
     assert "COPY tsconfig.json tsconfig.base.json" in dockerfile
     assert "ARG NEXT_PUBLIC_DECKASTRA_CLOUD" in dockerfile
     assert "c.apiUrl !== process.env.NEXT_PUBLIC_API_URL" in dockerfile
+
+
+def test_origin_update_preserves_configuration_and_secret_references():
+    previous = {"spec": {"template": {"spec": {"containers": [{"env": [
+        {"name": "DECKASTRA_VERTEX_MODELS", "value": "{}"},
+        {"name": "DECKASTRA_CREDITS_ENABLED", "value": "1"},
+        {"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {"name": "deckastra-database-url", "key": "latest"}}}
+    ]}]}}}}
+    origins = "http://localhost:3000,https://web.a.run.app"
+    values, refs = web.api_origin_env(previous, origins)
+    assert values == {"DECKASTRA_VERTEX_MODELS": "{}", "DECKASTRA_CREDITS_ENABLED": "1", "DECKASTRA_WEB_ORIGINS": origins}
+    assert refs == "DATABASE_URL=deckastra-database-url:latest"
+    assert "DATABASE_URL" not in values

@@ -1,8 +1,32 @@
 """Create keyless CI trust, bound to immutable repository and owner IDs."""
 import argparse
 import json
+import time
 from urllib.request import Request, urlopen
 from bootstrap import Cloud
+
+
+def configure_release_permissions(cloud):
+    """CI can create/delete its disposable users and configure web origins."""
+    email = f"deckastra-deploy@{cloud.project}.iam.gserviceaccount.com"
+    identity_role = "deckastraReleaseIdentity"
+    bucket_role = "deckastraBucketCors"
+    for name, permissions in ((identity_role, "firebaseauth.configs.get,firebaseauth.configs.update,firebaseauth.users.create,firebaseauth.users.delete"),
+                              (bucket_role, "storage.buckets.get,storage.buckets.update")):
+        if not cloud.exists("iam", "roles", "describe", name):
+            cloud.run("iam", "roles", "create", name, f"--title={name}", f"--permissions={permissions}", "--stage=GA")
+    cloud.member(email, f"projects/{cloud.project}/roles/{identity_role}")
+    for kind in ("assets", "exports"):
+        # Newly created project roles can take time to reach the Storage API.
+        for attempt in range(10):
+            try:
+                cloud.run("storage", "buckets", "add-iam-policy-binding", f"gs://{cloud.project}-{kind}",
+                          f"--member=serviceAccount:{email}", f"--role=projects/{cloud.project}/roles/{bucket_role}")
+                break
+            except RuntimeError as error:
+                if "does not exist in the resource's hierarchy" not in str(error) or attempt == 9:
+                    raise
+                time.sleep(5)
 
 
 def configure(cloud, repository):
@@ -37,6 +61,7 @@ def configure(cloud, repository):
     cloud.run("storage", "buckets", "add-iam-policy-binding", f"gs://{cloud.project}-build-source", f"--member=serviceAccount:{email}", "--role=roles/storage.legacyBucketReader")
     cloud.run("artifacts", "repositories", "add-iam-policy-binding", "deckastra", f"--location={cloud.region}",
         f"--member=serviceAccount:{email}", "--role=roles/artifactregistry.reader")
+    configure_release_permissions(cloud)
     print(json.dumps({"repository": repository, "repository_id": repo_id, "project_number": number,
         "provider": f"projects/{number}/locations/global/workloadIdentityPools/{pool}/providers/{provider}", "service_account": email}, indent=2))
 

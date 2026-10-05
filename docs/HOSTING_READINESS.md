@@ -37,6 +37,12 @@ and API origins, and promotes the tested revision. API origin updates undergo
 the same disposable workflow check before receiving traffic. Existing origins,
 Identity Platform domains and unrelated bucket CORS entries are preserved.
 
+The manual GitHub workflow can also build/deploy the web app when its explicit
+`deploy_web` option is selected. The deploy identity has only the Identity
+Platform configuration/disposable-user permissions needed for those checks,
+and bucket metadata/CORS permissions scoped to assets and exports; WIF still
+trusts only this repository’s main branch.
+
 The live audit found missing bucket CORS in both projects. Signed downloads and
 uploads use Cloud Storage's XML endpoints, which [evaluate bucket CORS](https://docs.cloud.google.com/storage/docs/cross-origin).
 Direct HTTP tests alone do not demonstrate browser access. The audit checks

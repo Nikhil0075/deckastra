@@ -3,14 +3,30 @@
 No custom domain, OAuth publication or model enablement is implicit.
 """
 import argparse
+import json
 import re
 import secrets
+import tempfile
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 
 from bootstrap import Cloud
 from release_checks import service_snapshot, validate_origins, traffic_argument, verify_and_promote
+
+
+def api_origin_env(snapshot, origins):
+    values, secret_refs = {}, []
+    rows = snapshot["spec"]["template"]["spec"]["containers"][0].get("env", [])
+    for row in rows:
+        if "value" in row:
+            values[row["name"]] = row["value"]
+        else:
+            ref = row["valueFrom"]["secretKeyRef"]
+            secret_refs.append(f"{row['name']}={ref['name']}:{ref['key']}")
+    values["DECKASTRA_WEB_ORIGINS"] = origins
+    return values, ",".join(secret_refs)
 
 
 def ensure_bucket_cors(cloud, origins, kinds=("assets", "exports")):
@@ -49,8 +65,13 @@ def configure_access(cloud, web_url):
     if origin not in old.split(","):
         candidate = "check-" + secrets.token_hex(6)
         container = previous["spec"]["template"]["spec"]["containers"][0]
-        cloud.run("run", "deploy", "deckastra-api", f"--region={cloud.region}", f"--image={container['image']}",
-                  f"--update-env-vars=^|^DECKASTRA_WEB_ORIGINS={origins}", "--no-traffic", f"--tag={candidate}")
+        values, secret_refs = api_origin_env(previous, origins)
+        with tempfile.TemporaryDirectory() as temporary:
+            env_file = Path(temporary) / "api-env.json"
+            env_file.write_text(json.dumps(values), encoding="utf-8")
+            args = [f"--set-secrets={secret_refs}"] if secret_refs else []
+            cloud.run("run", "deploy", "deckastra-api", f"--region={cloud.region}", f"--image={container['image']}",
+                      f"--env-vars-file={env_file}", "--no-traffic", f"--tag={candidate}", *args)
         verify_and_promote(cloud, candidate, previous)
     with httpx.Client(timeout=45) as http:
         response = http.options(previous["status"]["url"] + "/v1/account/credits", headers={"Origin": origin,
