@@ -111,6 +111,13 @@ These are automatic contract results, not independent quality scores.
 | narration | 20/20 | 100% | 6.7s |
 | vision | 19/20 | 95% | 14.0s |
 
+Planning required two bounded repairs: one wrong-script prose field and one
+truncated JSON response. Its 90% first-attempt validity misses the 95% release
+gate, even though both repairs succeeded. It cannot be enabled from this report
+after human review alone. The planning cases vary constraints on a small
+migration guide; broader domain/source coverage and hosted generation testing
+remain necessary.
+
 The final candidate uses one immutable implementation, including selected-group
 boundaries, protected values with units and currency, planner prose language
 checks, and pooled transport. Scoped tools include five element-selection cases

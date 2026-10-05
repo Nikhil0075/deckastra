@@ -29,6 +29,12 @@ The approved evaluation budget is US$30 total; the shared model ledger uses a US
 | narration | 20/20 | 100% | 6.7s |
 | vision | 19/20 | 95% | 14.0s |
 
+Planning required two bounded repairs: one wrong-script prose field and one
+truncated JSON response. Its 90% first-attempt validity misses the 95% release
+gate. Independent review alone cannot qualify this planning report. Its cases
+vary constraints on a small migration guide; broader source coverage and hosted
+generation testing remain pending.
+
 The final candidate uses one immutable implementation, including selected-group
 boundaries, protected values with units and currency, planner prose language
 checks, and pooled transport. Scoped tools include five element-selection cases
