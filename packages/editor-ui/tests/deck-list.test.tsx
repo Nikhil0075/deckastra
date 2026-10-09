@@ -158,6 +158,59 @@ describe("DeckList", () => {
     expect(screen.getByText(/2 decks · updated/)).toBeTruthy();
   });
 
+  /** prj_2 holds one deck, and the trash holds one deleted from prj_1. */
+  function withSecondProjectAndTrash() {
+    const original = fetcher.getMockImplementation()!;
+    const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+    let restored = false;
+    fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path.includes("deleted=true")) {
+        return reply({
+          presentations:
+            path.includes("prj_1") && !restored
+              ? [{ id: "doc_gone", title: "Old pitch", version_id: "v", updated_at: ago(DAY), deleted_at: ago(HOUR) }]
+              : [],
+        });
+      }
+      if (path.includes("/projects/prj_2/presentations")) {
+        return reply({ presentations: [{ id: "doc_z", title: "Archived plan", version_id: "v", updated_at: ago(MIN), slide_count: 3 }] });
+      }
+      if (path.endsWith("/v1/presentations/doc_gone/restore")) {
+        restored = true;
+        return reply({ presentation_id: "doc_gone", restored: true });
+      }
+      return original(url, init);
+    });
+  }
+
+  it("shows every deck across projects, newest first, naming each one's project", async () => {
+    withSecondProjectAndTrash();
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByTestId("view-all"));
+    await waitFor(() => expect(screen.getAllByTestId("deck-card")).toHaveLength(3));
+    const cards = screen.getAllByTestId("deck-card");
+    expect(cards[0]!.getAttribute("data-deck-id")).toBe("doc_z");
+    expect(within(cards[0]!).getByText(/^Archive · 3 slides/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "All decks" })).toBeTruthy();
+  });
+
+  it("lists the trash across projects and restores a deck from it", async () => {
+    withSecondProjectAndTrash();
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByTestId("view-trash"));
+    const card = await screen.findByTestId("trash-card");
+    expect(within(card).getByText(/^Migration · deleted /)).toBeTruthy();
+    // Nothing to describe a deck into while looking at the trash.
+    expect(screen.queryByTestId("generate-instruction")).toBeNull();
+    fireEvent.click(within(card).getByTestId("restore-deck"));
+    await waitFor(() => expect(calls()).toContain("POST /v1/presentations/doc_gone/restore"));
+    await waitFor(() => expect(screen.queryByTestId("trash-card")).toBeNull());
+    expect(screen.getByText(/Nothing in the trash/)).toBeTruthy();
+  });
+
   it("opens a deck by handing its id to the shell", async () => {
     const onOpen = renderList();
     fireEvent.click(await screen.findByRole("button", { name: "Open Security Review" }));

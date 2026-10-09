@@ -1,7 +1,7 @@
 "use client";
 
 import { librarySoundSamples, SOUND_SAMPLE_RATE, type SceneAudio } from "@deckastra/renderer";
-import { narrationAt, type NarratedSchedule } from "@deckastra/animation-engine";
+import { narrationAt, spokenWordAt, type NarratedSchedule } from "@deckastra/animation-engine";
 
 /**
  * Playing a slide's narration and sounds (integration plan 01 §3.4, §3.5).
@@ -20,7 +20,7 @@ import { narrationAt, type NarratedSchedule } from "@deckastra/animation-engine"
  */
 
 export interface PlannedAudio {
-  kind: "narration" | "sound";
+  kind: "narration" | "sound" | "music";
   /** The cue, for the presenter view's script line. */
   cueId: string;
   source: { assetId: string } | { library: string };
@@ -31,6 +31,9 @@ export interface PlannedAudio {
   volume: number;
   /** When it ends, relative to now. */
   endsInMs: number;
+  /** Precompiled soundtrack gain changes, relative to now. */
+  gain?: { delayMs: number; volume: number }[];
+  loop?: boolean;
 }
 
 export interface StepPlan {
@@ -53,7 +56,10 @@ export function stepPlan(schedule: NarratedSchedule, index: number, offsetMs = 0
   if (!segment) return undefined;
   const now = segment.startMs + Math.max(0, offsetMs);
   const audio: PlannedAudio[] = [];
-  for (const clip of segment.narration) {
+  // A word-triggered advance may begin this step while the preceding line is
+  // still speaking. Re-plan every recording audible now, including that line,
+  // so changing step seeks it to the same word instead of cutting it off.
+  for (const clip of schedule.segments.flatMap((candidate) => candidate.narration)) {
     if (clip.endMs <= now) continue;
     audio.push({
       kind: "narration",
@@ -79,21 +85,50 @@ export function stepPlan(schedule: NarratedSchedule, index: number, offsetMs = 0
       endsInMs: end - now,
     });
   }
+  const music = schedule.soundtrack;
+  if (music && music.durationMs > 0 && (music.loop || now < music.durationMs)) {
+    const gainAt = (at: number): number => {
+      let value = music.gain[0]?.volume ?? 0;
+      for (const point of music.gain) {
+        if (point.atMs > at) break;
+        value = point.volume;
+      }
+      return value;
+    };
+    audio.push({
+      kind: "music",
+      cueId: "soundtrack",
+      source: music.source,
+      delayMs: 0,
+      offsetMs: music.loop ? now % music.durationMs : now,
+      volume: gainAt(now),
+      endsInMs: segment.advanceAtMs - now,
+      gain: music.gain.filter((point) => point.atMs > now && point.atMs <= segment.advanceAtMs)
+        .map((point) => ({ delayMs: point.atMs - now, volume: point.volume })),
+      loop: music.loop,
+    });
+  }
   audio.sort((a, b) => a.delayMs - b.delayMs);
   return { audio, advanceInMs: Math.max(0, segment.advanceAtMs - now), stepMs: segment.advanceAtMs - segment.startMs };
 }
 
 /** The cue being spoken at `offsetMs` into a step, and how long it has left. */
-export function speakingAt(schedule: NarratedSchedule, index: number, offsetMs: number): { cueId: string; remainingMs: number } | undefined {
+export function speakingAt(schedule: NarratedSchedule, index: number, offsetMs: number): { cueId: string; remainingMs: number; wordIndex?: number; word?: string } | undefined {
   const segment = schedule.segments[index];
   if (!segment) return undefined;
   const at = narrationAt(schedule, segment.startMs + offsetMs);
-  if (!at || at.clip.step !== index) return undefined;
-  return { cueId: at.clip.cueId, remainingMs: at.clip.endMs - at.clip.startMs - at.offsetMs };
+  if (!at) return undefined;
+  const currentWord = spokenWordAt(schedule, segment.startMs + offsetMs);
+  return {
+    cueId: at.clip.cueId,
+    remainingMs: at.clip.endMs - at.clip.startMs - at.offsetMs,
+    ...(currentWord ? { wordIndex: currentWord.index, word: currentWord.word } : {}),
+  };
 }
 
 interface Playing {
   stop(): void;
+  setVolume?(volume: number): void;
 }
 
 /**
@@ -117,8 +152,13 @@ export class StepPlayer {
     for (const item of plan.audio) {
       const begin = () => {
         if (this.stopped || this.muted) return;
-        const handle = "assetId" in item.source ? this.playFile(item.source.assetId, item.offsetMs, item.volume) : this.playLibrary(item.source.library, item.offsetMs, item.volume);
-        if (handle) this.playing.push(handle);
+        const handle = "assetId" in item.source ? this.playFile(item.source.assetId, item.offsetMs, item.volume, item.loop) : this.playLibrary(item.source.library, item.offsetMs, item.volume, item.loop);
+        if (handle) {
+          this.playing.push(handle);
+          for (const point of item.gain ?? []) {
+            this.timers.push(setTimeout(() => handle.setVolume?.(point.volume), point.delayMs));
+          }
+        }
       };
       if (item.delayMs <= 0) begin();
       else this.timers.push(setTimeout(begin, item.delayMs));
@@ -134,7 +174,7 @@ export class StepPlayer {
     this.playing = [];
   }
 
-  private playFile(assetId: string, offsetMs: number, volume: number): Playing | undefined {
+  private playFile(assetId: string, offsetMs: number, volume: number, loop = false): Playing | undefined {
     const file = this.files[assetId];
     const url = this.resolveUrl(assetId, file?.storageKey);
     if (!url || typeof Audio === "undefined") return undefined;
@@ -142,6 +182,7 @@ export class StepPlayer {
     element.preload = "auto";
     element.src = url;
     element.volume = Math.max(0, Math.min(1, volume));
+    element.loop = loop;
     // Set, never advanced on its own: the schedule says where the voice is.
     const seek = () => {
       try {
@@ -157,6 +198,7 @@ export class StepPlayer {
       // in front of a room.
     });
     return {
+      setVolume: (next) => { element.volume = Math.max(0, Math.min(1, next)); },
       stop: () => {
         element.pause();
         element.removeAttribute("src");
@@ -165,7 +207,7 @@ export class StepPlayer {
     };
   }
 
-  private playLibrary(name: string, offsetMs: number, volume: number): Playing | undefined {
+  private playLibrary(name: string, offsetMs: number, volume: number, loop = false): Playing | undefined {
     const samples = librarySoundSamples(name);
     const context = this.context();
     if (!samples || !context) return undefined;
@@ -173,11 +215,13 @@ export class StepPlayer {
     buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
     const source = context.createBufferSource();
     source.buffer = buffer;
+    source.loop = loop;
     const gain = context.createGain();
     gain.gain.value = Math.max(0, Math.min(1, volume));
     source.connect(gain).connect(context.destination);
     source.start(0, Math.max(0, offsetMs) / 1000);
     return {
+      setVolume: (next) => { gain.gain.value = Math.max(0, Math.min(1, next)); },
       stop: () => {
         try {
           source.stop();

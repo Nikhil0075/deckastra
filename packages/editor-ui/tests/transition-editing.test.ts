@@ -5,6 +5,7 @@ import { applyPatch } from "@deckastra/transactions";
 import { buildDocumentScene } from "@deckastra/renderer";
 
 import {
+  EDITABLE_KINDS,
   addPair,
   pairCandidates,
   pairRows,
@@ -35,7 +36,7 @@ describe("editing a transition", () => {
     const bare = { ...document.slides[0]!, transition: undefined };
     expect(transitionState(bare).kind).toBe("cut");
     const push = { ...document.slides[0]!, transition: { type: "push", durationMs: 300 } };
-    expect(transitionState(push)).toMatchObject({ kind: null, foreign: "push" });
+    expect(transitionState(push)).toMatchObject({ kind: "push", foreign: null });
   });
 
   it("changes kind as one patch, keeping duration and easing", () => {
@@ -84,6 +85,17 @@ describe("editing a transition", () => {
   it("an unchanged value writes nothing", () => {
     const document = deck();
     expect(setTransitionKind(document, document.slides[0]!.id, "fade").operations).toEqual([]);
+  });
+
+  it("can author every transition the engine advertises", () => {
+    const document = deck();
+    const id = document.slides[1]!.id;
+    for (const kind of EDITABLE_KINDS) {
+      const change = setTransitionKind(document, id, kind);
+      const after = apply(document, change.operations);
+      expect(transitionState(after.slides[1]!).kind).toBe(kind);
+      expect(errors(after), kind).toEqual([]);
+    }
   });
 });
 

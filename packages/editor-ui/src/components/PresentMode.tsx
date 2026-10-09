@@ -129,7 +129,11 @@ export function PresentMode({
 
   indexRef.current = index;
   slideCountRef.current = scene.slides.length;
-  const spoken = speaking ? { text: speaking.text, remainingMs: Math.round(speaking.remainingMs) } : null;
+  const spoken = speaking ? {
+    text: speaking.text,
+    remainingMs: Math.round(speaking.remainingMs),
+    ...(speaking.wordIndex !== undefined ? { wordIndex: speaking.wordIndex, word: speaking.word } : {}),
+  } : null;
   stateRef.current = { index, step, blacked, motionPaused, muted, speaking: spoken };
 
   const setIndexSynced = useCallback((next: number | ((current: number) => number)) => {
@@ -257,7 +261,10 @@ export function PresentMode({
             setBlacked(state.blacked);
             setMotionPaused(state.motionPaused === true);
             setMuted(state.muted === true);
-            setSpeaking(state.speaking ? { slideId: "", cueId: "", text: state.speaking.text, remainingMs: state.speaking.remainingMs } : null);
+            setSpeaking(state.speaking ? {
+              slideId: "", cueId: "", text: state.speaking.text, remainingMs: state.speaking.remainingMs,
+              ...(state.speaking.wordIndex !== undefined ? { wordIndex: state.speaking.wordIndex, word: state.speaking.word } : {}),
+            } : null);
           }
         : undefined,
       // Audience side: carry out what the presenter asked for.
@@ -294,7 +301,7 @@ export function PresentMode({
     // `spoken` changes as the remaining time counts down; posting it is what
     // keeps the presenter's script line live.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, step, blacked, motionPaused, muted, spoken?.text, spoken?.remainingMs, presenterOnly]);
+  }, [index, step, blacked, motionPaused, muted, spoken?.text, spoken?.remainingMs, spoken?.wordIndex, spoken?.word, presenterOnly]);
 
   // A new slide starts at its first reveal (or its last, entered backwards);
   // read it once the motion for that slide has mounted.
@@ -490,7 +497,7 @@ export function PresentMode({
     );
   }
 
-  const hasAudio = slides.some((one) => one.narration?.cues.length || one.soundCues?.length);
+  const hasAudio = Boolean(scene.soundtrack) || slides.some((one) => one.narration?.cues.length || one.soundCues?.length);
   const presenterProps = {
     scene,
     index,
@@ -498,7 +505,10 @@ export function PresentMode({
     steps,
     blacked,
     muted,
-    speaking: speaking ? { text: speaking.text, remainingMs: speaking.remainingMs } : null,
+    speaking: speaking ? {
+      text: speaking.text, remainingMs: speaking.remainingMs,
+      ...(speaking.wordIndex !== undefined ? { wordIndex: speaking.wordIndex, word: speaking.word } : {}),
+    } : null,
     hasAudio,
     onMute: toggleMute,
     resolveAssetUrl,

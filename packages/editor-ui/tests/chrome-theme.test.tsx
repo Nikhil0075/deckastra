@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ThemeMenu } from "../src/components/shell/ThemeMenu";
+import { AccountMenu, initials } from "../src/components/shell/AccountMenu";
 import { THEME_KEY, resetChromeThemeForTests, resolveTheme } from "../src/lib/chrome-theme";
 
 /**
@@ -47,7 +47,7 @@ describe("the chrome theme", () => {
   });
 
   it("follows the system until someone chooses, then keeps their choice", () => {
-    render(<ThemeMenu />);
+    render(<AccountMenu />);
     expect(rootTheme()).toBe("light");
 
     // The operating system goes dark.
@@ -56,7 +56,7 @@ describe("the chrome theme", () => {
     expect(rootTheme()).toBe("dark");
 
     // The person picks Light: stored for them, and the system no longer decides.
-    fireEvent.click(screen.getByTestId("theme-menu"));
+    fireEvent.click(screen.getByTestId("account-menu"));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Light" }));
     expect(rootTheme()).toBe("light");
     expect(localStorage.getItem(THEME_KEY)).toBe("light");
@@ -64,7 +64,7 @@ describe("the chrome theme", () => {
     expect(rootTheme()).toBe("light");
 
     // "Match the system" forgets the choice.
-    fireEvent.click(screen.getByTestId("theme-menu"));
+    fireEvent.click(screen.getByTestId("account-menu"));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Match the system" }));
     expect(localStorage.getItem(THEME_KEY)).toBeNull();
     expect(rootTheme()).toBe("dark");
@@ -72,9 +72,9 @@ describe("the chrome theme", () => {
 
   it("says which choice is current, as radios a screen reader can read", () => {
     localStorage.setItem(THEME_KEY, "dark");
-    render(<ThemeMenu />);
+    render(<AccountMenu />);
     expect(rootTheme()).toBe("dark");
-    fireEvent.click(screen.getByTestId("theme-menu"));
+    fireEvent.click(screen.getByTestId("account-menu"));
     const radios = screen.getAllByRole("menuitemradio");
     expect(radios.map((radio) => [radio.textContent, radio.getAttribute("aria-checked")])).toEqual([
       ["Match the system", "false"],
@@ -84,12 +84,30 @@ describe("the chrome theme", () => {
   });
 
   it("follows a choice made in another window", () => {
-    render(<ThemeMenu />);
+    render(<AccountMenu />);
     expect(rootTheme()).toBe("light");
     localStorage.setItem(THEME_KEY, "dark");
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY }));
     });
     expect(rootTheme()).toBe("dark");
+  });
+
+  it("is the account menu too: initials, Settings and signing out where the host offers them", () => {
+    expect(initials({ name: "Nikhil Ranjan Murmu" })).toBe("NM");
+    expect(initials({ email: "ann@example.com" })).toBe("A");
+    expect(initials(null)).toBeNull();
+    const settings = vi.fn();
+    const signOut = vi.fn();
+    render(<AccountMenu identity={{ name: "Ann Lee", email: "ann@example.com" }} onOpenSettings={settings} onSignOut={signOut} />);
+    const trigger = screen.getByTestId("account-menu");
+    expect(trigger.textContent).toBe("AL");
+    expect(trigger.getAttribute("aria-label")).toBe("Account: ann@example.com");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Settings/ }));
+    expect(settings).toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("account-menu"));
+    fireEvent.click(screen.getByRole("menuitem", { name: /Sign out/ }));
+    expect(signOut).toHaveBeenCalled();
   });
 });

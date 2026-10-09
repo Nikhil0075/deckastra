@@ -3,9 +3,7 @@ import type { ReactNode } from "react";
 import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
 import { Button, IconButton, Popover, Segmented } from "../../ui";
-import { ThemeMenu } from "./ThemeMenu";
-import { PanelsMenu } from "./PanelsMenu";
-import type { PanelVisibility } from "../../lib/panels";
+import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
 import { SaveIndicator } from "./SaveIndicator";
@@ -20,8 +18,12 @@ export interface AppBarProps {
   onExit?: () => void;
   /** Host-owned controls placed before Share (the desktop's agent-access switch). */
   extras?: ReactNode;
-  /** Which panels are on screen, and how to change that (lib/panels.ts). */
-  panels?: { visibility: PanelVisibility; onChange: (next: PanelVisibility) => void };
+  /**
+   * The avatar menu at the end of the bar: appearance, Settings, signing out
+   * (roadmap 08 §1.4). Panels are in the View menu and the command palette,
+   * not the bar.
+   */
+  account?: AccountMenuProps;
   /**
    * Open version history. In the bar rather than the Design panel, because
    * going back to an earlier deck is not a design choice (design review,
@@ -30,6 +32,9 @@ export interface AppBarProps {
   onHistory?: () => void;
   /** Open the Languages panel (integration plan 01 §3.2). Absent: no switcher. */
   onManageLanguages?: () => void;
+  /** Open or put away the assistant (roadmap 08 §1.2 rule 2). Absent: no button. */
+  onAssistant?: () => void;
+  assistantOpen?: boolean;
 }
 
 /**
@@ -38,7 +43,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, panels, onHistory, onManageLanguages }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -89,12 +94,27 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
             value: entry.value,
             label: entry.label,
             "data-testid": `mode-${entry.value}`,
-            badge: entry.value === "code" ? <span className="dk-appbar__hint">JSON</span> : undefined,
           }))}
         />
       </div>
 
       <div className="dk-appbar__end">
+        {onAssistant ? (
+          // The one way to the assistant from the bar, beside any mode. Its
+          // words stay at every width: it is the product's AI entry point.
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="ai"
+            aria-pressed={Boolean(assistantOpen)}
+            title="Assistant (Ctrl+K)"
+            onClick={onAssistant}
+            data-testid="open-assistant"
+            className="dk-appbar__assistant"
+          >
+            Assistant
+          </Button>
+        ) : null}
         {extras}
         {onManageLanguages ? <LanguageMenu editor={editor} onManage={onManageLanguages} /> : null}
         {onHistory ? (
@@ -102,39 +122,28 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
           // here pushed the bar's end group across the mode switch.
           <IconButton icon="history" label="Version history" size="sm" variant="secondary" onClick={onHistory} data-testid="open-history" />
         ) : null}
-        {panels ? <PanelsMenu visibility={panels.visibility} onChange={panels.onChange} /> : null}
-        <ThemeMenu />
+        {/* One Share menu (roadmap 08 §1.4): the file to send, then the link.
+            Kept mounted while closed: the export section polls a running job,
+            and closing the menu to keep editing must not forget it. */}
         <Popover
           label="Share"
           align="end"
-          className="dk-appbar__popover"
+          keepMounted
+          className="dk-appbar__popover dk-sharemenu"
+          data-testid="export-popover"
           trigger={(props) => (
-            <Button size="sm" variant="ghost" icon="share" title="Share" data-testid="open-share" {...props}>
+            <Button size="sm" variant="ghost" icon="share" title="Share or export" data-testid="open-share" {...props}>
               Share
             </Button>
           )}
         >
-          <SharePanel presentationId={presentationId} />
-        </Popover>
-        {/* Kept mounted while closed: the panel polls a running export, and
-            closing the popover to keep editing must not forget the job. */}
-        <Popover
-          label="Export"
-          align="end"
-          keepMounted
-          className="dk-appbar__popover"
-          data-testid="export-popover"
-          trigger={(props) => (
-            <Button size="sm" variant="ghost" icon="download" title="Export" data-testid="open-export" {...props}>
-              Export
-            </Button>
-          )}
-        >
           <ExportPanel presentationId={presentationId} editor={editor} />
+          <SharePanel presentationId={presentationId} />
         </Popover>
         <Button size="sm" variant="primary" icon="play" onClick={onPresent} data-testid="present">
           Present
         </Button>
+        <AccountMenu {...account} />
       </div>
     </header>
   );

@@ -19,15 +19,17 @@
 export { EditorShell } from "./components/EditorShell";
 export type { EditorShellProps, MotionAuthoringExtension, MotionAuthoringPanelProps } from "./components/EditorShell";
 export { PresentMode } from "./components/PresentMode";
-export { GenerationFailed, QuotaReached } from "./components/EmptyState";
-export { AccountPicker } from "./components/AccountPicker";
 export { DeckList } from "./components/DeckList";
+export { SettingsShell, AccountSettings, SETTINGS_SECTIONS, type SettingsSectionId } from "./components/SettingsShell";
+export { CreditsMeter } from "./components/CreditsMeter";
+export { AgentSetupGuide, agentConfiguration, type AgentLauncher } from "./components/AgentSetupGuide";
+export { useChromeTheme } from "./lib/chrome-theme";
+export { AccountDeletionSettings, AiTaskSettings, deletionProblem } from "./components/CloudAccountSettings";
 export type { DeckListProps } from "./components/DeckList";
 export type { DeckListCommand, HostCommand, SubscribeHostCommands } from "./lib/host-commands";
 export { duplicateSlideWithMagicMoveAction } from "./lib/slide-actions";
 /** Building block for host motion extensions that supplement, rather than replace, the established controls. */
 export { MotionModePanel } from "./components/shell/MotionModePanel";
-export { RepositoryPanel } from "./components/RepositoryPanel";
 export { SourcesPanel } from "./components/SourcesPanel";
 
 // --- Editor state ------------------------------------------------------------
@@ -37,7 +39,6 @@ export { SourcesPanel } from "./components/SourcesPanel";
 // server replace the document.
 export { useEditor } from "./lib/useEditor";
 export { prepareToClose, type CloseReadiness } from "./lib/close-barrier";
-export { generationRoute, type GenerationRoute } from "./lib/generation-route";
 export type { ApplyOptions, EditorApi, SaveState, UseEditorInput } from "./lib/useEditor";
 
 // --- Text measurement --------------------------------------------------------

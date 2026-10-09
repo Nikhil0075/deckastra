@@ -17,8 +17,6 @@ export function modeForCommand(command: HostCommand): EditorMode | null {
   switch (command) {
     case "mode-design":
       return "design";
-    case "mode-ai":
-      return "ai";
     case "mode-motion":
       return "motion";
     case "mode-code":

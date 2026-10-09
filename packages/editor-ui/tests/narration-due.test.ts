@@ -31,6 +31,12 @@ describe("a line is due for voicing", () => {
     expect(takeIsDue(voiced(undefined, "recorded"), "en", list)).toBe(false);
     expect(takeIsDue(voiced(undefined, "file"), "en", list)).toBe(false);
   });
+
+  it("when this line is recast with another synthesized speaker", () => {
+    expect(takeIsDue({ ...voiced(), voice: "en-US-Chirp3-HD-Aoede" }, "en", [])).toBe(true);
+    expect(takeIsDue({ ...voiced(), voice: "hi-IN-Chirp3-HD-Kore" }, "en", [])).toBe(false);
+    expect(takeIsDue({ ...voiced(undefined, "stub"), voice: "development-choice" }, "en", [])).toBe(false);
+  });
 });
 
 describe("the speaking rate", () => {

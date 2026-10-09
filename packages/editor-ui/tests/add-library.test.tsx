@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ICON_NAMES } from "@deckastra/renderer";
+import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
 
 import { AddLibrary, type LibraryItem, type LibraryTab } from "../src/components/shell/AddLibrary";
 import { ToolRail } from "../src/components/shell/ToolRail";
@@ -11,7 +12,7 @@ import { ToolRail } from "../src/components/shell/ToolRail";
  */
 
 beforeEach(() => localStorage.clear());
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 function mount(tab: LibraryTab = "shapes") {
   const added: LibraryItem[] = [];
@@ -68,7 +69,7 @@ it("names every rail button, opens the library at a tab, and inserts text in one
   const onPanel = vi.fn();
   const onAdd = vi.fn();
   render(<ToolRail onAdd={onAdd} onAddImage={() => {}} onPanel={onPanel} />);
-  for (const label of ["Add", "Text", "Shapes", "Icons", "Image", "Chart", "Table", "Diagram", "Equation", "Code", "Layers", "Check"]) {
+  for (const label of ["Add", "Text", "Patterns", "Shapes", "Icons", "Image", "Chart", "Table", "Diagram", "Equation", "Code", "Layers", "Check"]) {
     expect(screen.getByText(label, { selector: ".dk-railbutton__label" })).toBeTruthy();
   }
   fireEvent.click(screen.getByTestId("tool-icons"));
@@ -79,4 +80,38 @@ it("names every rail button, opens the library at a tab, and inserts text in one
   expect(onAdd).toHaveBeenLastCalledWith("text");
   fireEvent.click(screen.getByTestId("tool-layers"));
   expect(onPanel).toHaveBeenLastCalledWith("layers");
+});
+
+it("inserts a reviewed slide pattern as one local editor change", async () => {
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    const response = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
+    if (url.endsWith("/v1/presets")) return response({
+      description: "Reviewed",
+      purposeGroups: ["business"],
+      slidePatterns: ["statement"],
+      patternDefinitions: { statement: { name: "Statement", summary: "One strong idea", composerLayout: "statement", slots: {}, exampleSlots: { headline: "One idea" } } },
+      motionStyles: {}, presets: [], themes: [],
+    });
+    if (url.endsWith("/patterns/insert")) return response({
+      outcome: "planned", version_id: "ver_1", slide_id: "sld_new", pattern: "statement", warnings: [],
+      operations: [{ op: "add", path: "/slides/1", value: { id: "sld_new", elements: [] } }],
+    });
+    return response(null);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const apply = vi.fn();
+  const saveNow = vi.fn(async () => true);
+  render(
+    <AddLibrary tab="patterns" onTab={() => {}} onClose={() => {}} onAdd={() => {}} onAddImage={() => {}}
+      presentationId="pres_1" afterSlideId="sld_1" currentVersionId={() => "ver_1"} saveNow={saveNow} apply={apply} />,
+    { wrapper: withWorkspaceClient() },
+  );
+  fireEvent.click(await screen.findByTestId("library-pattern-statement"));
+  await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+  const request = fetcher.mock.calls.find(([url]) => String(url).endsWith("/patterns/insert"))!;
+  expect(JSON.parse(String(request[1]?.body))).toMatchObject({
+    expected_version_id: "ver_1", pattern: "statement", after_slide_id: "sld_1", dry_run: true, client_label: "editor",
+  });
+  expect(saveNow).toHaveBeenCalled();
+  expect(apply.mock.calls[0]![1]).toBe("Insert Statement slide");
 });

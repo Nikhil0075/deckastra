@@ -1,5 +1,6 @@
 "use client";
 
+import { serviceWords } from "../lib/assistant-words";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_NARRATION_GAP_MS,
@@ -20,13 +21,15 @@ import {
   setNarrationTakeOperations,
   setNarrationTextOperations,
   setNarrationStepOperations,
+  setNarrationDeliveryOperations,
   setPlaybackOperations,
+  setSoundtrackOperations,
   updateSoundCueOperations,
 } from "@deckastra/presentation-core";
 import { compileNarratedPlayback, compileTimeline, type NarrationCueInput, type SoundCueInput } from "@deckastra/animation-engine";
 import { SOUND_LIBRARY, librarySoundDurationMs, type DocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { LanguagesStatus } from "@deckastra/workspace-contracts";
+import type { LanguagesStatus, PaidServiceQuote, Voice } from "@deckastra/workspace-contracts";
 
 import { audioContext, gainToVolume, previewLibrarySound, stepPlan, StepPlayer } from "../lib/audio-player";
 import { audioAssetReference, uploadAudio } from "../lib/insert-audio";
@@ -70,11 +73,14 @@ export function NarrationPanel({
   // The language on screen is the language the takes are for.
   const locale = sourceLocale(document);
   const playback = editor.sourceDocument.playback;
+  const soundtrack = editor.sourceDocument.soundtrack;
   const [status, setStatus] = useState<LanguagesStatus | null>(null);
+  const [voices, setVoices] = useState<Voice[]>([]);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [recording, setRecording] = useState<{ cueId: string; session: Recording } | null>(null);
   const [level, setLevel] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const [voiceQuote, setVoiceQuote] = useState<PaidServiceQuote | null>(null);
   const player = useRef<StepPlayer | null>(null);
 
   useEffect(() => {
@@ -85,6 +91,12 @@ export function NarrationPanel({
       player.current?.stop();
     };
   }, [client]);
+
+  useEffect(() => {
+    let cancelled = false;
+    client.languages?.voices(locale).then((listed) => !cancelled && setVoices(listed)).catch(() => {});
+    return () => { cancelled = true; };
+  }, [client, locale]);
 
   // A live meter while recording, so the person sees the microphone hears them.
   useEffect(() => {
@@ -112,9 +124,15 @@ export function NarrationPanel({
             locale,
             gapMs: playback?.gapMs ?? DEFAULT_NARRATION_GAP_MS,
             soundDurationMs: (source) => ("library" in source ? librarySoundDurationMs(source.library) : (document.assets.find((asset) => asset.id === source.assetId)?.durationMs ?? 0)),
+            ...(soundtrack ? {
+              soundtrack,
+              soundtrackDurationMs: "library" in soundtrack.source
+                ? librarySoundDurationMs(soundtrack.source.library)
+                : (document.assets.find((asset) => asset.id === (soundtrack.source as { assetId: string }).assetId)?.durationMs ?? 0),
+            } : {}),
           })
         : null,
-    [timeline, cues, sounds, locale, playback?.gapMs, document.assets],
+    [timeline, cues, sounds, locale, playback?.gapMs, document.assets, soundtrack],
   );
 
   const flash = useCallback((tone: "ok" | "error", text: string) => setMessage({ tone, text }), []);
@@ -130,6 +148,7 @@ export function NarrationPanel({
 
   const commitText = (cue: NarrationCue, text: string) => {
     if (text === cue.text) return;
+    setVoiceQuote(null);
     editor.apply(setNarrationTextOperations(document, slide.id, cue.id, text), { label: "Edit narration", coalesceKey: `narration:${cue.id}` });
   };
 
@@ -244,6 +263,7 @@ export function NarrationPanel({
   const commitRate = (next: number) => {
     const value = Math.round(next * 20) / 20;
     setRate(value);
+    setVoiceQuote(null);
     void client.session.writePreference?.("speech", { rate: value }).catch(() => {});
   };
 
@@ -257,12 +277,20 @@ export function NarrationPanel({
         return;
       }
       const pronunciations = parsePronunciations(sayAs);
-      const result = await client.languages.synthesize(presentationId, {
+      const request = {
         locale,
         expected_version_id: editor.currentVersionId(),
         rate,
         ...(pronunciations.length ? { pronunciations } : {}),
-      });
+      };
+      if (!voiceQuote) {
+        const offered = await client.languages.quoteSpeech(presentationId, request);
+        setVoiceQuote(offered);
+        flash("ok", `Voicing these lines will use ${offered.credit_cost} credit${offered.credit_cost === 1 ? "" : "s"}. Press Confirm voice to continue.`);
+        return;
+      }
+      const result = await client.languages.synthesize(presentationId, { ...request, quote_token: voiceQuote.quote_token });
+      setVoiceQuote(null);
       if (result.outcome === "applied" && result.document && result.version_id) {
         editor.adoptDocument(result.document, result.version_id);
         flash("ok", `Voiced ${result.voiced?.length ?? 0} line(s).`);
@@ -272,6 +300,7 @@ export function NarrationPanel({
         flash("ok", result.message ?? "Every line already has a current recording.");
       }
     } catch (error) {
+      setVoiceQuote(null);
       flash("error", error instanceof Error ? error.message : "The narration could not be voiced.");
     } finally {
       setBusy(null);
@@ -334,6 +363,11 @@ export function NarrationPanel({
                     busy={busy === cue.id}
                     canRecord={canRecord() && (!recording || recording.cueId === cue.id)}
                     onText={(text) => commitText(cue, text)}
+                    voices={voices}
+                    onDelivery={(delivery) => editor.apply(
+                      setNarrationDeliveryOperations(document, slide.id, cue.id, delivery),
+                      { label: "Narration delivery" },
+                    )}
                     onRecord={() => void record(cue)}
                     onPlay={() => playTake(cue)}
                     onRemove={() => editor.apply(removeNarrationCueOperations(document, slide.id, cue.id), { label: "Remove narration line" })}
@@ -413,13 +447,22 @@ export function NarrationPanel({
               icon="narration"
               disabled={!missingTakes || busy !== null || status?.speech.available === false}
               onClick={() => void voiceMissing()}
-              title={status?.speech.reason ?? undefined}
+              title={status ? serviceWords(status.speech.reason, "Voices are not set up on this computer yet.") : undefined}
               data-testid="narration-voice"
             >
-              {busy === "voice" ? "Voicing…" : `Voice ${missingTakes} line${missingTakes === 1 ? "" : "s"}`}
+              {busy === "voice" ? "Voicing…" : voiceQuote ? `Confirm voice · ${voiceQuote.credit_cost} credits` : `Voice ${missingTakes} line${missingTakes === 1 ? "" : "s"}`}
             </Button>
           </div>
-          {status ? <p className="dk-field__hint">{status.speech.available ? status.speech.reason : `Voices are not available: ${status.speech.reason}`}</p> : null}
+          {status ? (
+            <p className="dk-field__hint">
+              {status.speech.available
+                ? serviceWords(status.speech.reason, "The script is sent online to be voiced when you press Voice.")
+                : serviceWords(
+                    status.speech.reason && `Voices are not available: ${status.speech.reason}`,
+                    "Voices are not set up on this computer yet. You can still record narration.",
+                  )}
+            </p>
+          ) : null}
           <NumberField
             label="Speaking rate"
             value={rate}
@@ -438,7 +481,7 @@ export function NarrationPanel({
               dir="auto"
               value={sayAs}
               placeholder={"Deckastra = Deck astra\nGCP = G C P\nNguyễn = /ŋwiən/"}
-              onChange={(event) => setSayAs(event.target.value)}
+              onChange={(event) => { setSayAs(event.target.value); setVoiceQuote(null); }}
               onBlur={saveSayAs}
               data-testid="narration-say-as"
             />
@@ -460,6 +503,55 @@ export function NarrationPanel({
         />
       </Section>
 
+      <Section title="Music bed" defaultOpen={Boolean(soundtrack)} meta={soundtrack ? "On" : undefined} data-testid="soundtrack-panel">
+        <div className="dk-narration">
+          <Select
+            label="Background music"
+            value={soundtrack && "library" in soundtrack.source ? soundtrack.source.library : ""}
+            options={[
+              { value: "", label: "No music" },
+              ...SOUND_LIBRARY.filter((sound) => sound.category === "Ambient").map((sound) => ({ value: sound.name, label: sound.label })),
+            ]}
+            onChange={(library) => editor.apply(
+              setSoundtrackOperations(editor.sourceDocument, library ? {
+                source: { library }, volume: 0.35, loop: true, fadeInMs: 800, fadeOutMs: 800,
+                ducking: { gainDb: -12, attackMs: 180, releaseMs: 280 },
+              } : undefined),
+              { label: library ? "Add music bed" : "Remove music bed" },
+            )}
+          />
+          {soundtrack ? (
+            <>
+              <NumberField
+                label="Music volume"
+                value={soundtrack.volume ?? 0.35}
+                min={0}
+                max={1}
+                step={0.05}
+                onCommit={(volume) => editor.apply(setSoundtrackOperations(editor.sourceDocument, { ...soundtrack, volume }), { label: "Music volume" })}
+              />
+              <NumberField
+                label="Lower under speech"
+                value={soundtrack.ducking?.gainDb ?? -12}
+                min={-30}
+                max={0}
+                step={1}
+                integer
+                unit="dB"
+                onCommit={(gainDb) => editor.apply(setSoundtrackOperations(editor.sourceDocument, {
+                  ...soundtrack,
+                  ducking: { gainDb, attackMs: soundtrack.ducking?.attackMs ?? 180, releaseMs: soundtrack.ducking?.releaseMs ?? 280 },
+                }), { label: "Music ducking" })}
+              />
+              <Button size="sm" variant="ghost" icon="play" onClick={() => {
+                if ("library" in soundtrack.source) previewLibrarySound(soundtrack.source.library, soundtrack.volume ?? 0.35);
+              }}>Preview music</Button>
+            </>
+          ) : null}
+          <p className="dk-field__hint">Music loops behind the deck and follows a precompiled volume curve, fading down while narration speaks.</p>
+        </div>
+      </Section>
+
       {message ? (
         <p role={message.tone === "error" ? "alert" : "status"} className={message.tone === "error" ? "dk-languages__error" : "dk-muted"} data-testid="narration-message">
           {message.text}
@@ -477,6 +569,8 @@ function CueRow({
   busy,
   canRecord: recordable,
   onText,
+  voices = [],
+  onDelivery,
   onRecord,
   onPlay,
   onRemove,
@@ -493,6 +587,8 @@ function CueRow({
   busy: boolean;
   canRecord: boolean;
   onText: (text: string) => void;
+  voices?: Voice[];
+  onDelivery?: (delivery: { voice?: string | null; advanceOnWord?: number | null }) => void;
   onRecord: () => void;
   onPlay: () => void;
   onRemove: () => void;
@@ -510,6 +606,7 @@ function CueRow({
   useEffect(() => setDraft(cue.text), [cue.text]);
   const take = cue.takes?.[locale];
   const current = take && take.textHash === localeTextHash(cue.text);
+  const timedWords = take?.wordTimings ?? [];
   return (
     <div className="dk-narration__cue" data-testid="narration-cue" data-cue-id={cue.id}>
       <textarea
@@ -523,6 +620,29 @@ function CueRow({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => onText(draft)}
       />
+      {onDelivery ? (
+        <div className="dk-narration__take">
+          <Select
+            label="Speaker"
+            value={cue.voice ?? ""}
+            options={[
+              { value: "", label: "Default voice" },
+              ...voices.map((voice) => ({ value: voice.name, label: voice.label })),
+            ]}
+            onChange={(voice) => onDelivery({ voice: voice || null })}
+          />
+          <Select
+            label="Next reveal"
+            value={cue.advanceOnWord === undefined ? "end" : String(cue.advanceOnWord)}
+            options={[
+              { value: "end", label: "After the line" },
+              ...timedWords.map((timing, index) => ({ value: String(index), label: `On “${timing.word}”` })),
+            ]}
+            disabled={!timedWords.length}
+            onChange={(value) => onDelivery({ advanceOnWord: value === "end" ? null : Number(value) })}
+          />
+        </div>
+      ) : null}
       <div className="dk-narration__cue-foot">
         {take ? (
           current && deliveryChanged ? (

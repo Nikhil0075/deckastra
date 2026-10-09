@@ -6,7 +6,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { SlideSource } from "@deckastra/workspace-contracts";
 
 /**
- * Where this slide's claims came from — the phase's exit criterion.
+ * Evidence an agent or import attached to this slide.
  *
  * Two things it deliberately does not do.
  *
@@ -36,7 +36,7 @@ export function SourcesPanel({
     setSources(null);
     setError(null);
 
-    client.repositories.slideSources(presentationId, slideId)
+    client.documents.slideSources(presentationId, slideId)
       .then((body) => {
         if (!cancelled) setSources(body.sources);
       })
@@ -62,8 +62,7 @@ export function SourcesPanel({
   if (sources.length === 0) {
     return (
       <p className="dk-muted">
-        This slide is not grounded in a source. Nothing on it was written from an
-        indexed file.
+        This slide has no attached sources.
       </p>
     );
   }
@@ -78,8 +77,7 @@ export function SourcesPanel({
 }
 
 function SourceRow({ source }: { source: SlideSource }) {
-  // `owner/repo#path:12-48` — the repository is context the user already has, so
-  // the file and its lines are what gets the emphasis.
+  // Compact structured references while leaving ordinary URLs and labels intact.
   const [, reference = source.sourceReference] = source.sourceReference.split("#");
 
   return (

@@ -51,21 +51,25 @@ import {
   type HostCommand,
   type SubscribeHostCommands,
 } from "../lib/host-commands";
-import { dockHeightFor, type EditorMode, type Zoom } from "../lib/editor-layout";
+import { type EditorMode, type Zoom } from "../lib/editor-layout";
+import { dockBodyHeight, loadDock, saveDock, type DockLayout, type DockState } from "../lib/dock";
 
 import { ConflictRecovery } from "./ConflictRecovery";
 import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
 import { Inspector, type ReorderDirection } from "./inspector/Inspector";
 import { AppBar } from "./shell/AppBar";
+import type { AccountIdentity } from "./shell/AccountMenu";
 import { CanvasStage } from "./shell/CanvasStage";
-import { AiPanel } from "./shell/ModePanels";
+import { AssistantPanel } from "./AssistantPanel";
 import { MotionModePanel } from "./shell/MotionModePanel";
 import { NarrationPanel } from "./NarrationPanel";
 import { SlideStrip } from "./shell/SlideStrip";
 import { SpeakerNotes } from "./shell/SpeakerNotes";
 import { ToolRail } from "./shell/ToolRail";
-import { loadPanels, panelsForCommand, panelsForKey, savePanels, type PanelVisibility } from "../lib/panels";
+import { loadPanels, panelsForCommand, panelsForKey, savePanels, type Chrome, type PanelVisibility } from "../lib/panels";
+import { Dock } from "./shell/Dock";
+import { CommandPalette } from "./shell/CommandPalette";
 
 import type { OpenPresenterWindow } from "@deckastra/workspace-contracts";
 
@@ -108,6 +112,10 @@ export interface EditorShellProps extends UseEditorInput {
    * a new deck behind the person's back.
    */
   onExit?: (next?: DeckListCommand) => void;
+  /** Open the host's Settings (roadmap 08 §1.3). Absent: the palette does not offer it. */
+  onOpenSettings?: () => void;
+  /** Who is signed in, and signing out, for the bar's account menu. */
+  account?: { identity?: AccountIdentity | null; onSignOut?: () => void };
   /**
    * The host's own commands — the desktop application menu. The editor keeps
    * every keyboard shortcut it has; this is the other way to reach them.
@@ -179,7 +187,16 @@ export function EditorShell(props: EditorShellProps) {
   }, []);
   const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("design");
-  // The Languages section in AI mode, opened from the bar's language menu.
+  // Proposals and paid language/media services sit beside any mode.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const openAssistant = useCallback(() => {
+    setColors({ open: false });
+    setAssistantOpen(true);
+  }, []);
+  // The command palette (Ctrl+K). Present mode has its own keys and no palette.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const presentingRef = useRef(false);
+  // Its Languages section, opened from the bar's language menu.
   const [languagesOpen, setLanguagesOpen] = useState(false);
   const [zoom, setZoom] = useState<Zoom>("fit");
   // The motion playhead. Editor state, not document state — where the author has
@@ -264,8 +281,31 @@ export function EditorShell(props: EditorShellProps) {
     setPanelsState(next);
     savePanels(next);
   }, []);
-  const panelsRef = useRef(panels);
-  panelsRef.current = panels;
+  // The dock under the canvas, remembered per mode (lib/dock.ts): closed while
+  // designing, open on the timeline in Motion.
+  const [dockLayout, setDockLayout] = useState<DockLayout>(() => loadDock());
+  const dock = dockLayout[mode];
+  // Through a ref, so the keyboard handler (subscribed once) writes the dock
+  // of the mode on screen now, not the mode it was subscribed in.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const setDock = useCallback((next: DockState) => {
+    setDockLayout((current) => {
+      const layout = { ...current, [modeRef.current]: next };
+      saveDock(layout);
+      return layout;
+    });
+  }, []);
+  const chrome: Chrome = { panels, dock };
+  const setChrome = useCallback(
+    (next: Chrome) => {
+      setPanels(next.panels);
+      setDock(next.dock);
+    },
+    [setPanels, setDock],
+  );
+  const chromeRef = useRef(chrome);
+  chromeRef.current = chrome;
 
   const onCommand = useRef<(command: HostCommand) => void>(() => {});
   onCommand.current = (command) => {
@@ -275,9 +315,9 @@ export function EditorShell(props: EditorShellProps) {
       return;
     }
     if (presenting) return;
-    const nextPanels = panelsForCommand(command, panelsRef.current);
+    const nextPanels = panelsForCommand(command, chromeRef.current);
     if (nextPanels) {
-      setPanels(nextPanels);
+      setChrome(nextPanels);
       return;
     }
     const nextMode = modeForCommand(command);
@@ -290,6 +330,15 @@ export function EditorShell(props: EditorShellProps) {
       return;
     }
     switch (command) {
+      case "assistant":
+        openAssistant();
+        break;
+      case "command-palette":
+        setPaletteOpen(true);
+        break;
+      case "open-settings":
+        props.onOpenSettings?.();
+        break;
       case "all-decks":
         exit?.();
         break;
@@ -308,6 +357,7 @@ export function EditorShell(props: EditorShellProps) {
       case "colors":
         // Colours is part of Design; opening it from another mode goes there.
         setMode("design");
+        setAssistantOpen(false);
         setColors({ open: true });
         break;
     }
@@ -648,10 +698,19 @@ export function EditorShell(props: EditorShellProps) {
 
       // Panel shortcuts work anywhere, typing included: hiding the side panel
       // while writing a note is exactly when someone wants the room.
-      const nextPanels = panelsForKey(event, panelsRef.current);
+      const nextPanels = panelsForKey(event, chromeRef.current);
       if (nextPanels) {
         event.preventDefault();
-        setPanels(nextPanels);
+        setChrome(nextPanels);
+        return;
+      }
+
+      // Ctrl+K: the command palette, from anywhere, typing included — it is
+      // how someone who does not know where a thing lives finds it.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+        if (presentingRef.current) return;
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
         return;
       }
 
@@ -792,6 +851,7 @@ export function EditorShell(props: EditorShellProps) {
     ungroup,
   ]);
 
+  presentingRef.current = presenting;
   if (presenting) {
     return (
       <PresentMode
@@ -828,20 +888,31 @@ export function EditorShell(props: EditorShellProps) {
 
   const selected = selection.primaryId ? resolveElementById(doc, selection.primaryId) : undefined;
 
-  const rightPanel = colors.open && mode === "design" ? (
+  const rightPanel = assistantOpen ? (
+    <AssistantPanel
+      editor={editor}
+      presentationId={props.presentationId}
+      resolveAssetUrl={resolveAssetUrl}
+      languagesOpen={languagesOpen}
+      onLanguagesOpen={setLanguagesOpen}
+      onClose={() => setAssistantOpen(false)}
+      onVoiceOpen={() => {
+        setAssistantOpen(false);
+        setMode("motion");
+        setPanels({ ...panels, inspector: true });
+      }}
+      onMediaOpen={() => {
+        setAssistantOpen(false);
+        setSide({ panel: "library", tab: "media" });
+        setPanels({ ...panels, tools: true });
+      }}
+    />
+  ) : colors.open && mode === "design" ? (
     // Docked in the panel rather than floating over it (design review,
     // 2026-09-26): the slide stays in view and nothing is covered.
     <ColorStudioPanel editor={editor} open focus={colors.focus} onClose={() => setColors({ open: false })} />
   ) :
-    mode === "ai" ? (
-      <AiPanel
-        editor={editor}
-        presentationId={props.presentationId}
-        resolveAssetUrl={resolveAssetUrl}
-        languagesOpen={languagesOpen}
-        onLanguagesOpen={setLanguagesOpen}
-      />
-    ) : mode === "code" ? (
+    mode === "code" ? (
       <Suspense fallback={<div className="dk-modepanel dk-code dk-muted">Opening JSON editor…</div>}>
         <CodePanel editor={editor} />
       </Suspense>
@@ -891,6 +962,7 @@ export function EditorShell(props: EditorShellProps) {
     },
     open: (focus) => {
       setMode("design");
+      setAssistantOpen(false);
       setColors({ open: true, ...(focus ? { focus } : {}) });
     },
   };
@@ -906,15 +978,26 @@ export function EditorShell(props: EditorShellProps) {
         onPresent={() => setPresenting(true)}
         onExit={exit ? () => exit() : undefined}
         extras={props.barExtras}
-        panels={{ visibility: panels, onChange: setPanels }}
+        account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}
+        assistantOpen={assistantOpen}
+        onAssistant={() => (assistantOpen ? setAssistantOpen(false) : openAssistant())}
         onManageLanguages={() => {
-          setMode("ai");
+          openAssistant();
           setLanguagesOpen(true);
         }}
       />
 
       <ConflictRecovery editor={editor} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        // The menu's dispatcher, so the palette and the menu mean one thing.
+        onCommand={(command) => onCommand.current(command)}
+        onAsk={() => {}}
+        canExit={Boolean(exit)}
+        canOpenSettings={Boolean(props.onOpenSettings)}
+      />
 
       {props.notices}
       {editor.locale ? (
@@ -1000,6 +1083,10 @@ export function EditorShell(props: EditorShellProps) {
             onAddImage={addImage}
             document={doc}
             apply={(operations, label) => apply(operations, { label })}
+            presentationId={props.presentationId}
+            afterSlideId={slide?.id}
+            currentVersionId={editor.currentVersionId}
+            saveNow={editor.saveNow}
             onAdd={(item) =>
               item.kind === "shape"
                 ? addStarter("shape", item.shape)
@@ -1094,36 +1181,42 @@ export function EditorShell(props: EditorShellProps) {
             />
           </div>
 
-          {/* Under the slide they belong to, as in the Figma frame: notes are
-              written while looking at the slide, not in a side panel. */}
-          {panels.notes ? <SpeakerNotes editor={editor} /> : null}
-
-          {/* Under the canvas, not in the side panel: a timeline is horizontal
-              and an author needs to see the slide while scrubbing it. Taller in
-              Motion mode, where it is the work. */}
-          {slideScene && panels.dock ? (
-            <section className="dk-dock" aria-label="Motion timeline" data-region="timeline" style={{ height: dockHeightFor(mode) }}>
-              <MotionPanel
-                document={doc}
-                scene={slideScene}
-                slideIndex={slideIndex}
-                selectedIds={selection.selectedIds}
-                apply={(operations, label) => apply(operations as never, { label })}
-                playheadMs={playheadMs}
-                onScrub={(at) => {
-                  setScrubbing(true);
-                  setPlayheadMs(at);
-                }}
-                onPlay={() => {
-                  setScrubbing(true);
-                  setPlaying((count) => count + 1);
-                }}
-                presetNames={props.motionAuthoring?.presetNames}
-                showAddAnimation={!props.motionAuthoring}
-                loadAudio={loadAudio}
-              />
-            </section>
-          ) : null}
+          {/* Notes and the timeline, as tabs of one dock under the slide
+              (lib/dock.ts): notes are written while looking at the slide, and a
+              timeline is horizontal and scrubbed while watching it. Closed while
+              designing, so the slide has the window; open in Motion, where the
+              timeline is the work. */}
+          <Dock
+            state={dock}
+            onChange={setDock}
+            height={dockBodyHeight(mode, dock.tab)}
+            panels={{
+              notes: <SpeakerNotes editor={editor} />,
+              timeline: slideScene ? (
+                <div className="dk-dock">
+                  <MotionPanel
+                    document={doc}
+                    scene={slideScene}
+                    slideIndex={slideIndex}
+                    selectedIds={selection.selectedIds}
+                    apply={(operations, label) => apply(operations as never, { label })}
+                    playheadMs={playheadMs}
+                    onScrub={(at) => {
+                      setScrubbing(true);
+                      setPlayheadMs(at);
+                    }}
+                    onPlay={() => {
+                      setScrubbing(true);
+                      setPlaying((count) => count + 1);
+                    }}
+                    presetNames={props.motionAuthoring?.presetNames}
+                    showAddAnimation={!props.motionAuthoring}
+                    loadAudio={loadAudio}
+                  />
+                </div>
+              ) : null,
+            }}
+          />
         </main>
 
         <VersionHistory
@@ -1134,8 +1227,10 @@ export function EditorShell(props: EditorShellProps) {
         />
 
 
-        {panels.inspector ? (
-          <aside className="dk-panel" data-region="panel" aria-label={mode === "ai" ? "AI" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
+        {/* The assistant shows even with the side panel put away: asking for it
+            is asking for this region back. */}
+        {panels.inspector || assistantOpen ? (
+          <aside className="dk-panel" data-region="panel" aria-label={assistantOpen ? "Assistant" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
             {rightPanel}
           </aside>
         ) : null}
