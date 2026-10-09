@@ -26,15 +26,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: deckastra
-          POSTGRES_PASSWORD: ci_only
-          POSTGRES_DB: deckastra
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -44,6 +35,14 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Prepare PostgreSQL with pgvector
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-16-pgvector
+          sudo systemctl start postgresql
+          sudo -u postgres psql --set ON_ERROR_STOP=1 --command "CREATE USER deckastra WITH PASSWORD 'ci_only'"
+          sudo -u postgres createdb --owner deckastra deckastra
+          sudo -u postgres psql --set ON_ERROR_STOP=1 --dbname deckastra --command 'CREATE EXTENSION vector'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
       - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
@@ -57,15 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'dev' }}
     timeout-minutes: 45
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: deckastra
-          POSTGRES_PASSWORD: ci_only
-          POSTGRES_DB: deckastra
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       GCP_PROJECT: ${{ inputs.environment == 'prod' && 'deckastra-prod' || 'deckastra' }}
       GCP_NUMBER: ${{ inputs.environment == 'prod' && '794139896808' || '524807414967' }}
