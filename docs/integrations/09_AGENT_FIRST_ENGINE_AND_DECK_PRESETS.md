@@ -1,6 +1,18 @@
 # 09 — Agent-first Deckastra: a stronger engine, deck presets and media
 
-Status: Phase implementations exist; launch-gap closure is in progress, 2026-10-09.
+Status: implemented, merged to `main` and deployed to the `dev` cloud backend,
+2026-10-09. What remains needs a person, a decision or hardware (§10.1).
+
+Shipped:
+- 2026-10-09: merged as #9, with `main`'s history merged in. All conflicts
+  resolved to this plan's side. CI on `main` went green for the first time since
+  #1, once the pixel baselines were re-recorded after review
+  (`packages/renderer/baselines/pixels/REVIEW.md`).
+- 2026-10-09: the first `dev` deploy failed its smoke test because the export
+  worker had been blocked since 2026-10-06 by one abandoned upload. #10 fixed
+  that, and #11 makes a failed release roll the worker back with the API and
+  requires migrations that keep the previous release working. The `dev`
+  deploy for #11 passed, and its worker logs show no retries.
 
 Built so far:
 - Gap closure unit 1: MCP can request narrated MP4 export; the transition
@@ -531,10 +543,14 @@ The repository audit on 2026-10-09 reopened the following work:
 - External acceptance: record the full approve/undo client journey, verify the
   Copilot account tier claimed by the exit check, and make one live Veo call only
   after a media budget is approved.
-- Repository hygiene: the critic/story leftovers and empty legacy package
-  remnants are removed, `CLAUDE.md` and plans 07/08 are reconciled, and the
-  whole repository gate is green. Splitting the accumulated tree into
-  reviewable commits remains an explicit maintainer-authorized action.
+- Completed 2026-10-09: the critic and story leftovers and the empty legacy
+  package remnants are removed, and `CLAUDE.md` and plans 07 and 08 are
+  reconciled. The tree was committed as seven reviewable commits, merged through
+  #9 and deployed. CI covers the 24-template export readback in its Export job,
+  where Python and Chromium exist.
+- Raw evaluation reports (about 697k lines under
+  `docs/evaluations/2026-10-05/`) are in `main`'s history by decision. Removing
+  them now would mean rewriting published history.
 
 ## 11. Decision only you can make
 
