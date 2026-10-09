@@ -163,11 +163,15 @@ def database(cloud):
 
 def deploy(cloud, tag):
     project, region = cloud.project, cloud.region
-    from release_checks import service_snapshot, deployment_origins, verify_and_promote, traffic_argument
+    from release_checks import service_snapshot, deployment_origins, verify_and_promote, traffic_argument, restore_worker
     previous = service_snapshot(cloud, "deckastra-api")
+    previous_worker = service_snapshot(cloud, "deckastra-export-worker")
     origins = deployment_origins(project, previous)
-    if previous:
-        traffic_argument(previous)  # Validate rollback evidence before any migration.
+    # Validate rollback evidence for both services before any migration: a
+    # release that cannot be undone must not start.
+    for snapshot in (previous, previous_worker):
+        if snapshot:
+            traffic_argument(snapshot)
     image = f"{region}-docker.pkg.dev/{project}/deckastra"
     common = [f"--region={region}", f"--set-cloudsql-instances={project}:{region}:deckastra-postgres"]
     cloud.run("run", "jobs", "deploy", "deckastra-migrate", *common, f"--image={image}/migrate:{tag}",
@@ -199,12 +203,23 @@ def deploy(cloud, tag):
         worker_env.update(DECKASTRA_ENV="production", DECKASTRA_ACCOUNT_DELETION_ENABLED="1", DECKASTRA_VERTEX_IDENTITY="attached")
         worker_file = Path(temporary) / "worker-env.json"
         worker_file.write_text(json.dumps(worker_env))
-        cloud.run("run", "deploy", "deckastra-export-worker", *common, f"--image={image}/export-worker:{tag}",
-            f"--env-vars-file={worker_file}", f"--service-account=deckastra-export-worker@{project}.iam.gserviceaccount.com",
-            "--no-allow-unauthenticated", "--cpu=1", "--memory=2Gi", "--min-instances=1", "--max-instances=1", "--concurrency=1",
-            "--no-cpu-throttling", "--liveness-probe=httpGet.path=/health,periodSeconds=30,timeoutSeconds=5,failureThreshold=3",
-            "--set-secrets=DATABASE_URL=deckastra-database-url:latest")
-        verify_and_promote(cloud, candidate_tag, previous)
+        # The worker polls the shared queue, so it cannot wait behind a tag: it
+        # goes live here and is verified through the candidate API's smoke test.
+        # If anything after this point fails, it is put back (restore_worker).
+        try:
+            cloud.run("run", "deploy", "deckastra-export-worker", *common, f"--image={image}/export-worker:{tag}",
+                f"--env-vars-file={worker_file}", f"--service-account=deckastra-export-worker@{project}.iam.gserviceaccount.com",
+                "--no-allow-unauthenticated", "--cpu=1", "--memory=2Gi", "--min-instances=1", "--max-instances=1", "--concurrency=1",
+                "--no-cpu-throttling", "--liveness-probe=httpGet.path=/health,periodSeconds=30,timeoutSeconds=5,failureThreshold=3",
+                "--set-secrets=DATABASE_URL=deckastra-database-url:latest")
+        except Exception:
+            try:
+                restore_worker(cloud, previous_worker)
+            finally:
+                cloud.run("run", "services", "update-traffic", "deckastra-api", f"--region={region}",
+                          f"--remove-tags={candidate_tag}", check=False)
+            raise
+        verify_and_promote(cloud, candidate_tag, previous, previous_worker)
     print(cloud.run("run", "services", "describe", "deckastra-api", f"--region={region}", "--format=value(status.url)").stdout.strip(), flush=True)
 
 
