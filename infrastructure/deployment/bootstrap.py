@@ -183,6 +183,7 @@ def deploy(cloud, tag):
             "GOOGLE_CLOUD_PROJECT": project, "DECKASTRA_VERTEX_PROJECT": project, "DECKASTRA_VERTEX_LOCATION": "global",
             "DECKASTRA_GOOGLE_DESKTOP_CLIENT_ID": json.loads((Path(__file__).parent / "public-auth.json").read_text(encoding="utf-8"))[project]["googleDesktopClientId"],
             "DECKASTRA_VERTEX_IDENTITY": "attached", "DECKASTRA_VERTEX_IMAGE_MODEL": "", "DECKASTRA_VERTEX_PRICES": "{}",
+            "DECKASTRA_TRANSLATION": "google", "DECKASTRA_TRANSLATION_USD_PER_MILLION": "20",
             "DECKASTRA_ASSISTANT_MAX_COST_USD": "0.30", "DECKASTRA_GLOBAL_DAILY_USD": "10",
             "DECKASTRA_CREDITS_ENABLED": "1", "DECKASTRA_ACCOUNT_DELETION_ENABLED": "1", "DECKASTRA_TELEMETRY_GCP": "1", "DECKASTRA_GCS_ASSETS_BUCKET": f"{project}-assets",
             "DECKASTRA_GCS_EXPORTS_BUCKET": f"{project}-exports", "DECKASTRA_GCS_SERVICE_ACCOUNT": f"deckastra-api@{project}.iam.gserviceaccount.com",

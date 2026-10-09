@@ -398,6 +398,14 @@ resource "google_cloud_run_v2_service" "api" {
         value = jsonencode({})
       }
       env {
+        name  = "DECKASTRA_TRANSLATION"
+        value = "google"
+      }
+      env {
+        name  = "DECKASTRA_TRANSLATION_USD_PER_MILLION"
+        value = "20"
+      }
+      env {
         name  = "DECKASTRA_VERTEX_PROJECT"
         value = "deckastra"
       }
