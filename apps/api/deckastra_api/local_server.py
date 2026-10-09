@@ -234,21 +234,19 @@ def start_export_worker() -> threading.Thread:
     during an export loses that export, which the job's own retry handles on the
     next launch; blocking shutdown on a render would be worse.
     """
-    from . import export_service
-    from .db.session import session_scope
+    # The same pass the deployed worker makes, so a failing import cannot hold
+    # up exports here either: each kind of work fails on its own.
+    from .export_worker import run_once
 
     def loop() -> None:
-        worker_id = "local"
+        state: dict = {}
         while True:
             try:
-                from .mydeck_import import process_one as import_package
-                import_package()
-                with session_scope() as session:
-                    job = export_service.process_one(session, worker_id)
-            except Exception:  # noqa: BLE001 - one bad job must not end the loop
-                logger.exception("Export worker failed on a job")
-                job = None
-            if job is None:
+                ran = run_once("local", state)
+            except Exception:  # noqa: BLE001 - nothing may end the loop
+                logger.exception("Export worker pass failed")
+                ran = False
+            if not ran:
                 time.sleep(0.25)
 
     thread = threading.Thread(target=loop, name="deckastra-exports", daemon=True)

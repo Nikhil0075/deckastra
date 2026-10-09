@@ -204,6 +204,12 @@ def delete(key: str) -> None:
         else:
             _client().delete_object(Bucket=bucket(), Key=key)
     except Exception as error:
+        # Deleting an object that is already gone has succeeded, as it does on
+        # the local backend (missing_ok) and on S3. GCS alone raises NotFound,
+        # and treating that as a failure made an abandoned upload whose bytes
+        # never arrived impossible to clean up: the worker retried it forever.
+        if type(error).__name__ == "NotFound" and getattr(error, "code", None) == 404:
+            return
         raise ObjectStorageError("The stored object could not be deleted; cleanup can be retried.") from error
 
 

@@ -98,7 +98,12 @@ def process_one():
     with session_scope() as session:
         abandoned = session.scalar(select(ImportJob).where(ImportJob.status == "uploading", ImportJob.created_at < now - timedelta(days=1)).limit(1))
         if abandoned:
-            object_storage.delete(abandoned.storage_key)
+            # The row is closed whether or not the bytes could be removed: a
+            # storage failure here used to abort the whole pass before the
+            # status was written, so the same row was retried every second.
+            # Unremoved bytes are an orphan for the sweeper, not a job.
+            try: object_storage.delete(abandoned.storage_key)
+            except object_storage.ObjectStorageError: pass
             abandoned.status, abandoned.error = "failed", "The file upload expired. Upload it again."
         query = select(ImportJob).where(or_(ImportJob.status == "queued", (ImportJob.status == "running") & (ImportJob.lease_until < now))).order_by(ImportJob.created_at).limit(1)
         if supports_row_locks(session): query = query.with_for_update(skip_locked=True)
