@@ -27,6 +27,7 @@ from .db.models import Asset, Presentation, Project
 from .ids import new_id
 from .patch import PatchError, apply_patch
 from .schema import validate_document
+from deckastra_agents.validation import load_json
 
 #: How many attempts the agent gets: the first, and two repairs. A patch that
 #: is still wrong after being told exactly why twice is not converging.
@@ -102,9 +103,9 @@ def materialise(
         if op in ("add", "replace"):
             text = str(raw.get("value_json") or "")
             try:
-                operation["value"] = json.loads(real(text))
-            except json.JSONDecodeError as error:
-                raise ValueError(f"operation {index + 1}: value_json is not valid JSON ({error.msg}).") from error
+                operation["value"] = load_json(real(text))
+            except ValueError as error:
+                raise ValueError(f"operation {index + 1}: value_json is not valid JSON.") from error
         if op == "move":
             operation["from"] = real(str(raw.get("from_path") or ""))
         operations.append(operation)
@@ -195,9 +196,13 @@ def _entry(image: dict[str, Any]) -> dict[str, Any]:
 def _asset_ids(value: Any) -> list[str]:
     found: list[str] = []
     if isinstance(value, dict):
-        asset_id = value.get("assetId")
-        if isinstance(asset_id, str):
-            found.append(asset_id)
+        # A video's poster is a first-class asset reference too.  Treating only
+        # the moving clip as referenced made scoped video proposals reject their
+        # own poster manifest entry and could under-count poster usage.
+        for key in ("assetId", "posterAssetId"):
+            asset_id = value.get(key)
+            if isinstance(asset_id, str):
+                found.append(asset_id)
         for child in value.values():
             found.extend(_asset_ids(child))
     elif isinstance(value, list):

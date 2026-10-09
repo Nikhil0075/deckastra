@@ -58,9 +58,9 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     generated = client.post(
-        "/v1/generate",
+        "/v1/decks/from-template",
         headers=auth,
-        json={"instruction": "A deck about exporting", "slide_count": 4},
+        json={"template_id": "business-pitch", "title": "A deck about exporting"},
     )
     assert generated.status_code == 200, generated.text
     return generated.json()["presentation_id"]
@@ -181,6 +181,22 @@ def test_an_unknown_format_is_refused_before_any_work(client, auth, deck):
     # 422 from the schema: the format is a closed set, so it never reaches the
     # exporter at all.
     assert response.status_code == 422
+
+
+def test_an_mp4_job_pins_its_frame_rate(client, auth, deck, monkeypatch):
+    from deckastra_api.db.models import ExportJob
+
+    monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
+    response = client.post(
+        f"/v1/presentations/{deck}/exports",
+        headers=auth,
+        json={"kind": "mp4", "fps": 60, "idempotency_key": "video-cadence-proof"},
+    )
+    assert response.status_code == 202
+    with db_session.session_scope() as session:
+        job = session.get(ExportJob, response.json()["id"])
+        assert job.kind == "mp4"
+        assert job.options_json["fps"] == 60
 
 
 def test_a_stranger_cannot_export_a_deck_they_cannot_see(client, auth, deck):

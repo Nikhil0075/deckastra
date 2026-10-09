@@ -19,6 +19,9 @@ from starlette.requests import Request
 
 from .models import Base
 from .. import assistant_models  # register additive assistant tables for create_all
+from .. import credit_models  # register hosted account accounting tables
+from .. import account_models  # register cloud erasure queue
+from .. import import_models  # exchange package jobs and opaque extras
 
 DEFAULT_URL = "postgresql+psycopg://deckastra:deckastra_local@localhost:5432/deckastra"
 
@@ -26,6 +29,9 @@ DEFAULT_URL = "postgresql+psycopg://deckastra:deckastra_local@localhost:5432/dec
 def database_url() -> str:
     return os.environ.get("DATABASE_URL", DEFAULT_URL)
 
+
+#: How long a SQLite connection waits for another's lock before failing.
+SQLITE_LOCK_WAIT_SECONDS = 30
 
 _engine: Engine | None = None
 _SessionLocal: sessionmaker[Session] | None = None
@@ -44,7 +50,19 @@ def get_engine() -> Engine:
             future=True,
             # SQLite is used by the tests; it needs the same connection across
             # threads for an in-memory database to survive.
-            connect_args={"check_same_thread": False} if url.startswith("sqlite") else {},
+            #
+            # And a writer waits for the lock rather than failing. The desktop's
+            # database runs in SQLite's rollback-journal mode, where a second
+            # request's write transaction holds the file until it commits; with
+            # the driver's default of 5 seconds, a save or a translation that
+            # overlapped a slower request failed outright with "database is
+            # locked" (found by the desktop smoke sweep, 2026-10-04: the
+            # `languages` step lost its translation one run in three). Waiting
+            # is what a single-user service should do; 30 seconds is longer
+            # than any request this service makes.
+            connect_args={"check_same_thread": False, "timeout": SQLITE_LOCK_WAIT_SECONDS}
+            if url.startswith("sqlite")
+            else {},
         )
 
         if url.startswith("sqlite"):
@@ -89,8 +107,8 @@ async def session_middleware(request: Request, call_next: Callable[[Request], An
     FastAPI runs a yield-dependency's teardown after the response has gone out,
     so a client that reads a write's response and immediately issues the next
     request can beat the commit and be told the row does not exist. That is not
-    theoretical: connecting a repository and indexing it are two calls a UI makes
-    back to back, and the second returned 404 until this moved.
+    theoretical: a client can read a successful write response and immediately
+    issue a dependent request; that second request used to beat the commit.
 
     Rolling back on a 4xx or 5xx keeps the previous behaviour, where an exception
     discarded the partial write.
@@ -169,10 +187,18 @@ def ensure_physical_transaction(session: Session) -> None:
     by the time any of this runs and this is a no-op there.
 
     Call it before every `session.begin_nested()` that must be undoable.
+
+    **IMMEDIATE, not a plain BEGIN** (2026-10-04). Every caller is about to
+    write, and a deferred transaction reads first under a shared lock and asks
+    for the write lock only at its first INSERT. Two such requests at once —
+    an autosave and a translation, say — each read, then each tried to write,
+    and SQLite refused one at once: it does not wait out a lock the waiter is
+    itself holding up, whatever the busy timeout. Taking the write lock as the
+    transaction begins makes the second writer wait its turn instead.
     """
     connection = session.connection()
     if (
         connection.dialect.name == "sqlite"
         and not connection.connection.driver_connection.in_transaction
     ):
-        connection.exec_driver_sql("BEGIN")
+        connection.exec_driver_sql("BEGIN IMMEDIATE")

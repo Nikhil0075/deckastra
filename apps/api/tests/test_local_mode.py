@@ -165,7 +165,7 @@ def test_a_local_install_is_not_metered(local):
     # Null is unlimited and it is not zero. Metering one person's own machine is
     # a limit with nobody to enforce it for, and a progress bar against no limit
     # is a bar that means nothing.
-    for meter in ("generations", "tokens", "storage_bytes", "repositories"):
+    for meter in ("generations", "tokens", "storage_bytes"):
         assert usage[meter]["allowed"] is None, meter
         assert usage[meter]["fraction"] is None, meter
 

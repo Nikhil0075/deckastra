@@ -3,21 +3,15 @@
 `local_server` has always said "everything is derived from one directory, so a
 backup is a directory copy". That is true of where the bytes are and false of
 *when* they are consistent. Copying a live SQLite file while the app is running
-copies whatever the page cache happened to hold; copying the database, then the
-checkpoints, then the assets as three separate walks gives three different
-moments, and the seams between them are exactly where a deck ends up citing an
-image that is not in the backup.
+copies whatever the page cache happened to hold; copying the database and then
+the assets as separate walks gives different moments, and the seam between them
+is exactly where a deck ends up citing an image that is not in the backup.
 
 **The review's correction, and the whole design here: define the boundary.**
 
 - The application database is taken with SQLite's **online backup API**, which
   is a consistent read of a database other connections are still writing. Not a
   file copy.
-- The checkpoints database is taken the same way, and **after** the application
-  database. A run parked between the two leaves a checkpoint with no run row,
-  which is an orphan nothing reads; the other order leaves a *run* with no
-  checkpoint, which is a paused outline that cannot be resumed. One direction
-  loses nothing and the other loses the thing the user was in the middle of.
 - The asset files to copy are read **from the snapshot**, never from the live
   database, so the file list and the rows that reference it are the same moment.
 - Asset-byte deletion is **held** for the length of the snapshot
@@ -61,7 +55,6 @@ FORMAT = 1
 
 MANIFEST = "manifest.json"
 DATABASE = "deckastra.db"
-CHECKPOINTS = "deckastra.db.checkpoints"
 ASSETS = "assets"
 
 
@@ -99,11 +92,6 @@ def database_path(url: str | None = None) -> Path | None:
     if not location or location.startswith(":memory:"):
         return None
     return Path(location)
-
-
-def checkpoints_path(database: Path) -> Path:
-    """Where `agent_service` keeps LangGraph's checkpoints: beside the database."""
-    return database.with_name(database.name + ".checkpoints")
 
 
 def _copy_database(source: Path, destination: Path) -> None:
@@ -187,11 +175,6 @@ def snapshot(
 
     with deletions_held():
         _copy_database(source, destination / DATABASE)
-
-        # After the application database, deliberately. See the module docstring.
-        checkpoints = checkpoints_path(source)
-        if checkpoints.exists():
-            _copy_database(checkpoints, destination / CHECKPOINTS)
 
         # The file list comes from the copy, so rows and bytes are one moment.
         for asset_id, key, recorded in _snapshot_assets(destination / DATABASE):
@@ -320,7 +303,7 @@ def restore(source: Path, data_dir: Path) -> dict:
     aside.mkdir(parents=True, exist_ok=True)
 
     database = data_dir / DATABASE
-    for existing in (database, checkpoints_path(database), data_dir / ASSETS):
+    for existing in (database, data_dir / ASSETS):
         if existing.exists():
             shutil.move(str(existing), str(aside / existing.name))
     # SQLite's sidecars belong to the database that was moved, and a `-wal` left
@@ -330,8 +313,6 @@ def restore(source: Path, data_dir: Path) -> dict:
             shutil.move(str(stray), str(aside / stray.name))
 
     shutil.copy2(source / DATABASE, database)
-    if (source / CHECKPOINTS).is_file():
-        shutil.copy2(source / CHECKPOINTS, checkpoints_path(database))
     if (source / ASSETS).is_dir():
         shutil.copytree(source / ASSETS, data_dir / ASSETS, dirs_exist_ok=True)
 

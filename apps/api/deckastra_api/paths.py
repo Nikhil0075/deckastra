@@ -2,8 +2,8 @@
 
 A checkout and a packaged binary answer differently, and three things read files
 by path rather than importing them: Alembic's migrations, the generated JSON
-Schema every document is validated against, and the agent prompts. None of them
-is an import, so nothing bundles them automatically and nothing would fail until
+Schema every document is validated against, and the preset catalog. Neither is
+an import, so nothing bundles them automatically and nothing would fail until
 the first launch of a build nobody tested.
 
 One function, so the answer cannot be right in two places and wrong in a third.

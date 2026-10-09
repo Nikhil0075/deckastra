@@ -52,6 +52,7 @@ KNOWN_PRESETS = {
     "maskReveal",
     "staggerReveal",
     "springIn",
+    "wordCascade",
 }
 
 
@@ -170,7 +171,10 @@ def animate_slide(
 #: Transition types this planner will emit. Same rule as `KNOWN_PRESETS`: a plan
 #: naming anything else becomes a fade, because the renderer would degrade it
 #: anyway and degrading *here* means the stored document says what it will do.
-KNOWN_TRANSITIONS = {"cut", "fade", "slide", "push", "zoom", "morph"}
+KNOWN_TRANSITIONS = {
+    "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split",
+    "iris", "flip", "blurDissolve", "morph",
+}
 
 
 def plan_transition(
@@ -381,4 +385,6 @@ def _preset_for(element: dict[str, Any], preset: str) -> str:
     """
     if element.get("type") == "group" and preset != "staggerReveal":
         return "staggerReveal"
+    if preset == "wordCascade" and element.get("type") != "text":
+        return "springIn"
     return preset

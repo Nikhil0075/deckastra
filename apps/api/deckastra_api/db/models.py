@@ -478,154 +478,14 @@ class AgentMemoryRow(Base, TimestampMixin):
     created_by: Mapped[str | None] = mapped_column(String(64))
 
 
-class GitHubInstallation(Base, TimestampMixin):
-    """A GitHub App installation (doc 05 §19).
-
-    Scoped to a workspace, not a user. An installation belongs to the
-    organisation that granted it, so it must survive the person who clicked
-    install leaving — a token tied to a departed user is a deck that breaks on
-    their last day.
-
-    No secret is stored here. The App's private key lives in the environment and
-    installation tokens are minted per use and never persisted: a token in a
-    database is a token in every backup.
-    """
-
-    __tablename__ = "github_installations"
-    __table_args__ = (
-        UniqueConstraint("github_installation_id", name="uq_github_installation"),
-        Index("ix_github_installations_workspace", "workspace_id"),
-    )
-
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    workspace_id: Mapped[str] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    github_installation_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    account_login: Mapped[str] = mapped_column(String(128), nullable=False)
-    installed_by: Mapped[str] = mapped_column(String(64), nullable=False)
-    #: Set when GitHub tells us the installation is gone. Kept rather than deleted
-    #: so an indexed repository can explain why it stopped updating.
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class Repository(Base, TimestampMixin):
-    """A repository someone connected, and the state of its index.
-
-    `head_sha` versus `indexed_sha` is the staleness signal (gap register doc 05
-    S2). Without it a deck silently drifts from `main`: the index is a photograph
-    and nothing says when it was taken.
-    """
-
-    __tablename__ = "repositories"
-    __table_args__ = (
-        CheckConstraint(
-            "source IN ('github', 'local')", name="ck_repository_source"
-        ),
-        CheckConstraint(
-            "index_status IN ('pending', 'indexing', 'ready', 'failed', 'revoked')",
-            name="ck_repository_index_status",
-        ),
-        UniqueConstraint("workspace_id", "full_name", name="uq_repository_per_workspace"),
-        Index("ix_repositories_workspace", "workspace_id"),
-    )
-
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    workspace_id: Mapped[str] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
-    )
-    installation_id: Mapped[str | None] = mapped_column(
-        ForeignKey("github_installations.id", ondelete="SET NULL")
-    )
-
-    source: Mapped[str] = mapped_column(String(16), nullable=False, default="github")
-    #: "owner/name", or a local directory's label. The user-facing identity.
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    github_repository_id: Mapped[str | None] = mapped_column(String(64))
-    default_branch: Mapped[str] = mapped_column(String(128), nullable=False, default="main")
-    description: Mapped[str | None] = mapped_column(Text)
-    #: Absolute path, for a local source. Null for GitHub.
-    local_path: Mapped[str | None] = mapped_column(Text)
-
-    index_status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
-    index_error: Mapped[str | None] = mapped_column(Text)
-    #: The commit the current index was built from.
-    indexed_sha: Mapped[str | None] = mapped_column(String(64))
-    #: The latest commit we know about, updated by the push webhook. Ahead of
-    #: `indexed_sha` means stale.
-    head_sha: Mapped[str | None] = mapped_column(String(64))
-    last_indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    file_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    #: Which embedder built the index. A lexical index and a semantic one answer
-    #: differently, and a user comparing two decks needs to know which they have.
-    embedding_model: Mapped[str | None] = mapped_column(String(64))
-    embedding_semantic: Mapped[bool] = mapped_column(default=False, nullable=False)
-    #: Languages and frameworks detected at index time.
-    profile_json: Mapped[dict[str, Any] | None] = mapped_column(JsonColumn)
-    #: Anything the user should know: a truncated tree, a size quota hit.
-    warnings_json: Mapped[list[Any] | None] = mapped_column(JsonColumn)
-
-    chunks: Mapped[list["RepositoryChunk"]] = relationship(
-        back_populates="repository", cascade="all, delete-orphan"
-    )
-
-
-class RepositoryChunk(Base, TimestampMixin):
-    """One retrievable piece of a repository, with its provenance (doc 02 §30).
-
-    The line range is not decoration. A citation a reader cannot open is not a
-    citation, and `path:start-end` is exactly what a GitHub link needs.
-
-    The embedding is stored as JSON here rather than as a `vector` column so the
-    same schema works on SQLite. On PostgreSQL a `pgvector` index is created
-    alongside it by the migration, and retrieval uses whichever is available —
-    see `retrieval.py` for why that trade was made rather than requiring
-    PostgreSQL for local development.
-    """
-
-    __tablename__ = "repository_chunks"
-    __table_args__ = (
-        Index("ix_repository_chunks_repository", "repository_id"),
-        Index("ix_repository_chunks_path", "repository_id", "path"),
-    )
-
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    repository_id: Mapped[str] = mapped_column(
-        ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
-    )
-
-    path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    start_line: Mapped[int] = mapped_column(Integer, nullable=False)
-    end_line: Mapped[int] = mapped_column(Integer, nullable=False)
-    language: Mapped[str | None] = mapped_column(String(64))
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-
-    #: Blob sha of the file this came from. An unchanged sha means the chunk does
-    #: not need re-embedding, which is what makes a push re-index incremental.
-    file_sha: Mapped[str | None] = mapped_column(String(64))
-    #: Why the file was selected, in words. Doc 03 §8 requires the agent to be
-    #: able to explain its selection.
-    importance: Mapped[float] = mapped_column(default=0.0, nullable=False)
-    selection_reason: Mapped[str | None] = mapped_column(Text)
-
-    embedding_json: Mapped[list[Any] | None] = mapped_column(JsonColumn)
-
-    repository: Mapped[Repository] = relationship(back_populates="chunks")
-
-
 __all__ = [
     "AgentMemoryRow",
     "AgentRunRow",
     "Base",
-    "GitHubInstallation",
     "JsonColumn",
     "Presentation",
     "PresentationVersion",
     "Project",
-    "Repository",
-    "RepositoryChunk",
     "TransactionRow",
     "User",
     "Workspace",
@@ -652,7 +512,7 @@ class ExportJob(Base, TimestampMixin):
 
     __tablename__ = "export_jobs"
     __table_args__ = (
-        CheckConstraint("kind IN ('pdf', 'pptx')", name="ck_export_kind"),
+        CheckConstraint("kind IN ('pdf', 'pptx', 'mp4', 'mydeck')", name="ck_export_kind"),
         CheckConstraint(
             "status IN ('queued', 'running', 'completed', 'failed', 'cancelled')",
             name="ck_export_status",
@@ -797,7 +657,6 @@ class WorkspaceQuota(Base, TimestampMixin):
     monthly_generations: Mapped[int | None] = mapped_column(Integer)
     monthly_tokens: Mapped[int | None] = mapped_column(Integer)
     storage_bytes: Mapped[int | None] = mapped_column(Integer)
-    max_repositories: Mapped[int | None] = mapped_column(Integer)
 
     period_start: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -866,6 +725,9 @@ class Asset(Base, TimestampMixin):
     #: For audio: 256 peaks, 0..1, computed once when the file arrives, so the
     #: timeline draws a waveform without decoding anything (plan 01 §3.6).
     waveform_peaks: Mapped[list[float] | None] = mapped_column(JsonColumn)
+    #: Provider word time points for synthesized speech. Kept on the cached
+    #: asset so reusing paid audio also reuses its exact alignment.
+    word_timings: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonColumn)
     tags: Mapped[list[str] | None] = mapped_column(JsonColumn)
     description: Mapped[str | None] = mapped_column(Text)
     sha256: Mapped[str | None] = mapped_column(String(64))

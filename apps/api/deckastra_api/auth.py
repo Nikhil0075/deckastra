@@ -142,9 +142,12 @@ def _decode_oidc_token(token: str) -> ExternalClaims:
     if public_key:
         signing_key: Any = public_key.replace("\\n", "\n")
     else:
-        jwks_url = os.environ.get(
-            "DECKASTRA_OIDC_JWKS_URL", f"{issuer}/.well-known/jwks.json"
-        ).strip()
+        default_jwks = (
+            "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+            if issuer.startswith("https://securetoken.google.com/")
+            else f"{issuer}/.well-known/jwks.json"
+        )
+        jwks_url = os.environ.get("DECKASTRA_OIDC_JWKS_URL", default_jwks).strip()
         signing_key = _jwks_client(jwks_url).get_signing_key_from_jwt(token).key
 
     payload = jwt.decode(
@@ -173,7 +176,10 @@ def _decode_oidc_token(token: str) -> ExternalClaims:
         raise jwt.InvalidTokenError("A verified email claim is required.")
 
     name = payload.get("name")
-    provider = payload.get("idp") or payload.get("provider")
+    firebase = payload.get("firebase")
+    provider = payload.get("idp") or payload.get("provider") or (
+        firebase.get("sign_in_provider") if isinstance(firebase, dict) else None
+    )
     return ExternalClaims(
         issuer=issuer,
         subject=subject,
@@ -317,6 +323,9 @@ def provision_personal_account(
 
 def _principal_from_oidc(session: Session, token: str) -> Principal:
     claims = _decode_oidc_token(token)
+    from .account_deletion import blocked
+    if blocked(session, claims.issuer, claims.subject):
+        raise ValueError("This account is being deleted.")
     identity = session.scalar(
         select(AuthIdentity).where(
             AuthIdentity.issuer == claims.issuer,
@@ -349,7 +358,7 @@ def _principal_from_oidc(session: Session, token: str) -> Principal:
     return Principal(user_id=user.id, email=user.email)
 
 
-def current_principal(
+def _authenticate_principal(
     authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
 ) -> Principal:
@@ -407,6 +416,36 @@ def current_principal(
             detail="Invalid token.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
+
+
+async def current_principal(
+    authorization: str | None = Header(default=None),
+    session: Session = Depends(get_session),
+    device_id: str | None = Header(default=None, alias="X-Deckastra-Device"),
+):
+    """Bind hosted inference to the verified account for this request context."""
+    from starlette.concurrency import run_in_threadpool
+    principal = await run_in_threadpool(_authenticate_principal, authorization, session)
+    context_token = None
+    if os.environ.get("DECKASTRA_CREDITS_ENABLED") == "1":
+        from .credits import observer
+        from deckastra_agents.budgets import cost_observer
+        # Persist a newly provisioned identity before separate usage transactions.
+        session.commit()
+        import hashlib
+        import hmac
+        if device_id is not None and len(device_id) > 128:
+            raise HTTPException(422, "Invalid device identifier.")
+        secret = os.environ.get("DECKASTRA_DEVICE_SECRET", "")
+        if not secret:
+            raise HTTPException(503, "Device accounting is not configured.")
+        device_hash = hmac.new(secret.encode(), (device_id or principal.user_id).encode(), hashlib.sha256).hexdigest()
+        context_token = cost_observer.set(observer(principal.user_id, device_hash=device_hash))
+    try:
+        yield principal
+    finally:
+        if context_token is not None:
+            cost_observer.reset(context_token)
 
 
 class Forbidden(HTTPException):
@@ -656,7 +695,7 @@ def resolve_workspace_access(
 ) -> WorkspaceAccess:
     """The user's workspace, for the routes that take no workspace id.
 
-    The workspace-scoped routes — usage, themes, assets, repositories — had each
+    The workspace-scoped routes — usage, themes and assets — had each
     grown a private `_workspace_of` that returned the *first* membership and
     checked no role at all. A workspace viewer could therefore write a
     workspace-wide theme and run the asset sweeper, which deletes files.

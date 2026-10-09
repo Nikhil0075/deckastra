@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class SlideLayout(str, Enum):
@@ -45,6 +45,10 @@ class Metric(BaseModel):
 
 class SlidePlan(BaseModel):
     layout: SlideLayout
+    pattern_id: str | None = Field(
+        default=None,
+        description="The author-facing preset pattern when it refines a geometry family.",
+    )
     purpose: str = Field(description="Why this slide exists in the narrative.")
     key_message: str = Field(
         description="The one thing the audience should retain from this slide."
@@ -78,108 +82,26 @@ class StoryPlan(BaseModel):
     slides: list[SlidePlan]
 
 
-class GenerateRequest(BaseModel):
-    """A user's request for a deck (doc 03 §6, reduced to what is used so far)."""
+# ------------------------------------------------ deterministic deck creation
 
-    instruction: str = Field(min_length=1, max_length=4000)
-    audience: str = ""
-    objective: str = ""
-    slide_count: int = Field(default=5, ge=1, le=20)
-    tone: str = ""
-    """Where to put the deck. Defaults to the caller's first project."""
+
+class DeckFromTemplateRequest(BaseModel):
+    template_id: str = Field(min_length=1, max_length=120)
+    theme_key: str | None = Field(default=None, min_length=1, max_length=120)
+    title: str | None = Field(default=None, min_length=1, max_length=300)
     project_id: str | None = None
-    #: Repositories to ground the deck in (Journey B). Resolved against the
-    #: caller's workspace server-side; an id from elsewhere is silently dropped
-    #: rather than becoming a source.
-    repository_ids: list[str] = Field(default_factory=list, max_length=10)
-    #: Run the Phase 5 agent graph rather than the Phase 1 single-shot chain.
-    #:
-    #: Default on. The flag exists so an operator can go back without a rollback
-    #: — the single-shot chain is the thing that has been working, and a graph is
-    #: a lot of new moving parts to make unavoidable on day one.
-    use_graph: bool = True
+    #: Stable slide key -> named slot -> content. Geometry is never accepted.
+    content: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
-class GenerationDiagnostics(BaseModel):
-    """What the walking skeleton exists to measure.
-
-    Phase 1's whole purpose is finding out how reliably a model produces valid
-    structured output against this schema, before four more phases are built on
-    the assumption that it does. So the numbers are part of the response rather
-    than a log line someone has to go looking for.
-    """
-
-    source: Literal["model", "stub"]
-    model: str = ""
-    # Highest schema-attempt count for a structured request in this invocation.
-    # Graph-node calls/critic revisions are separate requests. Transport retries
-    # inside a provider SDK are not measured by this field.
-    attempts: int = 1
-    # True only when structured responses and the composed document validate
-    # without schema repair. Stub observations are not real-model evaluation.
-    valid_first_attempt: bool = True
-    plan_valid_first_attempt: bool = True
-    validation_errors: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    input_tokens: int = 0
-    output_tokens: int = 0
-    duration_ms: int = 0
+class DeckComposeRequest(BaseModel):
+    story_plan: StoryPlan
+    theme_key: str = Field(default="neo-technical", min_length=1, max_length=120)
+    project_id: str | None = None
 
 
-class GenerateResponse(BaseModel):
+class ComposedDeckResponse(BaseModel):
     presentation_id: str
-    #: The head of the version chain, which a client sends back as
-    #: `expected_version_id` on its first edit.
     version_id: str
     document: dict
-    diagnostics: GenerationDiagnostics
-    #: The agent run that produced it. Lets a client subscribe to its events and
-    #: lets the agent inspector show why each slide is the way it is.
-    run_id: str | None = None
-
-
-# ------------------------------------------------------- the story checkpoint
-
-
-class OutlineSlide(BaseModel):
-    """One slide of an outline under review: its words, never its geometry."""
-
-    headline: str
-    key_message: str = ""
-    layout: str = ""
-
-
-class StoryOutline(BaseModel):
-    title: str
-    narrative_arc: str = ""
-    slides: list[OutlineSlide]
-    warnings: list[str] = Field(default_factory=list)
-
-
-class StoryDecision(BaseModel):
-    """What a person decided about the outline a run is paused on."""
-
-    action: Literal["approve", "revise", "reject"]
-    #: What to change. Required for a revision, because a revision with no note
-    #: asks the model to guess what was wrong, and it will guess the same thing.
-    note: str = Field(default="", max_length=2000)
-
-    @model_validator(mode="after")
-    def _revision_has_a_note(self) -> "StoryDecision":
-        if self.action == "revise" and not self.note.strip():
-            raise ValueError("Say what to change: a revision needs a note.")
-        return self
-
-
-class ReviewedGeneration(BaseModel):
-    """A generation that stops at its outline for a person.
-
-    `awaiting_story` carries the outline and the run to resume; `completed`
-    carries the deck exactly as `/v1/generate` returns it; `rejected` carries
-    nothing, because nothing was made.
-    """
-
-    run_id: str
-    status: Literal["awaiting_story", "completed", "rejected"]
-    outline: StoryOutline | None = None
-    generation: GenerateResponse | None = None
+    template_id: str | None = None

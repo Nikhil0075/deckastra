@@ -465,6 +465,7 @@ def _layout_metrics(plan: SlidePlan) -> list[dict[str, Any]]:
             "type": "group",
             "name": "KPI row",
             "groupRole": "kpiRow",
+            "semanticRole": "metric",
             "transform": {"x": CONTENT_X, "y": row_y, "width": CONTENT_W, "height": card_h},
             "containerLayout": {
                 "type": "horizontal",
@@ -607,7 +608,10 @@ def compose_slide(plan: SlidePlan, index: int) -> dict[str, Any]:
         "semanticIntent": plan.purpose,
         "keyMessage": plan.key_message,
         "background": {"paint": {"type": "solid", "color": "token:colors.background"}},
-        "layout": {"styleLabel": plan.layout.value, "templateId": f"phase1.{plan.layout.value}"},
+        "layout": {
+            "styleLabel": plan.pattern_id or plan.layout.value,
+            "templateId": f"preset.{plan.pattern_id or plan.layout.value}",
+        },
         "elements": elements,
         "transition": {"type": "fade", "durationMs": 300},
     }
@@ -621,6 +625,7 @@ def compose_document(
     plan: StoryPlan,
     *,
     instruction: str = "",
+    locale: str = "en",
     motion_plan: dict[str, Any] | None = None,
     theme_definition: dict[str, Any] | None = None,
     theme_id: str | None = None,
@@ -654,7 +659,7 @@ def compose_document(
             "title": plan.title,
             **({"themeId": theme_id} if theme_id is not None else {}),
             "description": plan.narrative_arc,
-            "language": "en",
+            "language": locale,
             "presentationType": "technical",
             # Read by the Story Agent for vocabulary and by the Critic for density
             # judgement (doc 02 §5.1). A deck without them forces every agent to

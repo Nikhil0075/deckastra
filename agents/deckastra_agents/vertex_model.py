@@ -2,23 +2,19 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import math
 import os
 import threading
 import uuid
+import weakref
+from contextlib import nullcontext
 from typing import Any, Callable, Iterator
 
 from .budgets import RunBudget
 from .envelope import POLICY
-from .router import ModelError, ModelRequest, ModelResponse, ModelUnavailable, ToolInvocation
+from .router import ModelError, ModelRequest, ModelResponse, ModelUnavailable
 
 _cloud_slots = threading.BoundedSemaphore(4)
-
-
-def runtime_id(model, config):
-    pinned = {"model": model, "thinking": config.get("thinking", {}).get(model, "default"), "contract": "assistant-v2-functional"}
-    return "vertex-native-v1-" + hashlib.sha256(json.dumps(pinned, sort_keys=True).encode()).hexdigest()[:16]
 
 
 def configuration() -> dict[str, Any]:
@@ -35,16 +31,19 @@ def configuration() -> dict[str, Any]:
         ceiling = float(os.environ["DECKASTRA_ASSISTANT_MAX_COST_USD"])
         prices = json.loads(os.environ["DECKASTRA_VERTEX_PRICES"])
     except (KeyError, ValueError, TypeError) as exc:
-        raise ModelUnavailable("Configure a positive assistant spend ceiling and DECKASTRA_VERTEX_PRICES (per-model USD per million input/output tokens).") from exc
+        raise ModelUnavailable("Configure a positive media spend ceiling and DECKASTRA_VERTEX_PRICES (per-model USD per million input/output tokens).") from exc
     if not math.isfinite(ceiling) or ceiling <= 0 or not isinstance(prices, dict):
-        raise ModelUnavailable("The assistant spend ceiling or Vertex prices are invalid.")
+        raise ModelUnavailable("The media spend ceiling or Vertex prices are invalid.")
     try:
         thinking = json.loads(os.environ.get("DECKASTRA_VERTEX_THINKING", "{}"))
         if not isinstance(thinking, dict) or any(level not in ("MINIMAL", "LOW", "MEDIUM", "HIGH") for level in thinking.values()):
             raise ValueError()
     except (ValueError, TypeError) as exc:
         raise ModelUnavailable("DECKASTRA_VERTEX_THINKING must map pinned model IDs to MINIMAL, LOW, MEDIUM or HIGH.") from exc
-    return dict(project=project, location=location, credentials=credentials, identity=identity, ceiling=ceiling, prices=prices, thinking=thinking)
+    ip_family = os.environ.get("DECKASTRA_VERTEX_IP_FAMILY", "auto")
+    if ip_family not in {"auto", "ipv4"}:
+        raise ModelUnavailable("DECKASTRA_VERTEX_IP_FAMILY must be auto or ipv4.")
+    return dict(project=project, location=location, credentials=credentials, identity=identity, ceiling=ceiling, prices=prices, thinking=thinking, ip_family=ip_family)
 
 
 def token_provider(config: dict[str, Any]) -> Callable[[], str]:
@@ -69,35 +68,6 @@ def token_provider(config: dict[str, Any]) -> Callable[[], str]:
     return token
 
 
-def vertex_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Inline references for Vertex's schema dialect; application validation stays authoritative."""
-    root = schema
-    supported = {"type", "properties", "required", "items", "enum", "description", "anyOf", "nullable", "format", "minimum", "maximum", "minItems", "maxItems"}
-    def clean(node: Any, trail: tuple[str, ...] = ()) -> Any:
-        if isinstance(node, list):
-            return [clean(x, trail) for x in node]
-        if not isinstance(node, dict):
-            return node
-        if "$ref" in node:
-            ref = node["$ref"]
-            if ref in trail:
-                raise ModelError("Recursive output schemas are not supported by this Vertex adapter.")
-            target = root
-            for segment in ref.removeprefix("#/").split("/"):
-                target = target[segment.replace("~1", "/").replace("~0", "~")]
-            return clean(target, (*trail, ref))
-        result = {}
-        for key, value in node.items():
-            if key not in supported:
-                continue
-            if key == "properties":
-                result[key] = {name: clean(child, trail) for name, child in value.items()}
-            else:
-                result[key] = clean(value, trail)
-        return result
-    return clean(schema)
-
-
 class VertexClient:
     @property
     def capabilities(self):
@@ -111,6 +81,9 @@ class VertexClient:
         self.config = config or configuration()
         self.token = token or token_provider(self.config)
         self.transport = transport
+        self._http = None
+        self._http_lock = threading.Lock()
+        self._http_finalizer = None
         try:
             price = self.config["prices"][model]
             self.input_rate = float(price["input"])
@@ -120,13 +93,36 @@ class VertexClient:
         if any(not math.isfinite(x) or x < 0 for x in (self.input_rate, self.output_rate)):
             raise ModelUnavailable("Vertex pricing must be finite and nonnegative.")
 
+    def _http_client(self):
+        """Keep a bounded connection pool across stages and repairs.
+
+        Identity and timeout belong to each request, never to pooled headers.
+        A discarded task client closes its pool without retaining itself.
+        """
+        import httpx
+        with self._http_lock:
+            if self._http is None:
+                limits = httpx.Limits(max_connections=4, max_keepalive_connections=4, keepalive_expiry=60)
+                transport = self.transport
+                if transport is None and self.config.get("ip_family") == "ipv4":
+                    transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=0, limits=limits)
+                self._http = httpx.Client(transport=transport, limits=limits)
+                self._http_finalizer = weakref.finalize(self, self._http.close)
+            return self._http
+
+    def close(self):
+        with self._http_lock:
+            if self._http_finalizer is not None:
+                self._http_finalizer()
+            self._http = None
+
     def _body(self, request: ModelRequest) -> dict[str, Any]:
+        if not request.image_output:
+            raise ModelUnavailable("The Vertex transport is restricted to image generation.")
         contents = []
         for message in request.messages:
             if message.get("provider_parts"):
                 parts = message["provider_parts"]
-            elif message.get("role") == "tool":
-                parts = [{"functionResponse": {"name": message["name"], "response": {"result": message["content"]}}}]
             else:
                 parts = [{"text": str(message.get("content") or "")}]
             contents.append({"role": "model" if message.get("role") == "assistant" else "user", "parts": parts})
@@ -134,25 +130,16 @@ class VertexClient:
             if not contents:
                 contents.append({"role": "user", "parts": []})
             contents[-1]["parts"].extend({"inlineData": {"mimeType": image.mime_type, "data": image.data}} for image in request.images)
-        generation: dict[str, Any] = {"temperature": 0.2, "maxOutputTokens": request.max_tokens}
+        generation: dict[str, Any] = {"maxOutputTokens": request.max_tokens}
+        # Gemini 3 deprecates sampling controls; use its supported thinking
+        # level rather than carrying a legacy temperature into new requests.
+        if not self.model.startswith("gemini-3"):
+            generation["temperature"] = 0.2
         level = self.config.get("thinking", {}).get(self.model)
         if level:
             generation["thinkingConfig"] = {"thinkingLevel": level}
-        if request.response_schema and not request.tools:
-            generation.update(responseMimeType="application/json", responseSchema=vertex_schema(request.response_schema))
         body = {"systemInstruction": {"parts": [{"text": "\n\n".join([request.system, *request.context, POLICY])}]}, "contents": contents, "generationConfig": generation}
-        if request.tools:
-            body["tools"] = [{"functionDeclarations": [{"name": t.name, "description": t.description, "parameters": vertex_schema(t.parameters)} for t in request.tools]}]
-        if request.web_search:
-            if request.tools:
-                raise ModelError("Research grounding and custom tools use separate bounded requests.")
-            body["tools"] = [{"googleSearch": {}}]
-            generation.pop("responseSchema", None)
-            generation.pop("responseMimeType", None)
-        if request.image_output:
-            generation["responseModalities"] = ["TEXT", "IMAGE"]
-            generation.pop("responseSchema", None)
-            generation.pop("responseMimeType", None)
+        generation["responseModalities"] = ["TEXT", "IMAGE"]
         return body
 
     def estimate_reservation(self, request: ModelRequest) -> float:
@@ -167,7 +154,6 @@ class VertexClient:
             raise ModelUnavailable("Long-context prices must be finite nonnegative rates.")
         reserve_input_rate = input_long if maximum_input > 200000 else self.input_rate
         reserve_output_rate = output_long if maximum_input > 200000 else self.output_rate
-        extra = 0.0
         image_rate = self.output_rate
         if request.image_output:
             try:
@@ -176,14 +162,7 @@ class VertexClient:
                     raise ValueError()
             except (KeyError, ValueError, TypeError) as exc:
                 raise ModelUnavailable("Configure image_output USD per million image tokens before generating images.") from exc
-        if request.web_search:
-            try:
-                extra = float(self.config["prices"][self.model]["search_max_usd"])
-                if not math.isfinite(extra) or extra <= 0:
-                    raise ValueError()
-            except (KeyError, ValueError, TypeError) as exc:
-                raise ModelUnavailable("Configure a conservative search_max_usd charge for grounded research.") from exc
-        return (maximum_input * reserve_input_rate + request.max_tokens * max(reserve_output_rate, image_rate)) / 1_000_000 + extra
+        return (maximum_input * reserve_input_rate + request.max_tokens * max(reserve_output_rate, image_rate)) / 1_000_000
 
     def stream(self, request: ModelRequest, budget: RunBudget) -> Iterator[ModelResponse]:
         import httpx
@@ -196,7 +175,6 @@ class VertexClient:
         input_long = float(prices.get("input_long", self.input_rate))
         output_long = float(prices.get("output_long", self.output_rate))
         image_rate = float(prices["image_output"]) if request.image_output else self.output_rate
-        extra = float(prices["search_max_usd"]) if request.web_search else 0.0
         operation_id = uuid.uuid4().hex
         # Authentication can fail without a paid request. Do it before reserving.
         access_token = self.token()
@@ -208,10 +186,14 @@ class VertexClient:
         usage = None
         try:
             budget.check_clock()
-            budget.reserve_cost(operation_id, maximum)
+            budget.reserve_cost(operation_id, maximum, task="image", model=self.model)
             remaining = max(0.1, budget.max_wall_clock_seconds - budget.elapsed_seconds)
-            with httpx.Client(transport=self.transport, timeout=httpx.Timeout(remaining, read=min(30, remaining))) as client:
-                with client.stream("POST", url, json=body, headers={"Authorization": f"Bearer {access_token}"}) as answer:
+            # Thinking may produce no text for more than 30s. The run's clock
+            # remains authoritative; a premature read timeout creates uncertain
+            # paid calls and cannot safely be fixed by an automatic retry.
+            timeout = httpx.Timeout(remaining, connect=min(5, remaining), read=min(120, remaining))
+            with nullcontext(self._http_client()) as client:
+                with client.stream("POST", url, json=body, headers={"Authorization": f"Bearer {access_token}"}, timeout=timeout) as answer:
                     if answer.status_code >= 400:
                         answer.read()
                         if answer.status_code in (400, 401, 403, 404, 429):
@@ -228,10 +210,8 @@ class VertexClient:
                         if candidate.get("finishReason") == "MAX_TOKENS":
                             budget.warn("Vertex reached the output-token limit; incomplete structured output must be repaired or rejected.")
                         parts = candidate.get("content", {}).get("parts", [])
-                        calls = [ToolInvocation(p["functionCall"]["name"], p["functionCall"].get("args", {}), p["functionCall"].get("id", "")) for p in parts if "functionCall" in p]
                         refusal = candidate.get("finishReason") if candidate.get("finishReason") in ("SAFETY", "RECITATION", "PROHIBITED_CONTENT") else None
-                        sources = [{"url": chunk["web"].get("uri"), "title": chunk["web"].get("title", "")} for chunk in candidate.get("groundingMetadata", {}).get("groundingChunks", []) if "web" in chunk]
-                        yield ModelResponse(text="".join(p.get("text", "") for p in parts if not p.get("thought")), model=self.model, tool_calls=calls, provider_parts=parts, refusal=refusal, sources=sources)
+                        yield ModelResponse(text="".join(p.get("text", "") for p in parts if not p.get("thought")), model=self.model, provider_parts=parts, refusal=refusal)
             if usage is None:
                 raise ModelError("Vertex returned no usage; the cost reservation is retained.")
             incoming = int(usage.get("promptTokenCount", 0))
@@ -247,8 +227,13 @@ class VertexClient:
                 else:
                     output_cost = outgoing * max(image_rate, actual_output_rate)
                     budget.warn("Image usage lacked modality counts; cost conservatively uses the highest output token rate.")
-            budget.reconcile_cost(operation_id, maximum, (incoming * actual_input_rate + output_cost) / 1_000_000 + extra)
+            budget.reconcile_cost(operation_id, maximum, (incoming * actual_input_rate + output_cost) / 1_000_000)
             budget.spend_tokens(incoming, outgoing)
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            # The connection failed before sending an HTTP request. This is
+            # confirmed non-use, unlike a read timeout after a paid request.
+            budget.reconcile_cost(operation_id, maximum, 0)
+            raise ModelError("Could not connect to Vertex before sending the request; no model usage was charged. Check network connectivity (including IPv6) before a new operation.") from exc
         except (httpx.HTTPError, ValueError, KeyError) as exc:
             raise ModelError("Vertex request interrupted; uncertain usage remains reserved and will not be retried automatically.") from exc
         finally:
@@ -259,10 +244,41 @@ class VertexClient:
         before_in, before_out = budget.input_tokens, budget.output_tokens
         for chunk in self.stream(request, budget):
             result.text += chunk.text
-            result.tool_calls.extend(chunk.tool_calls)
             result.provider_parts.extend(chunk.provider_parts)
-            result.sources.extend(s for s in chunk.sources if s not in result.sources)
             result.refusal = chunk.refusal or result.refusal
         result.input_tokens = budget.input_tokens - before_in
         result.output_tokens = budget.output_tokens - before_out
         return result
+
+
+_image_clients: dict[tuple[str, str], VertexClient] = {}
+_image_clients_lock = threading.Lock()
+
+
+def image_model_id() -> str:
+    """Return the one explicitly pinned image model; there is no task router."""
+
+    model = os.environ.get("DECKASTRA_VERTEX_IMAGE_MODEL", "").strip()
+    if not model:
+        raise ModelUnavailable("Configure DECKASTRA_VERTEX_IMAGE_MODEL before generating images.")
+    return model
+
+
+def configured_image_client(*, emit=None):
+    """Build the paid image client locally or through the desktop gateway."""
+
+    if os.environ.get("DECKASTRA_LOCAL_MODE") == "1" and os.environ.get("DECKASTRA_GATEWAY_URL"):
+        from .gateway_client import GatewayClient
+
+        return GatewayClient(emit=emit)
+    config = configuration()
+    model = image_model_id()
+    key = (model, json.dumps(config, sort_keys=True))
+    with _image_clients_lock:
+        client = _image_clients.get(key)
+        if client is None:
+            client = VertexClient(model, config)
+            _image_clients[key] = client
+    if emit is not None:
+        emit({"provider": "vertex", "task": "image", "model": client.model})
+    return client

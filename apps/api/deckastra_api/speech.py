@@ -21,7 +21,8 @@ service makes. What makes it safe to automate is what happens around the call:
 Google Cloud Text-to-Speech (Chirp 3 HD) is the cloud provider. It is
 configured by environment and has not been exercised against the live service
 from this repository; the request and response shapes are Google's documented
-`text:synthesize` and `voices` REST resources.
+`v1beta1/text:synthesize` (for SSML word marks) and the `v1/voices` REST
+resource.
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ import re
 import os
 import time
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from xml.sax.saxutils import escape as xml_escape
 
@@ -62,6 +63,7 @@ class Synthesis:
     duration_ms: int
     voice: str
     peaks: list[float] | None
+    word_timings: list[dict[str, Any]] = field(default_factory=list)
 
 
 def selected_speech_provider() -> str:
@@ -73,8 +75,9 @@ def selected_speech_provider() -> str:
         )
     if choice == "google":
         return "google"
-    if choice == "stub" or not distribution():
-        if distribution():
+    production = distribution() or os.environ.get("DECKASTRA_ENV") == "production"
+    if choice == "stub" or not production:
+        if production:
             raise ModelUnavailable("The stand-in voice is for development; it is not in an installed product.")
         return "stub"
     raise ModelUnavailable(
@@ -267,6 +270,58 @@ def ssml(text: str, pronunciations: list[Pronunciation]) -> str:
     return "<speak>" + "".join(out) + "</speak>"
 
 
+def timed_ssml(text: str, pronunciations: list[Pronunciation]) -> tuple[str, list[str]]:
+    """Safe SSML with one provider time-point mark before every spoken word."""
+    hits = {start: (end, item) for start, end, item in _find(text, pronunciations)}
+    words: list[str] = []
+    out: list[str] = ["<speak>"]
+    quote = {chr(34): "&quot;"}
+    i = 0
+    while i < len(text):
+        pause = PAUSE.match(text, i)
+        if pause:
+            out.append(f'<break time="{pause_ms(pause)}ms"/>')
+            i = pause.end()
+            continue
+        hit = hits.get(i)
+        if hit:
+            end, item = hit
+            written = text[i:end]
+            out.append(f'<mark name="w{len(words)}"/>')
+            ipa = _phonetic(item.say)
+            if ipa:
+                out.append(f'<phoneme alphabet="ipa" ph="{xml_escape(ipa, quote)}">{xml_escape(written)}</phoneme>')
+            else:
+                out.append(f'<sub alias="{xml_escape(item.say, quote)}">{xml_escape(written)}</sub>')
+            words.append(written)
+            i = end
+            continue
+        if _word(text[i]):
+            end = i + 1
+            while end < len(text) and _word(text[end]):
+                end += 1
+            word = text[i:end]
+            out.append(f'<mark name="w{len(words)}"/>{xml_escape(word)}')
+            words.append(word)
+            i = end
+            continue
+        out.append(xml_escape(text[i]))
+        i += 1
+    out.append("</speak>")
+    return "".join(out), words
+
+
+def _even_word_timings(words: list[str], duration_ms: int) -> list[dict[str, Any]]:
+    """Deterministic alignment for the development stand-in only."""
+    if not words:
+        return []
+    unit = duration_ms / len(words)
+    return [
+        {"word": word, "startMs": round(index * unit), "endMs": round((index + 1) * unit)}
+        for index, word in enumerate(words)
+    ]
+
+
 def cache_key(
     text: str, locale: str, voice: str, rate: float, provider: str, pronunciations: list[Pronunciation] | None = None
 ) -> str:
@@ -281,7 +336,7 @@ def cache_key(
 
 
 def synthesize(
-    text: str, *, locale: str, voice: str, rate: float = 1.0, pronunciations: list[Pronunciation] | None = None
+    text: str, *, locale: str, voice: str, rate: float = 1.0, pronunciations: list[Pronunciation] | None = None, budget=None, accounted=False
 ) -> Synthesis:
     provider = selected_speech_provider()
     pronunciations = applicable(text, pronunciations or [])
@@ -290,8 +345,22 @@ def synthesize(
         duration = audio.duration_ms(data, "audio/wav")
         if duration is None:
             raise SpeechError("The stand-in recording could not be measured.")
-        return Synthesis(data, "audio/wav", "wav", duration, "stub", audio.peaks(audio.wav_samples(data)))
-    return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
+        _marked, words = timed_ssml(text, pronunciations)
+        return Synthesis(data, "audio/wav", "wav", duration, "stub", audio.peaks(audio.wav_samples(data)), _even_word_timings(words, duration))
+    from . import local_mode
+    if local_mode.enabled() and os.environ.get("DECKASTRA_GATEWAY_URL"):
+        from deckastra_agents.gateway_client import GatewayClient
+        import base64
+        value = GatewayClient().synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
+        return Synthesis(
+            base64.b64decode(value["data"], validate=True), value["content_type"], value["extension"],
+            int(value["duration_ms"]), value["voice"], list(value.get("peaks") or []), list(value.get("word_timings") or []),
+        )
+    from .paid_services import billed
+    if accounted:
+        return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
+    with billed("speech", len(text), "DECKASTRA_SPEECH_USD_PER_MILLION", budget=budget):
+        return _google_synthesize(text, locale=locale, voice=voice, rate=rate, pronunciations=pronunciations)
 
 
 # --------------------------------------------------------------------- Google
@@ -337,27 +406,49 @@ def voice_language(locale: str, voice: str) -> str:
 def _google_synthesize(
     text: str, *, locale: str, voice: str, rate: float, pronunciations: list[Pronunciation] | None = None
 ) -> Synthesis:
+    marked, words = timed_ssml(text, pronunciations or [])
     body = {
         # SSML only when the line uses a pronunciation or a pause: plain text
         # is the documented default.
-        "input": {"ssml": ssml(text, pronunciations or [])} if needs_ssml(text, pronunciations or []) else {"text": text},
+        "input": {"ssml": marked},
         "voice": {"languageCode": voice_language(locale, voice), **({"name": voice} if voice and voice != "default" else {})},
         # MP3, not Ogg Opus: PowerPoint plays MP3 and WAV, and an Opus take
         # could not go into an exported deck at all. Google's MP3 is 32kbps
         # mono (a minute is ~240KB) and every browser decodes it.
         "audioConfig": {"audioEncoding": "MP3", "speakingRate": max(0.25, min(4.0, rate))},
+        "enableTimePointing": ["SSML_MARK"],
     }
     try:
         with httpx.Client(timeout=60) as http:
-            response = _google_request(http, "POST", "https://texttospeech.googleapis.com/v1/text:synthesize", json=body)
-        data = base64.b64decode(response.json()["audioContent"])
+            # Word timings rely on SSML mark timepoints. Google exposes those
+            # on v1beta1; v1 rejects enableTimePointing as an unknown field.
+            response = _google_request(http, "POST", "https://texttospeech.googleapis.com/v1beta1/text:synthesize", json=body)
+        payload = response.json()
+        data = base64.b64decode(payload["audioContent"])
     except (httpx.HTTPError, KeyError, ValueError) as error:
         raise SpeechError(f"Google Text-to-Speech failed: {error}") from error
     duration = audio.duration_ms(data, "audio/mpeg")
     if duration is None:
         raise SpeechError("Google returned audio whose length could not be read.")
     # MP3 is not decoded here; the editor draws the waveform from the file.
-    return Synthesis(data, "audio/mpeg", "mp3", duration, voice or "default", None)
+    points = {
+        int(str(point.get("markName", ""))[1:]): round(float(point["timeSeconds"]) * 1000)
+        for point in payload.get("timepoints", [])
+        if str(point.get("markName", "")).startswith("w") and str(point.get("markName", ""))[1:].isdigit()
+    }
+    timings = []
+    for index, word in enumerate(words):
+        if index not in points:
+            continue
+        start = points[index]
+        following = [value for key, value in points.items() if key > index]
+        end = min(following) if following else duration
+        timings.append({"word": word, "startMs": start, "endMs": max(start, end)})
+    # Chirp 3 HD currently accepts the SSML but may omit mark timepoints. Keep
+    # word-triggered reveals usable with a deterministic duration-based fallback.
+    if not timings and words:
+        timings = _even_word_timings(words, duration)
+    return Synthesis(data, "audio/mpeg", "mp3", duration, voice or "default", None, timings)
 
 
 _VOICE_CACHE: dict[str, tuple[float, list[dict[str, Any]]]] = {}
@@ -365,6 +456,54 @@ VOICE_CACHE_SECONDS = 24 * 3600
 
 #: What the stand-in offers, so the voice picker has something to show in a checkout.
 STUB_VOICES = [{"name": "stub", "label": "Stand-in tones (development)", "gender": "neutral"}]
+
+# Template voice styles are delivery intent, not provider IDs. These suffixes
+# select stable Chirp personas when available while keeping the stored template
+# independent of one locale or provider catalog.
+VOICE_STYLE_PERSONAS = {
+    "bright": ("Puck", "Aoede"),
+    "optimistic": ("Puck", "Aoede"),
+    "energising": ("Puck", "Aoede"),
+    "warm": ("Aoede", "Kore"),
+    "tender": ("Aoede", "Kore"),
+    "welcoming": ("Aoede", "Kore"),
+    "supportive": ("Aoede", "Kore"),
+    "encouraging": ("Aoede", "Kore"),
+    "inclusive": ("Aoede", "Kore"),
+    "reflective": ("Sulafat", "Charon"),
+    "calm": ("Kore", "Charon"),
+    "confident": ("Orus", "Charon"),
+    "assured": ("Orus", "Charon"),
+    "executive": ("Orus", "Charon"),
+    "direct": ("Orus", "Charon"),
+    "credible": ("Orus", "Charon"),
+    "precise": ("Gacrux", "Orus"),
+    "analytical": ("Gacrux", "Orus"),
+    "scholarly": ("Gacrux", "Charon"),
+    "candid": ("Charon", "Orus"),
+}
+
+
+def resolve_voice(locale: str, requested: str, voice_style: str = "") -> str:
+    """Turn a template's delivery style into a concrete provider voice.
+
+    An explicitly selected cue/request voice always wins. For the template
+    default, choose a matching persona from the live locale catalog and fall
+    back to that catalog's first voice when the preferred persona is absent.
+    """
+    if requested and requested != "default":
+        return requested
+    if selected_speech_provider() == "stub":
+        return "stub"
+    listed = voices(locale)
+    if not listed:
+        return "default"
+    preferences = VOICE_STYLE_PERSONAS.get((voice_style or "").strip().lower(), ())
+    for suffix in preferences:
+        match = next((item.get("name") for item in listed if str(item.get("name") or "").endswith(f"-{suffix}")), None)
+        if match:
+            return str(match)
+    return str(listed[0].get("name") or "default")
 
 
 def voices(locale: str) -> list[dict[str, Any]]:

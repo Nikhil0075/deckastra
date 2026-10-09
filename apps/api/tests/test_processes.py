@@ -54,7 +54,12 @@ def alive(pid: int) -> bool:
         return exit_code.value == 259  # STILL_ACTIVE
     try:
         import os
-
+        if sys.platform.startswith("linux"):
+            # A stopped orphan can await reaping by a container's PID 1. It is
+            # dead and holds no browser resources, even though kill(pid, 0) works.
+            status = Path(f"/proc/{pid}/stat")
+            if status.exists() and status.read_text(encoding="utf-8", errors="replace").rsplit(")", 1)[1].split()[0] == "Z":
+                return False
         os.kill(pid, 0)
         return True
     except OSError:

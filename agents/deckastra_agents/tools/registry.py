@@ -3,7 +3,7 @@
 Every capability an agent has goes through here, and the registry — not the
 agent — does the five things that must not be forgotten:
 
-- **permission checks**, so an agent cannot reach a repository the installation
+- **permission checks**, so an agent cannot invoke capabilities the installation
   does not cover (doc 03 §25),
 - **input and output validation**, so a malformed call fails at the boundary
   rather than three layers in,
@@ -74,7 +74,7 @@ class ToolDefinition:
     #: every future node remembering is not a boundary.
     untrusted_fields: tuple[str, ...] = ()
     #: The `kind` those envelopes carry. Part of the provenance identity, not
-    #: decoration: downstream code reads the kind to tell repository content from
+    #: decoration: downstream code reads the kind to distinguish evidence from
     #: deck content, and a generic label would erase that distinction.
     untrusted_kind: str = "tool-result"
     #: Retried on failure. False for anything with a side effect — a retried

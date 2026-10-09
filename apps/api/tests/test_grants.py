@@ -271,21 +271,6 @@ def test_an_agent_cannot_delete_restore_or_move_a_deck(client):
     assert "manage" in local_mode.scopes_for(SECRET)
 
 
-def test_an_agent_cannot_decide_a_paused_outline(client):
-    """The story checkpoint is a person's review (editor Phase 6).
-
-    An agent may start a generation, and may read the outline it paused on —
-    but answering it is the same act as approving a proposal.
-    """
-    token = local_mode.mint_grant({"read", "write", "export"}, ttl_seconds=60)
-    refused = client.post("/v1/runs/run_x/resume", headers=bearer(token), json={"action": "approve"})
-    assert refused.status_code == 403, refused.text
-    assert refused.json()["detail"]["required_scope"] == "approve"
-    # The control: starting one and reading it are ordinary work.
-    assert grants.required_scope("POST", "/v1/generate/review") == "write"
-    assert grants.required_scope("GET", "/v1/runs/run_x/checkpoint") == "read"
-
-
 def test_a_grant_that_cannot_say_when_it_was_issued_is_refused(client):
     """The claim the desktop forgot, and nothing said so.
 

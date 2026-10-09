@@ -1,4 +1,4 @@
-"""End-to-end HTTP: generate, edit, version, undo.
+"""End-to-end HTTP: compose, edit, version, undo.
 
 The store tests exercise the persistence layer directly. These go through the
 actual routes, because that is where authorization, validation and error mapping
@@ -56,9 +56,9 @@ def auth(session_token: dict[str, str]) -> dict[str, str]:
 @pytest.fixture()
 def deck(client: TestClient, auth: dict[str, str]) -> dict:
     response = client.post(
-        "/v1/generate",
+        "/v1/decks/from-template",
         headers=auth,
-        json={"instruction": "Explain our deploy pipeline", "slide_count": 5},
+        json={"template_id": "technical-architecture", "title": "Our deploy pipeline"},
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -78,8 +78,130 @@ def test_health_does_not_leak_the_connection_string(client: TestClient):
 def test_endpoints_require_a_token(client: TestClient):
     assert client.get("/v1/presentations/doc_x").status_code == 401
     assert (
-        client.post("/v1/generate", json={"instruction": "x"}).status_code == 401
+        client.post("/v1/decks/from-template", json={"template_id": "business-pitch"}).status_code == 401
     )
+
+
+def test_legacy_generation_and_checkpoint_routes_are_removed(
+    client: TestClient, auth: dict[str, str]
+):
+    assert client.post("/v1/generate", headers=auth, json={"instruction": "Draft a deck"}).status_code == 404
+    assert client.post("/v1/generate/review", headers=auth, json={}).status_code == 404
+    assert client.get("/v1/runs/run_legacy/checkpoint", headers=auth).status_code == 404
+    assert (
+        client.post(
+            "/v1/runs/run_legacy/resume",
+            headers=auth,
+            json={"action": "approve"},
+        ).status_code
+        == 404
+    )
+
+
+def test_account_gateway_exposes_paid_media_not_text_tasks(
+    client: TestClient, auth: dict[str, str]
+):
+    capabilities = client.get("/v1/account/capabilities", headers=auth)
+    assert capabilities.status_code == 200
+    assert set(capabilities.json()["tasks"]) == {"image", "video"}
+
+    text_request = client.post(
+        "/v1/assistant/infer",
+        headers=auth,
+        json={
+            "task": "planning",
+            "system": "Plan a deck",
+            "messages": [{"role": "user", "content": "Plan it"}],
+        },
+    )
+    assert text_request.status_code == 422
+
+
+def test_account_gateway_quotes_character_services(client: TestClient, auth: dict[str, str], monkeypatch):
+    monkeypatch.setenv("DECKASTRA_CREDITS_ENABLED", "1")
+    monkeypatch.setenv("DECKASTRA_DEVICE_SECRET", "test-device-secret")
+    monkeypatch.setenv("DECKASTRA_TRANSLATION_USD_PER_MILLION", "20")
+    monkeypatch.setenv("DECKASTRA_SPEECH_USD_PER_MILLION", "16")
+    translated = client.post("/v1/assistant/quote", headers=auth, json={"task": "translation", "units": 2500})
+    voiced = client.post("/v1/assistant/quote", headers=auth, json={"task": "speech", "units": 1000})
+    assert translated.status_code == 200, translated.text
+    assert voiced.status_code == 200, voiced.text
+    assert translated.json()["credit_cost"] == 10
+    assert voiced.json()["credit_cost"] == 3.2
+
+
+def test_reviewed_presets_create_a_deterministic_deck(client: TestClient, auth: dict[str, str]):
+    catalog = client.get("/v1/presets", headers=auth)
+    assert catalog.status_code == 200, catalog.text
+    listed = catalog.json()
+    assert {preset["purpose"] for preset in listed["presets"]} == {
+        "business", "product", "teaching", "technical", "team", "personal"
+    }
+    assert len(listed["presets"]) == 24
+    assert len(listed["themes"]) == 20
+    assert len(listed["slidePatterns"]) == 60
+    assert set(listed["motionStyles"]) == {
+        "restrained", "dynamic", "cinematic", "editorial", "energetic", "technical", "playful"
+    }
+
+    made = client.post(
+        "/v1/decks/from-template",
+        headers=auth,
+        json={
+            "template_id": "business-pitch",
+            "theme_key": "minimal-light",
+            "title": "North star proposal",
+            "content": {"opening": {"headline": "One clear direction"}},
+        },
+    )
+    assert made.status_code == 200, made.text
+    body = made.json()
+    assert body["template_id"] == "business-pitch"
+    assert body["document"]["metadata"]["title"] == "North star proposal"
+    assert body["document"]["metadata"]["templateId"] == "business-pitch"
+    assert body["document"]["theme"]["name"] == "Minimal Light"
+    assert len(body["document"]["slides"]) == 10
+    assert body["document"]["slides"][0]["elements"][1]["content"]["blocks"][0]["spans"][0]["text"] == "One clear direction"
+    assert body["document"]["metadata"]["motionStyle"] == "restrained"
+    assert body["document"]["metadata"]["voiceStyle"] == "confident"
+    assert body["document"]["slides"][0]["layout"]["templateId"] == "preset.title"
+    assert body["document"]["slides"][5]["layout"]["templateId"] == "preset.agenda"
+    assert all(slide.get("animations") for slide in body["document"]["slides"])
+
+
+def test_preset_creation_refuses_unknown_slots(client: TestClient, auth: dict[str, str]):
+    response = client.post(
+        "/v1/decks/from-template",
+        headers=auth,
+        json={"template_id": "business-pitch", "content": {"opening": {"x": 20}}},
+    )
+    assert response.status_code == 422
+    assert "Unknown slots" in response.json()["detail"]
+
+
+def test_story_plan_composes_without_a_model(client: TestClient, auth: dict[str, str]):
+    response = client.post(
+        "/v1/decks/compose",
+        headers=auth,
+        json={
+            "theme_key": "neo-technical",
+            "story_plan": {
+                "title": "Agent composed",
+                "audience": "Reviewers",
+                "objective": "Make one decision",
+                "narrative_arc": "Context to decision",
+                "slides": [{
+                    "layout": "statement",
+                    "purpose": "Record the decision",
+                    "key_message": "Use the deterministic path",
+                    "headline": "Compose, do not place",
+                    "body": "The caller supplies intent and words; Deckastra owns geometry."
+                }],
+            },
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["document"]["slides"][0]["semanticIntent"] == "Record the decision"
 
 
 def test_a_forged_token_is_rejected(client: TestClient, session_token: dict[str, str]):
@@ -260,30 +382,6 @@ def test_project_creation_checks_the_named_workspace_role(client, auth, session_
     assert refused.status_code == 404
 
 
-def test_repository_picker_uses_the_explicit_selected_workspace(client, auth, session_token):
-    other = client.post("/v1/dev/session", json={"email": "repository-owner@example.com"}).json()
-    assert (
-        client.get(
-            f"/v1/repositories?workspace_id={other['workspace_id']}", headers=auth
-        ).status_code
-        == 404
-    )
-    with db_session.session_scope() as session:
-        session.add(
-            WorkspaceMember(
-                id=new_id("mbr"),
-                workspace_id=other["workspace_id"],
-                user_id=session_token["user_id"],
-                role="viewer",
-            )
-        )
-    response = client.get(
-        f"/v1/repositories?workspace_id={other['workspace_id']}", headers=auth
-    )
-    assert response.status_code == 200
-    assert response.json()["repositories"] == []
-
-
 def test_workspace_and_project_names_cannot_be_whitespace(client, auth, session_token):
     assert client.post("/v1/workspaces", headers=auth, json={"name": "   "}).status_code == 422
     assert (
@@ -296,21 +394,34 @@ def test_workspace_and_project_names_cannot_be_whitespace(client, auth, session_
     )
 
 
-# -------------------------------------------------------------- generate + read
+def test_repository_grounding_routes_are_removed(client, auth, deck):
+    assert client.get("/v1/repositories", headers=auth).status_code == 404
+    assert client.post("/v1/repositories/search", headers=auth, json={"query": "x"}).status_code == 404
+    assert client.post("/v1/github/webhook", content=b"{}").status_code == 404
+
+    # Provenance belongs to the document and remains readable independently of
+    # any Deckastra-managed repository connection.
+    presentation_id = deck["presentation_id"]
+    document = client.get(f"/v1/presentations/{presentation_id}", headers=auth).json()["document"]
+    slide_id = document["slides"][0]["id"]
+    sources = client.get(
+        f"/v1/presentations/{presentation_id}/slides/{slide_id}/sources", headers=auth
+    )
+    assert sources.status_code == 200
+    assert sources.json() == {"slide_id": slide_id, "sources": []}
 
 
-@pytest.mark.parametrize("mode", ["blank", "graph", "single-shot"])
-def test_new_decks_adopt_a_portable_default_theme(client, auth, mode):
+# --------------------------------------------------------------- create + read
+
+
+def test_blank_decks_adopt_a_portable_default_theme(client, auth):
     from copy import deepcopy
     from deckastra_api.theme import neo_technical_theme
     definition = neo_technical_theme()
     definition["colors"]["accent"] = "#FF6600"
     saved = client.post("/v1/workspace/themes", headers=auth, json={"name": "Default brand", "definition": definition, "is_default": True})
     assert saved.status_code == 200, saved.text
-    if mode == "blank":
-        created = client.post("/v1/presentations", headers=auth, json={})
-    else:
-        created = client.post("/v1/generate", headers=auth, json={"instruction": "Explain the pipeline", "slide_count": 1, "use_graph": mode == "graph"})
+    created = client.post("/v1/presentations", headers=auth, json={})
     assert created.status_code in (200, 201), created.text
     result = created.json()
     assert result["document"]["theme"] == definition
@@ -332,86 +443,33 @@ def test_default_theme_does_not_cross_workspace_boundary(client, auth):
     assert "themeId" not in created.json()["document"]["metadata"]
 
 
-def test_checkpoint_shell_freezes_the_resolved_theme_for_resume():
-    from deckastra_api import agent_service
-    from deckastra_api.main import _empty_document
-    from deckastra_api.models import GenerateRequest
-    from deckastra_api.theme import neo_technical_theme
-
-    request = GenerateRequest(instruction="Checkpointed deck", slide_count=1)
-    definition = neo_technical_theme()
-    definition["colors"]["accent"] = "#AA3300"
-    shell = _empty_document(request, theme_definition=definition, theme_id="thm_frozen")
-
-    # A default edited while the run is paused cannot mutate its checkpoint.
-    definition["colors"]["accent"] = "#00AAFF"
-    produced = {}
-    compose = agent_service._composer(
-        request,
-        produced,
-        theme_definition=shell["theme"],
-        theme_id=shell["metadata"]["themeId"],
-    )
-    compose(
-        {
-            "title": "Checkpointed deck",
-            "narrative_arc": "Open and close.",
-            "slides": [{
-                "layout": "statement",
-                "purpose": "State the point",
-                "key_message": "The snapshot stays fixed",
-                "headline": "The snapshot stays fixed",
-                "eyebrow": "", "subtitle": "", "body": "", "bullets": [],
-                "metrics": [], "quote": "", "attribution": "", "code": "",
-                "language": "", "caption": "", "speaker_notes": "",
-            }],
-        },
-        {},
-        {},
-    )
-    assert produced["document"]["theme"]["colors"]["accent"] == "#AA3300"
-    assert produced["document"]["metadata"]["themeId"] == "thm_frozen"
-
-
-@pytest.mark.parametrize("use_graph", [True, False])
-def test_viewer_cannot_generate_or_spend_in_a_project(client, auth, session_token, monkeypatch, use_graph):
-    from deckastra_api import main
-    from deckastra_api.db.models import AgentRunRow, Presentation
+def test_viewer_cannot_create_a_template_deck(client, auth, session_token):
+    from deckastra_api.db.models import Presentation
     with db_session.session_scope() as session:
         membership = session.query(WorkspaceMember).filter(WorkspaceMember.user_id == session_token["user_id"]).one()
         membership.role = "viewer"
-    def forbidden_work(*args, **kwargs):
-        pytest.fail("Unauthorized request reached a paid/work-producing path")
-    monkeypatch.setattr(main.quotas, "check_generation", forbidden_work)
-    monkeypatch.setattr(main.agent_service, "run_deck_generation", forbidden_work)
-    monkeypatch.setattr(main, "generate_story_plan", forbidden_work)
     for project in (None, session_token["project_id"]):
-        response = client.post("/v1/generate", headers=auth, json={"instruction": "Create a deck", "project_id": project, "use_graph": use_graph})
+        response = client.post("/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "project_id": project})
         assert response.status_code == 404, response.text
     with db_session.session_scope() as session:
-        assert session.query(AgentRunRow).count() == 0
         assert session.query(Presentation).count() == 0
 
 
-def test_explicit_generation_uses_the_authorized_target_workspace(client, auth, session_token):
-    from deckastra_api.db.models import Presentation, WorkspaceQuota
-    other = client.post("/v1/dev/session", json={"email": "generation-target@localhost"}).json()
+def test_explicit_template_creation_uses_the_authorized_target_workspace(client, auth, session_token):
+    from deckastra_api.db.models import Presentation
+    other = client.post("/v1/dev/session", json={"email": "template-target@localhost"}).json()
     with db_session.session_scope() as session:
         membership = session.query(WorkspaceMember).filter(WorkspaceMember.user_id == session_token["user_id"]).one()
         membership.role = "viewer"
         session.add(WorkspaceMember(id=new_id("mbr"), workspace_id=other["workspace_id"], user_id=session_token["user_id"], role="editor"))
     # The default target must not silently skip a viewer workspace to obtain
     # editor authority elsewhere. An explicit authorized target is allowed.
-    assert client.post("/v1/generate", headers=auth, json={"instruction": "Default target"}).status_code == 404
-    response = client.post("/v1/generate", headers=auth, json={"instruction": "Create in the target workspace", "project_id": other["project_id"], "slide_count": 1})
+    assert client.post("/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch"}).status_code == 404
+    response = client.post("/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "project_id": other["project_id"]})
     assert response.status_code == 200, response.text
     with db_session.session_scope() as session:
         presentation = session.get(Presentation, response.json()["presentation_id"])
         assert presentation.project_id == other["project_id"]
-        quota = session.get(WorkspaceQuota, other["workspace_id"])
-        assert quota.used_generations == 1
-        original_quota = session.get(WorkspaceQuota, session_token["workspace_id"])
-        assert original_quota is None or original_quota.used_generations == 0
 
 
 def test_blank_creation_persists_and_accepts_manual_edits_without_a_run(client, auth):
@@ -449,10 +507,10 @@ def test_blank_creation_requires_editor_access_and_hides_foreign_projects(client
         assert client.post("/v1/presentations", headers=auth, json=payload).status_code == 404
 
 
-def test_generate_persists_a_deck(client: TestClient, auth, deck):
+def test_template_creation_persists_a_deck(client: TestClient, auth, deck):
     assert deck["presentation_id"].startswith("doc_")
     assert deck["version_id"]
-    assert len(deck["document"]["slides"]) == 5
+    assert deck["document"]["slides"]
 
     # It survives the request that made it — the point of Phase 2.
     fetched = client.get(f"/v1/presentations/{deck['presentation_id']}", headers=auth)

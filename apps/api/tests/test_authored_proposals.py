@@ -55,9 +55,9 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     response = client.post(
-        "/v1/generate",
+        "/v1/decks/from-template",
         headers=auth,
-        json={"instruction": "Explain the deploy pipeline", "slide_count": 3},
+        json={"template_id": "technical-architecture", "title": "Explain the deploy pipeline"},
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -80,21 +80,8 @@ def propose(client, auth, presentation_id: str, **body):
 # ------------------------------------------------------------------ the cost
 
 
-def test_an_authored_change_never_calls_a_model(client, auth, deck, monkeypatch):
-    """The whole reason this endpoint exists rather than reusing `agent/edit`.
-
-    `agent/edit` takes an instruction and pays a model to turn it into operations.
-    A caller that has already done that work would be billed twice for one edit,
-    and the second bill buys a worse answer — the model re-deriving intent from a
-    sentence rather than acting on the operations the first one chose.
-    """
-    from deckastra_agents import router
-
-    def refuse(*args, **kwargs):  # pragma: no cover - the point is that it never runs
-        raise AssertionError("an authored proposal must not call a model")
-
-    monkeypatch.setattr(router, "default_client", refuse)
-
+def test_an_authored_change_reaches_the_proposal_boundary_directly(client, auth, deck):
+    """A caller that authored operations must reach the proposal boundary directly."""
     presentation_id = deck["presentation_id"]
     response = propose(
         client,

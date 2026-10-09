@@ -50,7 +50,7 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     generated = client.post(
-        "/v1/generate", headers=auth, json={"instruction": "A deck to animate", "slide_count": 3}
+        "/v1/decks/from-template", headers=auth, json={"template_id": "technical-architecture", "title": "A deck to animate"}
     )
     assert generated.status_code == 200, generated.text
     return generated.json()
@@ -143,7 +143,7 @@ def test_capabilities_offer_no_way_to_name_a_duration(client, auth):
     assert answer.status_code == 200, answer.text
     body = answer.json()
 
-    assert "fade" in body["presets"] and "staggerReveal" in body["presets"]
+    assert {"fade", "staggerReveal", "wordCascade"} <= set(body["presets"])
     assert set(body["pacing"]) == {"tight", "measured", "deliberate"}
     assert "headline" in body["roles"] and "metric" in body["roles"]
     assert body["entrance_budget_ms"] == 2_500
@@ -358,6 +358,50 @@ def test_a_dry_run_plans_without_writing_anything(client, auth, deck):
     assert client.get(f"/v1/presentations/{presentation_id}/proposals", headers=auth).json() == []
 
 
+def test_a_reviewed_pattern_dry_run_inserts_after_the_named_slide(client, auth, deck):
+    presentation_id = deck["presentation_id"]
+    before = head_version(client, auth, presentation_id)
+    first = deck["document"]["slides"][0]
+    response = client.post(
+        f"/v1/presentations/{presentation_id}/patterns/insert",
+        headers=auth,
+        json={
+            "expected_version_id": before,
+            "pattern": "statement",
+            "slots": {"headline": "One clear decision"},
+            "after_slide_id": first["id"],
+            "dry_run": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "planned"
+    assert body["pattern"] == "statement"
+    [operation] = body["operations"]
+    assert operation["op"] == "add"
+    assert operation["path"] == "/slides/1"
+    assert operation["value"]["layout"]["styleLabel"] == "statement"
+    assert head_version(client, auth, presentation_id) == before
+
+
+def test_a_reviewed_motion_style_dry_run_returns_one_editor_patch_set(client, auth, deck):
+    presentation_id = deck["presentation_id"]
+    before = head_version(client, auth, presentation_id)
+    response = client.post(
+        f"/v1/presentations/{presentation_id}/motion-style",
+        headers=auth,
+        json={"expected_version_id": before, "style": "energetic", "dry_run": True},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == "planned"
+    assert body["style"] == "energetic"
+    assert body["slides_changed"] == len(deck["document"]["slides"])
+    assert any(operation["path"] == "/metadata/motionStyle" for operation in body["operations"])
+    assert any(operation["path"].endswith("/animations") for operation in body["operations"])
+    assert head_version(client, auth, presentation_id) == before
+
+
 def test_a_dry_run_transition_plans_without_writing(client, auth, deck):
     presentation_id = deck["presentation_id"]
     before = head_version(client, auth, presentation_id)
@@ -378,6 +422,21 @@ def test_a_dry_run_transition_plans_without_writing(client, auth, deck):
     assert operation["path"].endswith("/transition") and operation["value"]["type"] == "fade"
     assert operation["value"]["durationMs"] > 0
     assert head_version(client, auth, presentation_id) == before
+
+
+@pytest.mark.parametrize("kind", ["cover", "wipe", "split", "iris", "flip", "blurDissolve"])
+def test_every_engine_transition_is_available_through_the_api(client, auth, deck, kind):
+    presentation_id = deck["presentation_id"]
+    response = client.post(
+        f"/v1/presentations/{presentation_id}/transition",
+        headers=auth,
+        json={"slide_id": deck["document"]["slides"][1]["id"],
+              "expected_version_id": head_version(client, auth, presentation_id),
+              "kind": kind, "dry_run": True},
+    )
+    assert response.status_code == 200, response.text
+    [operation] = response.json()["operations"]
+    assert operation["value"]["type"] == kind
 
 
 def test_a_dry_run_is_still_refused_against_a_stale_version(client, auth, deck):

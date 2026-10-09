@@ -11,21 +11,17 @@ three scopes: what has no translation yet (`missing`), what has one whose source
 changed (`outdated`), or every slot on some slides. Nothing else is touched;
 an overlay can only ever replace words.
 
-**Providers are chosen, never fallen back to** — the rule `router.py` keeps for
-generation, for the same reason: slide text sent to a cloud service is a privacy
-decision, and making it silently because a preferred provider was missing takes
-it on someone's behalf.
+**Providers are chosen, never fallen back to.** Slide text sent to a cloud
+service is a privacy decision, and making it silently because a preferred
+provider was missing takes it on someone's behalf.
 
 - `stub` — keyless, deterministic, and visibly not a translation: every result
-  is the source text marked `[hi-IN]`. It is what lets the whole path run in a
-  checkout and in CI, the same job the stub planner does.
-- `model` — the intelligence this install already chose (cloud or local), with
-  structured output validated by Pydantic and one repair attempt.
+  is the source text marked `[hi-IN]`. It lets the whole path run in a checkout
+  and in CI without presenting generated text as a real translation.
 - `google` — Cloud Translation, for an operator who configured it.
 
-Unset means: an installed product uses `model` if generation is set up and
-refuses otherwise; a checkout uses `model` when a model is configured and the
-stub when not.
+Unset means a checkout uses the stub. An installed product refuses until Cloud
+Translation is explicitly configured.
 
 **Protected spans** — numbers, URLs, e-mail addresses, code spans,
 `{{placeholders}}` and the caller's do-not-translate terms — are replaced with
@@ -33,40 +29,28 @@ tokens before anything is sent and restored after. A translator that drops or
 invents a token has changed a number on a slide, so that one slot is refused and
 reported rather than written.
 
-Slide text sent to a model goes through `envelope()`: it is content, and a slide
-that says "ignore your instructions" is a slide about prompt injection.
+There is deliberately no general text-model translator. A person's coding
+agent can author locale overlays through MCP, while the app's paid translation
+path stays a bounded Cloud Translation service.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
 import httpx
-from deckastra_agents.budgets import RunBudget
-from deckastra_agents.contracts import strict_schema
-from deckastra_agents.envelope import POLICY, envelope
-from deckastra_agents.router import (
-    TASK_STRUCTURED,
-    ModelClient,
-    ModelError,
-    ModelRequest,
-    ModelUnavailable,
-    distribution,
-    generation_status,
-)
-from pydantic import BaseModel, Field, ValidationError
+from deckastra_agents.router import ModelUnavailable
 
 from . import locales
 from . import google_credentials
 
 TRANSLATION_ENV = "DECKASTRA_TRANSLATION"
-PROVIDERS = ("stub", "model", "google")
-#: How many slots go to a translator in one request: enough to give a model
-#: context across a slide, few enough that one bad answer costs little.
+PROVIDERS = ("stub", "google")
+#: How many slots go to a translator in one request: enough to preserve useful
+#: slide context while keeping a failed provider call bounded.
 BATCH = 40
 
 
@@ -146,90 +130,6 @@ class StubTranslator:
         return {item.id: f"[{target}] {item.text}" for item in items}
 
 
-class _Translation(BaseModel):
-    id: str = Field(min_length=1, max_length=40)
-    text: str = Field(max_length=6000)
-
-
-class _TranslationBatch(BaseModel):
-    translations: list[_Translation]
-
-
-class ModelTranslator:
-    """The configured model, asked for structured output and validated."""
-
-    name = "model"
-    origin = "machine"
-
-    def __init__(self, client: ModelClient, budget: RunBudget | None = None, *, stage: str = "", max_attempts: int = 2, feedback: str = "") -> None:
-        self.client = client
-        self.budget = budget or RunBudget()
-        self.stage, self.max_attempts, self.feedback = stage, max_attempts, feedback
-
-    def translate(self, items: list[Item], *, source: str, target: str) -> dict[str, str]:
-        payload = json.dumps(
-            [{"id": item.id, "text": item.text, **({"max_chars": item.budget} if item.budget else {})} for item in items],
-            ensure_ascii=False,
-        )
-        system = (
-            f"You translate presentation slide text from {source} to {target}.\n"
-            "Return one translation for every item, with the same id.\n"
-            "Copy tokens like ⟦0⟧ exactly, once each, where they belong in the translated sentence.\n"
-            "Keep it as short as a slide needs: when an item has max_chars, the translation must fit "
-            "within it; choose a shorter natural wording rather than cutting words off.\n"
-            "Translate meaning, not word by word. Preserve proper names and every distinction between actors and actions. "
-            "A character budget is approximate: never drop a clause or reverse who does what to shorten text. "
-            "Preserve real newline characters, never substitute literal backslash-n text. Do not add explanations.\n\n" + POLICY
-        )
-        request = ModelRequest(
-            task_type=TASK_STRUCTURED,
-            system=system,
-            messages=[{"role": "user", "content": "Items to translate:\n" + envelope(payload)}],
-            response_schema=strict_schema(_TranslationBatch),
-            max_tokens=min(16_000, 400 + sum(len(item.text) for item in items) * 4),
-            stage=self.stage,
-        )
-        if self.feedback:
-            request.messages.append({"role": "user", "content": self.feedback})
-        errors: list[str] = []
-        observation = {"stage": self.stage or "translation", "contract": "_TranslationBatch", "attempts": 0, "valid_first_attempt": False, "outcome": "pending"}
-        self.budget.structured_requests.append(observation)
-        for attempt in range(1, self.max_attempts + 1):
-            observation["attempts"] = attempt
-            if errors:
-                request.messages = [
-                    *request.messages,
-                    {"role": "user", "content": "That response did not validate:\n" + "\n".join(errors) + "\nReturn corrected JSON."},
-                ]
-            try:
-                response = self.client.complete(request, self.budget)
-            except ModelError as error:
-                observation["outcome"] = "provider_error"
-                raise TranslationError(str(error)) from error
-            if response.refusal:
-                observation["outcome"] = "refusal"
-                raise TranslationError(f"The model declined to translate ({response.refusal}).")
-            try:
-                batch = _TranslationBatch.model_validate(json.loads(response.text))
-            except (json.JSONDecodeError, ValidationError) as error:
-                errors = [str(error)[:600]]
-                observation["outcome"] = "invalid"
-                if attempt == self.max_attempts:
-                    raise TranslationError("The model did not return a valid translation after bounded repair.") from error
-                continue
-            wanted = {item.id for item in items}
-            received = [entry.id for entry in batch.translations]
-            if set(received) != wanted or len(received) != len(wanted):
-                errors = ["Return every requested item exactly once; no missing, duplicate or unknown IDs."]
-                observation["outcome"] = "invalid"
-                if attempt == self.max_attempts:
-                    raise TranslationError(errors[0])
-                continue
-            observation.update(valid_first_attempt=attempt == 1, outcome="valid")
-            return {entry.id: entry.text for entry in batch.translations if entry.id in wanted}
-        return {}
-
-
 #: The few languages Cloud Translation lists *with* a region or script, because
 #: the two variants translate differently. Everything else it lists by the bare
 #: language code, and a regional tag such as ``hi-IN`` is not on its list.
@@ -302,8 +202,9 @@ class GoogleTranslator:
 
     def translate(self, items: list[Item], *, source: str, target: str) -> dict[str, str]:
         texts = [item.text for item in items]
+        from .paid_services import billed
         try:
-            with httpx.Client(timeout=30) as http:
+            with billed("translation", sum(map(len, texts)), "DECKASTRA_TRANSLATION_USD_PER_MILLION"), httpx.Client(timeout=30) as http:
                 if self.token and self.project:
                     body: dict[str, Any] = {
                         "contents": texts,
@@ -337,6 +238,20 @@ class GoogleTranslator:
         return {item.id: text for item, text in zip(items, translated, strict=False)}
 
 
+class GatewayTranslator:
+    """Cloud Translation through the desktop's private signed-in bridge."""
+
+    name = "google"
+    origin = "machine"
+
+    def translate(self, items: list[Item], *, source: str, target: str) -> dict[str, str]:
+        from deckastra_agents.gateway_client import GatewayClient
+        try:
+            return GatewayClient().translate(items, source=source, target=target)
+        except ModelUnavailable as error:
+            raise TranslationError(str(error)) from error
+
+
 def selected_translator_name() -> str:
     """Which provider this install translates with, without building it."""
     choice = os.environ.get(TRANSLATION_ENV, "").strip().lower()
@@ -346,18 +261,18 @@ def selected_translator_name() -> str:
             f"Use one of: {', '.join(PROVIDERS)}. Nothing was sent anywhere."
         )
     if choice:
-        if choice == "stub" and distribution():
+        if choice == "stub" and _installed_product():
             raise ModelUnavailable("The keyless stand-in translator is for development; it is not in an installed product.")
         return choice
-    status = generation_status()
-    if status.get("available") and status.get("provider") in ("cloud", "local"):
-        return "model"
-    if distribution():
+    if _installed_product():
         raise ModelUnavailable(
-            "Translation is not set up on this install. Add a cloud API key under Intelligence, or "
-            "translate with a connected AI agent."
+            "Translation is not configured. Set DECKASTRA_TRANSLATION=google and configure Google Cloud Translation."
         )
     return "stub"
+
+
+def _installed_product() -> bool:
+    return os.environ.get("DECKASTRA_DISTRIBUTION", "").strip() == "1" or os.environ.get("DECKASTRA_ENV") == "production"
 
 
 def translation_status() -> dict[str, Any]:
@@ -368,20 +283,34 @@ def translation_status() -> dict[str, Any]:
         return {"provider": "none", "available": False, "reason": str(error)}
     reasons = {
         "stub": "Development stand-in: every translation is the source text marked with the language. Nothing is sent.",
-        "model": "Translated by the model this install uses for generation. Slide text is sent to it.",
         "google": "Translated by Google Cloud Translation. Slide text is sent to Google.",
     }
     return {"provider": name, "available": True, "reason": reasons[name]}
 
 
-def build_translator(client_factory) -> Translator:
-    """The chosen translator. `client_factory` builds the model client when it is the model."""
+def build_translator() -> Translator:
+    """Build the explicitly selected translation service."""
     name = selected_translator_name()
     if name == "stub":
         return StubTranslator()
-    if name == "google":
-        return GoogleTranslator()
-    return ModelTranslator(client_factory())
+    from . import local_mode
+    if local_mode.enabled() and os.environ.get("DECKASTRA_GATEWAY_URL"):
+        return GatewayTranslator()
+    return GoogleTranslator()
+
+
+def characters_to_translate(document: dict[str, Any], slots: list[locales.Slot], glossary: list[str] | None = None) -> int:
+    """Billable masked characters, shared by quoting and execution."""
+    total = 0
+    for slot in slots:
+        if isinstance(slot.value, str):
+            total += len(mask(slot.value, glossary)[0])
+        else:
+            for block in slot.value.get("blocks") or []:
+                text = "".join(str(span.get("text", "")) for span in block.get("spans") or [])
+                if text.strip():
+                    total += len(mask(text, glossary)[0])
+    return total
 
 
 # ------------------------------------------------------------------- the plan

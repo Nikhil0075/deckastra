@@ -8,7 +8,7 @@ service. The live run is still the operator's, with a real key.
 
 Each request shape is checked against Google's published REST reference:
 Cloud Translation v2 ``translate`` and v3 ``translateText``, and Text-to-Speech
-v1 ``text:synthesize`` and ``voices``.
+v1beta1 ``text:synthesize`` (for SSML mark timepoints) and v1 ``voices``.
 """
 
 from __future__ import annotations
@@ -177,13 +177,15 @@ def test_synthesis_asks_for_mp3_so_powerpoint_can_carry_it(google, monkeypatch):
     assert (result.content_type, result.extension) == ("audio/mpeg", "mp3")
     assert result.duration_ms == 3000  # 125 frames × 576 samples ÷ 24kHz
     assert result.voice == "hi-IN-Chirp3-HD-Kore"
+    assert result.word_timings == [{"word": "नमस्ते", "startMs": 0, "endMs": 3000}]
     request = seen[0]
-    assert str(request.url).startswith("https://texttospeech.googleapis.com/v1/text:synthesize")
+    assert str(request.url).startswith("https://texttospeech.googleapis.com/v1beta1/text:synthesize")
     assert request.url.params["key"] == "test-key"
     body = json.loads(request.content)
     # A plain "hi" deck speaks as its voice's own tag; a mismatch is refused by Google.
     assert body["voice"] == {"languageCode": "hi-IN", "name": "hi-IN-Chirp3-HD-Kore"}
-    assert body["input"] == {"text": "नमस्ते"}
+    assert body["input"] == {"ssml": '<speak><mark name="w0"/>नमस्ते</speak>'}
+    assert body["enableTimePointing"] == ["SSML_MARK"]
     assert body["audioConfig"]["audioEncoding"] == "MP3"
     assert body["audioConfig"]["speakingRate"] == 1.2
 
@@ -232,6 +234,18 @@ def test_voices_match_by_language_with_the_decks_region_first(google, monkeypatc
     assert seen[0].url.params["languageCode"] == "en-US"
 
 
+def test_template_voice_style_selects_a_matching_live_persona(monkeypatch):
+    monkeypatch.setenv("DECKASTRA_SPEECH", "google")
+    monkeypatch.setattr(speech, "voices", lambda _locale: [
+        {"name": "en-US-Chirp3-HD-Orus", "label": "Orus"},
+        {"name": "en-US-Chirp3-HD-Aoede", "label": "Aoede"},
+    ])
+
+    assert speech.resolve_voice("en-US", "default", "warm") == "en-US-Chirp3-HD-Aoede"
+    assert speech.resolve_voice("en-US", "default", "executive") == "en-US-Chirp3-HD-Orus"
+    assert speech.resolve_voice("en-US", "en-US-Standard-A", "warm") == "en-US-Standard-A"
+
+
 def test_a_deck_tagged_without_a_region_still_finds_voices(google, monkeypatch):
     _seen, answers = google
     monkeypatch.setenv("DECKASTRA_SPEECH", "google")
@@ -259,13 +273,14 @@ def test_a_line_using_a_pronunciation_is_sent_as_escaped_ssml(google, monkeypatc
     speech.synthesize("Deckastra <3 AI, said deckastra.", locale="en-US", voice="default", pronunciations=names)
 
     assert json.loads(seen[-1].content)["input"] == {
-        "ssml": '<speak><sub alias="Deck &quot;astra&quot;">Deckastra</sub> &lt;3 <sub alias="A I">AI</sub>, '
-        'said <sub alias="Deck &quot;astra&quot;">deckastra</sub>.</speak>'
+        "ssml": '<speak><mark name="w0"/><sub alias="Deck &quot;astra&quot;">Deckastra</sub> &lt;'
+        '<mark name="w1"/>3 <mark name="w2"/><sub alias="A I">AI</sub>, <mark name="w3"/>said '
+        '<mark name="w4"/><sub alias="Deck &quot;astra&quot;">deckastra</sub>.</speak>'
     }
 
-    # A line that uses none of them stays plain text: SSML only where it is needed.
+    # Unmatched pronunciations do not add substitutions; timing marks remain.
     speech.synthesize("Nothing to rename here.", locale="en-US", voice="default", pronunciations=names)
-    assert json.loads(seen[-1].content)["input"] == {"text": "Nothing to rename here."}
+    assert '<sub ' not in json.loads(seen[-1].content)["input"]["ssml"]
 
 
 def test_only_the_pronunciations_a_line_uses_change_its_recording():
@@ -410,14 +425,17 @@ def test_pauses_and_phonetic_names_become_ssml_google_accepts(google, monkeypatc
     names = [speech.Pronunciation("Deckastra", "/ˈdɛkæstrə/"), speech.Pronunciation("GCP", "G C P")]
     speech.synthesize("Deckastra on GCP. [pause 1.5s] Done [pause].", locale="en-US", voice="default", pronunciations=names)
     assert json.loads(seen[-1].content)["input"]["ssml"] == (
-        '<speak><phoneme alphabet="ipa" ph="ˈdɛkæstrə">Deckastra</phoneme> on <sub alias="G C P">GCP</sub>. '
-        '<break time="1500ms"/> Done <break time="500ms"/>.</speak>'
+        '<speak><mark name="w0"/><phoneme alphabet="ipa" ph="ˈdɛkæstrə">Deckastra</phoneme> '
+        '<mark name="w1"/>on <mark name="w2"/><sub alias="G C P">GCP</sub>. '
+        '<break time="1500ms"/> <mark name="w3"/>Done <break time="500ms"/>.</speak>'
     )
-    # A pause alone is reason enough for SSML; a plain line stays plain text.
+    # A pause and a plain line both retain word marks for reveal timing.
     speech.synthesize("Wait [pause] here.", locale="en-US", voice="default")
     assert "ssml" in json.loads(seen[-1].content)["input"]
     speech.synthesize("Plain line.", locale="en-US", voice="default")
-    assert json.loads(seen[-1].content)["input"] == {"text": "Plain line."}
+    assert json.loads(seen[-1].content)["input"] == {
+        "ssml": '<speak><mark name="w0"/>Plain <mark name="w1"/>line.</speak>'
+    }
 
 
 def test_the_stand_in_voice_is_as_long_as_its_pauses():

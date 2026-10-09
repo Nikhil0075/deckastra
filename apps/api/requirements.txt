@@ -1,38 +1,23 @@
 # Deckastra API.
 
-anthropic>=1.4,<2
 fastapi>=0.115,<1
 uvicorn[standard]>=0.32,<1
 pydantic>=2.9,<3
 jsonschema>=4.23,<5
 
 # Persistence (Phase 2).
-SQLAlchemy>=2.0,<3
+SQLAlchemy>=2.0,<2.1
 alembic>=1.13,<2
 # psycopg 3. The sync driver is deliberate: FastAPI runs sync endpoints in a
 # thread pool, and async buys nothing until there is measured pool pressure.
 psycopg[binary]>=3.2,<4
 
-# The agent system (Phase 5).
-#
-# LangGraph owns the graph, the conditional edges and the checkpointer. The agent
-# logic deliberately does not depend on it: nodes are plain functions over a
-# TypedDict, so they are testable without building a graph and the framework
-# stays replaceable.
-langgraph>=0.6,<1
-# Durable checkpoints in Postgres, ephemeral progress in Redis (doc 05 §25 vs
-# doc 03 §19 — resolved in favour of both, each for what it is good at).
-langgraph-checkpoint-postgres>=2.0
-# The desktop build runs on SQLite, and a run that cannot pause cannot be reviewed.
-langgraph-checkpoint-sqlite>=2.0,<4
+# Assistant progress fan-out.
 redis>=5.0,<7
 
-# GitHub integration (Phase 6).
-#
-# `cryptography` signs the App JWT. `httpx` is already a transitive dependency of
-# the test client; naming it here makes the GitHub client's use of it explicit
-# rather than accidental.
+# OAuth token verification uses RSA primitives directly.
 cryptography>=42,<51
+# HTTP is used directly by cloud service clients and tests.
 httpx>=0.27,<1
 # Mints and renews Google tokens from a named credentials file (google_credentials.py).
 google-auth>=2.30,<3
@@ -42,6 +27,7 @@ google-auth>=2.30,<3
 PyJWT[crypto]>=2.10,<3
 # S3-compatible asset storage (AWS S3 in production, MinIO locally).
 boto3>=1.40,<2
+google-cloud-storage>=3.0,<4
 
 # Export verification (Phase 8).
 #
@@ -55,6 +41,7 @@ pypdf>=5,<7
 # (`assets.representative_frame`). Already installed through python-pptx; named
 # because the service imports it directly.
 pillow>=11,<13
+fonttools[woff]==4.66.1
 
 # Observability: API handles alone do not export anything. These matching SDK
 # and HTTP/protobuf exporter versions are exercised by local collector tests.

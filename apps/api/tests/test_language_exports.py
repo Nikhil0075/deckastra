@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -185,6 +186,22 @@ def test_a_japanese_pdf_draws_real_glyphs_from_the_systems_cjk_face(tmp_path):
     assert any(name for name in fonts if any(face in name.replace("-", "").replace(" ", "") for face in ("YuGothic", "Meiryo", "NotoSansJP", "MSGothic"))), fonts
 
 
+@pytest.mark.skipif(not os.environ.get("DECKASTRA_TEST_CJK_PACK_DIR"), reason="requires the downloaded, verified CJK pack")
+def test_japanese_pdf_embeds_the_downloaded_font_pack(tmp_path, monkeypatch):
+    from deckastra_api import font_packs
+    document = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    document.pop("locales", None)
+    document["metadata"]["language"] = "ja"
+    title = document["slides"][0]["elements"][0]
+    title["content"]["blocks"] = [{**title["content"]["blocks"][0], "spans": [{"text": "ひとつのデッキ、すべての言語"}]}]
+    monkeypatch.setenv("DECKASTRA_FONT_PACK_DIR", os.environ["DECKASTRA_TEST_CJK_PACK_DIR"])
+    font_packs.ensure_for_document(document)
+    path, _ = _export(tmp_path, "pdf", None, with_audio=False, document=document)
+    reader = pypdf.PdfReader(str(path))
+    assert "ひとつのデッキ、すべての言語" in reader.pages[0].extract_text()
+    assert any("NotoSansJP" in name.replace("-", "").replace(" ", "") for name in _pdf_fonts(reader))
+
+
 @pytest.mark.skipif(shutil.which("pdftotext") is None, reason="Poppler's pdftotext reads the /ActualText Chromium writes")
 def test_an_arabic_pdf_reads_back_as_its_own_letters(tmp_path):
     """Read complete source paragraphs through Poppler's ActualText support.
@@ -210,3 +227,12 @@ def test_an_arabic_pdf_reads_back_as_its_own_letters(tmp_path):
     normalized = " ".join(logical.translate(dict.fromkeys(map(ord, "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"))).split())
     assert "عرض واحد، كل لغة" in normalized, text
     assert "\x00" not in text
+
+
+def test_arabic_character_map_preserves_dotted_letters_without_actual_text(tmp_path):
+    from pypdf import PdfReader
+    path, _ = _export(tmp_path, "pdf", "ar", with_audio=False)
+    extracted = PdfReader(path).pages[0].extract_text()
+    letters = "".join(c for c in extracted if "\u0600" <= c <= "\u06ff")
+    expected = "".join(c for c in "عرض واحد، كل لغة" if "\u0600" <= c <= "\u06ff")
+    assert sorted(letters) == sorted(expected), repr(extracted)
