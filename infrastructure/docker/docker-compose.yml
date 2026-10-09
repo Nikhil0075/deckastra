@@ -13,10 +13,8 @@ name: deckastra
 
 services:
   postgres:
-    # pgvector rather than plain postgres: the repository index (Phase 6) stores
-    # embeddings alongside the relational data, and doc 05 §39 keeps the vector
-    # store flexible. Postgres is already in the stack, so this is the low-friction
-    # answer and adding it now costs nothing.
+    # pgvector remains only so a fresh database can replay the historical
+    # repository-index migration before the removal migration drops those tables.
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: deckastra
@@ -54,7 +52,13 @@ services:
     # S3-compatible object storage for assets, exports and render previews.
     # Developing against real S3 semantics locally is what stops "works on my
     # machine, 403s in staging".
-    image: minio/minio:latest
+    # The upstream public registry images are no longer anonymously available.
+    # Build the published releases from their official source instead.
+    image: deckastra-minio:RELEASE.2025-10-15T17-29-55Z
+    build:
+      context: .
+      dockerfile: minio.Dockerfile
+      target: server
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: deckastra
@@ -65,7 +69,7 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -73,7 +77,11 @@ services:
   minio-init:
     # Creates the buckets the app expects, so a fresh clone works without a manual
     # console step.
-    image: minio/mc:latest
+    image: deckastra-mc:RELEASE.2025-08-13T08-35-41Z
+    build:
+      context: .
+      dockerfile: minio.Dockerfile
+      target: client
     depends_on:
       minio:
         condition: service_healthy
@@ -84,7 +92,7 @@ services:
       mc mb --ignore-existing local/deckastra-exports &&
       mc mb --ignore-existing local/deckastra-previews &&
       mc version enable local/deckastra-assets &&
-      rules="$$(mc ilm rule ls --json local/deckastra-assets)" &&
+      rules="$$(mc ilm rule ls --json local/deckastra-assets || true)" &&
       case "$$rules" in
         *NoncurrentDays*35*) true ;;
         *) mc ilm rule add --noncurrent-expire-days 35 --expire-delete-marker local/deckastra-assets ;;

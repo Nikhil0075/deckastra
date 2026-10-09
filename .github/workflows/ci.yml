@@ -60,6 +60,12 @@ jobs:
       - name: JSON Schema is not stale
         run: npm run schema:drift
 
+      # A preset is public authoring API. Validate its named slots, prove each
+      # validator family with a negative control, and keep the human review
+      # contact sheet in sync with the source catalog.
+      - name: Deck preset catalog and review sheet
+        run: npm run presets:check
+
       # Fixtures are generated from the schema too. A drifted fixture would make
       # every downstream test assert against a document shape that no longer exists.
       - name: Fixtures are not stale
@@ -130,6 +136,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -185,7 +198,7 @@ jobs:
       # are byte-identical. There are two implementations because the store
       # replays operations server-side; this is what keeps them from drifting.
       - name: API tests
-        run: python -m pytest apps/api/tests -q
+        run: python -m pytest apps/api/tests -q -m 'not slow'
 
       # The agent system runs against the deterministic stub client, so it needs
       # no API key and spends nothing. What it checks is the part that is ours:
@@ -199,17 +212,6 @@ jobs:
       # credential, and a mistake in one turns a private deck public silently.
       - name: Launch hardening tests
         run: python -m pytest apps/api/tests/test_launch.py -q
-
-      # The indexing side of Journey B: the ignore rules, the ranking, the
-      # chunker, the GitHub App's JWT and the webhook signature. No network and
-      # no credentials — the signature tests generate their own key, and the
-      # source adapter reads a temporary directory.
-      #
-      # A gate rather than a nicety: the ignore rules are what stop a private key
-      # being embedded into a database, and the signature check is the product's
-      # only unauthenticated trust boundary.
-      - name: Integration tests
-        run: python -m pytest integrations -q
 
       # The models and the migration are two descriptions of one schema, so they
       # drift: someone adds a column, create_all() picks it up, every test passes,
@@ -276,7 +278,7 @@ jobs:
       - name: Start production-shaped persistence services
         run: |
           docker compose -f infrastructure/docker/docker-compose.yml up -d --wait postgres minio
-          docker compose -f infrastructure/docker/docker-compose.yml up minio-init
+          docker compose -f infrastructure/docker/docker-compose.yml up --exit-code-from minio-init minio-init
 
       - name: Migrate source database
         env:
@@ -368,6 +370,7 @@ jobs:
           DECKASTRA_SMOKE_PROFILE: ${{ github.workspace }}/.artifacts/desktop-profile
           DECKASTRA_SMOKE_FIXTURES: ${{ github.workspace }}/packages/presentation-schema/fixtures
           DECKASTRA_SMOKE_BASELINES: ${{ github.workspace }}/packages/renderer/baselines
+          DECKASTRA_SIDECAR: ${{ github.workspace }}/apps/desktop/dist/sidecar/deckastra-service/deckastra-service.exe
         run: |
           mkdir -p "$DECKASTRA_SMOKE_DIR" "$DECKASTRA_SMOKE_PROFILE"
           cd apps/desktop

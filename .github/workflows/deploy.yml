@@ -1,0 +1,129 @@
+name: Deploy Google Cloud backend
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      deploy_web:
+        description: Also deploy the finished web frontend
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths: ['apps/api/**', 'apps/worker/**', 'agents/**', 'packages/**', 'infrastructure/**', 'package*.json', '.github/workflows/deploy.yml']
+  pull_request:
+    paths: ['apps/api/**', 'apps/worker/**', 'apps/desktop/src/main/**', 'agents/**', 'packages/**', 'infrastructure/**', '.github/workflows/deploy.yml']
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: cloud-backend-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || inputs.environment || 'dev' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: deckastra
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: deckastra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
+      - name: Backend checks against PostgreSQL
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg://deckastra:ci_only@localhost:5432/deckastra
+        run: python -m pytest apps/api/tests agents/tests infrastructure/deployment/tests -q -m 'not slow'
+  deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: deckastra
+          POSTGRES_PASSWORD: ci_only
+          POSTGRES_DB: deckastra
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      GCP_PROJECT: ${{ inputs.environment == 'prod' && 'deckastra-prod' || 'deckastra' }}
+      GCP_NUMBER: ${{ inputs.environment == 'prod' && '794139896808' || '524807414967' }}
+      CLOUDSDK_CORE_DISABLE_PROMPTS: '1'
+      POSTGRES_TEST_URL: postgresql+psycopg://deckastra:ci_only@localhost:5432/deckastra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/${{ env.GCP_NUMBER }}/locations/global/workloadIdentityPools/deckastra-github/providers/github
+          service_account: deckastra-deploy@${{ env.GCP_PROJECT }}.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Configure deployment CLI
+        run: |
+          gcloud config configurations create deckastra --no-activate
+          gcloud config set project "$GCP_PROJECT" --configuration=deckastra
+          gcloud config set auth/credential_file_override "$GOOGLE_GHA_CREDS_PATH" --configuration=deckastra
+      - name: Verify build source excludes temporary credentials
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess
+          files = subprocess.check_output(['gcloud', 'meta', 'list-files-for-upload'], text=True).splitlines()
+          if any(pathlib.PurePosixPath(p).name.startswith('gha-creds-') and p.endswith('.json') for p in files):
+              raise SystemExit('Temporary workflow credentials cannot be uploaded as build source.')
+          print('PASS: temporary workflow credentials excluded from build source.')
+          PY
+      - name: Build immutable images
+        run: >-
+          gcloud builds submit --project="$GCP_PROJECT" --configuration=deckastra
+          --suppress-logs
+          --config=infrastructure/deployment/cloudbuild.yaml
+          --substitutions="_REGION=asia-south1,_TAG=$GITHUB_SHA"
+          --service-account="projects/$GCP_PROJECT/serviceAccounts/deckastra-build@$GCP_PROJECT.iam.gserviceaccount.com"
+          --gcs-source-staging-dir="gs://$GCP_PROJECT-build-source/source"
+      - name: Migrate, verify candidate workflows and promote
+        run: python infrastructure/deployment/bootstrap.py deploy --project "$GCP_PROJECT" --tag "$GITHUB_SHA"
+      - name: Verify readiness
+        run: |
+          API_URL=$(gcloud run services describe deckastra-api --region=asia-south1 --project="$GCP_PROJECT" --configuration=deckastra --format='value(status.url)')
+          curl --fail --retry 5 --retry-delay 5 "$API_URL/ready"
+      - name: Build selected web environment
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_web
+        run: |
+          API_URL=$(gcloud run services describe deckastra-api --region=asia-south1 --project="$GCP_PROJECT" --configuration=deckastra --format='value(status.url)')
+          gcloud builds submit --project="$GCP_PROJECT" --configuration=deckastra --suppress-logs \
+            --config=infrastructure/deployment/cloudbuild-web.yaml \
+            --substitutions="_REGION=asia-south1,_TAG=$GITHUB_SHA,_API_URL=$API_URL" \
+            --service-account="projects/$GCP_PROJECT/serviceAccounts/deckastra-build@$GCP_PROJECT.iam.gserviceaccount.com" \
+            --gcs-source-staging-dir="gs://$GCP_PROJECT-build-source/source"
+      - name: Connect web origin and promote tested web revision
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_web
+        run: python infrastructure/deployment/web_hosting.py --project "$GCP_PROJECT" --tag "$GITHUB_SHA"

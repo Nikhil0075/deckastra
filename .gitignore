@@ -12,6 +12,7 @@ build/
 out/
 coverage/
 .artifacts/
+artifacts/
 *.tsbuildinfo
 
 __pycache__/
@@ -24,6 +25,11 @@ venv/
 .env
 .env.local
 .env.*.local
+infrastructure/deployment/state/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
 !.env.example
 
 .DS_Store

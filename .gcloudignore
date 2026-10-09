@@ -1,0 +1,14 @@
+.git
+gha-creds-*.json
+**/gha-creds-*.json
+.gitignore
+.gcloudignore
+#!include:.dockerignore
+**/tests
+**/*.log
+**/*.png
+**/*.jpg
+**/*.mp3
+.venv
+venv
+deckastra.db*
