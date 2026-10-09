@@ -55,19 +55,42 @@ CI's Export job now installs the runner's ffmpeg (6.1, with `libx264`) and
 runs these tests, so the libx264 and old-spelling path is covered on every
 push, and this audit covers the LGPL and `h264_mf` path.
 
-## Before it ships
+## Storage and packaging
 
-1. Store this `ffmpeg.exe` (SHA-256 above) where the release build can fetch
-   it by hash.
-2. Bundle it at `resources/ffmpeg/ffmpeg.exe` through `extraResources`.
-   `ffprobe` and `ffplay` are not shipped.
-3. Add it to `THIRD_PARTY_NOTICES` with the LGPL-3.0 text, the exact version,
-   and a link to its source (FFmpeg `n9.0.2-24-gfd5d616c29` and BtbN's build
-   scripts).
-4. Sign it with the release certificate. `verify-release.mjs` refuses it
-   otherwise.
-5. Rebuild the installer and smoke-test a narrated MP4 export and a video
+**Stored:** `gs://deckastra-build-vendor/ffmpeg/n9.0.2-24-gfd5d616c29-win64-lgpl/`
+in the `deckastra` project (asia-south1). The bucket is private, versioned,
+and has an unlocked five-year retention policy. Versioning means a delete or
+overwrite keeps the old bytes as a noncurrent generation. It does not stop a
+path from changing (checked on 2026-10-09: a test delete moved `LICENSE.txt` to
+a noncurrent generation, and it was restored from it). So nothing is fetched by
+path alone. The original archive and BtbN's `checksums.sha256` are kept under
+`source/`.
+
+**Pinned:** `apps/desktop/ffmpeg.lock.json` names each file by object and exact
+generation, with its size and SHA-256.
+
+**Packaged:**
+- `npm run ffmpeg` (`scripts/fetch-ffmpeg.mjs`, part of `npm run package`)
+  fetches each file by generation through `gcloud`, or from
+  `DECKASTRA_FFMPEG_FROM`. It accepts only the pinned size and SHA-256 and
+  re-runs the licence audit on the result.
+- `electron-builder.yml` copies `dist/ffmpeg` to `resources/ffmpeg`.
+- `manifest.mjs` records its hashes.
+- `notices.mjs` adds it to `THIRD_PARTY_NOTICES` with the LGPL-3.0 text, the
+  exact version and the source links.
+- `verify-release.mjs` checks it file by file and refuses one the build never
+  recorded.
+- Outside a release, a failed fetch leaves no ffmpeg, and that package cannot
+  export MP4. With `DECKASTRA_RELEASE=1` it stops the build.
+
+**Still open:**
+1. Sign it with the release certificate. electron-builder includes
+   `resources/ffmpeg/ffmpeg.exe` in its signing pass, and `verify-release.mjs`
+   requires a valid signature in a release.
+2. Rebuild the installer and smoke-test a narrated MP4 export and a video
    poster frame on the installed app.
+3. Building a release in CI needs read access to the bucket for the CI
+   identity. Releases are built locally today, with the maintainer's `gcloud`.
 
 Size: at 134 MB uncompressed, this is the largest single file the installer
 would carry. A minimal LGPL build with only the needed codecs, filters and

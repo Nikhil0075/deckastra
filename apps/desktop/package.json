@@ -10,7 +10,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "package": "npm run build && npm run build:sidecar && npm run sbom && npm run notices && npm run manifest && electron-builder --publish never",
+    "package": "npm run build && npm run build:sidecar && npm run ffmpeg && npm run sbom && npm run notices && npm run manifest && electron-builder --publish never",
+    "ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "manifest": "node scripts/manifest.mjs",
     "sbom": "node scripts/sbom.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",

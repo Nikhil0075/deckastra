@@ -178,6 +178,9 @@ export function buildManifest() {
       worker: fileHashes(join(dist, "worker")),
       mcp: fileHashes(join(dist, "mcp")),
       sidecar: fileHashes(join(dist, "sidecar", "deckastra-service")),
+      // Optional: a development package may carry none. When it does, the
+      // release gate checks it file by file like any other payload.
+      ...(existsSync(join(dist, "ffmpeg", "ffmpeg.exe")) ? { ffmpeg: fileHashes(join(dist, "ffmpeg")) } : {}),
     },
     migrations,
     dependencies: {

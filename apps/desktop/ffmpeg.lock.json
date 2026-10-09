@@ -1,0 +1,25 @@
+{
+  "$comment": "The audited ffmpeg the desktop installer ships (docs/evaluations/FFMPEG_AUDIT_2026-10-09.md). Fetched by exact object generation and accepted only if its SHA-256 and size match; a path alone could be replaced. Change this file only together with a new audit.",
+  "version": "n9.0.2-24-gfd5d616c29",
+  "build": "BtbN/FFmpeg-Builds win64-lgpl (n9.0 release branch), 2026-10-09",
+  "license": "LGPL-3.0-or-later",
+  "source": {
+    "ffmpeg": "https://git.ffmpeg.org/gitweb/ffmpeg.git/commit/fd5d616c29",
+    "buildScripts": "https://github.com/BtbN/FFmpeg-Builds",
+    "archive": "gs://deckastra-build-vendor/ffmpeg/n9.0.2-24-gfd5d616c29-win64-lgpl/source/ffmpeg-n9.0-latest-win64-lgpl-9.0.zip#1791567483539516"
+  },
+  "files": {
+    "ffmpeg.exe": {
+      "object": "gs://deckastra-build-vendor/ffmpeg/n9.0.2-24-gfd5d616c29-win64-lgpl/ffmpeg.exe",
+      "generation": "1791567160247179",
+      "sha256": "9e93e998e4f540b2eca34409daa015fbeddf090dfaa9f9c762d380e2b235e105",
+      "bytes": 134499328
+    },
+    "LICENSE.txt": {
+      "object": "gs://deckastra-build-vendor/ffmpeg/n9.0.2-24-gfd5d616c29-win64-lgpl/LICENSE.txt",
+      "generation": "1791567659911190",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768",
+      "bytes": 7651
+    }
+  }
+}

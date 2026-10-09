@@ -153,7 +153,12 @@ export function verifyRelease({ releaseDir, distManifest, current, probe, publis
   // 3. Intact — collect every native file first, so one probe call covers them.
   const native = [];
   const nativeRecorded = new Map();
-  for (const payload of PAYLOADS) {
+  // ffmpeg is optional in a development package, so it is checked whenever
+  // the build recorded it or the folder holds anything: a binary placed there
+  // after the build is "not in the build", never silently accepted.
+  const ffmpegFolder = join(resources, "ffmpeg");
+  const shipsFfmpeg = Boolean(embedded.installed?.ffmpeg) || (existsSync(ffmpegFolder) && readdirSync(ffmpegFolder).length > 0);
+  for (const payload of [...PAYLOADS, ...(shipsFfmpeg ? ["ffmpeg"] : [])]) {
     const recorded = embedded.installed?.[payload];
     const folder = join(resources, payload);
     const summary = { files: 0, missing: [], added: [], changed: [], nativeChanged: [] };

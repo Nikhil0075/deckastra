@@ -66,6 +66,13 @@ extraResources:
   # under `ELECTRON_RUN_AS_NODE`, which has no asar support.
   - from: dist/mcp
     to: mcp
+  # The audited LGPL ffmpeg for MP4 export and video poster frames, fetched by
+  # exact generation and SHA-256 (`npm run ffmpeg`, `ffmpeg.lock.json`). A
+  # separate program, run as a subprocess, so it stays replaceable as the LGPL
+  # asks. `sidecar.ts` looks for `resources/ffmpeg/ffmpeg.exe`. Empty in a
+  # development package that could not fetch it.
+  - from: dist/ffmpeg
+    to: ffmpeg
 win:
   # Project-owned multi-resolution Windows icon, derived from the adjacent
   # 1024px PNG source. Keeping the ICO in-tree makes Windows packaging

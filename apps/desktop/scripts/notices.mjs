@@ -91,6 +91,35 @@ function vendoredComponents() {
   return { components, problems };
 }
 
+/**
+ * The audited ffmpeg, when this build packages it (`dist/ffmpeg`). It is a
+ * separate program, so the obligation is its licence text, its exact version,
+ * and where its corresponding source is. All three come from
+ * `ffmpeg.lock.json` and the LICENSE.txt that was fetched with the binary.
+ */
+export function ffmpegComponent(dir = join(dist, "ffmpeg"), lockFile = join(desktop, "ffmpeg.lock.json")) {
+  if (!existsSync(join(dir, "ffmpeg.exe"))) return { component: null, problems: [] };
+  const lock = JSON.parse(readFileSync(lockFile, "utf8"));
+  const licence = join(dir, "LICENSE.txt");
+  if (!existsSync(licence)) return { component: null, problems: ["ffmpeg.exe is packaged without its LICENSE.txt."] };
+  const source = [
+    `Corresponding source: FFmpeg ${lock.version}, ${lock.source.ffmpeg}`,
+    `Build scripts: ${lock.source.buildScripts} (${lock.build})`,
+    "Deckastra runs ffmpeg.exe as a separate program and does not modify it; it can be replaced",
+    "with another build of the same or a later version.",
+  ].join("\n");
+  return {
+    component: {
+      ecosystem: "binary",
+      name: "ffmpeg",
+      version: lock.version,
+      license: lock.license,
+      texts: [{ file: "SOURCE", text: source }, { file: "LICENSE.txt", text: readFileSync(licence, "utf8") }],
+    },
+    problems: [],
+  };
+}
+
 const PYTHON_DUMP = `
 import json, sys, importlib.metadata as md, os
 out = []
@@ -159,10 +188,12 @@ export function buildNotices() {
   const npm = npmComponents();
   const py = pythonComponents();
   const vendored = vendoredComponents();
-  const components = [...npm.components, ...vendored.components, ...py.components];
+  const ffmpeg = ffmpegComponent();
+  const binaries = ffmpeg.component ? [ffmpeg.component] : [];
+  const components = [...npm.components, ...vendored.components, ...binaries, ...py.components];
   const unresolved = components.filter((c) => c.texts.length === 0 && !c.license).map((c) => `${c.name}@${c.version}`);
   const withoutText = components.filter((c) => c.texts.length === 0 && c.license).map((c) => `${c.name}@${c.version} (${c.license})`);
-  const problems = [...npm.problems, ...vendored.problems, ...py.problems];
+  const problems = [...npm.problems, ...vendored.problems, ...ffmpeg.problems, ...py.problems];
   if (py.cpython && !py.cpython.text) problems.push("The CPython licence text could not be found for the embedded interpreter.");
 
   const rule = "=".repeat(78);
@@ -188,6 +219,7 @@ export function buildNotices() {
   };
   section("The editor, exporter and agent server (JavaScript)", npm.components);
   section("Content included in the editor's own code (icon geometry)", vendored.components);
+  if (binaries.length) section("Programs Deckastra runs (MP4 export and video frames)", binaries);
   section("The workspace service (Python)", py.components);
   if (py.cpython) {
     lines.push(rule, `Python ${py.cpython.version} (embedded interpreter)`, rule, "", py.cpython.text, "");
