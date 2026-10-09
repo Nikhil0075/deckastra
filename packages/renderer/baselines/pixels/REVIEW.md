@@ -107,3 +107,39 @@ Dependencies were installed on the host with
 `npm ci --os=linux --cpu=x64 --ignore-scripts` and the workspace links relinked
 inside the container, because Docker on this host still cannot reach the npm
 registry (the same limitation as 2026-09-17).
+
+## 2026-10-09: two renderer side effects of the motion and narration work
+
+Eight of eleven hashes changed on both platforms, the same eight on each:
+`technical/0`, `technical/1`, `technical/4`, `repository/0` and
+`animation/0` to `animation/3`. `main` had been failing on exactly this list
+since the multilingual and motion work landed, because neither baseline was
+re-recorded with it.
+
+Each cause was isolated by reverting it alone and re-running the gate on
+Windows:
+
+- **Text sub-targets** (`9c19a16`). `SlideView` now defaults to
+  `segmentText = true`, wrapping every line, word and grapheme in its own span
+  so word and letter presets have something to move. With it switched off,
+  six of the eight return to their old hashes byte for byte. The exporter
+  already passes `segmentText: false`, so PDF and PowerPoint were unaffected.
+- **Prepared effect layers** (`9c19a16`). Every animated element now carries
+  three invisible layers (glow, shimmer, gradient drift) at opacity 0. With
+  those removed as well, the last two animation slides return to their old
+  hashes, so all eleven match.
+
+What changed is anti-aliasing at glyph edges, about one pixel wide. That was
+checked at full resolution against renders made with both causes reverted.
+Letterforms, spacing, line breaks and positions are unchanged. Because
+splitting text into spans is the change most likely to damage complex
+scripts, shaping was checked separately in the same Chromium: Arabic stays
+joined, Devanagari conjuncts stay intact, and the width of a run differs by
+0.1px between one text run and per-grapheme spans.
+
+Recorded on Windows with `UPDATE_PIXELS=1`, then re-run with
+`REQUIRE_PIXEL_BASELINE=1` and no update mode: green, including both
+determinism properties and the negative control. Linux uses the exact
+`linux-x64.json.computed` that CI uploaded for `9e886b0` (Chromium
+`153.0.8010.12`, the pinned image). Its three unchanged hashes match the old
+baseline.
