@@ -4947,6 +4947,7 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
   Registration now rejects an untrusted tool without field declarations and
   rejects blank field names. This is a configuration error before any tool call.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
+- **Migrations are additive.** A failed cloud release restores the previous API and worker but keeps the migrated database, so an `upgrade()` that drops, renames or sets NOT NULL needs a module-level `CONTRACT` saying why the previous release no longer uses it (`test_migration_compatibility.py`; release order in `docs/BACKEND_CLOUD.md`).
 - The schema is **not** dialect-neutral: `JsonColumn` is JSONB on PostgreSQL and
   JSON everywhere else. `test_postgres.py` compiles the DDL for both dialects
   with no server, and runs the migration, a document round-trip and the

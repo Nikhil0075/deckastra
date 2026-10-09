@@ -84,7 +84,30 @@ def check_readiness(url):
     raise RuntimeError("Release readiness check failed.")
 
 
-def verify_and_promote(cloud, candidate_tag, previous):
+def restore_worker(cloud, previous_worker):
+    """Put the export worker back on the revisions it ran before this release.
+
+    The worker cannot be staged behind a tag like the API: it serves no
+    requests, it polls the shared queue, so any revision that is running is
+    live. It is therefore deployed live and verified through the candidate API,
+    and a failed release has to take it back explicitly. Before this existed a
+    failed release left a new worker beside the old API (2026-10-09).
+    """
+    if not previous_worker:
+        print("WARNING: first worker deployment failed verification; there is no previous revision to restore.", flush=True)
+        return
+    cloud.run("run", "services", "update-traffic", "deckastra-export-worker", f"--region={cloud.region}",
+              traffic_argument(previous_worker))
+
+
+def verify_and_promote(cloud, candidate_tag, previous, previous_worker=None):
+    """Verify the API candidate against the new worker, then promote; on failure undo both.
+
+    The smoke test's export is processed by the worker this release deployed,
+    which is the point: a worker fix must be able to ship even when the
+    previous worker is the thing that is broken, so verifying against the old
+    worker would deadlock exactly the release that repairs it.
+    """
     from smoke_cloud import run_smoke
     restore = traffic_argument(previous) if previous else None
     promotion_attempted = False
@@ -104,8 +127,13 @@ def verify_and_promote(cloud, candidate_tag, previous):
                   f"--to-revisions={row['revisionName']}=100")
         check_readiness(candidate["status"]["url"])
     except Exception:
-        if promotion_attempted and restore:
-            cloud.run("run", "services", "update-traffic", "deckastra-api", f"--region={cloud.region}", restore)
+        try:
+            if promotion_attempted and restore:
+                cloud.run("run", "services", "update-traffic", "deckastra-api", f"--region={cloud.region}", restore)
+        finally:
+            # Whatever happened to the API, the worker returns with it: a
+            # release is both services or neither.
+            restore_worker(cloud, previous_worker)
         raise
     finally:
         result = cloud.run("run", "services", "update-traffic", "deckastra-api", f"--region={cloud.region}",

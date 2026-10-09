@@ -38,6 +38,20 @@ python infrastructure/deployment/smoke_cloud.py --project deckastra
 
 The migration completes before API traffic changes. The previous API revision keeps traffic while the new API and worker start. A deployment with an irreversible database migration must be recovered with a compatible image or a database restore, not a blind downgrade. The `.mydeck` migration refuses downgrade while package export rows exist.
 
+**A release is both services or neither.** `bootstrap.py deploy` runs in this order:
+
+1. Snapshot the API and the worker. If the rollback evidence for either is incomplete, stop before migrating.
+2. Migrate.
+3. Deploy the API as a tagged, no-traffic candidate.
+4. Deploy the export worker live.
+5. Smoke-test through the candidate URL, then promote the API.
+
+If anything after step 4 fails, `release_checks.restore_worker` returns the worker to its recorded revisions, as well as restoring the API.
+
+The worker cannot wait behind a tag, because it serves no requests: any running revision polls the shared queue. It also has to be the new worker that passes the smoke test. Otherwise a release that repairs a broken worker could never pass verification. On 2026-10-09 a release failed verification and, before this rule, left the new worker beside the old API.
+
+**The database is the one thing that does not go back.** A failed release leaves the previous code running on the new schema, so migrations must be additive. `apps/api/tests/test_migration_compatibility.py` fails on an `upgrade()` that drops, renames or sets NOT NULL, unless it declares a module-level `CONTRACT` saying why the previous release no longer needs what it removes. Expand in one release, contract in the next. On 2026-10-09 the repository-grounding removal dropped tables in the same release that stopped using them, and the restored API kept serving routes over tables that no longer existed.
+
 GitHub deployment uses Workload Identity Federation restricted to repository ID `1404289067`, owner ID `75252681`, and `main`; there are no long-lived GitHub Google keys. Main pushes deploy development; manual dispatch selects development or production. CI uses PostgreSQL before deploying. The image tag is the Git commit SHA. `promote.yaml` copies already-built images to production for manual promotion.
 
 Build source and Docker contexts exclude `gha-creds-*.json`, and the workflow checks the upload list before building. Two earlier private source archives contained temporary WIF authentication configuration; their active objects were removed. The files were not copied into container images, and no long-lived service-account key was created. GCS soft-deleted copies follow the bucket's seven-day retention. Clean replacement archives were checked directly. Deployment permissions include metadata read on the source bucket and image read on the exact Artifact Registry repository. Public Firebase browser keys are restricted to Identity Toolkit and Secure Token APIs.

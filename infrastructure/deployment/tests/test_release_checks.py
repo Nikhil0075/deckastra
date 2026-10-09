@@ -120,3 +120,57 @@ def test_permission_failure_is_not_a_first_deployment(cloud, monkeypatch):
     monkeypatch.setattr(cloud, "run", lambda *_, **__: SimpleNamespace(returncode=1, stderr="PERMISSION_DENIED", stdout=""))
     with pytest.raises(RuntimeError, match="Cannot inspect"):
         release.service_snapshot(cloud, "deckastra-api")
+
+
+def worker_snapshot(revision="worker-old"):
+    return {"status": {"traffic": [{"revisionName": revision, "percent": 100, "latestRevision": True}]}}
+
+
+def worker_calls(cloud):
+    return [call for call in cloud.calls if "deckastra-export-worker" in call]
+
+
+def test_a_failed_smoke_puts_the_worker_back(cloud, monkeypatch):
+    # 2026-10-09: the release failed verification, the API stayed on its old
+    # revision, and the new worker kept running beside it.
+    def fail(*_, **__): raise RuntimeError("export stayed queued")
+    monkeypatch.setattr(sys.modules["smoke_cloud"], "run_smoke", fail)
+    with pytest.raises(RuntimeError, match="export stayed queued"):
+        release.verify_and_promote(cloud, "check-123", snapshot(), worker_snapshot())
+    assert worker_calls(cloud) == [("run", "services", "update-traffic", "deckastra-export-worker",
+                                    "--region=asia-south1", "--to-revisions=worker-old=100")]
+
+
+def test_a_failed_live_check_restores_the_api_and_the_worker(cloud, monkeypatch):
+    def check(url):
+        if url == "https://api.test": raise RuntimeError("live failed")
+    monkeypatch.setattr(release, "check_readiness", check)
+    with pytest.raises(RuntimeError, match="live failed"):
+        release.verify_and_promote(cloud, "check-123", snapshot(), worker_snapshot())
+    assert any("--to-revisions=api-old=100" in call for call in cloud.calls)
+    assert any("--to-revisions=worker-old=100" in call for call in worker_calls(cloud))
+
+
+def test_the_worker_is_restored_even_when_restoring_the_api_fails(cloud, monkeypatch):
+    original = cloud.run
+    def run(*args, **kwargs):
+        if "--to-revisions=api-old=100" in args: raise RuntimeError("api restore failed")
+        return original(*args, **kwargs)
+    monkeypatch.setattr(cloud, "run", run)
+    monkeypatch.setattr(release, "check_readiness", lambda url: (_ for _ in ()).throw(RuntimeError("live failed")) if url == "https://api.test" else None)
+    with pytest.raises(RuntimeError):
+        release.verify_and_promote(cloud, "check-123", snapshot(), worker_snapshot())
+    assert any("--to-revisions=worker-old=100" in call for call in worker_calls(cloud))
+
+
+def test_a_successful_release_leaves_the_new_worker_alone(cloud):
+    release.verify_and_promote(cloud, "check-123", snapshot(), worker_snapshot())
+    assert worker_calls(cloud) == []
+
+
+def test_a_first_worker_deployment_has_nothing_to_restore(cloud, monkeypatch):
+    def fail(*_, **__): raise RuntimeError("export failed")
+    monkeypatch.setattr(sys.modules["smoke_cloud"], "run_smoke", fail)
+    with pytest.raises(RuntimeError, match="export failed"):
+        release.verify_and_promote(cloud, "check-123", snapshot(), None)
+    assert worker_calls(cloud) == []
