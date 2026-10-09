@@ -1,0 +1,574 @@
+{
+  "locale": "en",
+  "runtime_id": "vertex-native-v2-b595a6665095d582",
+  "request": {
+    "task": "generate",
+    "instruction": "Create a concise 3-slide introduction to schema migrations using only the supplied migration guide. Explain the purpose, review process and conclusion. No invented statistics or quotations.",
+    "presentation_id": "doc_01M45C6430ZXB5TGHCFRSQYFE7",
+    "slide_count": 3,
+    "locale": "en",
+    "generation_mode": "replace",
+    "scope": {
+      "kind": "deck",
+      "slide_ids": [],
+      "element_ids": []
+    }
+  },
+  "source_inputs": [
+    {
+      "id": "migration-guide",
+      "kind": "document",
+      "title": "Migration guide",
+      "text": "A schema migration records changes to the database schema. Review the migration before applying it. Keep migrations in version control. A rollback must be compatible with stored data."
+    }
+  ],
+  "stages": [],
+  "result": {
+    "operations": [
+      {
+        "op": "replace",
+        "path": "/slides",
+        "value": [
+          {
+            "id": "sld_01M45C7ERQF8RQY01XMECMB0ND",
+            "name": "Managing Database Schema Migrations",
+            "semanticIntent": "Introduce the topic and establish the core definition of schema migrations.",
+            "keyMessage": "Schema migrations track database changes systematically.",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "title",
+              "templateId": "phase1.title"
+            },
+            "elements": [
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0N8",
+                "type": "text",
+                "semanticRole": "eyebrow",
+                "transform": {
+                  "x": 120,
+                  "y": 340.0,
+                  "width": 1680,
+                  "height": 40
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0N7",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "Database Engineering"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.caption.fontFamily",
+                  "fontSize": 18,
+                  "color": "token:colors.accent",
+                  "letterSpacing": 4,
+                  "textTransform": "uppercase"
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              },
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0NA",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 400.0,
+                  "width": 1680,
+                  "height": 280
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0N9",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "Managing Database Schema Migrations"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.display.fontFamily",
+                  "fontSize": 88,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.05
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 48
+              },
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0NC",
+                "type": "text",
+                "semanticRole": "subtitle",
+                "transform": {
+                  "x": 120,
+                  "y": 700.0,
+                  "width": 1176.0,
+                  "height": 90
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NB",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "Recording, reviewing, and safely applying database changes"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.body.fontFamily",
+                  "fontSize": 28,
+                  "color": "token:colors.foregroundMuted"
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "Welcome, everyone. Today we are walking through the core discipline of database schema migrations and how to handle them reliably.",
+            "animations": [
+              {
+                "id": "anm_01M45C7ERQF8RQY01XMECMB0NE",
+                "targetId": "el_01M45C7ERQF8RQY01XMECMB0NA",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45C7ERQF8RQY01XMECMB0NF",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 600,
+                    "easing": "emphasized"
+                  }
+                ]
+              },
+              {
+                "id": "anm_01M45C7ERQF8RQY01XMECMB0NG",
+                "targetId": "el_01M45C7ERQF8RQY01XMECMB0NC",
+                "trigger": {
+                  "type": "timer",
+                  "delayMs": 200
+                },
+                "label": "subtitle in",
+                "clips": [
+                  {
+                    "id": "clp_01M45C7ERQF8RQY01XMECMB0NH",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 600,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          },
+          {
+            "id": "sld_01M45C7ERQF8RQY01XMECMB0NR",
+            "name": "Review migrations before applying changes",
+            "semanticIntent": "Explain the necessary steps to review and track migrations before applying them.",
+            "keyMessage": "Migrations require review and version control prior to execution.",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "bullets",
+              "templateId": "phase1.bullets"
+            },
+            "elements": [
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0NK",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 120,
+                  "width": 1680,
+                  "height": 147.2
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NJ",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "Review migrations before applying changes"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.h1.fontFamily",
+                  "fontSize": 64,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.1
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 35.2
+              },
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0NQ",
+                "type": "text",
+                "semanticRole": "body",
+                "transform": {
+                  "x": 120,
+                  "y": 300.0,
+                  "width": 1428.0,
+                  "height": 268
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NM",
+                      "type": "bullet",
+                      "spans": [
+                        {
+                          "text": "A schema migration records changes to the database schema."
+                        }
+                      ]
+                    },
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NN",
+                      "type": "bullet",
+                      "spans": [
+                        {
+                          "text": "Review the migration before applying it."
+                        }
+                      ]
+                    },
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NP",
+                      "type": "bullet",
+                      "spans": [
+                        {
+                          "text": "Keep migrations in version control."
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.body.fontFamily",
+                  "fontSize": 28,
+                  "color": "token:colors.foreground",
+                  "lineHeight": 1.5
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "Before pushing any changes to our environments, every migration must undergo thorough review and remain tracked within version control.",
+            "animations": [
+              {
+                "id": "anm_01M45C7ERQF8RQY01XMECMB0NS",
+                "targetId": "el_01M45C7ERQF8RQY01XMECMB0NK",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45C7ERQF8RQY01XMECMB0NT",
+                    "preset": "fade",
+                    "startMs": 0,
+                    "durationMs": 420,
+                    "easing": "emphasized"
+                  }
+                ]
+              },
+              {
+                "id": "anm_01M45C7ERQF8RQY01XMECMB0NV",
+                "targetId": "el_01M45C7ERQF8RQY01XMECMB0NQ",
+                "trigger": {
+                  "type": "timer",
+                  "delayMs": 110
+                },
+                "label": "body in",
+                "clips": [
+                  {
+                    "id": "clp_01M45C7ERQF8RQY01XMECMB0NW",
+                    "preset": "fade",
+                    "startMs": 0,
+                    "durationMs": 420,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          },
+          {
+            "id": "sld_01M45C7ERQF8RQY01XMECMB0P1",
+            "name": "A rollback must be compatible with stored data",
+            "semanticIntent": "Conclude with the critical rule regarding rollback compatibility and stored data.",
+            "keyMessage": "Rollbacks must always remain compatible with existing data.",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "statement",
+              "templateId": "phase1.statement"
+            },
+            "elements": [
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0NY",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 380,
+                  "width": 1680,
+                  "height": 320
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NX",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "A rollback must be compatible with stored data"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.display.fontFamily",
+                  "fontSize": 80,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.1
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "align": "center",
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 44
+              },
+              {
+                "id": "el_01M45C7ERQF8RQY01XMECMB0P0",
+                "type": "text",
+                "semanticRole": "subtitle",
+                "transform": {
+                  "x": 372.0,
+                  "y": 720,
+                  "width": 1176.0,
+                  "height": 90
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45C7ERQF8RQY01XMECMB0NZ",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "Preserving data integrity across every reversion"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.body.fontFamily",
+                  "fontSize": 26,
+                  "color": "token:colors.foregroundMuted"
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "align": "center",
+                  "lineBreakStrategy": "balanced"
+                }
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "To wrap up: planning a migration means planning its reversal. Any rollback operation you design must strictly remain compatible with existing stored records.",
+            "animations": [
+              {
+                "id": "anm_01M45C7ERQF8RQY01XMECMB0P2",
+                "targetId": "el_01M45C7ERQF8RQY01XMECMB0NY",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45C7ERQF8RQY01XMECMB0P3",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 600,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "op": "add",
+        "path": "/metadata/language",
+        "value": "en"
+      },
+      {
+        "op": "add",
+        "path": "/extensions",
+        "value": {
+          "deckastra.sources": [
+            {
+              "id": "migration-guide",
+              "kind": "document",
+              "label": "Migration guide",
+              "reference": "migration-guide",
+              "excerpt": "A schema migration records changes to the database schema. Review the migration before applying it. Keep migrations in version control. A rollback must be compatible with stored data."
+            },
+            {
+              "id": "sld_01M45C6430ZXB5TGHCFRSQYFE8",
+              "kind": "slide",
+              "label": "Slide 1",
+              "excerpt": "Slide 1"
+            }
+          ]
+        }
+      }
+    ],
+    "warnings": [],
+    "findings": []
+  },
+  "schema_errors": [],
+  "slide_count": 3,
+  "source_language": "en",
+  "automatic_valid": true,
+  "seconds": 43.939245100002154,
+  "usage": {
+    "used_tokens": 9392,
+    "input_tokens": 8018,
+    "output_tokens": 1374,
+    "structured_requests": [
+      {
+        "stage": "orchestrate",
+        "contract": "OrchestratorPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "story",
+        "contract": "StoryPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "creative",
+        "contract": "CreativeDirection",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "layout",
+        "contract": "LayoutProposal",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "motion",
+        "contract": "MotionPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "critic",
+        "contract": "CriticResult",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      }
+    ],
+    "max_total_tokens": 250000,
+    "revisions": 0,
+    "max_revisions": 3,
+    "elapsed_seconds": 43.99,
+    "startup_seconds": 0.0,
+    "used_cost_usd": 0.022332,
+    "reserved_cost_usd": 0.0,
+    "max_cost_usd": 0.75,
+    "warnings": []
+  }
+}
