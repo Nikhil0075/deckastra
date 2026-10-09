@@ -1954,7 +1954,7 @@ Render each slide in a headless Chromium page at logical size, then `Page.printT
 
 ---
 
-## 35. Video Export — Future
+## 35. Video Export — Implemented in Phase 6
 
 Video rendering reuses the scene graph, animation tracks, slide transitions, and narration.
 
@@ -1979,6 +1979,13 @@ This requires `seek()` to be exact and stateless (§26.2). Chromium's determinis
 ### 35.2 Pipeline
 
 Frames → PNG/YUV stream → `ffmpeg` (H.264/AAC, 1920×1080, 30 or 60 fps) → MP4. Narration audio (TTS or recorded) mixed on the timeline; slide durations derived from `estimatedDurationSeconds` or narration length.
+
+The implementation is `apps/worker/src/video.ts`. It writes deterministic PNG
+frames at an exact 24, 30 or 60 fps cadence and gives ffmpeg an explicit frame
+count and quantized duration. Narration, sound cues and the already-compiled
+music duck/fade envelope use the same global millisecond schedule. The cloud
+image installs ffmpeg; a packaged desktop resolves a separately audited binary
+from `Resources/ffmpeg` or `DECKASTRA_FFMPEG`.
 
 ### 35.3 Cost warning
 

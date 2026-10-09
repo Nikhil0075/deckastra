@@ -204,13 +204,13 @@ unpolished; **Missing** = backend supports it, no UI.
 
 | Surface | Status | Backend |
 | --- | --- | --- |
-| Ask / edit with a scope | Built (`AskPanel`) | `agent.edit` |
+| Ask / edit with a scope | Removed by plan 09; connected agents author through proposals | MCP `proposals` route |
 | Pending proposals: approve/reject with version | Built (`ProposalsPanel`) | `agent.proposals/approve/reject` |
 | Undo an AI / external change | Built | `agent.revert`, `undoExternalChange` |
 | Proposal Before/After images | Built (Phase 6) — drawn in the editor from the proposal's operations applied to the deck on screen | `agent.proposal` (operations + base version) |
 | Critic issues | Built (`CriticIssues`) — minimal |
 | Sources / provenance | Built (`SourcesPanel`) |
-| Repositories connect/index | Built (`RepositoryPanel`) — in the Generate drawer, where choosing one grounds a new deck |
+| Repository grounding | Removed — connected coding agents already have the repository open and attach evidence through proposals |
 | Motion by roles, transition by roles | Built (Phase 7) — a dry run of the same planner, measured against the entrance budget, applied as the person's own edit | `motion.propose` / `motion.proposeTransition` with `dry_run` |
 | Story checkpoint approval (human pause) | Built (Phase 6) — Generate in the deck list: Approve / Revise with a note / Discard | `generation.review`, `.checkpoint`, `.decide`; `capabilities.checkpoints` |
 | Explainability (what / why / which agent / sources) | Partial | proposal label + agent id only |

@@ -137,7 +137,7 @@ Each row maps to a delivery bullet, a closely related group of bullets, or an ex
 | P5.11 | Persistent accepted-layout/rejection/dismissal memory | Partial | [Memory](../agents/deckastra_agents/memory.py), SQL store and rejection recording exist; accepted-layout and dismissed-issue writers are only called by tests. [G16](#g16--memory-feedback-loop-is-incomplete). |
 | P5.12 | Highest-scoring fallback, attached unresolved slide issues | Partial | Revision limits force acceptance, but `best_result` is unused and no candidate snapshots are retained. Unresolved issues remain in graph state rather than visible slide metadata. [G17](#g17--critic-fallback-and-creative-output-are-not-fully-applied). |
 | P5.13 | Internal model-provider routing interface | Complete | [Router](../agents/deckastra_agents/router.py), stub and configured provider client; agent tests exercise replacement without document-schema changes. |
-| P5.14 | Journey C: selected chart edit → preview → approve → isolated undo | Partial | [Edit translator](../apps/api/deckastra_api/edit_service.py) only supports text/role/delete/reorder. [AskPanel](../apps/web/components/AskPanel.tsx) shows reasons rather than a rendered before/after. [G18](#g18--contextual-editing-is-narrower-than-journey-c). |
+| P5.14 | Journey C: selected chart edit → preview → approve → isolated undo | Superseded | Plan 09 removed the built-in prompt/edit agent. Connected agents submit operations to the proposal boundary; proposal preview, approval and isolated revert remain. |
 | P5.15 | Close graph naming/streaming/checkpoint documentation gaps | Partial | Code resolves several decisions, but [doc 03](03_AGENT_ARCHITECTURE_LANGGRAPH.md) still shows Source Analysis/User Context and older scope wording. Gap-register status is stale. [G19](#g19--documentation-status-needs-reconciliation). |
 
 ### Phase 6 — GitHub
@@ -235,9 +235,9 @@ Priorities: **P1** = data-loss risk, broken required journey or ineffective oper
 
 **P1; P5.12.** `best_result` chooses a review but is unused; state stores review history, not candidate draft snapshots. `propose` composes the latest story regardless of earlier scores. `unresolved_issues` is returned in graph state but is not attached to document slides or displayed by the editor. The API `_composer` also accepts `direction` without using it. **Remaining:** retain and select the highest-scoring complete candidate, apply approved creative tokens, map unresolved issues onto final slide ids and surface them. **Accept when:** a lower-scoring last revision cannot replace a better earlier draft, the resulting deck carries visible unresolved issues, and changing creative direction changes intended output without agent-generated geometry.
 
-### G18 — Contextual editing is narrower than Journey C
+### G18 — Contextual editing was superseded by the agent-first plan
 
-**P1; P5.14.** The edit contract supports only text, role, deletion and reordering; it cannot perform the plan's chart-data/type/style example. Preview data exists server-side but AskPanel displays explanations, not the proposed visual result. Adopting a server document also needs the pending-edit protection in G04. **Remaining:** add deterministic chart edit intents, render a preview against the relevant version, and integrate approval/rejection/isolated undo with pending local work. **Accept when:** selecting a chart, requesting a change, inspecting the actual result, approving, manually editing another object and undoing only the AI transaction all work without loss.
+**Closed by plan 09.** The built-in Ask/edit contract and route were removed. Connected agents author id-addressed operations through the proposal boundary; Deckastra retains rendered proposal previews, approval/rejection, version checks, and isolated revert.
 
 ### G19 — Documentation status needs reconciliation
 
