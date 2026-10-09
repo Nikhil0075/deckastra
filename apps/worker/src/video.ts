@@ -260,6 +260,50 @@ function gainExpression(points: readonly SoundtrackGainPoint[]): string {
 
 export interface FfmpegInput { path: string; event: VideoAudioEvent }
 
+export interface VideoEncoder {
+  name: "libx264" | "h264_mf";
+  args: readonly string[];
+}
+
+/**
+ * H.264 encoders in order of preference. Every one writes H.264 in MP4, which
+ * is what PowerPoint embeds and every player opens.
+ *
+ * `libx264` is GPL, so it is used only where ffmpeg is not redistributed: the
+ * cloud export image installs Debian's ffmpeg. A desktop installer hands
+ * ffmpeg to users and therefore ships an LGPL build, which has no libx264 and
+ * encodes through Windows' own Media Foundation H.264 encoder instead; its
+ * patent licence comes with the operating system. OpenH264 is deliberately not
+ * a fallback: Cisco covers royalties only for its own binary downloaded
+ * separately to the user's device, never for a copy compiled into ffmpeg.
+ */
+export const VIDEO_ENCODERS: readonly VideoEncoder[] = [
+  { name: "libx264", args: ["-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p"] },
+  { name: "h264_mf", args: ["-c:v", "h264_mf", "-rate_control", "quality", "-quality", "80", "-pix_fmt", "yuv420p"] },
+];
+
+/** Encoder names from `ffmpeg -hide_banner -encoders`, e.g. " V....D libx264 ...". */
+export function parseEncoders(listing: string): Set<string> {
+  const names = new Set<string>();
+  for (const line of listing.split(/\r?\n/)) {
+    const match = /^\s*[VAS][.A-Z]{5}\s+(\S+)/.exec(line);
+    if (match && match[1] !== "=") names.add(match[1]!);
+  }
+  return names;
+}
+
+/** The first preferred H.264 encoder this ffmpeg has, refusing a build that cannot write H.264/AAC. */
+export function chooseVideoEncoder(available: ReadonlySet<string>): VideoEncoder {
+  const encoder = VIDEO_ENCODERS.find((candidate) => available.has(candidate.name));
+  if (!encoder) {
+    throw new Error(
+      "MP4 export needs an ffmpeg with an H.264 encoder (libx264 or Windows Media Foundation's h264_mf); this one has neither.",
+    );
+  }
+  if (!available.has("aac")) throw new Error("MP4 export needs an ffmpeg with the built-in AAC encoder; this one has none.");
+  return encoder;
+}
+
 /** Build the encoder command separately so cadence and mixing are unit-testable. */
 export function ffmpegArguments(
   plan: VideoPlan,
@@ -267,6 +311,7 @@ export function ffmpegArguments(
   output: string,
   inputs: readonly FfmpegInput[],
   filterScript: string,
+  encoder: VideoEncoder = VIDEO_ENCODERS[0]!,
 ): string[] {
   const args = ["-y", "-loglevel", "error", "-framerate", String(plan.fps), "-start_number", "0", "-i", framePattern];
   for (const input of inputs) {
@@ -279,7 +324,7 @@ export function ffmpegArguments(
   args.push(
     "-frames:v", String(plan.frameCount),
     "-t", (plan.durationMs / 1_000).toFixed(6),
-    "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+    ...encoder.args,
     "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
     "-movflags", "+faststart", output,
   );
@@ -290,15 +335,43 @@ function encoderPath(env: NodeJS.ProcessEnv): string {
   return env.DECKASTRA_FFMPEG?.trim() || "ffmpeg";
 }
 
-function runEncoder(path: string, args: string[]): void {
-  const result = spawnSync(path, args, { encoding: "utf8", windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+const MISSING_FFMPEG = "MP4 export needs ffmpeg. Set DECKASTRA_FFMPEG to an LGPL-compatible ffmpeg executable.";
+const probed = new Map<string, VideoEncoder>();
+
+/** Ask this ffmpeg once which encoders it has; remembered per executable path. */
+export function detectVideoEncoder(path: string): VideoEncoder {
+  const known = probed.get(path);
+  if (known) return known;
+  const result = spawnSync(path, ["-hide_banner", "-encoders"], { encoding: "utf8", windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   if (result.error) {
-    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new Error("MP4 export needs ffmpeg. Set DECKASTRA_FFMPEG to an LGPL-compatible ffmpeg executable.");
-    }
+    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") throw new Error(MISSING_FFMPEG);
     throw result.error;
   }
-  if (result.status !== 0) throw new Error(`The MP4 encoder failed: ${(result.stderr || result.stdout || "unknown error").trim().slice(0, 800)}`);
+  if (result.status !== 0) throw new Error(`ffmpeg could not list its encoders: ${(result.stderr || "unknown error").trim().slice(0, 400)}`);
+  const encoder = chooseVideoEncoder(parseEncoders(result.stdout));
+  probed.set(path, encoder);
+  return encoder;
+}
+
+/** What to tell a person when the encoder itself fails. */
+export function encoderFailureMessage(encoder: VideoEncoder, output: string): string {
+  const detail = output.trim().slice(0, 800) || "unknown error";
+  if (encoder.name === "h264_mf") {
+    // Windows "N" editions ship without Media Foundation; ffmpeg still lists
+    // h264_mf, and the failure only appears when it tries to start it.
+    return `The MP4 encoder failed: ${detail} This export uses Windows' built-in H.264 encoder. ` +
+      "On Windows N editions, install the Media Feature Pack from Windows Settings, then export again.";
+  }
+  return `The MP4 encoder failed: ${detail}`;
+}
+
+function runEncoder(path: string, args: string[], encoder: VideoEncoder): void {
+  const result = spawnSync(path, args, { encoding: "utf8", windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+  if (result.error) {
+    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") throw new Error(MISSING_FFMPEG);
+    throw result.error;
+  }
+  if (result.status !== 0) throw new Error(encoderFailureMessage(encoder, result.stderr || result.stdout || ""));
 }
 
 export async function renderVideo(
@@ -312,6 +385,10 @@ export async function renderVideo(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ bytes: Uint8Array; report: ExportReport; plan: VideoPlan }> {
   const plan = compileVideoPlan(document, scene, options);
+  // Before any frame is drawn: an ffmpeg that cannot write H.264/AAC should
+  // fail in a second, not after rendering a whole deck.
+  const executable = encoderPath(env);
+  const encoder = detectVideoEncoder(executable);
   const work = mkdtempSync(join(tmpdir(), "deckastra-video-"));
   const output = join(work, "deck.mp4");
   try {
@@ -356,8 +433,8 @@ export async function renderVideo(
     }
     const filterScript = join(work, "audio.filter");
     writeFileSync(filterScript, filters.join(";\n"), "utf8");
-    const args = ffmpegArguments(plan, join(work, "frame-%08d.png"), output, inputs, filterScript);
-    runEncoder(encoderPath(env), args);
+    const args = ffmpegArguments(plan, join(work, "frame-%08d.png"), output, inputs, filterScript, encoder);
+    runEncoder(executable, args, encoder);
 
     const ledger = new DegradationLedger();
     for (const warning of library.problems(plan.slides.map((slide) => slide.scene))) ledger.record(warning);
