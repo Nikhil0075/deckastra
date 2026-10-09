@@ -225,7 +225,10 @@ async function seekEmbeddedVideos(page: RenderPage, localMs: number): Promise<vo
       const elapsed = Math.max(0, atMs / 1_000);
       const target = clip.loop ? start + (elapsed % span) : Math.min(end - 0.001, start + elapsed);
       clip.pause();
-      if (Math.abs(clip.currentTime - target) < 0.002) return;
+      // Always seek, even to where the clip already is. A paused video that has
+      // never played or sought shows its poster, not its frame (the HTML "show
+      // poster" flag), so skipping the seek at t = 0 put the poster into the
+      // first frames of every exported clip.
       await new Promise<void>((resolve) => {
         const done = () => resolve();
         clip.addEventListener("seeked", done, { once: true });
@@ -304,6 +307,23 @@ export function chooseVideoEncoder(available: ReadonlySet<string>): VideoEncoder
   return encoder;
 }
 
+/**
+ * How this ffmpeg reads a filter graph from a file. FFmpeg 7.0 replaced
+ * `-filter_complex_script <file>` with the general `-/filter_complex <file>`,
+ * and later releases removed the old spelling, so 9.0 rejects it as an
+ * unrecognised option. Debian bookworm (the cloud image) ships 5.1, which
+ * knows only the old one. Neither spelling works everywhere.
+ */
+export type FilterScriptOption = "-filter_complex_script" | "-/filter_complex";
+
+/** From `ffmpeg -version`'s first line: "ffmpeg version n9.0.2-…" or "ffmpeg version 5.1.6-0+deb12u1". */
+export function filterScriptOption(versionText: string): FilterScriptOption {
+  const match = /ffmpeg version n?(\d+)\./.exec(versionText);
+  // A build with no release number (e.g. "N-118000-g…" from master) is newer than 7.0.
+  if (!match) return "-/filter_complex";
+  return Number(match[1]) >= 7 ? "-/filter_complex" : "-filter_complex_script";
+}
+
 /** Build the encoder command separately so cadence and mixing are unit-testable. */
 export function ffmpegArguments(
   plan: VideoPlan,
@@ -312,6 +332,7 @@ export function ffmpegArguments(
   inputs: readonly FfmpegInput[],
   filterScript: string,
   encoder: VideoEncoder = VIDEO_ENCODERS[0]!,
+  scriptOption: FilterScriptOption = "-filter_complex_script",
 ): string[] {
   const args = ["-y", "-loglevel", "error", "-framerate", String(plan.fps), "-start_number", "0", "-i", framePattern];
   for (const input of inputs) {
@@ -319,7 +340,7 @@ export function ffmpegArguments(
     args.push("-i", input.path);
   }
   if (inputs.length === 0) args.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
-  if (inputs.length) args.push("-filter_complex_script", filterScript);
+  if (inputs.length) args.push(scriptOption, filterScript);
   args.push("-map", "0:v:0", "-map", inputs.length ? "[aout]" : "1:a:0");
   args.push(
     "-frames:v", String(plan.frameCount),
@@ -336,29 +357,43 @@ function encoderPath(env: NodeJS.ProcessEnv): string {
 }
 
 const MISSING_FFMPEG = "MP4 export needs ffmpeg. Set DECKASTRA_FFMPEG to an LGPL-compatible ffmpeg executable.";
-const probed = new Map<string, VideoEncoder>();
+export interface FfmpegSetup {
+  encoder: VideoEncoder;
+  scriptOption: FilterScriptOption;
+}
 
-/** Ask this ffmpeg once which encoders it has; remembered per executable path. */
-export function detectVideoEncoder(path: string): VideoEncoder {
-  const known = probed.get(path);
-  if (known) return known;
-  const result = spawnSync(path, ["-hide_banner", "-encoders"], { encoding: "utf8", windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+const probed = new Map<string, FfmpegSetup>();
+
+function ask(path: string, args: string[]): string {
+  const result = spawnSync(path, args, { encoding: "utf8", windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   if (result.error) {
     if ((result.error as NodeJS.ErrnoException).code === "ENOENT") throw new Error(MISSING_FFMPEG);
     throw result.error;
   }
-  if (result.status !== 0) throw new Error(`ffmpeg could not list its encoders: ${(result.stderr || "unknown error").trim().slice(0, 400)}`);
-  const encoder = chooseVideoEncoder(parseEncoders(result.stdout));
-  probed.set(path, encoder);
-  return encoder;
+  if (result.status !== 0) throw new Error(`ffmpeg could not answer ${args.join(" ")}: ${(result.stderr || "unknown error").trim().slice(0, 400)}`);
+  return result.stdout;
+}
+
+/** Ask this ffmpeg once for its version and encoders; remembered per executable path. */
+export function detectFfmpeg(path: string): FfmpegSetup {
+  const known = probed.get(path);
+  if (known) return known;
+  const setup = {
+    encoder: chooseVideoEncoder(parseEncoders(ask(path, ["-hide_banner", "-encoders"]))),
+    scriptOption: filterScriptOption(ask(path, ["-version"])),
+  };
+  probed.set(path, setup);
+  return setup;
 }
 
 /** What to tell a person when the encoder itself fails. */
 export function encoderFailureMessage(encoder: VideoEncoder, output: string): string {
   const detail = output.trim().slice(0, 800) || "unknown error";
-  if (encoder.name === "h264_mf") {
+  if (encoder.name === "h264_mf" && /MFStartup|MFT|0xc00d|Media ?Foundation/i.test(detail)) {
     // Windows "N" editions ship without Media Foundation; ffmpeg still lists
-    // h264_mf, and the failure only appears when it tries to start it.
+    // h264_mf, and the failure only appears when it tries to start it. Only
+    // that failure gets this advice: an argument error is not fixed by a
+    // feature pack, and saying so sends a person to the wrong place.
     return `The MP4 encoder failed: ${detail} This export uses Windows' built-in H.264 encoder. ` +
       "On Windows N editions, install the Media Feature Pack from Windows Settings, then export again.";
   }
@@ -388,7 +423,7 @@ export async function renderVideo(
   // Before any frame is drawn: an ffmpeg that cannot write H.264/AAC should
   // fail in a second, not after rendering a whole deck.
   const executable = encoderPath(env);
-  const encoder = detectVideoEncoder(executable);
+  const { encoder, scriptOption } = detectFfmpeg(executable);
   const work = mkdtempSync(join(tmpdir(), "deckastra-video-"));
   const output = join(work, "deck.mp4");
   try {
@@ -433,7 +468,7 @@ export async function renderVideo(
     }
     const filterScript = join(work, "audio.filter");
     writeFileSync(filterScript, filters.join(";\n"), "utf8");
-    const args = ffmpegArguments(plan, join(work, "frame-%08d.png"), output, inputs, filterScript, encoder);
+    const args = ffmpegArguments(plan, join(work, "frame-%08d.png"), output, inputs, filterScript, encoder, scriptOption);
     runEncoder(executable, args, encoder);
 
     const ledger = new DegradationLedger();

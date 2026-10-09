@@ -246,9 +246,17 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: pip install -r requirements-dev.txt -r apps/api/requirements.txt pytest python-pptx pypdf
+      # The MP4 tests skip without an ffmpeg, and for a while that hid two bugs
+      # (an option ffmpeg 9 removed, and a poster frame in every exported clip).
+      # This is the distribution's ffmpeg with libx264 and the old
+      # -filter_complex_script spelling; the LGPL h264_mf path is covered by
+      # running the same tests against the audited desktop build.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: Worker browser measurement and editor scene parity
         run: npm run test:browser --workspace @deckastra/worker
+        env:
+          DECKASTRA_FFMPEG: ffmpeg
 
       # The adapters themselves: OOXML structure, the relationship graph, the
       # degradation ledger and byte-stability. No browser needed.

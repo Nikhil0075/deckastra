@@ -63,3 +63,7 @@ release/
 # A placeholder some tool leaves behind. This repository uses npm workspaces;
 # a pnpm workspace file here describes a layout nothing reads.
 pnpm-workspace.yaml
+
+# Third-party binaries fetched for packaging (e.g. the audited ffmpeg).
+# Large and redistributed under their own licences; never committed.
+/vendor/

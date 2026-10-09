@@ -8,6 +8,7 @@ import {
   compileVideoPlan,
   encoderFailureMessage,
   ffmpegArguments,
+  filterScriptOption,
   parseEncoders,
   VIDEO_ENCODERS,
   videoFrameAt,
@@ -107,9 +108,36 @@ describe("choosing an H.264 encoder", () => {
     expect(() => chooseVideoEncoder(new Set(["h264_mf", "libfdk_aac"]))).toThrow(/AAC/);
   });
 
-  it("tells a Windows N user what to install when Media Foundation fails", () => {
+  it("tells a Windows N user what to install when Media Foundation fails, and only then", () => {
     const [x264, mf] = VIDEO_ENCODERS;
-    expect(encoderFailureMessage(mf!, "MFStartup failed")).toMatch(/Media Feature Pack/);
+    expect(encoderFailureMessage(mf!, "MFStartup failed: 0xc00d36b3")).toMatch(/Media Feature Pack/);
+    // Found with a real ffmpeg 9.0: an argument error is not a missing feature pack.
+    expect(encoderFailureMessage(mf!, "Unrecognized option 'filter_complex_script'.")).not.toMatch(/Media Feature Pack/);
     expect(encoderFailureMessage(x264!, "boom")).not.toMatch(/Media Feature Pack/);
+  });
+});
+
+describe("reading the audio mix from a file", () => {
+  it("uses the old option where only it exists (Debian bookworm's 5.1, the cloud image)", () => {
+    expect(filterScriptOption("ffmpeg version 5.1.6-0+deb12u1 Copyright (c) 2000-2024 the FFmpeg developers")).toBe("-filter_complex_script");
+    expect(filterScriptOption("ffmpeg version 6.1.1 Copyright")).toBe("-filter_complex_script");
+  });
+
+  it("uses -/filter_complex from 7.0, where 9.0 no longer knows the old option", () => {
+    expect(filterScriptOption("ffmpeg version 7.0 Copyright")).toBe("-/filter_complex");
+    expect(filterScriptOption("ffmpeg version n9.0.2-24-gfd5d616c29-20261009 Copyright (c) 2000-2026")).toBe("-/filter_complex");
+  });
+
+  it("treats a build with no release number as current", () => {
+    expect(filterScriptOption("ffmpeg version N-118123-g1a2b3c4d Copyright")).toBe("-/filter_complex");
+  });
+
+  it("puts the chosen option in front of the mix file", () => {
+    const document = loadFixture("multilingual");
+    const plan = compileVideoPlan(document, buildDocumentScene(document), { fps: 24 });
+    const args = ffmpegArguments(plan, "f-%08d.png", "out.mp4", [{ path: "voice.wav", event: plan.audio[0]! }], "mix.filter",
+      VIDEO_ENCODERS[1], "-/filter_complex");
+    expect(args.slice(args.indexOf("-/filter_complex"), args.indexOf("-/filter_complex") + 2)).toEqual(["-/filter_complex", "mix.filter"]);
+    expect(args).not.toContain("-filter_complex_script");
   });
 });
