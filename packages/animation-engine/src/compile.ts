@@ -39,7 +39,12 @@ import type {
 import type { SlideScene, SceneNode } from "@deckastra/renderer";
 
 import { DEFAULT_EASING, easingAt, parseSpring, round, sampleSpring } from "./easing";
-import { durationForBounds, resolvePreset, type PresetContext } from "./presets";
+import {
+  durationForBounds,
+  resolvePreset,
+  type CustomPresetCatalog,
+  type PresetContext,
+} from "./presets";
 
 export type MotionLevel = "full" | "reduced" | "none";
 
@@ -84,6 +89,8 @@ export interface CompiledClip {
   restOffset: number;
   /** The preset it came from, kept as provenance for the timeline UI. */
   preset?: string;
+  /** Resolved once so exporters agree about theme-local custom presets. */
+  category?: "entrance" | "emphasis" | "loop" | "exit" | "path";
   /**
    * Whether the clip's values hold outside its own span.
    *
@@ -170,6 +177,7 @@ interface ResolvedMotionTheme {
   staggerMs: number;
   budgetMs: number;
   reducedMotionFallback?: string;
+  customPresets: CustomPresetCatalog;
 }
 
 /**
@@ -196,6 +204,7 @@ export function motionThemeOf(scene: SlideScene): ResolvedMotionTheme {
         : DEFAULT_ENTRANCE_BUDGET_MS,
     reducedMotionFallback:
       typeof motion.reducedMotionFallback === "string" ? motion.reducedMotionFallback : undefined,
+    customPresets: scene.theme.source?.motion?.motionPresets ?? {},
   };
 }
 
@@ -411,7 +420,16 @@ function compileClip(context: ClipContext): CompiledClip[] {
   // resolved time, not absolute positions on the slide timeline.
   const start = triggerStart + clip.startMs + (clip.delayMs ?? 0);
   const authored = clip.durationMs || motion.defaultDurationMs || durationForBounds(node.bounds);
-  const durationMs = level === "none" ? 0 : scaleDuration(authored, level);
+  const resolvedPreset = clip.preset
+    ? resolvePreset(clip.preset, motion.customPresets).preset
+    : undefined;
+  const category = resolvedPreset?.category ?? "entrance";
+  const scaledDuration = level === "none" ? 0 : scaleDuration(authored, level);
+  // A theme file is untrusted input. An entrance cannot reserve more than the
+  // deck's budget through one oversized custom clip.
+  const durationMs = category === "entrance"
+    ? Math.min(scaledDuration, motion.budgetMs)
+    : scaledDuration;
   const authoredIterations = clip.repeat === -1 ? Infinity : Math.max(1, (clip.repeat ?? 0) + 1);
   const direction = clip.direction ?? "normal";
   const restOffset = clip.restOffset ?? 0;
@@ -438,6 +456,7 @@ function compileClip(context: ClipContext): CompiledClip[] {
       direction,
       restOffset,
       preset: clip.preset,
+      category,
       fill: clip.fill ?? "both",
       properties: stateAtOffset(properties, restOffset, start, clip.easing ?? motion.defaultEasing),
       segment,
@@ -451,8 +470,7 @@ function compileClip(context: ClipContext): CompiledClip[] {
     return results;
   }
 
-  const requested = reducedMotionName(clip, level);
-  const category = clip.preset ? resolvePreset(clip.preset).preset.category : "entrance";
+  const requested = reducedMotionName(clip, level, motion.customPresets);
   if (level === "reduced" && requested === "skip") return [];
   if ((level === "none" || (level === "reduced" && requested === "instant")) && category !== "exit") {
     // Entrance/emphasis/path content is already rendered at its stable state.
@@ -483,6 +501,7 @@ function compileClip(context: ClipContext): CompiledClip[] {
       direction: "normal",
       restOffset,
       preset: clip.preset,
+      category,
       fill: clip.fill ?? "both",
       properties: absolutise(properties, start, INSTANT_FALLBACK_MS, "linear"),
       segment,
@@ -515,6 +534,7 @@ function compileClip(context: ClipContext): CompiledClip[] {
     direction,
     restOffset,
     preset: clip.preset,
+    category,
     fill: clip.fill ?? "both",
     properties: absolutise(expansion.tracks, start, durationMs, clip.easing ?? motion.defaultEasing),
     segment,
@@ -538,6 +558,7 @@ function compileClip(context: ClipContext): CompiledClip[] {
       direction,
       restOffset,
       preset: clip.preset,
+      category,
       fill: clip.fill ?? "both",
       subTarget: child.subTarget,
       properties: absolutise(
@@ -606,12 +627,12 @@ function expandClip(context: ClipContext, durationMs: number): Expansion {
     return { tracks: [], children: [], warnings };
   }
 
-  const requested = reducedMotionName(clip, level);
+  const requested = reducedMotionName(clip, level, motion.customPresets);
   if (requested === "instant") {
     return { tracks: [], children: [], warnings };
   }
 
-  const { preset, degraded } = resolvePreset(requested);
+  const { preset, degraded } = resolvePreset(requested, motion.customPresets);
   if (degraded) {
     warnings.push({ code: "W134", message: degraded, targetId: track.targetId, clipId: clip.id });
   }
@@ -626,6 +647,7 @@ function expandClip(context: ClipContext, durationMs: number): Expansion {
     params: clip.presetParams ?? {},
     durationMs,
     children: childrenOf(node, nodes),
+    path: pathOf(clip.presetParams?.pathElementId, nodes),
   };
 
   const expansion = preset.expand(presetContext);
@@ -638,16 +660,21 @@ function expandClip(context: ClipContext, durationMs: number): Expansion {
     });
   }
 
-  if (["byWord", "byLetter", "typewriter"].includes(preset.name)) {
+  if (["byWord", "byLetter", "typewriter", "lineByLine", "wordCascade"].includes(preset.name)) {
     const count = Math.max(0, Math.min(160, Math.floor(Number(clip.presetParams?.segmentCount) || 0)));
     if (count > 0) {
-      const word = preset.name === "byWord";
+      const unit = preset.name === "lineByLine"
+        ? "line"
+        : preset.name === "byWord" || preset.name === "wordCascade"
+          ? "word"
+          : "glyph";
+      const staggerMs = unit === "line" ? 90 : preset.name === "wordCascade" ? 40 : unit === "word" ? 55 : 24;
       return {
         tracks: [],
         children: Array.from({ length: count }, (_, index) => ({
           targetId: track.targetId,
-          subTarget: `${word ? "word" : "glyph"}/${index}`,
-          delayMs: index * (word ? 55 : 24),
+          subTarget: `${unit}/${index}`,
+          delayMs: index * staggerMs,
           tracks: expansion.tracks,
         })),
         warnings,
@@ -658,13 +685,26 @@ function expandClip(context: ClipContext, durationMs: number): Expansion {
   return { tracks: expansion.tracks, children: expansion.children ?? [], warnings };
 }
 
+function pathOf(
+  value: unknown,
+  nodes: Map<string, SceneNode>,
+): PresetContext["path"] {
+  if (typeof value !== "string" || value.length === 0) return undefined;
+  const node = nodes.get(value);
+  return node ? { id: node.id, bounds: node.bounds } : undefined;
+}
+
 /**
  * The preset to actually expand at this motion level.
  *
  * The document may override per clip (`reducedMotionPreset` / `reducedMotionBehavior`),
  * which is why this is not simply `PRESETS[name].reducedMotion`.
  */
-function reducedMotionName(clip: AnimationClip, level: MotionLevel): string {
+function reducedMotionName(
+  clip: AnimationClip,
+  level: MotionLevel,
+  customPresets: CustomPresetCatalog,
+): string {
   const preset = clip.preset ?? "fade";
   if (level !== "reduced") return preset;
 
@@ -674,7 +714,7 @@ function reducedMotionName(clip: AnimationClip, level: MotionLevel): string {
   }
   if (clip.reducedMotionPreset) return clip.reducedMotionPreset;
 
-  return resolvePreset(preset).preset.reducedMotion;
+  return resolvePreset(preset, customPresets).preset.reducedMotion;
 }
 
 function childrenOf(

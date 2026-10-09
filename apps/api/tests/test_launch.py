@@ -66,7 +66,7 @@ def stranger(client):
 @pytest.fixture()
 def deck(client, auth):
     generated = client.post(
-        "/v1/generate", headers=auth, json={"instruction": "A deck to share", "slide_count": 3}
+        "/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "title": "A deck to share"}
     )
     assert generated.status_code == 200, generated.text
     return generated.json()["presentation_id"]
@@ -258,12 +258,6 @@ def test_a_workspace_viewer_cannot_sweep_or_theme(client, auth, deck, admin_else
     assert (
         client.post("/v1/workspace/assets/sweep?dry_run=true", headers=auth).status_code == 404
     )
-    assert (
-        client.post(
-            "/v1/repositories/local", headers=auth, json={"path": ".", "name": "x"}
-        ).status_code
-        == 404
-    )
 
 
 def test_a_viewer_cannot_widen_who_can_read_a_deck(client, auth, deck, stranger):
@@ -297,42 +291,6 @@ def test_usage_is_visible_to_a_member(client, auth):
     assert body["plan"] == "free"
     assert body["generations"]["allowed"] == 30
     assert body["resets_at"]
-
-
-def test_a_generation_is_charged_after_it_runs(client, auth, deck):
-    body = client.get("/v1/workspace/usage", headers=auth).json()
-    # The `deck` fixture generated one.
-    assert body["generations"]["used"] == 1
-
-
-def test_generation_is_refused_once_the_allowance_is_gone(client, auth):
-    """Refused before the work, not after.
-
-    Checking afterwards means paying for the request that broke the limit.
-    """
-    from deckastra_api.db.models import WorkspaceQuota
-
-    with db_session.session_scope() as session:
-        quota = session.query(WorkspaceQuota).one_or_none()
-        if quota is None:
-            from deckastra_api import quotas
-            from deckastra_api.db.models import WorkspaceMember
-
-            workspace_id = session.query(WorkspaceMember).first().workspace_id
-            quota = quotas.ensure(session, workspace_id)
-        quota.used_generations = quota.monthly_generations
-
-    response = client.post(
-        "/v1/generate", headers=auth, json={"instruction": "One too many", "slide_count": 3}
-    )
-
-    # 429, not 403: this is a rate the caller can wait out.
-    assert response.status_code == 429
-    detail = response.json()["detail"]
-    # Actionable. "Quota exceeded" is not; "30 of 30, resets on the 14th" is.
-    assert detail["limit"] == "generations"
-    assert detail["allowed"] == 30
-    assert detail["resets_at"]
 
 
 def test_the_period_rolls_lazily_rather_than_on_a_schedule(client, auth):
@@ -373,26 +331,6 @@ def test_unlimited_is_a_plan_not_a_missing_row(client, auth):
     assert body["generations"]["allowed"] is None
     # A progress bar against no limit is a bar that means nothing.
     assert body["generations"]["fraction"] is None
-
-
-def test_a_repository_beyond_the_plan_is_refused(client, auth, tmp_path, monkeypatch):
-    monkeypatch.setenv("DECKASTRA_ALLOW_LOCAL_REPOS", "1")
-
-    first = tmp_path / "one"
-    first.mkdir()
-    (first / "README.md").write_text("# one", encoding="utf-8")
-    second = tmp_path / "two"
-    second.mkdir()
-    (second / "README.md").write_text("# two", encoding="utf-8")
-
-    assert (
-        client.post("/v1/repositories/local", headers=auth, json={"path": str(first)}).status_code
-        == 200
-    )
-    # The free plan allows one.
-    refused = client.post("/v1/repositories/local", headers=auth, json={"path": str(second)})
-    assert refused.status_code == 429
-    assert refused.json()["detail"]["limit"] == "repositories"
 
 
 # ------------------------------------------------------------------- assets

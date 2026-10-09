@@ -268,6 +268,20 @@ def test_a_group_animates_as_a_stagger_over_its_children():
     assert one["animations"][0]["clips"][0]["preset"] == "staggerReveal"
 
 
+def test_playful_motion_cascades_text_and_springs_non_text():
+    one = slide(
+        text("el_head", "headline"),
+        {"id": "el_shape", "type": "shape", "semanticRole": "caption"},
+    )
+    warnings = animate_slide(
+        one,
+        {"sequence": ["headline", "caption"], "entrance": "wordCascade", "pacing": "tight"},
+    )
+
+    assert warnings == []
+    assert [track["clips"][0]["preset"] for track in one["animations"]] == ["wordCascade", "springIn"]
+
+
 def test_an_unknown_preset_falls_back_and_says_so():
     # The renderer would degrade it anyway; degrading here means the document
     # says what it will actually do rather than what was asked for.

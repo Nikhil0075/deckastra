@@ -17,6 +17,7 @@ import {
   type MenuCommand,
   type AgentAccess,
   type AgentAccessRequest,
+  type AgentSetupLauncher,
   type CurrentPresentation,
   type DesktopBridge,
   type DesktopInfo,
@@ -79,6 +80,8 @@ const bridge: DesktopBridge = {
   },
 
   agentAccess: () => ipcRenderer.invoke(IPC.agentAccess) as Promise<AgentAccess>,
+
+  agentSetup: () => ipcRenderer.invoke(IPC.agentSetup) as Promise<AgentSetupLauncher>,
 
   setAgentAccess: (request: AgentAccessRequest) =>
     ipcRenderer.invoke(IPC.agentAccessSet, request) as Promise<AgentAccess>,
@@ -161,4 +164,3 @@ const bridge: DesktopBridge = {
 };
 
 contextBridge.exposeInMainWorld("deckastra", bridge);
-

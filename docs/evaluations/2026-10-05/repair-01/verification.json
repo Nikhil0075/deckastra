@@ -1,0 +1,46 @@
+{
+  "implementation_sha256": "ca1d5d5e3db1e76288eac8a98e1a748fbbc8260252146509dbc7d0c92c34e399",
+  "model": "gemini-3.8-flash",
+  "thinking": "LOW",
+  "location": "global",
+  "vertex_ip_family": "ipv4",
+  "latency_scope": "local evaluation host, not Cloud Run end-to-end",
+  "independent_reviews_completed": 0,
+  "production_models_enabled": false,
+  "shared_budget_snapshot": {
+    "ceiling_usd": 25,
+    "used_usd": 9.164122,
+    "reserved_usd": 1.8139115000000001,
+    "remaining_usd": 14.0219665,
+    "calls": 495
+  },
+  "approved_total_usd": 30,
+  "pro_critique_comparison": {
+    "qualification_contract": "assistant-v2-functional",
+    "review": {
+      "independent_of_system_author": false
+    },
+    "coverage": {
+      "distinct_slides": 20,
+      "feature_groups": 12
+    },
+    "task": "critique",
+    "model_id": "gemini-3.1-pro-preview",
+    "runtime_id": "vertex-native-v2-0792266d7d671c80",
+    "thinking": "LOW",
+    "location": "global",
+    "dataset_sha256": "ed9267da45ab32c674f466c6ca94b1aabde1bd71c3079afdbb9e8e909f7694c7",
+    "metrics": {
+      "samples": 20,
+      "first_attempt_validity": 0.95,
+      "functional_first_attempt_validity": 0.95,
+      "task_success": 0.0,
+      "p95_seconds": 121.1637619999965,
+      "safety_failures": 0,
+      "severe_regressions": 0
+    },
+    "qualified": false
+  },
+  "comparison_automatic_valid": 19,
+  "remaining_approved_after_usage_and_holds_usd": 19.0219665
+}

@@ -20,8 +20,14 @@ from __future__ import annotations
 
 import time
 import threading
+from contextvars import ContextVar
 from typing import Callable
 from dataclasses import dataclass, field
+
+
+# Request-scoped billing for paid Google services. This is account plumbing,
+# not model routing; speech and translation use it as well as media generation.
+cost_observer = ContextVar("deckastra_account_cost_observer", default=None)
 
 
 class BudgetExceeded(RuntimeError):

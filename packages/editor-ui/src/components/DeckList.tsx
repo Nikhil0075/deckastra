@@ -29,7 +29,7 @@ import { cx } from "../ui/cx";
 import { ExportPanel } from "./ExportPanel";
 import { FinalFrameSlide } from "./FinalFrameSlide";
 import { CreditsMeter } from "./CreditsMeter";
-import { GenerateDeck } from "./GenerateDeck";
+import { NewDeckStart } from "./NewDeckStart";
 import { CommandPalette } from "./shell/CommandPalette";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
 
@@ -115,10 +115,9 @@ export function DeckList({
   const [moving, setMoving] = useState<PresentationSummary | null>(null);
   const [exporting, setExporting] = useState<PresentationSummary | null>(null);
   const [newProject, setNewProject] = useState<string | null>(null);
-  // Bumped to put the caret in the home's prompt (File › Generate).
-  const [promptFocus, setPromptFocus] = useState(0);
+  // Bumped to put keyboard focus on the template gallery (File › New from template).
+  const [templateFocus, setTemplateFocus] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [promptSeed, setPromptSeed] = useState<{ text: string; token: number } | undefined>();
   const [now, setNow] = useState(() => Date.now());
 
   // "edited 2h ago" should not stay "just now" all afternoon.
@@ -303,7 +302,7 @@ export function DeckList({
     else if (command === "new-deck" && editable && !busy) void createDeck();
     else if (command === "generate-deck" && editable) {
       if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
-      setPromptFocus((count) => count + 1);
+      setTemplateFocus((count) => count + 1);
     } else if (command === "all-decks") setView({ kind: "all" });
     else if (command === "open-settings") onOpenSettings?.();
     else if (command === "command-palette") setPaletteOpen(true);
@@ -446,24 +445,15 @@ export function DeckList({
 
         <main className="dk-decks__main">
           {projectId && view?.kind !== "trash" ? (
-            // The home's prompt bar (roadmap 08 §1.3): every new deck starts
-            // here, described or blank. One per project: nothing typed or
-            // paused for one project is shown under another (item 02).
-            <GenerateDeck
+            <NewDeckStart
               key={projectId}
-              onClose={() => {}}
               projectId={projectId}
-              workspaceId={located?.workspace.id}
-              reviewAvailable={account?.capabilities.checkpoints === true}
-              generation={account?.capabilities.generation}
-              onSetUp={onSetUpGeneration}
-              onGenerated={onOpen}
+              onCreated={onOpen}
               onBlank={() => void createDeck()}
-              blankDisabled={busy}
               disabled={!editable}
-              focusToken={promptFocus}
-              seed={promptSeed}
+              focusToken={templateFocus}
               onOpenFile={openFile}
+              onBuildWithAgent={onSetUpGeneration}
             />
           ) : null}
           {browserImport ? (
@@ -577,7 +567,8 @@ export function DeckList({
         onAsk={(text) => {
           setPaletteOpen(false);
           if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
-          setPromptSeed((current) => ({ text, token: (current?.token ?? 0) + 1 }));
+          setBanner({ tone: "notice", text: `Choose a template here, or build “${text}” with your connected agent.` });
+          setTemplateFocus((count) => count + 1);
         }}
       />
 

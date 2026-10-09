@@ -1,0 +1,529 @@
+{
+  "locale": "hi",
+  "runtime_id": "vertex-native-v2-999d2bd3acfbc9d5",
+  "request": {
+    "task": "generate",
+    "instruction": "Create a concise 3-slide introduction to schema migrations using only the supplied migration guide. Explain the purpose, review process and conclusion. No invented statistics or quotations.",
+    "presentation_id": "doc_01M45FMY95BNC4AT8GPGA974C9",
+    "slide_count": 3,
+    "locale": "hi",
+    "generation_mode": "replace",
+    "scope": {
+      "kind": "deck",
+      "slide_ids": [],
+      "element_ids": []
+    }
+  },
+  "source_inputs": [
+    {
+      "id": "migration-guide",
+      "kind": "document",
+      "title": "Migration guide",
+      "text": "A schema migration records changes to the database schema. Review the migration before applying it. Keep migrations in version control. A rollback must be compatible with stored data."
+    }
+  ],
+  "stages": [],
+  "result": {
+    "operations": [
+      {
+        "op": "replace",
+        "path": "/slides",
+        "value": [
+          {
+            "id": "sld_01M45FNM168WBHT1296Z5D368A",
+            "name": "डेटाबेस में बदलावों को माइग्रेशन से ट्रैक करें",
+            "semanticIntent": "स्कीमा माइग्रेशन के प्राथमिक उद्देश्य को प्रस्तुत करना।",
+            "keyMessage": "स्कीमा माइग्रेशन डेटाबेस परिवर्तनों का एक आधिकारिक रिकॉर्ड है।",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "title",
+              "templateId": "phase1.title"
+            },
+            "elements": [
+              {
+                "id": "el_01M45FNM168WBHT1296Z5D3685",
+                "type": "text",
+                "semanticRole": "eyebrow",
+                "transform": {
+                  "x": 120,
+                  "y": 340.0,
+                  "width": 1680,
+                  "height": 40
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D3684",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "डेटाबेस प्रबंधन"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.caption.fontFamily",
+                  "fontSize": 18,
+                  "color": "token:colors.accent",
+                  "letterSpacing": 4,
+                  "textTransform": "uppercase"
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              },
+              {
+                "id": "el_01M45FNM168WBHT1296Z5D3687",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 400.0,
+                  "width": 1680,
+                  "height": 280
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D3686",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "डेटाबेस में बदलावों को माइग्रेशन से ट्रैक करें"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.display.fontFamily",
+                  "fontSize": 88,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.05
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 48
+              },
+              {
+                "id": "el_01M45FNM168WBHT1296Z5D3689",
+                "type": "text",
+                "semanticRole": "subtitle",
+                "transform": {
+                  "x": 120,
+                  "y": 700.0,
+                  "width": 1176.0,
+                  "height": 90
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D3688",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "स्कीमा परिवर्तनों को सुव्यवस्थित और सुरक्षित रखने की मार्गदर्शिका"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.body.fontFamily",
+                  "fontSize": 28,
+                  "color": "token:colors.foregroundMuted"
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "आज हम डेटाबेस स्कीमा माइग्रेशन के मुख्य सिद्धांतों और सही प्रक्रियाओं पर चर्चा करेंगे।",
+            "animations": [
+              {
+                "id": "anm_01M45FNM168WBHT1296Z5D368B",
+                "targetId": "el_01M45FNM168WBHT1296Z5D3687",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45FNM168WBHT1296Z5D368C",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 420,
+                    "easing": "emphasized"
+                  }
+                ]
+              },
+              {
+                "id": "anm_01M45FNM168WBHT1296Z5D368D",
+                "targetId": "el_01M45FNM168WBHT1296Z5D3689",
+                "trigger": {
+                  "type": "timer",
+                  "delayMs": 110
+                },
+                "label": "subtitle in",
+                "clips": [
+                  {
+                    "id": "clp_01M45FNM168WBHT1296Z5D368E",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 420,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          },
+          {
+            "id": "sld_01M45FNM17MZTPDWCKDP5YEJFP",
+            "name": "माइग्रेशन लागू करने से पहले समीक्षा अनिवार्य है",
+            "semanticIntent": "माइग्रेशन लागू करने से पहले आवश्यक समीक्षा और नियंत्रण प्रक्रियाओं को समझाना।",
+            "keyMessage": "लागू करने से पहले समीक्षा और संस्करण नियंत्रण में रखना अनिवार्य है।",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "split",
+              "templateId": "phase1.split"
+            },
+            "elements": [
+              {
+                "id": "el_01M45FNM168WBHT1296Z5D368G",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 120,
+                  "width": 1680,
+                  "height": 147.2
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D368F",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "माइग्रेशन लागू करने से पहले समीक्षा अनिवार्य है"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.h1.fontFamily",
+                  "fontSize": 64,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.1
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 35.2
+              },
+              {
+                "id": "el_01M45FNM168WBHT1296Z5D368K",
+                "type": "text",
+                "semanticRole": "body",
+                "transform": {
+                  "x": 992.0,
+                  "y": 320,
+                  "width": 808.0,
+                  "height": 184
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D368H",
+                      "type": "bullet",
+                      "spans": [
+                        {
+                          "text": "माइग्रेशन को लागू करने से पहले उसकी पूरी समीक्षा करें।"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "blk_01M45FNM168WBHT1296Z5D368J",
+                      "type": "bullet",
+                      "spans": [
+                        {
+                          "text": "सभी माइग्रेशन फ़ाइलों को वर्शन कंट्रोल में सुरक्षित रखें।"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.body.fontFamily",
+                  "fontSize": 25,
+                  "color": "token:colors.foreground",
+                  "lineHeight": 1.5
+                },
+                "fit": "autoHeight",
+                "paragraph": {
+                  "lineBreakStrategy": "balanced"
+                }
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "किसी भी माइग्रेशन को डेटाबेस पर चलाने से पहले उसकी समीक्षा करना और उसे वर्शन कंट्रोल में रखना स्थिरता सुनिश्चित करता है।",
+            "animations": [
+              {
+                "id": "anm_01M45FNM17MZTPDWCKDP5YEJFQ",
+                "targetId": "el_01M45FNM168WBHT1296Z5D368G",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45FNM17MZTPDWCKDP5YEJFR",
+                    "preset": "fade",
+                    "startMs": 0,
+                    "durationMs": 300,
+                    "easing": "emphasized"
+                  }
+                ]
+              },
+              {
+                "id": "anm_01M45FNM17MZTPDWCKDP5YEJFS",
+                "targetId": "el_01M45FNM168WBHT1296Z5D368K",
+                "trigger": {
+                  "type": "click"
+                },
+                "label": "body in",
+                "clips": [
+                  {
+                    "id": "clp_01M45FNM17MZTPDWCKDP5YEJFT",
+                    "preset": "fade",
+                    "startMs": 0,
+                    "durationMs": 300,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          },
+          {
+            "id": "sld_01M45FNM17MZTPDWCKDP5YEJFX",
+            "name": "रोलबैक मौजूदा डेटा के साथ हमेशा संगत होना चाहिए",
+            "semanticIntent": "रोलबैक और डेटा संगतता के महत्व पर अंतिम निष्कर्ष प्रस्तुत करना।",
+            "keyMessage": "रोलबैक को हमेशा मौजूदा डेटा के साथ संगत होना चाहिए।",
+            "background": {
+              "paint": {
+                "type": "solid",
+                "color": "token:colors.background"
+              }
+            },
+            "layout": {
+              "styleLabel": "statement",
+              "templateId": "phase1.statement"
+            },
+            "elements": [
+              {
+                "id": "el_01M45FNM17MZTPDWCKDP5YEJFW",
+                "type": "text",
+                "semanticRole": "headline",
+                "transform": {
+                  "x": 120,
+                  "y": 380,
+                  "width": 1680,
+                  "height": 320
+                },
+                "content": {
+                  "version": 1,
+                  "blocks": [
+                    {
+                      "id": "blk_01M45FNM17MZTPDWCKDP5YEJFV",
+                      "type": "paragraph",
+                      "spans": [
+                        {
+                          "text": "रोलबैक मौजूदा डेटा के साथ हमेशा संगत होना चाहिए"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "typography": {
+                  "fontFamily": "token:typography.display.fontFamily",
+                  "fontSize": 80,
+                  "color": "token:colors.foreground",
+                  "fontWeight": 700,
+                  "lineHeight": 1.1
+                },
+                "fit": "shrinkToFit",
+                "paragraph": {
+                  "align": "center",
+                  "lineBreakStrategy": "balanced"
+                },
+                "minFontSize": 44
+              }
+            ],
+            "transition": {
+              "type": "fade",
+              "durationMs": 300
+            },
+            "speakerNotes": "अंत में, यह सुनिश्चित करना आवश्यक है कि यदि कभी रोलबैक की आवश्यकता पड़े, तो वह मौजूदा डेटा को प्रभावित या दूषित न करे।",
+            "animations": [
+              {
+                "id": "anm_01M45FNM17MZTPDWCKDP5YEJFY",
+                "targetId": "el_01M45FNM17MZTPDWCKDP5YEJFW",
+                "trigger": {
+                  "type": "slideEnter"
+                },
+                "label": "headline in",
+                "clips": [
+                  {
+                    "id": "clp_01M45FNM17MZTPDWCKDP5YEJFZ",
+                    "preset": "maskReveal",
+                    "startMs": 0,
+                    "durationMs": 600,
+                    "easing": "emphasized"
+                  }
+                ]
+              }
+            ],
+            "extensions": {
+              "deckastra.sourceIds": [
+                "migration-guide"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "op": "add",
+        "path": "/metadata/language",
+        "value": "hi"
+      },
+      {
+        "op": "add",
+        "path": "/extensions",
+        "value": {
+          "deckastra.sources": [
+            {
+              "id": "migration-guide",
+              "kind": "document",
+              "label": "Migration guide",
+              "reference": "migration-guide",
+              "excerpt": "A schema migration records changes to the database schema. Review the migration before applying it. Keep migrations in version control. A rollback must be compatible with stored data."
+            },
+            {
+              "id": "sld_01M45FMY96VJ0SBS5VFRBJVBAP",
+              "kind": "slide",
+              "label": "Slide 1",
+              "excerpt": "Slide 1"
+            }
+          ]
+        }
+      }
+    ],
+    "warnings": [],
+    "findings": []
+  },
+  "schema_errors": [],
+  "slide_count": 3,
+  "source_language": "hi",
+  "automatic_valid": true,
+  "seconds": 22.54058499999519,
+  "usage": {
+    "used_tokens": 9515,
+    "input_tokens": 8085,
+    "output_tokens": 1430,
+    "structured_requests": [
+      {
+        "stage": "orchestrate",
+        "contract": "OrchestratorPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "story",
+        "contract": "StoryPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "creative",
+        "contract": "CreativeDirection",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "layout",
+        "contract": "LayoutProposal",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "motion",
+        "contract": "MotionPlan",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      },
+      {
+        "stage": "critic",
+        "contract": "CriticResult",
+        "attempts": 1,
+        "valid_first_attempt": true,
+        "outcome": "valid"
+      }
+    ],
+    "max_total_tokens": 250000,
+    "revisions": 0,
+    "max_revisions": 3,
+    "elapsed_seconds": 22.57,
+    "startup_seconds": 0.0,
+    "used_cost_usd": 0.0228525,
+    "reserved_cost_usd": 0.0,
+    "max_cost_usd": 0.75,
+    "warnings": []
+  }
+}

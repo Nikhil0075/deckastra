@@ -57,13 +57,12 @@ packages/animation-engine/      presets, timeline compilation, stateless samplin
 packages/export-core/           the adapter contract, capabilities, the degradation ledger
 packages/export-pdf/            PDF assembly: which slides, which frame, what degraded
 packages/export-pptx/           OOXML generation, element mapping, its own zip writer
-agents/                         the LangGraph agent system: nodes, contracts,
-                                tool registry, budgets, memory, model routing
-integrations/                   repository sources: ignore rules, importance
-                                ranking, chunking, the GitHub App and its webhooks
-apps/api/                       FastAPI: generation, persistence, versioned history
-apps/web/                       prompt box, repository picker, deck preview with
-                                per-slide sources, editor, present mode
+agents/                         agent contracts, tool registry, budgets and the
+                                explicitly pinned paid-media transport
+apps/api/                       FastAPI: deterministic composition, persistence,
+                                versioned history and reviewed proposals
+apps/web/                       template start, coding-agent guidance, editor,
+                                per-slide evidence and present mode
 apps/worker/                    the headless render service and the export CLI
 docs/                           the six specification documents
 infrastructure/database/        Alembic migrations

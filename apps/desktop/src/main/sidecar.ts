@@ -84,6 +84,8 @@ function exporterEnvironment(): NodeJS.ProcessEnv {
   const worker = app.isPackaged
     ? join(process.resourcesPath, "worker")
     : join(import.meta.dirname, "..", "worker");
+  const packagedFfmpeg = join(process.resourcesPath, "ffmpeg", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+  const ffmpeg = process.env.DECKASTRA_FFMPEG || (app.isPackaged && existsSync(packagedFfmpeg) ? packagedFfmpeg : undefined);
 
   return {
     DECKASTRA_WORKER_CMD: join(worker, "cli.mjs"),
@@ -93,6 +95,9 @@ function exporterEnvironment(): NodeJS.ProcessEnv {
     // measurer's TypeScript source nor esbuild to compile it with.
     DECKASTRA_MEASURER_JS: join(worker, "measurement-browser.js"),
     DECKASTRA_FONTS_DIR: join(worker, "fonts"),
+    // Release builds may ship a separately-audited LGPL ffmpeg executable at
+    // Resources/ffmpeg. Development and managed hosts can point at their own.
+    ...(ffmpeg ? { DECKASTRA_FFMPEG: ffmpeg } : {}),
     // Render with this app's own Chromium instead of Playwright's, which a
     // packaged build does not carry. The exporter starts this same binary in
     // render-host mode (`render-host.ts`) and drives it over IPC — no debugging
@@ -190,8 +195,6 @@ export async function startSidecar(options: Options): Promise<Sidecar> {
         ...localEnv,
         ...gateway,
         DECKASTRA_FONT_PACK_DIR: join(options.dataDir, "font-packs"),
-        DECKASTRA_INTELLIGENCE: "vertex",
-        DECKASTRA_ASSISTANT_MODE: "vertex",
         DECKASTRA_LOCAL_SECRET: secret,
         // The installed product never generates with the stub, and never treats
         // an inherited API key as a choice to use the cloud (item 20). A checkout

@@ -1,0 +1,86 @@
+{
+  "implementation_sha256": "4ebe7a7d85959fb7835ecba16add26f93b2fd09f39aa2e43b41e91ee9b67cd37",
+  "runtime_id": "vertex-native-v2-999d2bd3acfbc9d5",
+  "model": "gemini-3.8-flash",
+  "thinking": "LOW",
+  "location": "global",
+  "vertex_ip_family": "ipv4",
+  "latency_scope": "local evaluation host; not Cloud Run end-to-end",
+  "independent_reviews_completed": 0,
+  "production_models_enabled": false,
+  "tests": {
+    "focused": {
+      "command": "python -m pytest agents/tests apps/api/tests/test_ai_robustness.py apps/api/tests/test_assistant.py apps/api/tests/test_agents.py apps/api/tests/test_generation.py -q",
+      "passed": 273,
+      "seconds": 62.86
+    },
+    "api": {
+      "command": "python -m pytest apps/api/tests -q -m 'not postgres' -k 'not test_sqlite_lock_wait'",
+      "passed": 762,
+      "skipped": 30,
+      "deselected": 3,
+      "seconds": 621.59,
+      "warnings": [
+        "Expected duplicate document.json warning from a hostile ZIP fixture"
+      ],
+      "limitation": "Hosted PostgreSQL tests require CI. The unrelated local SQLite lock-wait changes are excluded from this backend repair PR."
+    },
+    "compileall": "passed"
+  },
+  "workflow_smokes": [
+    {
+      "locale": "en",
+      "automatic_valid": true,
+      "seconds": 20.05
+    },
+    {
+      "locale": "hi",
+      "automatic_valid": true,
+      "seconds": 22.54
+    }
+  ],
+  "approved_total_usd": 30,
+  "shared_budget_snapshot": {
+    "ceiling_usd": 25,
+    "used_usd": 12.895963,
+    "reserved_usd": 2.0243465,
+    "remaining_usd": 10.0796905,
+    "calls": 956
+  },
+  "remaining_approved_after_shared_usage_and_holds_usd": 15.07969,
+  "raw_report_sha256": {
+    "planning": "bcb6e46abca3d91e79a4e371426ca3db7dc5b96c80e097d08ef5839554ab541b",
+    "authoring": "f5f4ba0741ad06ca138bc8ed132be09726c798e6a258bd746ba1aa4bc0c14228",
+    "cleanup": "aa47dee2c0b4610259c0dc17c54987b45fd987c7b708e5fef10cd935c7981767",
+    "critique": "55247dfcd81dd123a25d02b9c0a4ecee38c47adecf5c76880b0327da661d2ca9",
+    "translation": "372cd0324adec5cc4d2af82cc6582b232c59004065ba57b708cf281081c5d570",
+    "narration": "6c4cb4fed8179d57eb86e1723b31c07dea1e4002f40eb7e8cca650f74c56c668",
+    "vision": "84d339550859c919f626643f38213564636e9ab6a0e387d70d302bd8013487b0"
+  },
+  "review_report_sha256": {
+    "planning": "f4acb1c0ec091ff45756decbcf978e1f93d2bf383096d2268f1f33ce9a902a8d",
+    "authoring": "2055c9a1ad3fb0c0ef0ce2dec777132ee7350c50de9c4902b47f5e127e54938e",
+    "cleanup": "21529439c87218c352e7bb55f4a1e02360a026c6aaf1c8381e849d4101114691",
+    "critique": "9d13f8a328b4ba22e60b2083d1e4410441e09f4a5f67d547ea21cca143e90dae",
+    "translation": "4fe6d9e8c29e2a6f412f03afa0303d729b738be5c86cc22acf7a7c8553cff59f",
+    "narration": "c442bdf6b269f9fb914d8665fc73b0e6a8ad4f4762b12f9a102b9e1acee94f02",
+    "vision": "78f0229a16782dae66f1b3a45d73243df7e0c599075d95b4ef76024645af1052"
+  },
+  "retained_failures": [
+    {
+      "case": "vision-00",
+      "error": "Command '['gcloud.cmd', 'auth', 'print-access-token', '--configuration=deckastra']' returned non-zero exit status 1."
+    }
+  ],
+  "report_hash_encoding": "UTF-8 bytes with CRLF normalized to LF",
+  "human_preview": {
+    "manifest": "preview-manifest.json",
+    "manifest_sha256": "55a2d1368bfdf7f227c2f55bab157eab140f64d3f6556d8d80cd3ced4babf267",
+    "frame": "final",
+    "source_slide_count": 21,
+    "cases": 20,
+    "original_evaluation_results_unchanged": true,
+    "model_received_rendered_images": false,
+    "model_received_local_fixture_image_bytes": false
+  }
+}

@@ -19,6 +19,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "acceptance:phase3": "node scripts/phase3-acceptance.mjs",
     "acceptance": "node scripts/acceptance.mjs"
   },
   "dependencies": {

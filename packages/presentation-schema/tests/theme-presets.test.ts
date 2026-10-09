@@ -5,6 +5,7 @@ import { ThemeDefinitionSchema, THEME_PRESETS, findPreset, IdSchema, CommonStyle
 describe("the theme gallery", () => {
   it("has the looks people ask for by name", () => {
     const names = THEME_PRESETS.map((preset) => preset.key);
+    expect(THEME_PRESETS).toHaveLength(20);
     for (const key of ["flat", "neumorphism", "glassmorphism", "neo-brutalism", "bento", "skeuomorphic", "neo-technical"]) {
       expect(names).toContain(key);
     }

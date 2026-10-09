@@ -22,9 +22,13 @@ export async function gatewayEnvironment(): Promise<NodeJS.ProcessEnv> {
     if (request.headers.authorization !== `Bearer ${secret}` || request.headers.origin) {
       response.writeHead(401); response.end(); return;
     }
-    const paths: Record<string, string> = { "/infer": "/v1/assistant/infer", "/capabilities": "/v1/account/capabilities", "/credits": "/v1/account/credits" };
+    const paths: Record<string, string> = {
+      "/infer": "/v1/assistant/infer", "/video": "/v1/assistant/video",
+      "/quote": "/v1/assistant/quote", "/translate": "/v1/assistant/translate", "/speech": "/v1/assistant/speech",
+      "/capabilities": "/v1/account/capabilities", "/credits": "/v1/account/credits",
+    };
     const path = paths[request.url ?? ""];
-    if (!path || request.method !== (request.url === "/infer" ? "POST" : "GET")) {
+    if (!path || request.method !== (["/infer", "/video", "/quote", "/translate", "/speech"].includes(request.url ?? "") ? "POST" : "GET")) {
       response.writeHead(404); response.end(); return;
     }
     try {
@@ -39,7 +43,7 @@ export async function gatewayEnvironment(): Promise<NodeJS.ProcessEnv> {
       const upstream = await fetch(cloudConfig().apiUrl + path, { method: request.method,
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "X-Deckastra-Device": deviceId },
         ...(request.method === "POST" ? { body: Buffer.concat(chunks) } : {}),
-        redirect: "error", signal: AbortSignal.timeout(210_000) });
+        redirect: "error", signal: AbortSignal.timeout(request.url === "/video" ? 600_000 : 210_000) });
       response.writeHead(upstream.status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
       response.end(Buffer.from(await upstream.arrayBuffer()));
     } catch {

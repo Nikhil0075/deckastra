@@ -180,36 +180,3 @@ def test_otlp_environment_exports_trace_and_metric_protobuf_to_a_real_collector(
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
-
-
-def test_http_generation_has_correlated_run_and_model_spans_without_document_content(tmp_path, monkeypatch):
-    from fastapi.testclient import TestClient
-    from deckastra_api.db import session as db_session
-    from deckastra_api.main import app
-
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'telemetry.db'}")
-    monkeypatch.setenv("DECKASTRA_DEV_SECRET", "telemetry-test")
-    db_session.reset_engine()
-    db_session.create_all()
-    traces = InMemorySpanExporter()
-    telemetry.configure(trace_exporter=traces)
-    private = "Private telemetry regression instruction"
-    try:
-        with TestClient(app) as client:
-            token = client.post("/v1/dev/session", json={"email": "trace@localhost"}).json()["token"]
-            response = client.post("/v1/generate", headers={"Authorization": f"Bearer {token}"},
-                                   json={"instruction": private, "use_graph": True})
-            assert response.status_code == 200, response.text
-            assert telemetry.flush()
-            spans = traces.get_finished_spans()
-            runs = [s for s in spans if s.name == "agent.run"]
-            models = [s for s in spans if s.name == "agent.model"]
-            assert len(runs) == 1 and len(models) >= 5
-            assert runs[0].attributes[telemetry.WORKSPACE_ID].startswith("wsp_")
-            assert all(s.context.trace_id == runs[0].context.trace_id for s in models)
-            assert all(s.attributes[telemetry.RUN_ID] == runs[0].attributes[telemetry.RUN_ID] for s in models)
-            assert any(s.name == "http.request" and s.context.trace_id == runs[0].context.trace_id for s in spans)
-            assert private not in "".join(s.to_json() for s in spans)
-            assert token not in "".join(s.to_json() for s in spans)
-    finally:
-        db_session.reset_engine()

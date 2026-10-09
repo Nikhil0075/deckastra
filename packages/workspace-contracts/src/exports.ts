@@ -2,7 +2,7 @@
  * `mydeck` is the exchange package: the whole deck, its pictures and its
  * sounds, for someone else to open in Deckastra (FRONTEND_BACKEND_HANDOFF.md).
  */
-export type ExportKind = "pdf" | "pptx" | "mydeck";
+export type ExportKind = "pdf" | "pptx" | "mp4" | "mydeck";
 
 /**
  * One degradation, as the ledger recorded it (doc 04 §32.2).
@@ -61,6 +61,8 @@ export interface ExportRequest {
    * does not have rather than exporting the original under its name.
    */
   locale?: string;
+  /** Deterministic video cadence; used only by MP4 export. */
+  fps?: 24 | 30 | 60;
 }
 
 /**

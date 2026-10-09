@@ -77,6 +77,7 @@ describe("exporting from the editor", () => {
   it.each([
     ["PDF", "pdf"],
     ["PowerPoint", "pptx"],
+    ["Narrated video", "mp4"],
   ])("%s includes an edit whose autosave had not run yet, pinned to its version", async (label, kind) => {
     const hook = await mount();
     fireEvent.click(screen.getByRole("button", { name: label }));
@@ -84,6 +85,7 @@ describe("exporting from the editor", () => {
     expect(hook.result.current.document.metadata.title).toBe("latest");
     expect(exportRequests[0]!.persisted).toBe("latest");
     expect(exportRequests[0]!.body).toMatchObject({ kind, expected_version_id: "v1" });
+    if (kind === "mp4") expect(exportRequests[0]!.body).toMatchObject({ fps: 30 });
   });
 
   it("waits for a save that is still in flight", async () => {

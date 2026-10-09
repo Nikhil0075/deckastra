@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 
 import { NotRunning, attach } from "./attach";
 import { createAttachedClient } from "./client";
+import { registerGuidance } from "./guidance";
 import { registerTools } from "./tools";
 
 /**
@@ -20,6 +21,7 @@ import { registerTools } from "./tools";
 
 export { attach, attachmentPath, NotRunning, type Attachment } from "./attach";
 export { createAttachedClient } from "./client";
+export { registerGuidance } from "./guidance";
 export { outlineDocument, slideOf } from "./outline";
 export { registerTools } from "./tools";
 
@@ -65,6 +67,8 @@ export async function main(): Promise<void> {
     },
   );
 
-  registerTools(server, createAttachedClient(attached, clientLabel()), attached);
+  const client = createAttachedClient(attached, clientLabel());
+  registerTools(server, client, attached);
+  registerGuidance(server, client, attached);
   await server.connect(new StdioServerTransport());
 }

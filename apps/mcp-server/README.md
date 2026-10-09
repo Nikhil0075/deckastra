@@ -16,6 +16,19 @@ client cannot spawn `npx` without a `cmd /c` wrapper, and a server that fails to
 start says nothing useful about why. Use absolute paths — the client's working
 directory is not this repository.
 
+The installed app now generates the exact command for its own location. Open
+**Settings → Agents**, choose VS Code / Copilot, Claude Code, Codex,
+Antigravity, or Gemini CLI, and copy the ready-to-use configuration. The files
+used by those clients are:
+
+| Client | Project or user configuration |
+| --- | --- |
+| VS Code / Copilot | `.vscode/mcp.json` (`servers`) |
+| Claude Code | `.mcp.json` (`mcpServers`) |
+| Codex | `~/.codex/config.toml` (`mcp_servers`) |
+| Antigravity | `.agents/mcp_config.json` (`mcpServers`) |
+| Gemini CLI | `.gemini/settings.json` (`mcpServers`) |
+
 ### From an installed app (no repository needed)
 
 The installer ships the server beside the exporter, and the app's own binary runs
@@ -116,7 +129,31 @@ nothing, because the key that signed it died with that launch.
 | `document_create` | An empty deck |
 | `document_propose` | Apply caller-authored patch operations |
 | `proposal_list` | What is waiting for the user's approval |
-| `document_export` / `export_status` / `export_cancel` | PDF and PPTX jobs |
+| `document_export` / `export_status` / `export_cancel` | PDF, PPTX and narrated MP4 jobs |
+| `slide_insert_pattern` | One reviewed slide pattern, filled through named slots |
+| `motion_style_apply` | One reviewed motion vocabulary across a deck |
+| `voice_lines` | Voice existing narration cues through the configured speech service |
+| `voice_quote` | Price the exact due narration request before any cloud synthesis |
+| `image_quote` / `image_generate` | Price, then generate one slide image as a reviewable proposal |
+
+Creation also has high-level tools for templates, composition and individual
+patterns. They accept narrative content and semantic roles; the engine owns
+geometry, theme tokens, motion timing and export mapping.
+
+## Prompts and resources
+
+MCP clients can discover two prompts:
+
+- `build_deck` creates a complete first draft from one of the six reviewed
+  purpose templates.
+- `revise_deck` reads the open deck, authors a version-safe proposal, previews
+  affected slides, and runs Design Check.
+
+The prompts point the agent to `deckastra://guides/authoring`, the live
+`deckastra://current/theme`, and a worked resource under
+`deckastra://examples/{business,product,teaching,technical,team,personal}`.
+Together they describe slot semantics, role-based editing, optimistic
+concurrency and the operations Deckastra deliberately refuses.
 
 ## What it will not do
 
@@ -132,9 +169,10 @@ be asking agents to follow:
   emailed you choose where bytes are written.
 - **It cannot declare its own risk tier**, and cannot claim to be one of the
   product's own agents — the label it sends is prefixed `mcp:` server-side.
-- **It never triggers a paid model call.** `document_propose` takes operations
-  you authored; it does not go through the route that pays a model to invent
-  them.
+- **It never hides a paid service behind document editing.** `document_propose`
+  takes operations you authored and calls no model. `voice_lines` is a separate,
+  plainly named speech-service action, requires an accepted quote for a paid
+  provider, and attaching its result still follows proposal review.
 
 ## Concurrency
 

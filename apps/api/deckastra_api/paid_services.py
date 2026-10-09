@@ -3,9 +3,8 @@ import math
 import os
 import uuid
 from contextlib import contextmanager
-from deckastra_agents.budgets import RunBudget
+from deckastra_agents.budgets import RunBudget, cost_observer
 from deckastra_agents.router import ModelUnavailable
-from deckastra_agents.vertex_router import cost_observer
 
 
 @contextmanager

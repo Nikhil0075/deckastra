@@ -55,9 +55,9 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     response = client.post(
-        "/v1/generate",
+        "/v1/decks/from-template",
         headers=auth,
-        json={"instruction": "Explain the deploy pipeline", "slide_count": 3},
+        json={"template_id": "technical-architecture", "title": "Deploy pipeline"},
     )
     assert response.status_code == 200, response.text
     return response.json()
@@ -71,165 +71,14 @@ def first_text_element(document: dict) -> tuple[str, str]:
     raise AssertionError("the fixture deck has no text element")
 
 
-# ------------------------------------------------------------ generation
-
-
-def test_generation_runs_the_graph_and_records_the_run(client, auth, deck):
-    assert deck["run_id"]
-
-    runs = client.get(f"/v1/presentations/{deck['presentation_id']}/runs", headers=auth)
-    assert runs.status_code == 200
-    assert runs.json()[0]["status"] == "completed"
-    # The budget travels with the run so a cost question has an answer.
-    assert "used_tokens" in runs.json()[0]["budget"]
-    budget = runs.json()[0]["budget"]
-    diagnostics = deck["diagnostics"]
-    assert diagnostics["input_tokens"] == budget["input_tokens"] > 0
-    assert diagnostics["output_tokens"] == budget["output_tokens"] > 0
-    assert diagnostics["input_tokens"] + diagnostics["output_tokens"] == budget["used_tokens"]
-    assert diagnostics["attempts"] == 1
-    assert diagnostics["valid_first_attempt"] is True
-
-
-def test_graph_diagnostics_report_a_repaired_story(client, auth, monkeypatch):
-    from deckastra_api import agent_service
-    from deckastra_agents.router import ModelResponse
-
-    original = agent_service._stub_answers
-    def repairing_client(*args, **kwargs):
-        stub = original(*args, **kwargs)
-        complete = stub.complete
-        failed = False
-        def wrapped(request, budget):
-            nonlocal failed
-            if request.task_type == "planning" and not failed:
-                failed = True
-                budget.spend_tokens(11, 7)
-                return ModelResponse('{"private-invalid": true}', input_tokens=11, output_tokens=7, model="stub")
-            return complete(request, budget)
-        stub.complete = wrapped
-        return stub
-    monkeypatch.setattr(agent_service, "_stub_answers", repairing_client)
-    response = client.post("/v1/generate", headers=auth, json={"instruction": "Explain the pipeline", "slide_count": 3})
-    assert response.status_code == 200, response.text
-    diagnostics = response.json()["diagnostics"]
-    assert diagnostics["source"] == "stub"
-    assert diagnostics["attempts"] == 2
-    assert diagnostics["valid_first_attempt"] is False
-    assert diagnostics["plan_valid_first_attempt"] is False
-    assert diagnostics["validation_errors"] == ["story: StoryPlan required schema repair."]
-    assert "private-invalid" not in str(diagnostics)
-
-
-def test_the_single_shot_path_is_still_reachable(client, auth):
-    """The flag exists so an operator can go back without a rollback."""
-    response = client.post(
-        "/v1/generate",
-        headers=auth,
-        json={"instruction": "Explain the pipeline", "slide_count": 3, "use_graph": False},
-    )
-    assert response.status_code == 200
-    assert response.json()["document"]["slides"]
-
-
-# --------------------------------------------------------------- Journey C
-
-
-def test_forced_critic_issues_survive_generation_and_reload(client, auth, monkeypatch):
-    from deckastra_api import agent_service
-    original = agent_service._stub_answers
-
-    def revising(request, repositories=None):
-        stub = original(request, repositories)
-        stub.register("critique", {
-            "verdict": "revise_story",
-            "scores": {name: 0.4 for name in (
-                "hierarchy", "readability", "contrast", "alignment", "density",
-                "consistency", "narrative_clarity", "motion_quality")},
-            "issues": [{"slide_id": "0", "severity": "major", "category": "content",
-                        "message": "Verify this claim.", "suggested_fix": "Add a source."}],
-            "summary": "Needs evidence.",
-        })
-        return stub
-
-    monkeypatch.setattr(agent_service, "_stub_answers", revising)
-    response = client.post("/v1/generate", headers=auth,
-                           json={"instruction": "Explain the pipeline", "slide_count": 3})
-    assert response.status_code == 200, response.text
-    created = response.json()
-    document = created["document"]
-    issues = document["extensions"]["deckastra.unresolvedIssues"]
-    assert issues[document["slides"][0]["id"]][0]["message"] == "Verify this claim."
-    loaded = client.get(f"/v1/presentations/{created['presentation_id']}", headers=auth)
-    assert loaded.status_code == 200, loaded.text
-    assert loaded.json()["document"]["extensions"]["deckastra.unresolvedIssues"] == issues
-
-
-def test_journey_c_preview_accept_and_undo_just_that_change(client, auth, deck):
-    presentation_id = deck["presentation_id"]
-    slide_id, element_id = first_text_element(deck["document"])
-
-    # 1. Select an element and ask for a change.
-    response = client.post(
-        f"/v1/presentations/{presentation_id}/agent/edit",
-        headers=auth,
-        json={
-            "instruction": "Reconciliation runs nightly",
-            "scope": {"kind": "elements", "slide_ids": [slide_id], "element_ids": [element_id]},
-        },
-    )
-    assert response.status_code == 200, response.text
-    body = response.json()
-
-    # A single-element text change is low risk, so it applies without asking —
-    # making a human approve a typo fix trains them to approve without reading.
-    assert body["outcome"] == "applied"
-    assert body["risk_tier"] == "low"
-    assert body["document"] is not None
-    # Every change carries a user-facing reason.
-    assert body["changes"] and body["changes"][0]["reason"]
-
-    edited = json.dumps(body["document"])
-    assert "Reconciliation runs nightly" in edited
-
-    # 2. Undo only that transaction.
-    revert = client.post(
-        f"/v1/presentations/{presentation_id}/transactions/{body['transaction_id']}/revert",
-        headers=auth,
-    )
-    assert revert.status_code == 200, revert.text
-    assert "Reconciliation runs nightly" not in json.dumps(revert.json()["document"])
-
-
-def test_an_edit_with_no_selection_refuses_rather_than_guessing(client, auth, deck):
-    """Doc 03 §28: edit scope is always explicit.
-
-    An agent that infers scope infers it wrong on the first ambiguous sentence,
-    and then edits the whole deck.
-    """
+def test_the_internal_prompt_edit_route_is_gone(client, auth, deck):
     response = client.post(
         f"/v1/presentations/{deck['presentation_id']}/agent/edit",
         headers=auth,
         json={"instruction": "make it better", "scope": {"kind": "elements", "element_ids": []}},
     )
 
-    assert response.status_code == 200
-    assert response.json()["outcome"] == "none"
-    assert "Select what you want changed" in response.json()["refusal"]
-
-
-def test_an_edit_names_the_run_that_produced_it(client, auth, deck):
-    slide_id, element_id = first_text_element(deck["document"])
-    response = client.post(
-        f"/v1/presentations/{deck['presentation_id']}/agent/edit",
-        headers=auth,
-        json={
-            "instruction": "Shorter",
-            "scope": {"kind": "elements", "slide_ids": [slide_id], "element_ids": [element_id]},
-        },
-    )
-    assert response.json()["run_id"]
-
+    assert response.status_code == 404
 
 # -------------------------------------------------------------- proposals
 
@@ -433,71 +282,3 @@ def test_a_viewer_cannot_approve(client, auth, deck):
     )
     # 404, not 403: a 403 on something you cannot see confirms it exists.
     assert response.status_code == 404
-
-
-# ------------------------------------------------------------- boundaries
-
-
-def test_an_agent_edit_cannot_reach_an_element_outside_the_selection(client, auth, deck):
-    """The scope is enforced by the node, not trusted from the model."""
-    from deckastra_agents.budgets import RunBudget
-    from deckastra_agents.memory import InMemoryStore, ProjectMemory
-    from deckastra_agents.nodes._common import NodeContext
-    from deckastra_agents.nodes.edit import edit
-    from deckastra_agents.router import StubClient
-    from deckastra_agents.state import initial_state
-
-    from deckastra_api import agent_service
-
-    document = deck["document"]
-    slide_id, element_id = first_text_element(document)
-    other_id = document["slides"][1]["elements"][0]["id"]
-
-    client_stub = StubClient()
-    client_stub.register(
-        "structured",
-        {
-            "edits": [
-                {
-                    "element_id": other_id,  # outside the selection
-                    "change": "text",
-                    "new_text": "sneaky",
-                    "new_role": "",
-                    "to_index": -1,
-                    "reason": "unrequested",
-                }
-            ],
-            "refusal": "",
-            "confidence": 0.9,
-        },
-    )
-
-    produced = edit(
-        initial_state(
-            run_id="r",
-            user_id="u",
-            project_id="p",
-            presentation_id=deck["presentation_id"],
-            request={"instruction": "change it"},
-            document=document,
-            scope={"kind": "elements", "slide_ids": [slide_id], "element_ids": [element_id]},
-        ),
-        NodeContext(
-            client=client_stub,
-            budget=RunBudget(),
-            emit=lambda event: None,
-            registry=agent_service.build_registry(lambda: document),
-            memory=ProjectMemory(InMemoryStore(), "p"),
-        ),
-    )
-
-    assert produced["edit_plan"]["edits"] == []
-    assert any("outside the selection" in warning for warning in produced["warnings"])
-
-
-def test_the_event_stream_answers_even_without_redis(client, auth, deck):
-    """A stream that never produces anything is indistinguishable from a hang."""
-    response = client.get(f"/v1/runs/{deck['run_id']}/events", headers=auth)
-    assert response.status_code == 200
-    assert "text/event-stream" in response.headers["content-type"]
-    assert "data:" in response.text

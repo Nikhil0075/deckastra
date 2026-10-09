@@ -12,26 +12,12 @@ alembic>=1.13,<2
 # thread pool, and async buys nothing until there is measured pool pressure.
 psycopg[binary]>=3.2,<4
 
-# The agent system (Phase 5).
-#
-# LangGraph owns the graph, the conditional edges and the checkpointer. The agent
-# logic deliberately does not depend on it: nodes are plain functions over a
-# TypedDict, so they are testable without building a graph and the framework
-# stays replaceable.
-langgraph>=0.6,<1
-# Durable checkpoints in Postgres, ephemeral progress in Redis (doc 05 §25 vs
-# doc 03 §19 — resolved in favour of both, each for what it is good at).
-langgraph-checkpoint-postgres>=2.0
-# The desktop build runs on SQLite, and a run that cannot pause cannot be reviewed.
-langgraph-checkpoint-sqlite>=2.0,<4
+# Assistant progress fan-out.
 redis>=5.0,<7
 
-# GitHub integration (Phase 6).
-#
-# `cryptography` signs the App JWT. `httpx` is already a transitive dependency of
-# the test client; naming it here makes the GitHub client's use of it explicit
-# rather than accidental.
+# OAuth token verification uses RSA primitives directly.
 cryptography>=42,<51
+# HTTP is used directly by cloud service clients and tests.
 httpx>=0.27,<1
 # Mints and renews Google tokens from a named credentials file (google_credentials.py).
 google-auth>=2.30,<3

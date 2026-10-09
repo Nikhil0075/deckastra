@@ -1,0 +1,2242 @@
+{
+  "authoring-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2199d2296c1f9d20308d7174df599be5874f2effae4ddafe7a3a7be35544a40f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "19475a9225802750d6c26400c85819049f8d5729c4a284915947657e884f7a50",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "8bed823a170376245ce86284c8919307b67e5908d047498df0f5ca9849986439",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "4467fa496bce0b49983be9490a37caabbdc345d46141d9676cc8e97398543d71",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "3b670b970710ebc1231a38e8b1395769f07fc964ec47ca94c134bdabd32824e6",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2a54161da02afb7c952229cf78a7436e0f74bd0b44762cc51cf2dd27d81198d3",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "c78a8f6b66d328c01174dec43f7b5004f5028ee5fb335f77956b12e86f9f00b9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "852eeda341904aa60d5f18d46db3ed66d1e63bbd44584315c87c7bc2b194d717",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b912439023c0b369fff36c8a36f8e8c7af271ef7f406a071c6f907e11f07ce51",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "d31a818ccd2d2c2a9c2b1fefabb4c9afce7cfbea4a18d51bb7bd494554ebd6f4",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b3ff7207b661eaf5c74fed99e538ed36aec95ff47458a2773d9b9250f24ec058",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "508d140c29eadc27a7c5487819caf6a7cc62abd407349a1de37fe772892e6f3b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "21aa3674e618ec83ca4bc2d8a336cd1b09f61bcdf986cbd654ae7118abf5a64e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "86a73e362fd69c7c74abce7ce6e1347a181508b9dd0f8e524003889054ac40f0",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2cef35fa16cb459a639cabd8d1ef8f7ee578c570467ce164a4174bb64feacc3a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "c2ad789bac40659c6cfd5f9d66c3d715865f659a0bdd7e9933c5c6c06258da0c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "d31fc1618289971e344325f4c07dbd337a8d4ab88af40c9cbe332a07b952b166",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "970aa76f5a5b5f9e6c8ac1627ede6261a0ea6d035938af14f47bc0e642eee699",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9a48fb567eef0015389caf9e7a50ae272530f87d55e1b908238bd4d64b7e4fd0",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "authoring-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "d53d2b7fe5249fc0f261d7759e6813b58b8c2b5ea1b17198ff676974ddb26b7f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "fc8ebbacd6ea7e842a9a85ca8f6d6a6d7fa5e4f3358689284e84af39dc2f3f0a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "cb7ddef51c8bb79d5dd15baa4f19f2f55b1912494f998a5b914a43aef6cd73ee",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "eee14fcd776e74e0458fbc571a23a0630f8480840a87d9c90bf520271373f7f9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b907ba837f76dbcf18d2ca6625f04ade5ab35b594dafc891a68d89ae05b69289",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "563abc804447bbbc4ed583eb8c8a7360456f9f0cd40f7ee38924e36977f01ea5",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "cf69377ca53c0c2b4dbe830c99ba159f7c305093b819da6a429f3c864a259229",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "828766959e9f6fa5a2a770bcd5f64a08debc98d81cc45ebc8d15d17b3b5ed6e5",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "719878472c6618352115fb680e8f3103a9fe12a3bf7f0e40c549538c48099897",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "56ce83a5079b4125194d5533fa2a046ccfbdcfade06cfbea9231b548e8ea8e66",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b72e13f7388c377baab525ac5ba3c33c881e6b030a72434df6df539793e35965",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1b6108fc00020248315a4e5894057ac900b3d53b8905188d92fec982492d3ef3",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "92ab92b5749927998399aaf5864f070933851eff7ab542fb9839acae7e3ebab1",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "0b551c37bf2418dfc89cf729a7f71453206945414fe6fd5a6b99b003663e5d30",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "ff6e415a7961b4c2946c0ea3d74c3a59987f0097652c5d19cd100730602c9c34",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b3ec183905e4bd15c27789c47ede8627e51b78590fe397125ca82b16f192c52f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2796f7590140b5ca39478c50633595454755b207c77ea07c259e6214043b1c65",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "0e332b8be07e65193cdcb4c48aed00af25ad48d61a2c6e5d4bbbf54cebccfd96",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9ea11d171367b1b12e19a191bac3a179ba79964fcb7069dcdebce2e971020a8d",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "cfe86c76e6fdb86e70a49f685e13fc584be8ea417d9dfa259fada147a25e1b9b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "cleanup-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a7031abca202784052f41245128c9e1e5430adcd646dd6644e062c50b39a13d0",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "8c1af011859fa0bd180038787f82514c3124b8f73a4972db2adec3661922f215",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9345d80f4b1443b14d475637be01ae7be39ba8b55b730b413ae3bd542f16b7d3",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2ed6843ccdb8d8d08fa5fdc276b98450b0ceb3b7f2ca715f1fc0e6213d7082e3",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "0e41d7bb128116bcbc6f2c632d64fb0957ad6b409ae6f70e9c2a5f84d92af3fa",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a28f6bc4a448efb20a4211d3b321ae5871ce0e78cf6ce882cedc058b55e31058",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "be10adf07e79772559813892321d2bb43498e088fa7589c486abc7d807b81da7",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e6ac8ec6c60b591ac0f0556bf7234a01330eba3e2f9eabb301ad577e9a4bd559",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "ff17a4bec239b8e7d8ea2e3bd018155423a0ba956ddc598a3e973f8649a51cdd",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a87b63a90b34cb2f37ff21dde84c7332b6d32942e9007530f34a7802989a24ac",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "f100193d26402dffa090afbfca6459fad6275a233543b29187cb6bfc18239f9b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "03044853e5bd0297c2d2be0b91caa7140f2ba15325220f5a154d4c9a8f51e17e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "3abd0312c2055cdf31c5bca38006d92f9b1263f26de95b0f9b0e470206ab87c9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "ea907428d660d39d27dba79aa10ae0030bc7b860aa614d1676d173d36d616c7d",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9847027b227bbb961c2f46b1d48669f299db39e2f82d7cd4893ab34f606a30e0",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "8f905fb2c0e6c0378e3183dfc4f181d5f0c58cfb192b0928e9528d3710cee24f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5c00f31ce72288daadeb3df4b867057b7ce38be73fca6b0e0fb64cec3f466875",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1a39ab0d2d487807e870fde352fd585aa911de09b0df1d00284d68dec82891f0",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "710ed7c4958e76f19ef6be5b7f864372a47e224e091a3394c1cd1e1707d99e14",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a9b23630b9bbd47045ebf385ee171440f0a18a0db9dce53755efe050df8ab8e2",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "critique-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "03b54d065326e2db1905b381b7bb5caf5362df97ceae92ee291b824a981e89e4",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1a7955588e522efb56be1e4dc0f388af7767d8071839c0f4764e74e9b75ac855",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "d044c6ed5b3a6f1500046c0b2197aa2930c18d90c2a8c2470a0e5b5b0d16146c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e56cfb56f4e946fea272503ac8f3903914e124a1aaf957ab8dbc82fcd987500f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "4c94997fb61989285db7811f6bd2ac3bc3ad8c8f7de9b518356abc245e80ef97",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "99ae3b0ad677d9869f509c9a3e8a9e8bbec43e97ad3e255c31f750794a6cbf19",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "f87d40e0951d89e149c146732034f48a57a89d7d1e7c123b50e7b73d7275d809",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "218aa64fad7809c6b84de675c03643205297ba146a9c640284e58bdfcac51083",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e2996f03094ca536f43ce92ca3f530f6df2b844582c0d5ca56996a44ed60a762",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a39d7e814a02070ffd3afefe91eb2d578efa3f477b6ad73a693ad7be1e386187",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "26d11f26a5d6e639adc377ae3bb65087aae1b8aaba6276e0c4f22d4203322a38",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "7faf4155ff1cd1ccdc697dafb083a684dcae116517e67d3a42ae1b887d2ed8c4",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "8c5cd28b282cc99b7df690588f1cfa1cde461ed02302f8ab0c58f7d83d41b05a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "01298fde96a88cd119fb633ab8f3ce20d9cbce918607831d4fa4b79d567cc61f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "7e52060f409d3f7e66e741140a3ca2ec3dbf0a728e60d0bf663cff1b747a86d5",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "ad78c43716b14bc23b22527520f95b8fa6ce65f04c99992896762c94d9dbdc21",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "94bfe9920fe0d3afcfb2929bc86b00878574fadc62a302d52bb831fa7debba16",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2354bbfdb0be37ef335f6652b4792985d75a41d9bd59d6585140e1531e485f6e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "45c21e735fc711fce8dbc3902a12e8ce9dde7345e543b8e8426d3de08679e864",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5a361819b905f049d5e05c3cf19bca4e580daacf075c6c46a08eb37a0d27e8f2",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "narration-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "6be044fc81abab8b1004b592ba2276473a953afbf4122a1526d16568c25316b1",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "413313f04767e4b44661ff7d874bb4ac344975250c175b847e71b7b0111842c4",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "bc0eaa10694d2a564675e382c901ebdfae22c12221038faa19efc2e6a258fe61",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "7c32a37dfb75572f8d3083d48848daaef9b2e3ccbc0ced420c3dbc4d0e21b1f9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e7580e01c1f758626a96890107d22f48c37ca1a7596a3d21bc59548bba47e20e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9ef0be2b460345bb4943da45757b259bf1800439e6fef0f2e602a92ce36a76a8",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "fb84a70bb17b3a5ec5ba5b6efc54a1127bb05118528b1de02e8563db1a1443d1",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1b4b774bb70fc62b6ce4877d128912ee1ed83144540ef172117975747ca8a586",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "70d726f041353c25c68b59f1e24ddcc5cb1434cabb359670820ba5e5fcba5f08",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "647082e14be95e64f693e37537abe4803254c124d496b6f80a9536157c9379b5",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b597c89537ed9d491022e55c7ab3f166d3a4849b2fb8e777204b680df80ef151",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "2210e2a32711cee9bca8c81a877fc72c26d7bb0fb5202c9c2da1fe65b4df005b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "758f2f2c4fde60dd1302e9198730d4af3b5dd8bda4fce1d677ad9523f51a0f24",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "cad14e5aaddc94fdaab7c11db57b2ec7e62e0cf4eb0f7aa0f2b584b516ea3acd",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5fda7c749eca4a798a0bfb87714c5c5b667a04aec4008beb2a55be2708f4d19e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "210401bc82d13b122321bd274e6ec3c34a7430f61c7c2722123f4a106d90b877",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1d2b1b7116feaa2afae14da4949bc955b5a3f5b79132621f353b441038f9fb2f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "fddb78fbb051fa915fac0be8aeb7147d896bcde9e6fd2b73dc1d4623aa837870",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e224f6a8003d14d077333a4f1585544cd7ac257ecf1125d98a37669311d95b0f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "55eb45d2891d8efcd577be1d8dba2c23cfb4a8d0da06211b2671a7c90f1cd2a8",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "planning-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b9ecd8aa7c0902ad15a242ecede6fae1a8d1506ecf601a5645fe22326ba610fb",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "6182bf95102ca882bef5faf080b3012b556d49e3bca9053de0b4cfd27762dbda",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "772f9a44d5f1ce30e8ad8247151bf1e3bb96381d139c8c247a468517cce6e92b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "192e703d19a9289f2a64d92d8fc9d08fb4b37636e0d3a5c5723182521c37e966",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "530e59fa00ffff0689b975fed523000c3042b8808df200e12568e402136e653e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "aaf2c3daccc219b667fcddff2accdcf5ad4382d9f87829b2e02307268c6e73ce",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1ce55a8ea05478d413364a5f8a28c9ddea108826f1d20658f2fbd1f80cb98841",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "c3518fb05fffe9923f18d686bf3523e6419fa6ecb7554fe9778f9ec208cb650a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "323fa1eacb45d899c0be2684434678a1c565cfec69cd3c5168bd7c8eec3b3424",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "09b52c284e64ef3a5c9b856fd2b2968ec284803c4ea01f4ab52eacb7a8cbb632",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "a23f8cf90c20bb9a2cda969f1e0209c7b3ee74a6f24052d25931c45fdc20420c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "0596c390d838e5a524042bc8f3c2bffd9da34d5a2c1ddec1690bb4f6a2c1025a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "9df8e727fe4f6b0aa25e2c5f6e22a19f04dd9e0280582744cdce8d0e1e141233",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "01320f7a2bc14b3aff5304d78ab57c449383ac52d0c135fc80926f0affd1a427",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "06021edc6d2359c68f63ed91b3a0aa3b8df33f21957b516cab58b51a380f339c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e035ad8648401c9de68a4cb9a365e648ef780bf6f892ede472a54119b1c42724",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "604856e8eb8ac6ebc0f3f343db07c5c9dfd5667d73bddbf961e369aa1e5b51ba",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "4751ba33cbd786fdb87250700369079397c9430b0d25fe4c90071b23185d1ef3",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "4a98f44043f33b22178b9fafa3172e17755703d3be76082a80ad6244f79ec91d",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5ab62a18e1498305ed92c7b512e183ce9e17dbbf3690f5b3b317ae7645720839",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "translation-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "33606d2ff9bfc3de843768da8621d21b47ccb149e6818a5f4538b4c832fbebd9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-00": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-01": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "c47f9b413b64e325dce7221c8e6b4c3d1cfd1d0f8d85005446459d894435c418",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-02": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "8afc90348ec93b4f303be5a5f39c758195e698f2fb385315c3f1d93f840ad79e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-03": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "763a04c7d6f2e347e375dab6f10207973694020f794aa9439b351e74abad57a9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-04": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "708395df9e1d12356787cc98df7cc1842553a021adac19e3a3e11f0a6e5f7c66",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-05": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "0232f2355218bb7bd937597b636092e11dd55fc55116c5abbb71ddb35cb2ae8c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-06": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "77fe99d98edc0ea403f6076b38cc0f81333c67f3b020392cc8d55baff3ae2d01",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-07": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "15972426062364c1b63a26147c5b90e42d6eb58e98cf1f10099bbe159936053f",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-08": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5a10d3d41fd351efab0b36fca5fa7371270c6713b04aace1f60a899d263f5161",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-09": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "1a5a223a2d7953b7c7b4ad426359bf5ba112ee3e3874c6de21b25e648a7c0a11",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-10": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "b41fd8170ca30379b66f7714785c4e0a25bd5ad0d27eb1e47dd3df9a1488cd10",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-11": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "87a65ea79879877379e463156217a891b97a5c498a4dfe4d24ff2c25955739f6",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-12": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "e8e547afeed13e42013f48045942e00ca33a859ad8ef7efd1f1d6368f190b85c",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-13": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "74dbed9760f6ca19ff8a2370c25690fbb37aa3c89fd9a6365f79e300c0f03b82",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-14": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "062fd5297d84eb7be35ae297594007ef39a973452c7b8769175e4dffd0d4f94a",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-15": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "5570fd6cbac3b5538dc2cb489b223e83bc6e435155ff99126e91d9f705447ecc",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-16": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "21135a21e6bee98a851d23d0b7f7c00e206559c7224382c9bd022f5cceb83f4e",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-17": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "ac9ec29ec7d42d22637a869e52b1a56c011380fa3f517cccb950451e325aaed9",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-18": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "c17e269bc2eb601aa06114dfd1aec634ffe709f3882dee702436ca62d654a7fd",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  },
+  "vision-19": {
+    "reviewer": "",
+    "independent_of_system_author": false,
+    "result_sha256": "3e70f76094f67737e13319e943ed4e359623c200a95618fc7de9ff2e4b40d162",
+    "scores": {
+      "factual_grounding": null,
+      "narrative_quality": null,
+      "visual_consistency": null,
+      "translation": null,
+      "accessibility": null,
+      "instruction_adherence": null
+    },
+    "safety_failures": 0,
+    "severe_regressions": 0,
+    "notes": ""
+  }
+}

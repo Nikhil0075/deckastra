@@ -6,8 +6,8 @@ import { join } from "node:path";
  * (final package review, item 08).
  *
  * Three kinds of file are read by path rather than imported — Alembic's
- * migrations and its config, the generated JSON Schema every document is
- * validated against, and the agent prompts — so nothing bundles them
+ * migrations and its config, generated schemas and presets read by the API,
+ * so nothing bundles them
  * automatically and nothing fails at build time when one is absent.
  *
  * They used to be filtered with `existsSync`, which turned a moved path or a
@@ -27,9 +27,9 @@ export function dataEntries(root) {
     [join(root, "infrastructure", "database", "alembic.ini"), "infrastructure/database"],
     // The generated schema artifact the API validates every document against.
     [join(root, "packages", "presentation-schema", "generated"), "packages/presentation-schema/generated"],
+    // Reviewed deck templates consumed by the deterministic composition routes.
+    [join(root, "packages", "deck-presets", "generated"), "packages/deck-presets/generated"],
     [join(root, "packages", "renderer", "font-packs"), "packages/renderer/font-packs"],
-    // Prompts the agent system loads as files.
-    [join(root, "agents", "deckastra_agents", "prompts"), "deckastra_agents/prompts"],
   ];
 }
 

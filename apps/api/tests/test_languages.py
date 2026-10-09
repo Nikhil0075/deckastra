@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api import audio, locales, translation  # noqa: E402
+from deckastra_api import audio, locales, speech, translation  # noqa: E402
 from deckastra_api.db import session as db_session  # noqa: E402
 
 
@@ -51,7 +51,7 @@ def auth(client):
 
 @pytest.fixture()
 def deck(client, auth):
-    response = client.post("/v1/generate", headers=auth, json={"instruction": "Explain the deploy pipeline", "slide_count": 3})
+    response = client.post("/v1/decks/from-template", headers=auth, json={"template_id": "technical-architecture", "title": "Explain the deploy pipeline"})
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -138,6 +138,36 @@ def test_a_whole_deck_translation_waits_for_a_person(client, auth, deck):
     assert read(client, auth, presentation_id)["version_id"] == before["version_id"]
 
 
+def test_paid_translation_requires_an_exact_credit_quote(client, auth, deck, monkeypatch):
+    monkeypatch.setenv("DECKASTRA_TRANSLATION", "google")
+    monkeypatch.setenv("DECKASTRA_TRANSLATION_USD_PER_MILLION", "20")
+
+    class Translator:
+        name = "google"
+        origin = "machine"
+        def translate(self, items, *, source, target):
+            return {item.id: f"[{target}] {item.text}" for item in items}
+
+    monkeypatch.setattr(translation, "build_translator", lambda: Translator())
+    presentation_id = deck["presentation_id"]
+    head = read(client, auth, presentation_id)["version_id"]
+    request = {"presentation_id": presentation_id, "expected_version_id": head, "locale": "fr",
+               "scope": "missing", "slide_ids": [], "glossary": ["Deckastra"]}
+    quote = client.post("/v1/media/quotes/translation", headers=auth, json=request)
+    assert quote.status_code == 200, quote.text
+    assert quote.json()["task"] == "translation" and quote.json()["units"] > 0
+    route = f"/v1/presentations/{presentation_id}/locales/fr/translate"
+    without = client.post(route, headers=auth, json={key: value for key, value in request.items() if key not in {"presentation_id", "locale"}})
+    assert without.status_code == 422 and "quote" in without.text.lower()
+    changed = client.post(route, headers=auth, json={**{key: value for key, value in request.items() if key not in {"presentation_id", "locale"}},
+        "glossary": [], "quote_token": quote.json()["quote_token"]})
+    assert changed.status_code == 409
+    accepted = client.post(route, headers=auth, json={**{key: value for key, value in request.items() if key not in {"presentation_id", "locale"}},
+        "quote_token": quote.json()["quote_token"]})
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["provider"] == "google"
+
+
 def test_translate_refuses_a_stale_view_and_the_source_language(client, auth, deck):
     presentation_id = deck["presentation_id"]
     stale = client.post(
@@ -172,6 +202,13 @@ def test_an_unknown_provider_is_refused_not_guessed(client, auth, deck, monkeypa
         json={"scope": "missing", "expected_version_id": head},
     )
     assert response.status_code == 503
+
+
+def test_the_removed_model_translator_is_refused(monkeypatch):
+    monkeypatch.setenv("DECKASTRA_TRANSLATION", "model")
+    status = translation.translation_status()
+    assert status["available"] is False
+    assert "stub, google" in status["reason"]
 
 
 def test_an_installed_product_has_no_stand_in_translator(monkeypatch):
@@ -220,12 +257,99 @@ def test_synthesize_proposes_takes_whose_length_is_read_from_the_file(client, au
         take = cue["takes"]["en"]
         assert take["textHash"] == locales.text_hash(cue["text"])
         assert take["durationMs"] > 0
+        assert take["wordTimings"]
+        assert take["wordTimings"][0]["startMs"] == 0
+        assert take["wordTimings"][-1]["endMs"] == take["durationMs"]
         manifest = next(asset for asset in document["assets"] if asset["id"] == take["assetId"])
         assert manifest["type"] == "audio" and manifest["durationMs"] == take["durationMs"]
     # The stored file says the same length the take does.
     assets = client.get("/v1/workspace/assets", headers=auth).json()["assets"]
     audio_rows = [row for row in assets if row["kind"] == "audio"]
     assert len(audio_rows) == 2 and all(row["waveform_peaks"] and len(row["waveform_peaks"]) == 256 for row in audio_rows)
+
+
+def test_paid_speech_requires_a_quote_bound_to_the_voice_request(client, auth, deck, monkeypatch):
+    presentation_id = deck["presentation_id"]
+    _add_cues(client, auth, presentation_id)
+    monkeypatch.setenv("DECKASTRA_SPEECH_USD_PER_MILLION", "16")
+    monkeypatch.setattr(speech, "selected_speech_provider", lambda: "google")
+    monkeypatch.setattr(speech, "voices", lambda _locale: [{"name": "en-US-Chirp3-HD-Orus"}])
+    head = read(client, auth, presentation_id)["version_id"]
+    request = {"presentation_id": presentation_id, "expected_version_id": head, "locale": "en",
+               "cue_ids": [], "voice": "default", "rate": 1.0, "pronunciations": []}
+    quote = client.post("/v1/media/quotes/speech", headers=auth, json=request)
+    assert quote.status_code == 200, quote.text
+    route = f"/v1/presentations/{presentation_id}/narration/synthesize"
+    body = {key: value for key, value in request.items() if key != "presentation_id"}
+    assert client.post(route, headers=auth, json=body).status_code == 422
+    changed = client.post(route, headers=auth, json={**body, "rate": 1.1, "quote_token": quote.json()["quote_token"]})
+    assert changed.status_code == 409
+
+
+def test_timed_ssml_marks_words_without_turning_script_into_markup():
+    marked, words = speech.timed_ssml(
+        "Deckastra <wins> [pause 800ms] now.",
+        [speech.Pronunciation("Deckastra", "Deck astra")],
+    )
+    assert words == ["Deckastra", "wins", "now"]
+    assert [f'name="w{i}"' in marked for i in range(3)] == [True, True, True]
+    assert "&lt;" in marked and "<break time=\"800ms\"/>" in marked
+    assert '<sub alias="Deck astra">Deckastra</sub>' in marked
+
+
+def test_google_word_timepoints_are_stored_as_take_alignment(monkeypatch):
+    seen = {}
+
+    class Response:
+        def json(self):
+            return {
+                "audioContent": base64.b64encode(b"mp3").decode("ascii"),
+                "timepoints": [
+                    {"markName": "w0", "timeSeconds": 0.1},
+                    {"markName": "w1", "timeSeconds": 0.55},
+                ],
+            }
+
+    def request(_http, _method, _url, **kwargs):
+        seen.update(kwargs["json"])
+        return Response()
+
+    monkeypatch.setattr(speech, "_google_request", request)
+    monkeypatch.setattr(audio, "duration_ms", lambda *_args: 1000)
+    made = speech._google_synthesize("Reveal now", locale="en-US", voice="voice-a", rate=1)
+    assert seen["enableTimePointing"] == ["SSML_MARK"]
+    assert '<mark name="w0"/>' in seen["input"]["ssml"]
+    assert made.word_timings == [
+        {"word": "Reveal", "startMs": 100, "endMs": 550},
+        {"word": "now", "startMs": 550, "endMs": 1000},
+    ]
+
+
+def test_each_cue_can_choose_a_different_voice_and_keeps_alignment(client, auth, deck):
+    presentation_id = deck["presentation_id"]
+    slide = _add_cues(client, auth, presentation_id)
+    first, second = "nar_01JB8Z9K2QW4RN7F3XAAAAAAA1", "nar_01JB8Z9K2QW4RN7F3XAAAAAAA2"
+    commit(
+        client,
+        auth,
+        presentation_id,
+        [
+            {"op": "add", "path": f"/slides/id:{slide}/narration/cues/id:{first}/voice", "value": "speaker-a"},
+            {"op": "add", "path": f"/slides/id:{slide}/narration/cues/id:{second}/voice", "value": "speaker-b"},
+            {"op": "add", "path": f"/slides/id:{slide}/narration/cues/id:{first}/advanceOnWord", "value": 2},
+        ],
+        "Cast two speakers",
+    )
+    head = read(client, auth, presentation_id)["version_id"]
+    response = client.post(
+        f"/v1/presentations/{presentation_id}/narration/synthesize",
+        headers=auth,
+        json={"locale": "en", "voice": "fallback", "expected_version_id": head},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len({item["asset_id"] for item in body["voiced"]}) == 2
+    assert all(item["word_timings"] > 0 for item in body["voiced"])
 
 
 def test_an_identical_request_reuses_the_recording_and_costs_nothing(client, auth, deck):

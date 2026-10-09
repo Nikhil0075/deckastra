@@ -22,8 +22,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import backup, deck_copy, object_storage, quotas, sync, version_restore
-from . import export_service, local_mode, motion, proposals, store, themes
+from . import backup, deck_copy, object_storage, provenance, quotas, sync, version_restore
+from . import export_service, local_mode, motion, presets, proposals, store, themes
 from .auth import (
     Principal,
     Role,
@@ -32,7 +32,7 @@ from .auth import (
     resolve_presentation_access,
     resolve_project_access,
 )
-from .compose import blank_document
+from .compose import blank_document, compose_slide
 from .db.models import Asset, Presentation, PresentationVersion, TransactionRow, Workspace
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
@@ -202,6 +202,44 @@ def get_presentation(
     }
 
 
+@router.get("/presentations/{presentation_id}/slides/{slide_id}/sources")
+def slide_sources(
+    presentation_id: str,
+    slide_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Return evidence embedded in the document for one slide.
+
+    Evidence remains part of the document contract even though Deckastra no
+    longer connects to or indexes source-code repositories. Agent-authored
+    proposals can still attach provenance, and already-authored decks retain it.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.VIEWER,
+    )
+    loaded = store.load_presentation(session, presentation_id)
+    records = provenance.for_slide(loaded.document, slide_id)
+
+    return {
+        "slide_id": slide_id,
+        "sources": [
+            {
+                **record,
+                "url": (
+                    record.get("sourceReference")
+                    if str(record.get("sourceReference", "")).startswith(("https://", "http://"))
+                    else None
+                ),
+            }
+            for record in records
+        ],
+    }
+
+
 class PreviewRequest(BaseModel):
     slide_id: str = Field(min_length=1, max_length=64)
     #: Render as this pending proposal *would* leave the deck. Nothing is applied.
@@ -209,6 +247,12 @@ class PreviewRequest(BaseModel):
     #: The version the caller believes it is looking at. When it is given and the
     #: deck has moved, the picture would be of something else — so it is refused
     #: rather than returned with a quietly different version id attached.
+    expected_version_id: str | None = Field(default=None, max_length=64)
+
+
+class MotionPreviewRequest(BaseModel):
+    slide_id: str = Field(min_length=1, max_length=64)
+    frame_count: int = Field(default=6, ge=3, le=8)
     expected_version_id: str | None = Field(default=None, max_length=64)
 
 
@@ -477,11 +521,126 @@ def propose_motion(
     }
 
 
+class InsertPatternRequest(BaseModel):
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    pattern: str = Field(min_length=1, max_length=80)
+    slots: dict[str, Any] = Field(default_factory=dict)
+    after_slide_id: str | None = Field(default=None, max_length=64)
+    intent: str = Field(default="Insert a slide pattern", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+    dry_run: bool = False
+
+
+@router.post("/presentations/{presentation_id}/patterns/insert")
+def insert_pattern(
+    presentation_id: str,
+    request: InsertPatternRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(409, {"message": "This deck changed since you chose the pattern. Read it again first.", "code": "E310", "current_version_id": head.version_id})
+    slides = head.document.get("slides") or []
+    if request.after_slide_id is None:
+        index = len(slides)
+    else:
+        at = next((i for i, slide in enumerate(slides) if slide.get("id") == request.after_slide_id), None)
+        if at is None:
+            raise HTTPException(404, "The slide to insert after no longer exists.")
+        index = at + 1
+    try:
+        plan = presets.slide_plan_from_pattern(request.pattern, request.slots, purpose=request.intent)
+    except presets.PresetError as error:
+        raise HTTPException(422, str(error)) from error
+    slide = compose_slide(plan, index)
+    operations = [{"op": "add", "path": f"/slides/{index}" if index < len(slides) else "/slides/-", "value": slide}]
+    if request.dry_run:
+        return {"outcome": "planned", "operations": operations, "version_id": head.version_id,
+                "slide_id": slide["id"], "pattern": request.pattern, "warnings": []}
+    try:
+        outcome = proposals.create_proposal(
+            session, presentation_id=presentation_id, operations=operations, intent=request.intent,
+            created_by=principal.user_id, agent_id=f"mcp:{request.client_label}"[:120],
+            reason=f"Deterministic slide pattern: {request.pattern}", expected_version_id=request.expected_version_id,
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(409, {"message": str(error), "code": error.code}) from error
+    return {"outcome": outcome["status"], "risk_tier": outcome["risk_tier"],
+            "reasons": outcome.get("reasons") or [], "transaction_id": outcome["transaction_id"],
+            "version_id": outcome.get("version_id"), "expires_at": outcome.get("expires_at"),
+            "slide_id": slide["id"], "pattern": request.pattern, "warnings": []}
+
+
+class MotionStyleRequest(BaseModel):
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    style: str = Field(min_length=1, max_length=80)
+    intent: str = Field(default="Apply a deck motion style", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+    dry_run: bool = False
+
+
+@router.post("/presentations/{presentation_id}/motion-style")
+def apply_motion_style(
+    presentation_id: str,
+    request: MotionStyleRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(409, {"message": "This deck changed since you chose the motion style. Read it again first.", "code": "E310", "current_version_id": head.version_id})
+    style = (presets.catalog().get("motionStyles") or {}).get(request.style)
+    if not style:
+        raise HTTPException(422, f"No motion style named {request.style!r}.")
+    operations: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    slides_changed = 0
+    for slide in head.document.get("slides") or []:
+        candidate = copy.deepcopy(slide)
+        warnings.extend(motion.animate_slide(candidate, {
+            "sequence": list(style.get("sequence") or []), "entrance": str(style.get("entrance") or "fade"),
+            "pacing": str(style.get("pacing") or "measured"), "click_reveals": int(style.get("clickReveals") or 0),
+        }))
+        if candidate.get("animations") != slide.get("animations"):
+            slides_changed += 1
+            operations.append({"op": "replace" if "animations" in slide else "add",
+                               "path": f"/slides/id:{slide['id']}/animations", "value": candidate.get("animations") or []})
+    metadata = head.document.get("metadata") or {}
+    if metadata.get("motionStyle") != request.style:
+        operations.append({"op": "replace" if "motionStyle" in metadata else "add",
+                           "path": "/metadata/motionStyle", "value": request.style})
+    if not operations:
+        return {"outcome": "none", "version_id": head.version_id, "style": request.style,
+                "warnings": warnings, "refusal": "That motion style is already applied."}
+    if request.dry_run:
+        return {"outcome": "planned", "operations": operations, "version_id": head.version_id,
+                "style": request.style, "slides_changed": slides_changed, "warnings": warnings}
+    try:
+        outcome = proposals.create_proposal(
+            session, presentation_id=presentation_id, operations=operations, intent=request.intent,
+            created_by=principal.user_id, agent_id=f"mcp:{request.client_label}"[:120],
+            reason="; ".join(warnings)[:1000] or f"Named motion style: {request.style}",
+            expected_version_id=request.expected_version_id,
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(409, {"message": str(error), "code": error.code}) from error
+    return {"outcome": outcome["status"], "risk_tier": outcome["risk_tier"],
+            "reasons": outcome.get("reasons") or [], "transaction_id": outcome["transaction_id"],
+            "version_id": outcome.get("version_id"), "expires_at": outcome.get("expires_at"),
+            "style": request.style, "slides_changed": slides_changed, "warnings": warnings}
+
+
 class TransitionRequest(BaseModel):
     slide_id: str = Field(min_length=1, max_length=64)
     expected_version_id: str = Field(min_length=1, max_length=64)
     #: What the deck does moving *into* this slide.
-    kind: Literal["cut", "fade", "slide", "push", "zoom", "morph"] = "fade"
+    kind: Literal[
+        "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split",
+        "iris", "flip", "blurDissolve", "morph",
+    ] = "fade"
     pacing: Literal["tight", "measured", "deliberate"] = "measured"
     #: Semantic roles to carry across, for a morph. Roles, never ids: the agent
     #: plans before ids exist, and a pairing written in roles survives a layout.
@@ -728,6 +887,62 @@ def preview_slide(
         "metrics_estimated": rendered["metrics_estimated"],
         "proposal_base_version_id": proposal_base,
         "rebased": rebased,
+    }
+
+
+@router.post("/presentations/{presentation_id}/motion-preview")
+def preview_slide_motion(
+    presentation_id: str,
+    request: MotionPreviewRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """One slide's motion as a time-labelled contact sheet.
+
+    The frames are sampled by the animation engine and painted together by the
+    export worker. Nothing here runs a second approximation of the timeline.
+    """
+    resolve_presentation_access(
+        session,
+        user_id=principal.user_id,
+        presentation_id=presentation_id,
+        require=Role.VIEWER,
+    )
+    loaded = store.load_presentation(session, presentation_id)
+    if request.expected_version_id and loaded.version_id != request.expected_version_id:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "This deck has changed since you read it. Read it again before previewing motion.",
+                "code": "E310",
+                "current_version_id": loaded.version_id,
+            },
+        )
+    if not any(slide.get("id") == request.slide_id for slide in loaded.document.get("slides", [])):
+        raise HTTPException(status_code=404, detail=f"No slide {request.slide_id} in this deck.")
+
+    try:
+        rendered = export_service.render_motion_strip_png(
+            loaded.document,
+            request.slide_id,
+            frame_count=request.frame_count,
+            assets=asset_service.inline_for_render(
+                session, presentation_id=presentation_id, document=loaded.document
+            ),
+        )
+    except export_service.ExportError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    return {
+        "slide_id": request.slide_id,
+        "image_base64": base64.b64encode(rendered["bytes"]).decode("ascii"),
+        "width": rendered["width"],
+        "height": rendered["height"],
+        "version_id": loaded.version_id,
+        "duration_ms": rendered["duration_ms"],
+        "frame_times_ms": rendered["frame_times_ms"],
+        "frame_count": len(rendered["frame_times_ms"]),
+        "metrics_estimated": rendered["metrics_estimated"],
     }
 
 

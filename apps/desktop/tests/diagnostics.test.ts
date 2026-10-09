@@ -39,8 +39,6 @@ describe("a diagnostics report", () => {
     expect(report.service).toMatchObject({ state: "failed", kind: "crashed", attempt: 2 });
     expect(report.service.detail).toContain("code 3");
     expect(report.dataDir).toContain("workspace");
-    // The service was not running, so this says so rather than claiming a route.
-    expect(report.generation).toHaveProperty("error");
   });
 
   it("says whether a key is set, and never what it is", async () => {

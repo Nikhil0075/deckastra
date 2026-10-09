@@ -9,8 +9,8 @@ import Home from "../app/page";
 /**
  * The web home is the shared home (roadmap 08 §1.3). What this route owns is
  * what opening a deck means; these cases hold it to that, and to the two things
- * the old page promised and the shared one must keep: a blank deck opens its
- * saved editor, and a failure leaves the brief where it was.
+ * the old page promised and the shared one must keep: blank and template decks
+ * both open only after the workspace service has saved them.
  */
 
 /** Seeded with the token these cases assert reaches the server. */
@@ -31,7 +31,7 @@ const client = () => {
 
 const push = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
-// Real apart from browser text measurement and the repository list, which would
+// Real apart from browser text measurement, which would
 // issue its own requests and say nothing about these journeys.
 vi.mock("@deckastra/editor-ui", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@deckastra/editor-ui")>()),
@@ -50,13 +50,19 @@ const account = ok({
       projects: [{ id: "prj_test", name: "Test project", description: null }],
     },
   ],
-  capabilities: { sharing: true, generation: { provider: "stub", available: true, reason: null } },
+  capabilities: { sharing: true },
 });
 
 function route(url: string) {
   if (url.endsWith("/v1/account")) return account;
   if (url.includes("/v1/projects/prj_test/presentations")) return ok({ presentations: [] });
-  if (url.includes("/repositories")) return ok({ repositories: [] });
+  if (url.endsWith("/v1/presets")) return ok({
+    description: "reviewed",
+    purposeGroups: ["business"],
+    slidePatterns: ["title"],
+    themes: [{ key: "flat", name: "Flat", summary: "", preview: {} }],
+    presets: [{ id: "business-pitch", name: "Sharp pitch", summary: "Pitch", purpose: "business", tags: [], themeKey: "flat", motionStyle: "measured", transitionStyle: "fade", voiceStyle: "clear", reviewed: true, slides: [{ key: "opening", pattern: "title", purpose: "Open", slots: { headline: "Hello" } }] }],
+  });
   // The home's plan card reads the account's credits on arrival.
   if (url.endsWith("/v1/account/credits")) {
     return ok({ plan: "free", monthly_allowance: 60, remaining_credits: 60, period_start: "2026-10-01T00:00:00+00:00", period_end: "2026-11-01T00:00:00+00:00" });
@@ -88,25 +94,21 @@ it("creates a blank deck from the home and opens its saved editor", async () => 
   expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith("/v1/presentations"))).toHaveLength(1);
 });
 
-it("keeps the brief when generation fails, and a blank deck still opens", async () => {
+it("shows a template failure, and a blank deck still opens", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
       const known = route(url);
       if (known) return known;
-      if (url.endsWith("/v1/generate") || url.endsWith("/v1/generate/review")) {
-        return { ok: false, status: 502, json: async () => ({ detail: "Generation failed" }) };
+      if (url.endsWith("/v1/decks/from-template")) {
+        return { ok: false, status: 502, json: async () => ({ detail: "Template failed" }) };
       }
       return ok({ presentation_id: "doc_after_failure" });
     }),
   );
   render(<Home />, { wrapper: withWorkspaceClient(client()) });
-  const brief = (await screen.findByTestId("generate-instruction")) as HTMLTextAreaElement;
-  await waitFor(() => expect(brief.disabled).toBe(false));
-  fireEvent.change(brief, { target: { value: "Retain my brief" } });
-  fireEvent.click(screen.getByTestId("generate-submit"));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/Generation failed/);
-  expect(brief.value).toBe("Retain my brief");
+  fireEvent.click(await screen.findByTestId("use-template-business-pitch"));
+  expect((await screen.findByRole("alert")).textContent).toMatch(/Template failed/);
   fireEvent.click(screen.getByTestId("new-deck"));
   await waitFor(() => expect(push).toHaveBeenCalledWith("/edit/doc_after_failure"));
 });

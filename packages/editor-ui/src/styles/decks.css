@@ -263,105 +263,173 @@
   padding: var(--dk-space-4);
 }
 
-/* --- The home's prompt bar (GenerateDeck.tsx, roadmap 08 §1.3) -------------- */
+/* --- Template-first creation (plan 09 §6.6) -------------------------------- */
 
-.dk-home-prompt {
-  /* On the same inset as the heading and the grid below it. */
+.dk-template-start {
   flex: none;
+  display: grid;
+  gap: var(--dk-space-4);
   margin: var(--dk-space-5) var(--dk-space-5) 0;
-  padding: var(--dk-space-4) var(--dk-space-4) var(--dk-space-3);
-  border: var(--dk-line) solid var(--dk-ink);
+  padding: var(--dk-space-5);
+  border: var(--dk-line) solid var(--dk-rule);
   background: var(--dk-surface);
 }
-.dk-home-prompt[hidden] {
-  display: none;
+.dk-template-start:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 2px;
 }
-.dk-home-prompt__input {
-  display: block;
-  width: 100%;
-  min-height: 56px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--dk-ink);
-  font-family: var(--dk-font-display);
-  font-size: var(--dk-text-xl);
-  line-height: 1.25;
-  resize: vertical;
-}
-.dk-home-prompt__input::placeholder {
-  color: var(--dk-ink-muted);
-}
-.dk-home-prompt__input:focus-visible {
-  outline: none;
-}
-.dk-home-prompt:focus-within {
-  border-color: var(--dk-blue);
-  box-shadow: inset 0 0 0 1px var(--dk-blue);
-}
-.dk-home-prompt__row {
+.dk-template-start__heading,
+.dk-template-start__controls,
+.dk-template-start__utilities,
+.dk-template-card__meta {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--dk-space-3);
-  margin-top: var(--dk-space-2);
 }
-.dk-home-prompt__route {
+.dk-template-start__heading {
+  align-items: flex-start;
+}
+.dk-template-start__heading h2,
+.dk-template-card h3,
+.dk-agent-start h3 {
+  margin: 0;
+}
+.dk-template-start__heading p,
+.dk-template-card p,
+.dk-agent-start p {
+  margin: var(--dk-space-1) 0 0;
+}
+.dk-template-start__purposes {
   display: flex;
-  flex: 1 1 260px;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--dk-space-2);
-  min-width: 0;
-  font-size: var(--dk-text-sm);
+  gap: var(--dk-space-1);
 }
-.dk-home-prompt__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dk-space-2);
-}
-.dk-home-prompt__options {
-  margin-top: var(--dk-space-2);
-  font-size: var(--dk-text-sm);
-}
-.dk-home-prompt__options > summary {
-  cursor: pointer;
-  color: var(--dk-ink-muted);
-}
-.dk-home-prompt__options[open] {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dk-space-2);
-}
-.dk-home-prompt__option-grid {
+.dk-template-start__search {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--dk-space-1);
+  min-width: min(260px, 100%);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-template-start__search input {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: var(--dk-line) solid var(--dk-rule);
+  border-radius: 0;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font: inherit;
+}
+.dk-template-start__search input:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-template-start__result-count {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-template-start__purpose {
+  padding: 7px 11px;
+  border: var(--dk-line) solid transparent;
+  background: transparent;
+  color: var(--dk-ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.dk-template-start__purpose:hover,
+.dk-template-start__purpose--current {
+  border-color: var(--dk-ink);
+  color: var(--dk-ink);
+}
+.dk-template-start__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--dk-space-3);
-  margin-top: var(--dk-space-2);
 }
-.dk-home-prompt__waiting {
-  display: flex;
-  align-items: center;
-  gap: var(--dk-space-2);
-  margin-top: var(--dk-space-2);
+.dk-template-card {
+  min-width: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
 }
-.dk-home-prompt .dk-generate__error {
-  margin: var(--dk-space-2) 0 0;
+.dk-template-card__preview {
+  aspect-ratio: 16 / 9;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 8px;
+  padding: 16px;
+  overflow: hidden;
+  border-bottom: var(--dk-line) solid var(--dk-rule);
 }
-.dk-decks__plan {
-  margin-top: auto;
+.dk-template-card__preview strong {
+  align-self: end;
+  max-width: 12ch;
+  font-family: var(--dk-font-display);
+  font-size: clamp(20px, 2vw, 30px);
+  line-height: 0.95;
+}
+.dk-template-card__kicker {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.dk-template-card__line {
+  width: 38%;
+  height: 3px;
+}
+.dk-template-card__tiles {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 5px;
+}
+.dk-template-card__tiles i {
+  display: block;
+  height: 12px;
+  border: 1px solid;
+  opacity: 0.72;
+}
+.dk-template-card__body {
+  display: grid;
+  gap: var(--dk-space-3);
+  padding: var(--dk-space-3);
+}
+.dk-template-card__body p,
+.dk-template-card__meta {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-template-card__meta {
+  justify-content: flex-start;
+}
+.dk-agent-start {
+  border-top: var(--dk-line) solid var(--dk-rule);
+  padding-top: var(--dk-space-3);
+}
+.dk-agent-start > summary {
+  cursor: pointer;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+  font-weight: 650;
+}
+.dk-agent-start__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 1fr) auto;
+  align-items: start;
+  gap: var(--dk-space-4);
+  margin-top: var(--dk-space-3);
+  padding: var(--dk-space-4);
+  background: var(--dk-sunk);
+}
+.dk-agent-start__body ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
 }
 
-/*
- * The outline drawer is not modal, so the decks stay usable while a model
- * writes. On a wide window the home steps aside for it instead of being
- * covered: the 420px is the drawer's width (GenerateDeck.tsx).
- */
-@media (min-width: 1000px) {
-  .dk-decks__main:has(.dk-home-prompt[data-drawer-open]) {
-    padding-right: 420px;
-  }
+.dk-decks__plan {
+  margin-top: auto;
 }
 
 /*
@@ -395,8 +463,15 @@
   .dk-decks__scroll {
     padding: 0 var(--dk-space-4) var(--dk-space-4);
   }
-  .dk-home-prompt {
+  .dk-template-start {
     margin: var(--dk-space-4) var(--dk-space-4) 0;
+    padding: var(--dk-space-4);
+  }
+  .dk-template-start__heading,
+  .dk-template-start__controls,
+  .dk-agent-start__body {
+    display: grid;
+    grid-template-columns: 1fr;
   }
   .dk-decks__heading {
     flex-wrap: wrap;

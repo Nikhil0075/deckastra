@@ -3,6 +3,7 @@ import type { BrandIcon, PatchOperation, PresentationDocument, ShapeKind } from 
 import type { StarterElementKind } from "@deckastra/presentation-core";
 import { ICON_CATEGORIES, ICON_NAMES, ICON_VIEWBOX, findIcon, shapeGeometry } from "@deckastra/renderer";
 import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
+import type { PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts";
 
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
@@ -21,7 +22,7 @@ import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx, type IconNam
  * they never reach a document.
  */
 
-export type LibraryTab = "shapes" | "icons" | "brand" | "media";
+export type LibraryTab = "patterns" | "shapes" | "icons" | "brand" | "media";
 
 export type LibraryItem =
   | { kind: "shape"; shape: ShapeKind }
@@ -176,19 +177,35 @@ export interface AddLibraryProps {
   /** The deck, for its brand icons; and a way to add or remove one. */
   document?: PresentationDocument;
   apply?: (operations: PatchOperation[], label: string) => void;
+  presentationId?: string;
+  afterSlideId?: string;
+  currentVersionId?: () => string;
+  saveNow?: () => Promise<boolean>;
 }
 
-export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, apply }: AddLibraryProps) {
+export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, apply, presentationId, afterSlideId, currentVersionId, saveNow }: AddLibraryProps) {
   const client = useOptionalWorkspaceClient();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("All");
   const [iconCategory, setIconCategory] = useState<string>("All");
   const [saved, setSaved] = useState<Saved>(load);
   const [svgProblem, setSvgProblem] = useState<string | undefined>();
+  const [catalog, setCatalog] = useState<PresetCatalog | null>(null);
+  const [patternBusy, setPatternBusy] = useState<SlidePattern | null>(null);
+  const [patternNotice, setPatternNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const svgInput = useRef<HTMLInputElement>(null);
   const needle = query.trim().toLowerCase();
   const brand = (document?.theme.icons ?? {}) as Record<string, BrandIcon>;
+
+  useEffect(() => {
+    if (!client || tab !== "patterns") return;
+    let live = true;
+    client.presets.list()
+      .then((answer) => { if (live) setCatalog(answer); })
+      .catch((error) => { if (live) setPatternNotice(error instanceof Error ? error.message : "Slide patterns could not be loaded."); });
+    return () => { live = false; };
+  }, [client, tab]);
 
   // Recent and favourites follow the person (design review, 2026-09-27): read
   // from the service once, merged with this browser's copy, which stays as the
@@ -451,6 +468,71 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
     </>
   );
 
+  const insertPattern = async (pattern: SlidePattern) => {
+    if (!client || !presentationId || !apply || !currentVersionId) {
+      setPatternNotice("Slide patterns need a connected workspace.");
+      return;
+    }
+    setPatternBusy(pattern);
+    setPatternNotice(null);
+    try {
+      if (saveNow && !(await saveNow())) {
+        setPatternNotice("Save your current edits, then insert the pattern again.");
+        return;
+      }
+      const definition = catalog?.patternDefinitions[pattern];
+      const answer = await client.presets.insertPattern(presentationId, {
+        expected_version_id: currentVersionId(),
+        pattern,
+        slots: definition?.exampleSlots,
+        after_slide_id: afterSlideId,
+        intent: `Insert ${definition?.name ?? pattern}`,
+        client_label: "editor",
+        dry_run: true,
+      });
+      if (!answer.operations?.length) {
+        setPatternNotice("That pattern did not make a slide.");
+        return;
+      }
+      apply(answer.operations, `Insert ${definition?.name ?? pattern} slide`);
+      setPatternNotice(`${definition?.name ?? pattern} inserted after this slide.`);
+    } catch (error) {
+      setPatternNotice(error instanceof Error ? error.message : "That pattern could not be inserted.");
+    } finally {
+      setPatternBusy(null);
+    }
+  };
+
+  const patternEntries = catalog
+    ? catalog.slidePatterns
+        .map((pattern) => ({ pattern, definition: catalog.patternDefinitions[pattern] }))
+        .filter(({ pattern, definition }) => !needle || `${pattern} ${definition.name} ${definition.summary}`.toLowerCase().includes(needle))
+    : [];
+  const patternsPanel = (
+    <>
+      <p className="dk-field__hint">Complete slide structures with named content slots. Layout and spacing stay consistent automatically.</p>
+      {patternNotice ? <p className="dk-field__hint" role="status">{patternNotice}</p> : null}
+      {!catalog && !patternNotice ? <p className="dk-field__hint">Loading slide patterns…</p> : null}
+      <div className="dk-library__grid" data-testid="library-patterns">
+        {patternEntries.map(({ pattern, definition }) => (
+          <button
+            key={pattern}
+            type="button"
+            className="dk-library__add"
+            disabled={patternBusy !== null}
+            title={definition.summary}
+            data-testid={`library-pattern-${pattern}`}
+            onClick={() => void insertPattern(pattern)}
+          >
+            <Icon name="grid" size={22} />
+            <span className="dk-library__caption">{patternBusy === pattern ? "Inserting…" : definition.name}</span>
+          </button>
+        ))}
+      </div>
+      {catalog && patternEntries.length === 0 ? <p className="dk-field__hint">No slide pattern matches "{query}".</p> : null}
+    </>
+  );
+
   return (
     <aside className="dk-library" aria-label="Add to slide" data-region="library" data-testid="add-library">
       <div className="dk-library__head">
@@ -459,10 +541,10 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
       </div>
       {tab !== "media" ? (
         <TextField
-          label="Search shapes and icons"
+          label="Search the library"
           hideLabel
           type="search"
-          placeholder="Search shapes and icons"
+          placeholder={tab === "patterns" ? "Search slide patterns" : "Search shapes and icons"}
           value={query}
           data-testid="library-search"
           onChange={setQuery}
@@ -474,6 +556,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
         onChange={onTab}
         className="dk-library__tabs"
         items={[
+          { value: "patterns", label: "Patterns", panel: patternsPanel },
           { value: "shapes", label: "Shapes", panel: shapesPanel },
           { value: "icons", label: "Icons", panel: iconsPanel },
           { value: "brand", label: "Brand", panel: brandPanel },

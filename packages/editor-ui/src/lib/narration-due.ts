@@ -12,7 +12,7 @@ import { localeTextHash, sayAsFingerprint, type NarrationCue, type Pronunciation
  * nobody's list changes what a person said into a microphone.
  */
 export function takeIsDue(
-  cue: Pick<NarrationCue, "text" | "takes">,
+  cue: Pick<NarrationCue, "text" | "takes" | "voice">,
   locale: string,
   pronunciations: readonly Pronunciation[],
   rate = 1,
@@ -21,5 +21,6 @@ export function takeIsDue(
   const take = cue.takes?.[locale];
   if (!take || take.textHash !== localeTextHash(cue.text)) return true;
   if (take.voice === "recorded" || take.voice === "file") return false;
+  if (cue.voice && take.voice !== cue.voice && take.voice !== "stub") return true;
   return (take.sayAs ?? "") !== sayAsFingerprint(cue.text, pronunciations, rate);
 }

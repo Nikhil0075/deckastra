@@ -205,10 +205,11 @@ def test_stops_at_the_total_one_render_embeds(store):
     # Per-file alone is not a bound: forty acceptable photographs are one page
     # Chromium is asked to parse hundreds of megabytes of base64 for.
     each = asset_service.MAX_RENDER_ASSET_BYTES
+    count = asset_service.MAX_RENDER_TOTAL_BYTES // each + 2
     with Session(store) as session:
         workspace_id, presentation_id = workspace_with_deck(session, name="ours")
         rows = []
-        for _ in range(8):
+        for _ in range(count):
             asset = stored_image(session, workspace_id=workspace_id)
             asset.bytes = each
             rows.append(asset)
@@ -226,7 +227,7 @@ def test_stops_at_the_total_one_render_embeds(store):
 
     embedded = [one for one in supplied if "data" in one]
     refused = [one for one in supplied if "problem" in one]
-    assert len(supplied) == 8
+    assert len(supplied) == count
     # Some, not all — an empty result would pass "stopped at the total" while
     # meaning the renderer never gets a picture.
     assert embedded and refused

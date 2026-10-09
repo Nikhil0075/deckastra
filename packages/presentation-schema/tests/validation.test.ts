@@ -8,6 +8,7 @@ import {
   REQUIRES_RENDER_CONTEXT,
   RULES,
   newId,
+  localeTextHash,
   validateDocument,
   walkElements,
   type PresentationDocument,
@@ -350,6 +351,57 @@ describe("semantic rules", () => {
 
     const report = validateDocument(doc);
     expect(codes(report)).toContain("W132");
+  });
+
+  it("E208: refuses a custom motion preset without a reduced-motion fallback", () => {
+    const doc = baseDoc();
+    doc.theme.motion = {
+      motionPresets: {
+        brandRise: {
+          category: "entrance",
+          propertyTracks: [
+            {
+              property: "y",
+              keyframes: [
+                { offset: 0, value: 24 },
+                { offset: 1, value: 0 },
+              ],
+            },
+          ],
+        },
+      },
+    };
+
+    const report = validateDocument(doc);
+    expect(report.valid).toBe(false);
+    expect(codes(report)).toContain("E208");
+  });
+});
+
+describe("Phase 5 narration data", () => {
+  it("E323: rejects word timings outside or backwards in their recording", () => {
+    const doc = baseDoc();
+    const assetId = newId("ast");
+    const cueId = newId("nar");
+    doc.assets.push({ id: assetId, type: "audio", storageKey: "voice.wav", durationMs: 1000 });
+    doc.slides[0]!.narration = { cues: [{
+      id: cueId, step: 0, text: "Reveal now", advanceOnWord: 1,
+      takes: { en: { assetId, durationMs: 1000, textHash: localeTextHash("Reveal now"), wordTimings: [
+        { word: "Reveal", startMs: 0, endMs: 600 },
+        { word: "now", startMs: 500, endMs: 1100 },
+      ] } },
+    }] };
+    expect(codes(validateDocument(doc))).toContain("E323");
+  });
+
+  it("E324: rejects a soundtrack section whose slides run backwards", () => {
+    const doc = baseDoc();
+    doc.soundtrack = {
+      source: { library: "ambient-calm" },
+      fromSlideId: doc.slides[1]!.id,
+      throughSlideId: doc.slides[0]!.id,
+    };
+    expect(codes(validateDocument(doc))).toContain("E324");
   });
 });
 

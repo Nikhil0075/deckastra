@@ -31,15 +31,24 @@ import type { SlideScene } from "@deckastra/renderer";
 
 import { labelFor } from "../components/inspector/labels";
 
-/** The kinds the Figma offers, in its order. `push`, `mask`, … still round-trip. */
-export const EDITABLE_KINDS = ["cut", "fade", "slide", "zoom", "morph"] as const;
+/** Every transition the current engine draws, in a compact authoring order. */
+export const EDITABLE_KINDS = [
+  "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph",
+] as const;
 export type EditableKind = (typeof EDITABLE_KINDS)[number];
 
 /** Where a new transition of each kind starts. A morph travels, so it gets longer. */
 export const KIND_DEFAULT_MS: Record<Exclude<EditableKind, "cut">, number> = {
   fade: 300,
   slide: 450,
+  cover: 450,
+  push: 450,
   zoom: 450,
+  wipe: 450,
+  split: 500,
+  iris: 500,
+  flip: 600,
+  blurDissolve: 450,
   morph: 600,
 };
 
@@ -111,7 +120,7 @@ export function setTransitionKind(document: PresentationDocument, slideId: strin
     type: kind,
     durationMs: base.durationMs && base.durationMs > 0 ? base.durationMs : KIND_DEFAULT_MS[kind],
   };
-  if (kind === "slide") next.direction = base.direction ?? "left";
+  if (["slide", "cover", "push"].includes(kind)) next.direction = base.direction ?? "left";
   else delete next.direction;
   let notice: string | undefined;
   if (kind !== "morph" && next.sharedElements?.length) {

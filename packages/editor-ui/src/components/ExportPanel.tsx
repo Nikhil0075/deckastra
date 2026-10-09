@@ -21,7 +21,7 @@ import { Button, StatusChip } from "../ui";
  * act on; a red banner would train the user to ignore the one that matters.
  */
 
-type Kind = "pdf" | "pptx" | "mydeck";
+type Kind = "pdf" | "pptx" | "mp4" | "mydeck";
 
 type State =
   | { phase: "idle" }
@@ -115,6 +115,7 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
           idempotency_key: crypto.randomUUID(),
           ...(expected ? { expected_version_id: expected } : {}),
           ...(editor?.locale ? { locale: editor.locale } : {}),
+          ...(kind === "mp4" ? { fps: 30 as const } : {}),
         },
         { signal: controller.signal },
       );
@@ -199,6 +200,9 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
         </Button>
         <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("pptx")}>
           {busyKind === "pptx" ? "Exporting…" : "PowerPoint"}
+        </Button>
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => void run("mp4")} data-testid="export-mp4">
+          {busyKind === "mp4" ? "Rendering…" : "Narrated video"}
         </Button>
         {/* A copy someone opens in Deckastra: the whole deck, pictures and
             sounds included, nothing flattened. Saved like any other export;
@@ -328,4 +332,3 @@ function Ready({
     </div>
   );
 }
-

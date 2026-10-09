@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NAMED_EASING_VALUES, type PatchOperation } from "@deckastra/presentation-schema";
 import type { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { MotionCapabilities } from "@deckastra/workspace-contracts";
+import type { MotionCapabilities, MotionStyleId, PresetCatalog } from "@deckastra/workspace-contracts";
 
 import { budgetLine, carryableRoles, measurePlan, planFingerprint, slideRoles, type MeasuredPlan } from "../../lib/motion-plan";
 import {
@@ -27,10 +27,13 @@ import { Button, IconButton, NumberField, Section, Segmented, Select, StatusChip
 import { PairPreview } from "./PairPreview";
 import { TransitionPreview } from "./TransitionPreview";
 
-const KIND_LABEL: Record<EditableKind, string> = { cut: "Cut", fade: "Fade", slide: "Slide", zoom: "Zoom", morph: "Morph" };
+const KIND_LABEL: Record<EditableKind, string> = {
+  cut: "Cut", fade: "Fade", slide: "Slide", cover: "Cover", push: "Push", zoom: "Zoom",
+  wipe: "Wipe", split: "Split", iris: "Iris", flip: "Flip", blurDissolve: "Blur dissolve", morph: "Morph",
+};
 const PACING = ["tight", "measured", "deliberate"] as const;
 type Pacing = (typeof PACING)[number];
-const PLAN_KINDS = ["fade", "slide", "push", "zoom", "morph", "cut"] as const;
+const PLAN_KINDS = ["fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph", "cut"] as const;
 type PlanKind = (typeof PLAN_KINDS)[number];
 
 /**
@@ -70,6 +73,75 @@ export function MotionModePanel({
       <Section title="Plan by roles" defaultOpen>
         <RolePlanner key={slide.id} editor={editor} presentationId={presentationId} />
       </Section>
+      <Section title="Motion style" defaultOpen>
+        <MotionStylePicker editor={editor} presentationId={presentationId} />
+      </Section>
+    </div>
+  );
+}
+
+function MotionStylePicker({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
+  const client = useWorkspaceClient();
+  const [catalog, setCatalog] = useState<PresetCatalog | null>(null);
+  const [style, setStyle] = useState<MotionStyleId>("restrained");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    client.presets.list()
+      .then((answer) => {
+        if (!live || !answer?.motionStyles || !Object.keys(answer.motionStyles).length) return;
+        setCatalog(answer);
+        const stored = editor.document.metadata.motionStyle;
+        if (typeof stored === "string" && stored in answer.motionStyles) setStyle(stored as MotionStyleId);
+      })
+      .catch((error) => { if (live) setNotice(error instanceof Error ? error.message : "Motion styles could not be loaded."); });
+    return () => { live = false; };
+  }, [client, editor.document.metadata.motionStyle]);
+
+  const applyStyle = async () => {
+    setNotice(null);
+    if (!(await editor.saveNow())) {
+      setNotice("Save your current edits, then apply the style again.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const answer = await client.motion.proposeStyle(presentationId, {
+        expected_version_id: editor.currentVersionId(),
+        style,
+        intent: `Apply ${catalog?.motionStyles[style]?.name ?? style} motion style`,
+        client_label: "editor",
+        dry_run: true,
+      });
+      if (!answer.operations?.length) {
+        setNotice(answer.outcome === "none" ? "That motion style is already applied." : "Nothing changed.");
+        return;
+      }
+      editor.apply(answer.operations, { label: `Motion style: ${catalog?.motionStyles[style]?.name ?? style}` });
+      setNotice(`Applied to ${answer.slides_changed} slide${answer.slides_changed === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "That motion style could not be applied.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="dk-motion">
+      <Select
+        label="Style"
+        value={style}
+        options={catalog ? Object.entries(catalog.motionStyles).map(([value, item]) => ({ value, label: item.name })) : [{ value: style, label: "Loading…" }]}
+        onChange={(value) => setStyle(value as MotionStyleId)}
+        data-testid="motion-style-select"
+      />
+      {catalog ? <p className="dk-muted">{catalog.motionStyles[style].summary}</p> : null}
+      <Button variant="secondary" size="sm" disabled={!catalog || busy} onClick={() => void applyStyle()} data-testid="motion-style-apply">
+        {busy ? "Applying…" : "Apply to deck"}
+      </Button>
+      {notice ? <p className="dk-muted" role="status">{notice}</p> : null}
     </div>
   );
 }

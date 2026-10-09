@@ -13,10 +13,8 @@ name: deckastra
 
 services:
   postgres:
-    # pgvector rather than plain postgres: the repository index (Phase 6) stores
-    # embeddings alongside the relational data, and doc 05 §39 keeps the vector
-    # store flexible. Postgres is already in the stack, so this is the low-friction
-    # answer and adding it now costs nothing.
+    # pgvector remains only so a fresh database can replay the historical
+    # repository-index migration before the removal migration drops those tables.
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: deckastra

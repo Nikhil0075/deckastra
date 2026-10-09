@@ -7,17 +7,15 @@ import { cx } from "../../ui/cx";
 import { floatingPortal } from "../../ui/overlays";
 
 /**
- * Ctrl+K (roadmap 08 §1.5): every command by name, and the assistant for
- * anything that is not one.
+ * Ctrl+K (roadmap 08 §1.5): every command by name. On the home, unmatched
+ * words become a deck brief; inside a deck, authoring stays with the connected
+ * coding agent.
  *
  * A modal combobox: the field keeps focus and the arrows move the active row
  * (`aria-activedescendant`), which is the pattern screen readers announce
  * correctly for a filtered list. Choosing a command hands its name to the
  * shell's one dispatcher, the same function the desktop menu calls, so the
- * palette cannot drift from the menu. "Ask the assistant" opens the assistant
- * with the words already in its prompt and stops there: what a request costs and
- * what it sends are shown at the assistant's Run button (rule 6), so the palette
- * never sends anything itself.
+ * palette cannot drift from the menu. The palette never sends a request itself.
  */
 export function CommandPalette({
   open,
@@ -115,8 +113,8 @@ export function CommandPalette({
             aria-controls={`${id}-list`}
             aria-activedescendant={items[active] ? `${id}-item-${active}` : undefined}
             aria-autocomplete="list"
-            aria-label={place === "home" ? "Type a command, or describe a deck" : "Type a command, or ask the assistant"}
-            placeholder={place === "home" ? "Type a command, or describe a deck…" : "Type a command, or ask the assistant…"}
+            aria-label={place === "home" ? "Type a command, or describe a deck" : "Type a command"}
+            placeholder={place === "home" ? "Type a command, or describe a deck…" : "Type a command…"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
@@ -148,7 +146,7 @@ export function CommandPalette({
                     <>
                       <Icon name="ai" size={14} />
                       <span className="dk-palette__label">
-                        {place === "home" ? "Describe a deck" : "Ask the assistant"}: <q>{item.text}</q>
+                        Describe a deck: <q>{item.text}</q>
                       </span>
                     </>
                   ) : (

@@ -72,10 +72,10 @@ async function createHeavyDeck(): Promise<string> {
 
   const authed = { ...headers, Authorization: `Bearer ${session.token}` };
 
-  const generated = (await json("/v1/generate", {
+  const generated = (await json("/v1/decks/from-template", {
     method: "POST",
     headers: authed,
-    body: JSON.stringify({ instruction: "Drag budget measurement", slide_count: 3 }),
+    body: JSON.stringify({ template_id: "technical-architecture", title: "Drag budget measurement" }),
   })) as unknown as { presentation_id: string; document: { slides: { id: string }[] } };
 
   const presentationId = generated.presentation_id;

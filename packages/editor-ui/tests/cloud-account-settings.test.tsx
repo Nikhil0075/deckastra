@@ -55,7 +55,7 @@ describe("what AI help can do", () => {
   it("says plainly that AI help is off when no task is available", async () => {
     session.capabilities = vi.fn().mockResolvedValue({
       provider: "vertex",
-      tasks: { planning: { available: false, model: null, reason: "No qualified Vertex model is configured for planning." } },
+      tasks: { image: { available: false, model: null, reason: "Image generation is not configured." } },
     });
     render(<AiTaskSettings />);
     expect((await screen.findByTestId("ai-tasks-off")).textContent).toMatch(/not switched on yet/);
@@ -66,12 +66,11 @@ describe("what AI help can do", () => {
     session.capabilities = vi.fn().mockResolvedValue({
       provider: "vertex",
       tasks: {
-        planning: { available: true, model: "m", reason: null, minimum_reservation_usd: 0.01 },
-        image: { available: false, model: null, reason: "Not offered on this plan." },
+        image: { available: true, model: "image-model", reason: null, minimum_reservation_usd: 0.01 },
       },
     });
     render(<AiTaskSettings />);
-    expect(await screen.findByText("Planning a deck")).toBeTruthy();
-    expect(screen.getByText("Not offered on this plan.")).toBeTruthy();
+    expect(await screen.findByText("Making pictures")).toBeTruthy();
+    expect(screen.getByText("Available")).toBeTruthy();
   });
 });

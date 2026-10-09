@@ -29,6 +29,7 @@ interface Tool {
 
 const TOOLS: readonly Tool[] = [
   { id: "text", label: "Text", icon: "text", action: { insert: "text" } },
+  { id: "patterns", label: "Patterns", icon: "grid", action: { library: "patterns" } },
   { id: "shapes", label: "Shapes", icon: "rect", action: { library: "shapes" } },
   { id: "icons", label: "Icons", icon: "grid", action: { library: "icons" } },
   { id: "image", label: "Image", icon: "image", action: { image: true } },

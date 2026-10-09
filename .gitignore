@@ -12,6 +12,7 @@ build/
 out/
 coverage/
 .artifacts/
+artifacts/
 *.tsbuildinfo
 
 __pycache__/

@@ -429,7 +429,7 @@ async def current_principal(
     context_token = None
     if os.environ.get("DECKASTRA_CREDITS_ENABLED") == "1":
         from .credits import observer
-        from deckastra_agents.vertex_router import cost_observer
+        from deckastra_agents.budgets import cost_observer
         # Persist a newly provisioned identity before separate usage transactions.
         session.commit()
         import hashlib
@@ -695,7 +695,7 @@ def resolve_workspace_access(
 ) -> WorkspaceAccess:
     """The user's workspace, for the routes that take no workspace id.
 
-    The workspace-scoped routes — usage, themes, assets, repositories — had each
+    The workspace-scoped routes — usage, themes and assets — had each
     grown a private `_workspace_of` that returned the *first* membership and
     checked no role at all. A workspace viewer could therefore write a
     workspace-wide theme and run the asset sweeper, which deletes files.

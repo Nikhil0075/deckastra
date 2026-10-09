@@ -56,7 +56,7 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     generated = client.post(
-        "/v1/generate", headers=auth, json={"instruction": "A deck to look at", "slide_count": 3}
+        "/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "title": "A deck to look at"}
     )
     assert generated.status_code == 200, generated.text
     return generated.json()
@@ -144,6 +144,22 @@ def test_someone_outside_the_workspace_cannot_preview_a_slide(client, auth, deck
     assert response.status_code == 404
 
 
+def test_motion_preview_is_versioned_and_frame_count_is_bounded(client, auth, deck):
+    slide_id = deck["document"]["slides"][0]["id"]
+    stale = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/motion-preview",
+        headers=auth,
+        json={"slide_id": slide_id, "expected_version_id": "ver_stale"},
+    )
+    assert stale.status_code == 409
+    too_many = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/motion-preview",
+        headers=auth,
+        json={"slide_id": slide_id, "frame_count": 20},
+    )
+    assert too_many.status_code == 422
+
+
 def test_previewing_a_proposal_does_not_apply_it(client, auth, deck):
     """A second way to apply an unapproved change would defeat the first."""
     presentation_id = deck["presentation_id"]
@@ -218,3 +234,27 @@ def test_a_proposal_preview_shows_the_change_and_names_the_other_slides(client, 
         proposed.json()["image_base64"]
     )
     assert proposed.json()["changed_slide_ids"] == [slide_id]
+
+
+@needs_exporter
+@pytest.mark.slow
+def test_motion_preview_is_one_six_frame_png_from_the_timeline(client, auth, deck):
+    import base64
+    import struct
+
+    slide_id = deck["document"]["slides"][0]["id"]
+    response = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/motion-preview",
+        headers=auth,
+        json={"slide_id": slide_id},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    image = base64.b64decode(body["image_base64"])
+    assert image[:8] == b"\x89PNG\r\n\x1a\n"
+    assert struct.unpack(">II", image[16:24]) == (body["width"], body["height"])
+    assert body["width"] == 1536
+    assert body["frame_count"] == 6
+    assert len(body["frame_times_ms"]) == 6
+    assert body["frame_times_ms"] == sorted(body["frame_times_ms"])
+    assert body["frame_times_ms"][-1] == body["duration_ms"]

@@ -278,10 +278,7 @@ describe("scene building", () => {
     expect(card.resolvedStyle.fill).toMatch(/^#|rgb|linear-gradient/);
   });
 
-  it("renders unimplemented element types as placeholders instead of dropping them", () => {
-    // Video is in the schema and deferred past MVP (doc 02 §37.1), so it still
-    // takes this path. It is the placeholder's remaining live case now that
-    // charts, diagrams and icons draw for real.
+  it("resolves video assets and poster frames into the shared scene", () => {
     const doc = JSON.parse(JSON.stringify(technical)) as PresentationDocument;
     doc.slides[0]!.elements.push({
       id: "el_01JB8Z9K2QW4RN7F3XG5HTMD88",
@@ -293,9 +290,7 @@ describe("scene building", () => {
 
     const nodes = flattenScene(buildDocumentScene(doc).slides[0]!);
     const video = nodes.find((n) => n.type === "video")!;
-    expect(video.renderPayload.kind).toBe("placeholder");
-    // Not marked unsupported: the schema knows this type, the renderer just has
-    // not implemented it yet. The distinction matters for the message shown.
+    expect(video.renderPayload).toMatchObject({ kind: "video", assetId: "ast_01JB8Z9K2QW4RN7F3XG5HTMD87", startTimeMs: 0 });
     expect(video.flags.unsupported).toBe(false);
   });
 

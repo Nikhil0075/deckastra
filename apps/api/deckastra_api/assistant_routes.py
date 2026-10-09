@@ -19,10 +19,11 @@ from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from deckastra_agents.budgets import RunBudget, RunCancelled
-from deckastra_agents.vertex_router import configured_client
+from deckastra_agents.vertex_model import configured_image_client
+from deckastra_agents.video_model import configured_video_client
 from deckastra_agents.router import ModelUnavailable
 from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales
-from .assistant_assets import MetadataUpdate, update_metadata, fingerprints, describe as describe_asset
+from .assistant_assets import fingerprints, describe as describe_asset
 from .assistant_models import AssistantRun, AssistantEvent, AssistantReservation
 from .auth import Principal, Role, current_principal, resolve_presentation_access
 from .db.models import Asset, Workspace
@@ -64,7 +65,7 @@ class Scope(BaseModel):
 
 class AssistantRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    task: Literal["generate", "edit", "tidy", "alt_text", "consistency", "translation", "narration", "motion", "organise", "research", "image", "speech", "export"]
+    task: Literal["tidy", "motion", "image", "video", "speech", "export"]
     presentation_id: str = Field(min_length=1, max_length=64)
     expected_version_id: str = Field(min_length=1, max_length=64)
     operation_key: str = Field(min_length=8, max_length=64)
@@ -73,12 +74,8 @@ class AssistantRequest(BaseModel):
     quality: Literal["quality"] = "quality"
     locale: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
     voice: str = Field(default="default", max_length=100)
-    slide_count: int = Field(default=5, ge=1, le=20)
     source_asset_ids: list[str] = Field(default_factory=list, max_length=10)
-    web_search: bool = False
-    export_kind: Literal["pdf", "pptx"] = "pdf"
-    generation_mode: Literal["append", "replace"] = "append"
-    research_run_id: str | None = Field(default=None, max_length=64)
+    export_kind: Literal["pdf", "pptx", "mp4"] = "pdf"
     motion_entrance: str = Field(default="fade", max_length=40)
     motion_pacing: Literal["tight", "measured", "deliberate"] = "measured"
     # Unset means "as many click reveals as the slide already has", so re-planning
@@ -86,6 +83,11 @@ class AssistantRequest(BaseModel):
     motion_click_reveals: int | None = Field(default=None, ge=0, le=6)
     # Authored animation is never replaced unless the person asks for it.
     motion_replace: bool = False
+    video_duration_seconds: Literal[4, 6, 8] = 4
+    video_aspect_ratio: Literal["16:9", "9:16"] = "16:9"
+    video_generate_audio: Literal[False] = False
+    video_quote_token: str | None = Field(default=None, min_length=20, max_length=4096)
+    image_quote_token: str | None = Field(default=None, min_length=20, max_length=4096)
 
 
 def now():
@@ -134,46 +136,24 @@ def owned(session, principal, run_id):
     return row
 
 
-#: The model stage each task routes as; tasks absent here route under their own name.
-STAGES = {"generate": "planning", "edit": "authoring", "tidy": "cleanup", "alt_text": "vision", "motion": "authoring"}
-#: Tasks that never call a model.
-ENGINE_TASKS = {"tidy", "motion", "export", "speech"}
-#: Job time per slide, by where the model runs. A slide is at most two model
-#: attempts plus Design Checks before and after each. Local attempts on the GTX
-#: 1650 took 47-112 s each in the advanced-deck runs, so 180 s left no room for the
-#: repair it is entitled to; cloud attempts stayed under 45 s.
-SLIDE_SECONDS = {"cloud": 180, "local": 360}
-#: A whole job's ceiling. Local runs are slower per slide, so the same deck needs
-#: more time; past this the job stops and keeps the slides it finished.
-JOB_SECONDS = {"cloud": 1800, "local": 3600}
+SLIDE_SECONDS = 180
+JOB_SECONDS = 1800
 SLIDE_SECONDS_ENV = "DECKASTRA_ASSISTANT_SLIDE_SECONDS"
 
 
-def runs_locally(task):
-    """Whether this task's model calls go to the local runtime, as routing will decide."""
-    return False
-
-
 def job_seconds(task, slide_count):
-    """The run's clock: per-slide allowance times slides, within the job ceiling.
-
-    Local model start-up is not on this clock (`RunBudget.exclude_time`), so the
-    allowance is for the job's own work.
-    """
-    if task == "generate":
-        return 900, 900
-    where = "local" if runs_locally(task) else "cloud"
+    """The run's clock: per-slide allowance times slides, within the job ceiling."""
     try:
-        per_slide = float(os.environ.get(SLIDE_SECONDS_ENV, "") or SLIDE_SECONDS[where])
+        per_slide = float(os.environ.get(SLIDE_SECONDS_ENV, "") or SLIDE_SECONDS)
         if not math.isfinite(per_slide) or per_slide <= 0:
             raise ValueError
     except ValueError:
-        per_slide = SLIDE_SECONDS[where]
-    return min(JOB_SECONDS[where], max(per_slide, per_slide * slide_count)), per_slide
+        per_slide = SLIDE_SECONDS
+    return min(JOB_SECONDS, max(per_slide, per_slide * slide_count)), per_slide
 
 
 def model_client(emit_provider):
-    return configured_client(emit=emit_provider)
+    return configured_image_client(emit=emit_provider)
 
 
 def computed_checkpoint(value):
@@ -189,7 +169,7 @@ class CheckpointClient:
     def __getattr__(self, name):
         return getattr(self.inner, name)
     def complete(self, request, budget):
-        from deckastra_agents.router import ModelResponse, ToolInvocation
+        from deckastra_agents.router import ModelResponse
         key = hashlib.sha256(json.dumps(asdict(request), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         with session_scope() as session:
             row = session.get(AssistantRun, self.run_id)
@@ -200,7 +180,6 @@ class CheckpointClient:
         if cached:
             emit(self.run_id, {"status": "resumed", "message": "Reused a completed model response; no inference repeated"})
             payload = dict(cached["response"])
-            payload["tool_calls"] = [ToolInvocation(**call) for call in payload.get("tool_calls", [])]
             return ModelResponse(**payload)
         answer = self.inner.complete(request, budget)
         with session_scope() as session:
@@ -217,19 +196,8 @@ class CheckpointClient:
 
 
 def capabilities():
-    mode = os.environ.get("DECKASTRA_ASSISTANT_MODE", "vertex")
-    reason = None
-    client = None
-    if mode != "vertex":
-        reason = "Assistant mode must be vertex."
-    else:
-        try:
-            client = configured_client(mode=mode)
-        except (ModelUnavailable, ImportError, ValueError) as exc:
-            reason = str(exc)
     from deckastra_agents.router import ModelRequest
     from . import speech
-    stages = STAGES
     tasks = {}
     spend = None
     try:
@@ -240,18 +208,16 @@ def capabilities():
     except (KeyError, ValueError, OSError):
         pass
     for task in AssistantRequest.model_fields["task"].annotation.__args__:
-        provider, model, task_reason = "none", None, reason
+        provider, model, task_reason = "none", None, None
         reservation_estimate = None
-        inputs = ["text", "document"] + (["image"] if task == "alt_text" else ["pdf", "csv"] if task == "research" else [])
+        inputs = ["text", "document"]
         if task in {"export", "tidy", "motion"}:
             provider, task_reason = "export" if task == "export" else "engine", None
         elif task == "speech":
             status = speech.speech_status()
             provider = status["provider"]
             task_reason = None if status["available"] else status["reason"]
-            if mode == "local" and provider == "google":
-                task_reason = "Local-only mode cannot send narration scripts to Google. Select hybrid mode."
-            elif provider == "google":
+            if provider == "google":
                 try:
                     from deckastra_agents.vertex_model import configuration
                     configuration()
@@ -260,23 +226,34 @@ def capabilities():
                         raise ValueError()
                 except (ModelUnavailable, ValueError, KeyError) as exc:
                     task_reason = str(exc) or "Configure speech pricing and an assistant spend ceiling."
-        elif client is not None:
-            probe = ModelRequest("structured", "", [], stage=stages.get(task, task))
-            provider = client.route(probe)
+        elif task == "image":
+            provider = "vertex"
             try:
-                if provider == "vertex":
-                    paid_client = client.vertex_factory(probe.stage)
+                paid_client = configured_image_client()
+                model = paid_client.model
+                probe = ModelRequest("media", "", [], stage="image", max_tokens=4096, image_output=True)
+                reservation_estimate = paid_client.estimate_reservation(probe)
+                if spend is not None and reservation_estimate > spend["remaining_usd"]:
+                    raise ModelUnavailable(f"This task needs at least US${reservation_estimate:.4f} reserved; US${spend['remaining_usd']:.4f} remains. Existing uncertain usage still counts against the ceiling.")
+                task_reason = None
+            except (ModelUnavailable, ImportError, ValueError) as exc:
+                task_reason = str(exc)
+        elif task == "video":
+            provider = "vertex"
+            try:
+                paid_client = configured_video_client()
+                if hasattr(paid_client, "video_capability"):
+                    capability = paid_client.video_capability()
+                    model = capability.get("model")
+                    reservation_estimate = float(capability.get("usd_per_second") or 0) * 4
+                else:
                     model = paid_client.model
-                    probe.max_tokens = 4096
-                    probe.image_output = task == "image"
-                    reservation_estimate = paid_client.estimate_reservation(probe)
-                    if spend is not None and reservation_estimate > spend["remaining_usd"]:
-                        raise ModelUnavailable(f"This task needs at least US${reservation_estimate:.4f} reserved; US${spend['remaining_usd']:.4f} remains. Existing uncertain usage still counts against the ceiling.")
+                    reservation_estimate = paid_client.estimate_reservation(4)
                 task_reason = None
             except (ModelUnavailable, ImportError, ValueError) as exc:
                 task_reason = str(exc)
         tasks[task] = {"available": task_reason is None, "provider": provider, "model": model, "inputs": inputs, "reason": task_reason, "minimum_reservation_usd": reservation_estimate}
-    return {"provider": mode, "available": any(t["available"] for t in tasks.values()), "reason": reason, "tasks": tasks, "spend": spend}
+    return {"provider": "media", "available": any(t["available"] for t in tasks.values()), "reason": None, "tasks": tasks, "spend": spend}
 
 
 def scoped_capabilities(value, document, scope, workspace_id, session, locale=None):
@@ -335,10 +312,10 @@ def assistant_capabilities(presentation_id: str | None = None, slide_id: str | N
 
 @router.post("/runs", status_code=202)
 def create_run(request: AssistantRequest, background: BackgroundTasks, principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
-    required = "export" if request.task == "export" else "read" if request.task == "research" else "write"
+    required = "export" if request.task == "export" else "write"
     if required not in principal.scopes:
         raise HTTPException(403, f"This task requires {required} scope.")
-    access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=request.presentation_id, require=Role.VIEWER if request.task in ("research", "export") else Role.EDITOR)
+    access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=request.presentation_id, require=Role.VIEWER if request.task == "export" else Role.EDITOR)
     payload = request.model_dump(mode="json")
     existing = session.scalar(select(AssistantRun).where(AssistantRun.created_by == principal.user_id, AssistantRun.operation_key == request.operation_key))
     if existing:
@@ -348,11 +325,30 @@ def create_run(request: AssistantRequest, background: BackgroundTasks, principal
     loaded = store.load_presentation(session, request.presentation_id)
     if loaded.version_id != request.expected_version_id:
         raise HTTPException(409, "The deck changed. Save and read the current version before starting.")
+    if request.task == "video":
+        if not request.video_quote_token:
+            raise HTTPException(422, "Request and accept a video credit quote before generation.")
+        from .media_quotes import verify_video_quote
+        verify_video_quote(request.video_quote_token, user_id=principal.user_id,
+                           presentation_id=request.presentation_id, prompt=request.instruction,
+                           duration_seconds=request.video_duration_seconds,
+                           aspect_ratio=request.video_aspect_ratio)
+    if request.task == "image":
+        if request.scope.kind != "slide" or len(request.scope.slide_ids) != 1:
+            raise HTTPException(422, "Generated images require exactly one slide scope.")
+        if not request.image_quote_token:
+            raise HTTPException(422, "Request and accept an image credit quote before generation.")
+        from .media_quotes import verify_service_quote
+        slide_id = request.scope.slide_ids[0]
+        quote_payload = {"presentation_id": request.presentation_id,
+                         "expected_version_id": request.expected_version_id,
+                         "slide_id": slide_id, "prompt": request.instruction}
+        verify_service_quote(request.image_quote_token, kind="image", user_id=principal.user_id,
+                             presentation_id=request.presentation_id, payload=quote_payload,
+                             prompt=request.instruction)
     ids = {slide["id"] for slide in loaded.document["slides"]}
     if request.scope.kind != "deck" and (not request.scope.slide_ids or not set(request.scope.slide_ids) <= ids):
         raise HTTPException(422, "Choose existing slides for this scope.")
-    if request.task == "generate" and request.scope.kind != "deck":
-        raise HTTPException(422, "Generation requires deck scope.")
     if request.task == "motion":
         from .motion import KNOWN_PRESETS
         if request.motion_entrance not in KNOWN_PRESETS:
@@ -361,7 +357,7 @@ def create_run(request: AssistantRequest, background: BackgroundTasks, principal
         own = locales.same_language(request.locale, locales.source_locale(loaded.document))
         if not own and request.locale not in (loaded.document.get("locales") or {}):
             raise HTTPException(422, f"This deck has no {request.locale} translation to export.")
-    if request.scope.kind == "elements" and request.task in ("speech", "organise", "research", "export", "image", "motion"):
+    if request.scope.kind == "elements" and request.task in ("speech", "export", "image", "video", "motion"):
         raise HTTPException(422, "This task supports slide or deck scope.")
     if request.scope.kind == "elements" and not request.scope.element_ids:
         raise HTTPException(422, "Select elements for an elements scope.")
@@ -418,36 +414,6 @@ def get_run(run_id: str, principal: Principal = Depends(current_principal), sess
     return result(owned(session, principal, run_id))
 
 
-@router.post("/runs/{run_id}/approve-metadata")
-def approve_metadata(run_id: str, principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
-    if "write" not in principal.scopes or "approve" not in principal.scopes:
-        raise HTTPException(403, "Metadata approval requires write and approve scopes.")
-    row = owned(session, principal, run_id)
-    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.EDITOR)
-    if row.status != "completed":
-        raise HTTPException(409, "Only completed metadata proposals can be approved.")
-    if (row.result_json or {}).get("status") == "applied_metadata":
-        return result(row)
-    if (row.result_json or {}).get("status") != "pending_metadata":
-        raise HTTPException(409, "This run has no pending metadata proposal.")
-    if store.load_presentation(session, row.presentation_id).version_id != row.request_json["expected_version_id"]:
-        raise HTTPException(409, "The deck changed. Create a new metadata proposal.")
-    checkpoint = computed_checkpoint(row.checkpoint_json)
-    # Lock the operation in the database, including across service processes.
-    claimed = session.execute(update(AssistantRun).where(AssistantRun.id == run_id, AssistantRun.event_seq == row.event_seq).values(event_seq=AssistantRun.event_seq + 1))
-    if claimed.rowcount != 1:
-        raise HTTPException(409, "The proposal changed. Read it again.")
-    changed = []
-    for item in checkpoint["metadata"]:
-        asset = session.get(Asset, item["asset_id"])
-        if asset is None or asset.workspace_id != row.workspace_id or asset.deleted_at:
-            raise HTTPException(404, "No such asset in this workspace.")
-        changed.append(update_metadata(session, principal, asset, MetadataUpdate(expected_metadata_version=checkpoint["metadata_versions"][asset.id], tags=item["tags"], description=item["description"])))
-    row.result_json = {**row.result_json, "status": "applied_metadata", "assets": changed}
-    event(session, run_id, {"status": "completed", "message": "Approved asset metadata applied; undo is available"})
-    return result(row)
-
-
 @router.get("/runs/{run_id}/events")
 def events(run_id: str, after: int = Query(0, ge=0), principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
     owned(session, principal, run_id)
@@ -497,7 +463,7 @@ def resume_run(run_id: str, background: BackgroundTasks, principal: Principal = 
     session.refresh(row)
     if row.status != "interrupted":
         raise HTTPException(409, "Only interrupted runs can resume.")
-    required = "export" if row.request_json["task"] == "export" else "read" if row.request_json["task"] == "research" else "write"
+    required = "export" if row.request_json["task"] == "export" else "write"
     if required not in principal.scopes:
         raise HTTPException(403, "The current credential cannot resume this task.")
     reservations = session.scalars(select(AssistantReservation).where(AssistantReservation.run_id == run_id)).all()
@@ -549,39 +515,27 @@ def public_error(exc):
     """
     import httpx
     from deckastra_agents.budgets import BudgetExceeded
-    from deckastra_agents.nodes._common import NodeFailure
-    from deckastra_agents.router import ContextTooLarge, ModelError
-    from .assistant_tasks import AssistantFailure, UserFacingError
+    from deckastra_agents.router import ModelError
+    from .assistant_tasks import UserFacingError
     if isinstance(exc, HTTPException):
         return str(exc.detail)[:1000]
     if isinstance(exc, RunCancelled):
         return f"The job was cancelled. {UNCHANGED} Any usage so far is recorded in the run."
     if isinstance(exc, BudgetExceeded):
         if exc.budget == "time":
-            return f"The job reached its {exc.limit:.0f}-second time limit before it finished. {UNCHANGED} Choose fewer slides, or try again: the local model's first answer after starting is the slowest."
+            return f"The job reached its {exc.limit:.0f}-second time limit before it finished. {UNCHANGED} Choose fewer slides, or try again."
         if exc.budget == "token":
             return f"The job used its whole token allowance before it finished. {UNCHANGED} Choose fewer slides or objects."
         return f"This job needs more cloud budget than remains (US${exc.used:.4f} against a US${exc.limit:.4f} ceiling, including held usage). {UNCHANGED} An operator can raise the ceiling or reconcile held usage."
     if isinstance(exc, UserFacingError):
         return str(exc)[:1000]
-    if isinstance(exc, AssistantFailure):
-        return f"{exc.explanation()} {UNCHANGED} Try again, or select less so the model has a smaller task."
-    if _cause(exc, ContextTooLarge):
-        return f"This selection is too large for the model to read at once. {UNCHANGED} Select fewer slides or objects."
     unavailable = _cause(exc, ModelUnavailable)
     if unavailable:
-        # Written as set-up guidance (install a pack, choose a provider).
         return f"{str(unavailable)[:600]} {UNCHANGED}"
     if _cause(exc, httpx.TimeoutException):
-        return f"The model did not answer before the job's time limit. {UNCHANGED} Try again with fewer slides; if the local model was just starting, the second try is usually faster."
-    if isinstance(exc, NodeFailure):
-        if _cause(exc, ModelError):
-            return f"The model service returned an error. {UNCHANGED} Try again; if it keeps happening, check that the model is running."
-        if exc.__cause__ is None:
-            return f"The model declined this request. {UNCHANGED} Try rewording the instruction."
-        return f"{AssistantFailure('format').explanation()} {UNCHANGED} Try again, or select less."
+        return f"The image service did not answer before the job's time limit. {UNCHANGED} Try again."
     if isinstance(exc, ModelError):
-        return f"The model service returned an error. {UNCHANGED} Try again; if it keeps happening, check that the model is running."
+        return f"The image service returned an error. {UNCHANGED} Try again; if it keeps happening, check the media configuration."
     return f"Something unexpected stopped the assistant. {UNCHANGED} The details are saved with the run for a bug report."
 
 
@@ -631,45 +585,16 @@ def _execute(run_id):
         row = session.get(AssistantRun, run_id)
         request, checkpoint = dict(row.request_json), computed_checkpoint(row.checkpoint_json)
         principal = Principal(row.created_by, "", frozenset(row.scopes_json))
-        access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export") else Role.EDITOR)
+        access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] == "export" else Role.EDITOR)
         loaded = store.load_presentation(session, row.presentation_id)
         snapshot = {"run_id": run_id, "user_id": row.created_by, "project_id": access.project.id, "workspace_id": access.workspace_id, "document": loaded.document, "images": author_service.workspace_images(session, row.presentation_id)}
         snapshot["assets"] = [describe_asset(a) for a in session.scalars(select(Asset).where(Asset.workspace_id == access.workspace_id, Asset.deleted_at.is_(None)).limit(40)).all()]
-        if request["task"] == "organise":
-            selected_slides = [s for s in loaded.document["slides"] if request["scope"]["kind"] == "deck" or s["id"] in request["scope"]["slide_ids"]]
-            referenced = set(author_service._asset_ids(selected_slides))
-            snapshot["assets"] = [a for a in snapshot["assets"] if a["id"] in referenced]
         snapshot["sources"] = []
         snapshot["vision"] = []
-        if request["task"] in {"alt_text", "organise"}:
-            from .assistant_assets import asset_view
-            def elements(items):
-                for item in items:
-                    yield item
-                    yield from elements(item.get("children", []))
-            image_ids = set()
-            for slide in loaded.document["slides"]:
-                if request["scope"]["kind"] != "deck" and slide["id"] not in request["scope"]["slide_ids"]:
-                    continue
-                for element in elements(slide["elements"]):
-                    if element.get("type") == "image" and (request["task"] == "organise" or not element.get("altText") and element.get("semanticRole") != "decoration"):
-                        image_ids.add(element["assetId"])
-            if len(image_ids) > 64:
-                raise HTTPException(422, "Choose a smaller scope: one job can inspect up to 64 images in bounded batches.")
-            snapshot["warnings"], snapshot["unavailable_assets"] = [], []
-            for asset_id in sorted(image_ids):
-                try:
-                    snapshot["vision"].append(asset_view(asset_id, max_px=512, principal=principal, session=session))
-                except HTTPException as exc:
-                    if exc.status_code not in (404, 422):
-                        raise
-                    entry = next((a for a in loaded.document.get("assets", []) if a["id"] == asset_id), {})
-                    snapshot["unavailable_assets"].append(asset_id)
-                    snapshot["warnings"].append(f"Could not inspect {entry.get('fileName') or asset_id}: image bytes are unavailable. Other objects will still be checked.")
         for asset_id in request.get("source_asset_ids", []):
             asset = session.get(Asset, asset_id)
             if asset is None or asset.workspace_id != access.workspace_id or asset.deleted_at:
-                raise HTTPException(404, "No such research source.")
+                raise HTTPException(404, "No such source file.")
             data, mime = object_storage.read(asset.storage_key)
             if mime == "application/pdf":
                 import io
@@ -678,13 +603,8 @@ def _execute(run_id):
             elif mime in ("text/plain", "text/csv"):
                 text = data.decode("utf-8", errors="replace")
             else:
-                raise HTTPException(422, "Research supports PDF, text and CSV sources.")
+                raise HTTPException(422, "Generation sources support PDF, text and CSV files.")
             snapshot["sources"].append({"id": asset.id, "title": asset.filename, "mime_type": mime, "text": text[:12000]})
-        if request.get("research_run_id"):
-            previous = owned(session, principal, request["research_run_id"])
-            if previous.presentation_id != row.presentation_id or previous.status != "completed" or previous.request_json["task"] != "research":
-                raise HTTPException(422, "Choose completed research from this presentation.")
-            snapshot["sources"].append({"id": previous.id, "title": "Assistant research (review claims and citations)", "text": (previous.result_json or {}).get("research", "")[:12000]})
         event(session, run_id, {"status": "running", "message": "Preparing the requested task"})
     stop = threading.Event()
     def heartbeat():
@@ -787,7 +707,12 @@ def _execute(run_id):
         if request["task"] == "export":
             checkpoint = {"export": True}
         elif not checkpoint:
-            client = None if request["task"] in {"speech", "tidy", "motion"} else CheckpointClient(model_client(lambda payload: emit(run_id, {"status": "provider", **payload})), run_id)
+            if request["task"] == "image":
+                client = CheckpointClient(model_client(lambda payload: emit(run_id, {"status": "provider", **payload})), run_id)
+            elif request["task"] == "video":
+                client = configured_video_client()
+            else:
+                client = None
             checkpoint = assistant_tasks.compute(request, snapshot, client, budget, lambda e: emit(run_id, e if isinstance(e, dict) else e.to_dict()))
             budget.check_clock()
             with session_scope() as session:
@@ -825,7 +750,7 @@ def _execute(run_id):
             row = session.get(AssistantRun, run_id)
             if row.cancel_requested or row.status != "running" or row.owner_id != _owner:
                 raise RunCancelled("Cancelled before applying the validated result.")
-            access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] in ("research", "export") else Role.EDITOR)
+            access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.VIEWER if request["task"] == "export" else Role.EDITOR)
             current = store.load_presentation(session, row.presentation_id)
             if current.version_id != request["expected_version_id"]:
                 raise HTTPException(409, "The deck changed before the result could be proposed.")
@@ -838,12 +763,6 @@ def _execute(run_id):
                 if errors:
                     raise HTTPException(422, "; ".join(errors[:5]))
                 final.update(proposals.create_proposal(session, presentation_id=row.presentation_id, operations=checkpoint["operations"], intent=request["instruction"] or request["task"], created_by=row.created_by, run_id=run_id, agent_id=f"assistant:{request['task']}", expected_version_id=request["expected_version_id"], model_authored=request["task"] not in {"tidy", "motion"}, review_reason=checkpoint.get("requires_review")))
-            if checkpoint.get("metadata"):
-                allowed = {a["id"] for a in snapshot["assets"]}
-                if len(checkpoint["metadata"]) > 40 or any(item["asset_id"] not in allowed for item in checkpoint["metadata"]):
-                    raise HTTPException(422, "Asset metadata proposal exceeds the requested scope.")
-                final["metadata_proposal"] = checkpoint["metadata"]
-                final["status"] = "pending_metadata"
             if checkpoint.get("media"):
                 final["assets"] = []
                 media_operations = []
@@ -864,17 +783,28 @@ def _execute(run_id):
                         path = f"/slides/id:{slide['id']}/narration/cues/id:{cue['id']}/takes"
                         take = {"assetId": asset.id, "durationMs": asset.duration_ms, "voice": media["voice"], "textHash": media["text_hash"]}
                         media_operations.append({"op": "add", "path": path if not cue.get("takes") else f"{path}/{request['locale']}", "value": {request["locale"]: take} if not cue.get("takes") else take})
-                    elif request["task"] == "image":
+                    elif request["task"] in {"image", "video"}:
                         if not manifest_exists:
                             media_operations.append({"op": "add", "path": "/assets", "value": []})
                             manifest_exists = True
-                        media_operations.append({"op": "add", "path": "/assets/-", "value": {"id": asset.id, "type": "image", "storageKey": key, "fileName": asset.filename, "mimeType": asset.content_type, "byteSize": asset.bytes, "width": asset.width, "height": asset.height, "createdBy": "generated"}})
-                        chosen = [slide for slide in current.document["slides"] if request["scope"]["kind"] == "deck" or slide["id"] in request["scope"]["slide_ids"]]
-                        view = current.document["viewport"]
-                        factor = min(view["width"] * .7 / asset.width, view["height"] * .65 / asset.height)
-                        width, height = asset.width * factor, asset.height * factor
-                        media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/-", "value": {"id": new_id("el"), "type": "image", "assetId": asset.id, "fit": "contain", "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "altText": "Generated illustration requested as: " + request["instruction"][:400]}})
-                        final["warnings"] = [*final.get("warnings", []), "Review the generated image placement and its description before applying."]
+                        asset_type = "video" if media["kind"] == "video" else "image"
+                        media_operations.append({"op": "add", "path": "/assets/-", "value": {"id": asset.id, "type": asset_type, "storageKey": key, "fileName": asset.filename, "mimeType": asset.content_type, "byteSize": asset.bytes, "width": asset.width, "height": asset.height, **({"durationMs": asset.duration_ms} if asset.duration_ms else {}), "createdBy": "generated"}})
+                if request["task"] in {"image", "video"} and final["assets"]:
+                    chosen = [slide for slide in current.document["slides"] if request["scope"]["kind"] == "deck" or slide["id"] in request["scope"]["slide_ids"]]
+                    view = current.document["viewport"]
+                    if request["task"] == "image":
+                        placed = next(item for item in final["assets"] if item["kind"] == "image")
+                        factor = min(view["width"] * .7 / placed["width"], view["height"] * .65 / placed["height"])
+                        width, height = placed["width"] * factor, placed["height"] * factor
+                        element = {"id": new_id("el"), "type": "image", "assetId": placed["id"], "fit": "contain", "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "altText": "Generated illustration requested as: " + request["instruction"][:400]}
+                    else:
+                        clip = next(item for item in final["assets"] if item["kind"] == "video")
+                        poster = next(item for item in final["assets"] if item["kind"] == "image")
+                        factor = min(view["width"] * .82 / clip["width"], view["height"] * .78 / clip["height"])
+                        width, height = clip["width"] * factor, clip["height"] * factor
+                        element = {"id": new_id("el"), "type": "video", "assetId": clip["id"], "posterAssetId": poster["id"], "fit": "cover", "autoplay": True, "loop": True, "muted": True, "controls": False, "startTimeMs": 0, "endTimeMs": clip["duration_ms"], "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "name": "Generated video: " + request["instruction"][:180]}
+                    media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/-", "value": element})
+                    final["warnings"] = [*final.get("warnings", []), f"Review the generated {request['task']} and placement before applying."]
                 if media_operations:
                     errors = author_service.check(current.document, media_operations)
                     if errors:
@@ -884,7 +814,8 @@ def _execute(run_id):
                     errors += asset_errors(session, current.document, candidate, row.workspace_id)
                     if errors:
                         raise HTTPException(422, "; ".join(errors[:3]))
-                    final.update(proposals.create_proposal(session, presentation_id=row.presentation_id, operations=media_operations, intent="Create spoken narration" if request["task"] == "speech" else "Place generated image", created_by=row.created_by, run_id=run_id, agent_id=f"assistant:{request['task']}", expected_version_id=current.version_id, model_authored=True))
+                    intent = "Create spoken narration" if request["task"] == "speech" else f"Place generated {request['task']}"
+                    final.update(proposals.create_proposal(session, presentation_id=row.presentation_id, operations=media_operations, intent=intent, created_by=row.created_by, run_id=run_id, agent_id=f"assistant:{request['task']}", expected_version_id=current.version_id, model_authored=True))
             if checkpoint.get("export"):
                 from . import export_service
                 options = {"locale": request["locale"], "slideIds": request["scope"]["slide_ids"] if request["scope"]["kind"] != "deck" else None}

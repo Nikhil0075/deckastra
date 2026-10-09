@@ -187,15 +187,11 @@ export function EditorShell(props: EditorShellProps) {
   }, []);
   const [restoreRefusal, setRestoreRefusal] = useState<string | null>(null);
   const [mode, setMode] = useState<EditorMode>("design");
-  // The assistant (roadmap 08 §1.2 rule 2): beside any mode, not one of them.
-  // `focus` is bumped each time it is asked for, to put the caret in its prompt.
-  // `prompt` is words handed over from the command palette, put in its prompt
-  // box and never sent until the person presses Run.
-  const [assistant, setAssistant] = useState<{ open: boolean; focus: number; prompt?: string }>({ open: false, focus: 0 });
-  const assistantOpen = assistant.open;
-  const openAssistant = useCallback((prompt?: string) => {
+  // Proposals and paid language/media services sit beside any mode.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const openAssistant = useCallback(() => {
     setColors({ open: false });
-    setAssistant((current) => ({ open: true, focus: current.focus + 1, prompt }));
+    setAssistantOpen(true);
   }, []);
   // The command palette (Ctrl+K). Present mode has its own keys and no palette.
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -361,7 +357,7 @@ export function EditorShell(props: EditorShellProps) {
       case "colors":
         // Colours is part of Design; opening it from another mode goes there.
         setMode("design");
-        setAssistant((current) => ({ ...current, open: false }));
+        setAssistantOpen(false);
         setColors({ open: true });
         break;
     }
@@ -899,9 +895,17 @@ export function EditorShell(props: EditorShellProps) {
       resolveAssetUrl={resolveAssetUrl}
       languagesOpen={languagesOpen}
       onLanguagesOpen={setLanguagesOpen}
-      onClose={() => setAssistant((current) => ({ ...current, open: false }))}
-      focusToken={assistant.focus}
-      initialPrompt={assistant.prompt}
+      onClose={() => setAssistantOpen(false)}
+      onVoiceOpen={() => {
+        setAssistantOpen(false);
+        setMode("motion");
+        setPanels({ ...panels, inspector: true });
+      }}
+      onMediaOpen={() => {
+        setAssistantOpen(false);
+        setSide({ panel: "library", tab: "media" });
+        setPanels({ ...panels, tools: true });
+      }}
     />
   ) : colors.open && mode === "design" ? (
     // Docked in the panel rather than floating over it (design review,
@@ -958,7 +962,7 @@ export function EditorShell(props: EditorShellProps) {
     },
     open: (focus) => {
       setMode("design");
-      setAssistant((current) => ({ ...current, open: false }));
+      setAssistantOpen(false);
       setColors({ open: true, ...(focus ? { focus } : {}) });
     },
   };
@@ -977,7 +981,7 @@ export function EditorShell(props: EditorShellProps) {
         account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}
         assistantOpen={assistantOpen}
-        onAssistant={() => (assistantOpen ? setAssistant((current) => ({ ...current, open: false })) : openAssistant())}
+        onAssistant={() => (assistantOpen ? setAssistantOpen(false) : openAssistant())}
         onManageLanguages={() => {
           openAssistant();
           setLanguagesOpen(true);
@@ -990,7 +994,7 @@ export function EditorShell(props: EditorShellProps) {
         onClose={() => setPaletteOpen(false)}
         // The menu's dispatcher, so the palette and the menu mean one thing.
         onCommand={(command) => onCommand.current(command)}
-        onAsk={(text) => openAssistant(text)}
+        onAsk={() => {}}
         canExit={Boolean(exit)}
         canOpenSettings={Boolean(props.onOpenSettings)}
       />
@@ -1079,6 +1083,10 @@ export function EditorShell(props: EditorShellProps) {
             onAddImage={addImage}
             document={doc}
             apply={(operations, label) => apply(operations, { label })}
+            presentationId={props.presentationId}
+            afterSlideId={slide?.id}
+            currentVersionId={editor.currentVersionId}
+            saveNow={editor.saveNow}
             onAdd={(item) =>
               item.kind === "shape"
                 ? addStarter("shape", item.shape)

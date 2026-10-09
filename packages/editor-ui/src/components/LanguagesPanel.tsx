@@ -10,7 +10,7 @@ import {
 } from "@deckastra/presentation-core";
 import { BUNDLED_FONTS, buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { LanguagesStatus } from "@deckastra/workspace-contracts";
+import type { LanguagesStatus, PaidServiceQuote } from "@deckastra/workspace-contracts";
 
 import { deckLanguages, LANGUAGE_OPTIONS, languageLabel } from "../lib/languages";
 import { localizeDocument } from "../lib/locale-lens";
@@ -56,6 +56,7 @@ export function LanguagesPanel({
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [glossary, setGlossary] = useState("");
+  const [quotes, setQuotes] = useState<Record<string, PaidServiceQuote>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +97,7 @@ export function LanguagesPanel({
   );
 
   const saveGlossary = useCallback(() => {
+    setQuotes({});
     void client.session.writePreference?.("translation", { glossary: terms }).catch(() => {});
   }, [client, terms]);
 
@@ -129,11 +131,21 @@ export function LanguagesPanel({
           setMessage({ tone: "error", text: "Your latest edits are not saved yet, so nothing was translated. Try again in a moment." });
           return;
         }
-        const result = await client.languages.translate(presentationId, tag, {
+        const request = {
           scope,
           expected_version_id: editor.currentVersionId(),
           glossary: terms,
-        });
+        } as const;
+        const key = `${tag}:${scope}`;
+        const quote = quotes[key];
+        if (!quote) {
+          const offered = await client.languages.quoteTranslation(presentationId, tag, request);
+          setQuotes((current) => ({ ...current, [key]: offered }));
+          setMessage({ tone: "ok", text: `This translation will use ${offered.credit_cost} credit${offered.credit_cost === 1 ? "" : "s"}. Press Confirm translation to continue.` });
+          return;
+        }
+        const result = await client.languages.translate(presentationId, tag, { ...request, quote_token: quote.quote_token });
+        setQuotes((current) => { const next = { ...current }; delete next[key]; return next; });
         if (result.outcome === "applied" && result.document && result.version_id) {
           editor.adoptDocument(result.document, result.version_id);
           setMessage({ tone: "ok", text: `Translated ${result.translated?.length ?? 0} item(s) into ${languageLabel(tag)}.` });
@@ -153,12 +165,13 @@ export function LanguagesPanel({
           });
         }
       } catch (error) {
+        setQuotes({});
         setMessage({ tone: "error", text: error instanceof Error ? error.message : "The translation could not be made." });
       } finally {
         setBusy(null);
       }
     },
-    [client, editor, onProposed, presentationId, terms],
+    [client, editor, onProposed, presentationId, quotes, terms],
   );
 
   const scriptFonts = useMemo(
@@ -250,7 +263,7 @@ export function LanguagesPanel({
                     onClick={() => void translate(language.tag, "missing")}
                     data-testid={`translate-missing-${language.tag}`}
                   >
-                    {busy === `${language.tag}:missing` ? "Translating…" : `Translate missing (${language.missing})`}
+                    {busy === `${language.tag}:missing` ? "Translating…" : quotes[`${language.tag}:missing`] ? `Confirm translation · ${quotes[`${language.tag}:missing`]!.credit_cost} credits` : `Translate missing (${language.missing})`}
                   </Button>
                   {language.outdated ? (
                     <Button
@@ -260,7 +273,7 @@ export function LanguagesPanel({
                       onClick={() => void translate(language.tag, "outdated")}
                       data-testid={`translate-outdated-${language.tag}`}
                     >
-                      {busy === `${language.tag}:outdated` ? "Translating…" : `Re-translate outdated (${language.outdated})`}
+                      {busy === `${language.tag}:outdated` ? "Translating…" : quotes[`${language.tag}:outdated`] ? `Confirm translation · ${quotes[`${language.tag}:outdated`]!.credit_cost} credits` : `Re-translate outdated (${language.outdated})`}
                     </Button>
                   ) : null}
                   <Button size="sm" variant="ghost" onClick={() => setReviewing((current) => (current === language.tag ? null : language.tag))}>

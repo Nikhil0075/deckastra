@@ -124,7 +124,7 @@ def client(tmp_path, monkeypatch):
 
 def test_the_route_reads_the_body_and_changes_nothing(client):
     auth = {"Authorization": f"Bearer {client.post('/v1/dev/session', json={'email': 'office@localhost'}).json()['token']}"}
-    deck = client.post("/v1/generate", headers=auth, json={"instruction": "Brand check", "slide_count": 2}).json()
+    deck = client.post("/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "title": "Brand check"}).json()
     before = client.get(f"/v1/presentations/{deck['presentation_id']}", headers=auth).json()["version_id"]
 
     response = client.post(

@@ -53,33 +53,6 @@ def auth() -> dict[str, str]:
     return {"Authorization": f"Bearer {SECRET}"}
 
 
-def _paused_run(data: Path, deck: str) -> str:
-    """A run parked at its story checkpoint, plus the checkpoint LangGraph keeps.
-
-    Written directly rather than by running the graph: what is being tested is
-    whether a backup carries two databases consistently, and a real generation
-    would be minutes of model calls to produce the same two rows.
-    """
-    connection = sqlite3.connect(str(data / "deckastra.db"))
-    project = connection.execute("SELECT id FROM projects LIMIT 1").fetchone()[0]
-    connection.execute(
-        "INSERT INTO agent_runs (id, project_id, presentation_id, created_by, intent, status, created_at)"
-        " VALUES ('run_paused', ?, ?, 'usr_1', 'A deck about backups', 'awaiting_approval', datetime('now'))",
-        (project, deck),
-    )
-    connection.commit()
-    connection.close()
-
-    # The checkpoints database is LangGraph's, on LangGraph's schema, beside the
-    # application database. One table is enough to prove the file travels.
-    checkpoints = sqlite3.connect(str(data / "deckastra.db.checkpoints"))
-    checkpoints.execute("CREATE TABLE IF NOT EXISTS checkpoints (thread_id TEXT, blob TEXT)")
-    checkpoints.execute("INSERT INTO checkpoints VALUES ('run_paused', 'the outline')")
-    checkpoints.commit()
-    checkpoints.close()
-    return "run_paused"
-
-
 def test_a_backup_brings_back_everything_the_register_names(install, tmp_path):
     client, data = install
 
@@ -116,9 +89,6 @@ def test_a_backup_brings_back_everything_the_register_names(install, tmp_path):
     connection.commit()
     connection.close()
 
-    # A paused outline, in the other database.
-    run = _paused_run(data, deck)
-
     # And the unsaved work, which is in a browser and reaches this through the shell.
     journals = [{"key": f"deckastra.editor-recovery.v1:{deck}", "value": json.dumps({"format": 1, "note": "unsaved"})}]
 
@@ -128,7 +98,6 @@ def test_a_backup_brings_back_everything_the_register_names(install, tmp_path):
     # The install is destroyed, as a disk failure or a bad uninstall would.
     db_session.reset_engine()
     (data / "deckastra.db").unlink()
-    (data / "deckastra.db.checkpoints").unlink()
     (data / "assets" / key).unlink()
 
     result = backup.restore(tmp_path / "backup", data)
@@ -148,16 +117,7 @@ def test_a_backup_brings_back_everything_the_register_names(install, tmp_path):
     restored_db.close()
     assert object_storage.read_local(key)[0] == b"\x89PNG-pretend"
 
-    # 4. The paused outline: the run row *and* the checkpoint it resumes from.
-    # Either one alone is a generation nobody can finish.
-    restored_db = sqlite3.connect(str(data / "deckastra.db"))
-    assert restored_db.execute("SELECT status FROM agent_runs WHERE id = ?", (run,)).fetchone()[0] == "awaiting_approval"
-    restored_db.close()
-    checkpoints = sqlite3.connect(str(data / "deckastra.db.checkpoints"))
-    assert checkpoints.execute("SELECT blob FROM checkpoints WHERE thread_id = ?", (run,)).fetchone()[0] == "the outline"
-    checkpoints.close()
-
-    # 5. The unsaved journal, handed back for the shell to put in its storage.
+    # 4. The unsaved journal, handed back for the shell to put in its storage.
     assert result["journals"] == journals
 
 

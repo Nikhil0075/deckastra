@@ -7,8 +7,8 @@ can build a patch and validate it; only the transaction service applies one
 document even if its output is nonsense.
 
 Every tool returning slide text marks itself `returns_untrusted_content`. Text on
-a slide came from somewhere — a user typed it, a model wrote it, a repository
-supplied it — and by the time an agent reads it back none of that is
+a slide came from somewhere — a user typed it, an agent wrote it, or an import
+supplied it — and by the time another agent reads it back none of that is
 distinguishable.
 """
 

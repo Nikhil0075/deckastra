@@ -1,5 +1,23 @@
 import type { PatchOperation, PresentationDocument } from "@deckastra/presentation-schema";
 
+/** Evidence embedded in a deck by an agent or import. */
+export interface SlideSource {
+  id: string;
+  targetId: string;
+  sourceType: string;
+  sourceReference: string;
+  excerpt?: string;
+  confidence?: number;
+  agentId?: string;
+  createdAt?: string;
+  url: string | null;
+}
+
+export interface SlideSources {
+  slide_id: string;
+  sources: SlideSource[];
+}
+
 /** A deck as the authority hands it over, with the version it was read at. */
 export interface DocumentRead {
   document: PresentationDocument;
@@ -109,6 +127,26 @@ export interface PreviewResult {
    * is not the change as it was written, and approval will ask for a fresh look.
    */
   rebased?: boolean;
+}
+
+/** Sample one slide's animation timeline into a single contact-sheet image. */
+export interface MotionPreviewRequest {
+  slide_id: string;
+  /** Deliberately bounded: enough to inspect timing without returning a filmstrip. */
+  frame_count?: number;
+  expected_version_id?: string;
+}
+
+export interface MotionPreviewResult {
+  slide_id: string;
+  image_base64: string;
+  width: number;
+  height: number;
+  version_id: string;
+  duration_ms: number;
+  frame_times_ms: number[];
+  frame_count: number;
+  metrics_estimated: boolean;
 }
 
 export interface CreatePresentationRequest {

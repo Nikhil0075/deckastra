@@ -4,11 +4,11 @@ import type {
   TransitionResult,
   AccountContext,
   CreditBalance,
+  ComposedDeckResult,
   AccountCapabilities,
   AccountDeletion,
   DeckImport,
   AccountProject,
-  AgentEditResult,
   AppliedChange,
   CreatePresentationRequest,
   CreatePresentationResult,
@@ -19,23 +19,26 @@ import type {
   DeletePresentationResult,
   RestorePresentationResult,
   DuplicatePresentationResult,
-  EditScopePayload,
   ExportJob,
   ExportRequest,
-  GenerateRequest,
-  GenerateResult,
+  DeckComposeRequest,
+  DeckFromTemplateRequest,
   HealthReport,
   MotionCapabilities,
   MotionRequest,
   MotionResult,
+  MotionStyleRequest,
+  MotionStyleResult,
   PendingProposal,
   ProposalDetail,
-  ReviewedGeneration,
   PresentationSummary,
+  PresetCatalog,
+  InsertPatternRequest,
+  InsertPatternResult,
   PreviewRequest,
   PreviewResult,
-  Repository,
-  RepositoryList,
+  MotionPreviewRequest,
+  MotionPreviewResult,
   RequestOptions,
   ImportedTheme,
   SaveThemeRequest,
@@ -53,6 +56,7 @@ import type {
   WorkspaceClient,
   UploadedAsset,
   LanguagesStatus,
+  PaidServiceQuote,
   SynthesizeResult,
   TranslateResult,
   Voice,
@@ -258,13 +262,15 @@ const q = encodeURIComponent;
     clientId: options.clientId,
     assistant: {
       capabilities: (o) => json<AssistantCapabilities>(`/v1/assistant/capabilities${o?.presentationId ? `?presentation_id=${q(o.presentationId)}${o.slideId ? `&slide_id=${q(o.slideId)}` : ""}${o.locale ? `&locale=${q(o.locale)}` : ""}` : ""}`, { ...o }),
+      quoteImage: (presentationId, body, o) => json<PaidServiceQuote>("/v1/media/quotes/image", {
+        ...o, body: { presentation_id: presentationId, ...body }, fallback: "The image price could not be checked.",
+      }),
       start: (body, o) => json<AssistantRun>("/v1/assistant/runs", { ...o, body }),
       get: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}`, { ...o }),
       list: (id, o) => json<{ runs: AssistantRun[] }>(`/v1/assistant/runs?presentation_id=${q(id)}`, { ...o }),
       events: (id, after = 0, o) => json<{ events: AssistantEvent[] }>(`/v1/assistant/runs/${q(id)}/events?after=${after}`, { ...o }),
       cancel: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/cancel`, { ...o, body: {} }),
       resume: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/resume`, { ...o, body: {} }),
-      approveMetadata: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/approve-metadata`, { ...o, body: {} }),
       designCheck: (id, slide, o) => json<DesignCheckResult>(`/v1/presentations/${q(id)}/design-check${slide ? `?slide_id=${q(slide)}` : ""}`, { ...o }),
       assetList: (request, o) => {
         const params = new URLSearchParams();
@@ -338,6 +344,11 @@ const q = encodeURIComponent;
           body,
           ...request,
         }),
+      motionPreview: (presentationId, body: MotionPreviewRequest, request) =>
+        json<MotionPreviewResult>(`/v1/presentations/${q(presentationId)}/motion-preview`, {
+          body,
+          ...request,
+        }),
       head: (presentationId, request) =>
         json<DocumentHead>(`/v1/presentations/${q(presentationId)}/head`, {
           // Polled; a cached answer is a change the editor never hears about.
@@ -388,6 +399,11 @@ const q = encodeURIComponent;
           `/v1/projects/${q(projectId)}/presentations?deleted=true`,
           { fresh: true, ...request },
         ).then((body) => body.presentations),
+      slideSources: (presentationId, slideId, request) =>
+        json<SlideSources>(
+          `/v1/presentations/${q(presentationId)}/slides/${q(slideId)}/sources`,
+          { ...request },
+        ),
     },
 
     motion: {
@@ -399,23 +415,30 @@ const q = encodeURIComponent;
           body,
           ...request,
         }),
+      proposeStyle: (presentationId, body: MotionStyleRequest, request) =>
+        json<MotionStyleResult>(`/v1/presentations/${q(presentationId)}/motion-style`, {
+          body,
+          fallback: "That motion style could not be applied.",
+          ...request,
+        }),
     },
 
-    generation: {
-      run: (body: GenerateRequest, request) => json<GenerateResult>("/v1/generate", { body, ...request }),
-      review: (body, request) => json<ReviewedGeneration>("/v1/generate/review", { body, ...request }),
-      checkpoint: (runId, request) =>
-        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/checkpoint`, { fresh: true, ...request }),
-      decide: (runId, decision, request) =>
-        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/resume`, { method: "POST", body: decision, ...request }),
+
+    presets: {
+      list: (request) => json<PresetCatalog>("/v1/presets", { fresh: true, ...request }),
+      create: (body: DeckFromTemplateRequest, request) =>
+        json<ComposedDeckResult>("/v1/decks/from-template", { body, ...request }),
+      compose: (body: DeckComposeRequest, request) =>
+        json<ComposedDeckResult>("/v1/decks/compose", { body, ...request }),
+      insertPattern: (presentationId, body: InsertPatternRequest, request) =>
+        json<InsertPatternResult>(`/v1/presentations/${q(presentationId)}/patterns/insert`, {
+          body,
+          fallback: "That slide pattern could not be inserted.",
+          ...request,
+        }),
     },
 
     agent: {
-      edit: (presentationId, body: { instruction: string; scope: EditScopePayload }, request) =>
-        json<AgentEditResult>(`/v1/presentations/${q(presentationId)}/agent/edit`, {
-          body,
-          ...request,
-        }),
       proposals: (presentationId, request) =>
         json<PendingProposal[]>(`/v1/presentations/${q(presentationId)}/proposals`, { ...request }),
       proposal: (presentationId, proposalId, request) =>
@@ -514,12 +537,24 @@ const q = encodeURIComponent;
           fallback: "The translation could not be made.",
           ...request,
         }),
+      quoteTranslation: (presentationId, locale, body, request) =>
+        json<PaidServiceQuote>("/v1/media/quotes/translation", {
+          body: { presentation_id: presentationId, locale, ...body },
+          fallback: "The translation price could not be checked.",
+          ...request,
+        }),
       voices: (locale, request) =>
         json<{ voices: Voice[] }>(`/v1/speech/voices?locale=${q(locale)}`, { ...request }).then((answer) => answer.voices),
       synthesize: (presentationId, body, request) =>
         json<SynthesizeResult>(`/v1/presentations/${q(presentationId)}/narration/synthesize`, {
           body,
           fallback: "The narration could not be voiced.",
+          ...request,
+        }),
+      quoteSpeech: (presentationId, body, request) =>
+        json<PaidServiceQuote>("/v1/media/quotes/speech", {
+          body: { presentation_id: presentationId, ...body },
+          fallback: "The narration price could not be checked.",
           ...request,
         }),
     },
@@ -670,30 +705,6 @@ const q = encodeURIComponent;
         json<ImportedTheme>(`/v1/presentations/${q(presentationId)}/themes/import`, { raw: file, ...request }),
     },
 
-    repositories: {
-      list: (workspaceId, request) =>
-        json<RepositoryList>(`/v1/repositories${workspaceQuery(workspaceId)}`, { ...request }),
-      connectLocal: (path, label, workspaceId, request) =>
-        json<Repository>(`/v1/repositories/local${workspaceQuery(workspaceId)}`, {
-          body: { path, label: label || null },
-          ...request,
-        }),
-      index: (id, workspaceId, request) =>
-        json<Repository & { index: unknown }>(
-          `/v1/repositories/${q(id)}/index${workspaceQuery(workspaceId)}`,
-          { method: "POST", ...request },
-        ),
-      disconnect: (id, workspaceId, request) =>
-        json<{ status: string }>(`/v1/repositories/${q(id)}${workspaceQuery(workspaceId)}`, {
-          method: "DELETE",
-          ...request,
-        }),
-      slideSources: (presentationId, slideId, request) =>
-        json<SlideSources>(
-          `/v1/presentations/${q(presentationId)}/slides/${q(slideId)}/sources`,
-          { ...request },
-        ),
-    },
   };
 }
 

@@ -107,8 +107,8 @@ async def session_middleware(request: Request, call_next: Callable[[Request], An
     FastAPI runs a yield-dependency's teardown after the response has gone out,
     so a client that reads a write's response and immediately issues the next
     request can beat the commit and be told the row does not exist. That is not
-    theoretical: connecting a repository and indexing it are two calls a UI makes
-    back to back, and the second returned 404 until this moved.
+    theoretical: a client can read a successful write response and immediately
+    issue a dependent request; that second request used to beat the commit.
 
     Rolling back on a 4xx or 5xx keeps the previous behaviour, where an exception
     discarded the partial write.

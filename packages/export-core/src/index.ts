@@ -89,6 +89,8 @@ export interface ExportInput {
    * sequence; PDF cannot carry sound and reports that it did not.
    */
   audio?: ReadonlyMap<string, ExportImage>;
+  /** Short MP4 clips, supplied separately from pictures and narration. */
+  videos?: ReadonlyMap<string, ExportImage>;
 }
 
 /** One picture, as an adapter that must embed it needs it. */

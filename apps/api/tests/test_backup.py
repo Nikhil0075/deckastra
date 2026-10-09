@@ -51,20 +51,18 @@ def install(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     data = tmp_path / "workspace"
     data.mkdir()
     _database(data / "deckastra.db", assets=[("ast_1", "workspaces/w1/assets/ast_1")])
-    _database(data / "deckastra.db.checkpoints")
     _asset(data / "assets", "workspaces/w1/assets/ast_1")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{(data / 'deckastra.db').as_posix()}")
     return data
 
 
-def test_snapshot_carries_the_database_checkpoints_and_referenced_assets(install: Path, tmp_path: Path) -> None:
+def test_snapshot_carries_the_database_and_referenced_assets(install: Path, tmp_path: Path) -> None:
     manifest = backup.snapshot(tmp_path / "out", asset_root=install / "assets", app_version="0.9.0-beta.1")
 
     assert manifest["format"] == backup.FORMAT
     assert manifest["counts"] == {"presentations": 1, "versions": 1, "assets": 1, "runs": 0}
     assert manifest["missing_assets"] == []
     assert (tmp_path / "out" / "deckastra.db").is_file()
-    assert (tmp_path / "out" / "deckastra.db.checkpoints").is_file()
     assert (tmp_path / "out" / "assets" / "workspaces/w1/assets/ast_1").read_bytes() == b"png"
     # The sidecar metadata travels with the blob: without it the local backend
     # cannot answer `metadata()` and a restored asset has no content type.
@@ -246,7 +244,6 @@ def test_restore_puts_the_data_back_and_keeps_what_it_replaced(install: Path, tm
     restored.close()
     assert titles == ["doc_1"]
     assert (install / "assets" / "workspaces/w1/assets/ast_1").read_bytes() == b"png"
-    assert (install / "deckastra.db.checkpoints").is_file()
 
     # What was replaced is beside it, not gone: a restore is reached for when
     # something already went wrong.

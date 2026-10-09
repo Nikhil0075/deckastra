@@ -49,18 +49,19 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
   { command: "theme-dark", label: "Dark", group: "Theme", keywords: "appearance night", home: true },
   { command: "all-decks", label: "All decks", group: "Deck", keywords: "home library list", needsExit: true, home: true },
   { command: "new-deck", label: "New deck", group: "Deck", keywords: "blank create", needsExit: true, home: true },
-  { command: "generate-deck", label: "Generate a deck", group: "Deck", keywords: "write create ai", needsExit: true, home: true },
+  { command: "generate-deck", label: "New from template", group: "Deck", keywords: "template create agent", needsExit: true, home: true },
   { command: "open-settings", label: "Settings…", group: "View", keywords: "preferences account privacy agents", needsSettings: true, home: true },
 ];
 
-/** One row of the palette: a command, or the assistant asked in the person's own words. */
+/** One row of the palette: a command, or a home-page deck brief. */
 export type PaletteItem = { kind: "command"; entry: PaletteCommand } | { kind: "ask"; text: string };
 
 /**
  * What the palette shows for `query`. Every word typed has to appear in the
  * label, group or keywords; a label that starts with the query ranks first.
- * Anything typed is also offered to the assistant, last, so a sentence that
- * matches no command is still somewhere to go.
+ * On the home, anything typed is also offered as a deck brief. Inside a deck,
+ * the palette contains commands only; authoring requests belong in the
+ * connected coding agent.
  */
 export function findCommands(
   query: string,
@@ -86,5 +87,8 @@ export function findCommands(
     })
     .filter((hit): hit is { entry: PaletteCommand; score: number } => hit !== null)
     .sort((a, b) => a.score - b.score);
-  return [...scored.map(({ entry }) => ({ kind: "command" as const, entry })), { kind: "ask", text }];
+  return [
+    ...scored.map(({ entry }) => ({ kind: "command" as const, entry })),
+    ...(home ? [{ kind: "ask" as const, text }] : []),
+  ];
 }

@@ -59,7 +59,7 @@ def auth(client):
 @pytest.fixture()
 def deck(client, auth):
     generated = client.post(
-        "/v1/generate", headers=auth, json={"instruction": "A deck to review", "slide_count": 3}
+        "/v1/decks/from-template", headers=auth, json={"template_id": "business-pitch", "title": "A deck to review"}
     )
     assert generated.status_code == 200, generated.text
     return generated.json()

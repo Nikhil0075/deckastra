@@ -33,6 +33,8 @@ export interface SpeakingNow {
   cueId: string;
   text: string;
   remainingMs: number;
+  wordIndex?: number;
+  word?: string;
 }
 
 export function NarrationDirector({
@@ -69,8 +71,16 @@ export function NarrationDirector({
       gapMs: scene.playback?.gapMs ?? DEFAULT_NARRATION_GAP_MS,
       silentStepMs: narrated ? SILENT_STEP_MS : 0,
       soundDurationMs: (source) => ("library" in source ? librarySoundDurationMs(source.library) : (scene.audio[source.assetId]?.durationMs ?? 0)),
+      ...(scene.soundtrack && soundtrackApplies(scene, slide.slideId)
+        ? {
+            soundtrack: scene.soundtrack,
+            soundtrackDurationMs: "library" in scene.soundtrack.source
+              ? librarySoundDurationMs(scene.soundtrack.source.library)
+              : (scene.audio[scene.soundtrack.source.assetId]?.durationMs ?? 0),
+          }
+        : {}),
     });
-  }, [slide, reducedMotion, scene.locale, scene.playback?.gapMs, scene.audio, narrated]);
+  }, [slide, reducedMotion, scene.locale, scene.playback?.gapMs, scene.audio, scene.soundtrack, scene.slides, narrated]);
 
   // How far into the current step we are: banked while paused, counted from
   // `startedAt` while playing. Reset whenever the step itself changes.
@@ -101,7 +111,10 @@ export function NarrationDirector({
       const offset = state.banked + (performance.now() - state.startedAt);
       const now = speakingAt(schedule, step, offset);
       const cue = now ? slide.narration?.cues.find((candidate) => candidate.id === now.cueId) : undefined;
-      speaking.current?.(now && cue ? { slideId: slide.slideId, cueId: now.cueId, text: cue.text, remainingMs: now.remainingMs } : null);
+      speaking.current?.(now && cue ? {
+        slideId: slide.slideId, cueId: now.cueId, text: cue.text, remainingMs: now.remainingMs,
+        ...(now.wordIndex !== undefined ? { wordIndex: now.wordIndex, word: now.word } : {}),
+      } : null);
     };
     report();
     const timer = setInterval(report, 250);
@@ -115,4 +128,13 @@ export function NarrationDirector({
   useEffect(() => () => speaking.current?.(null), []);
 
   return null;
+}
+
+function soundtrackApplies(scene: DocumentScene, slideId: string): boolean {
+  const music = scene.soundtrack;
+  if (!music) return false;
+  const at = scene.slides.findIndex((slide) => slide.slideId === slideId);
+  const from = music.fromSlideId ? scene.slides.findIndex((slide) => slide.slideId === music.fromSlideId) : 0;
+  const through = music.throughSlideId ? scene.slides.findIndex((slide) => slide.slideId === music.throughSlideId) : scene.slides.length - 1;
+  return at >= Math.max(0, from) && at <= (through < 0 ? scene.slides.length - 1 : through);
 }

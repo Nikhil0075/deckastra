@@ -21,7 +21,7 @@ import { SOUND_LIBRARY_NAMES, type SoundLibraryName } from "@deckastra/presentat
 
 export const SOUND_SAMPLE_RATE = 22_050;
 
-export type SoundCategory = "Transitions" | "Pops & clicks" | "Chimes" | "Feedback" | "Rhythm" | "Crowd";
+export type SoundCategory = "Transitions" | "Pops & clicks" | "Chimes" | "Feedback" | "Rhythm" | "Crowd" | "Ambient";
 
 interface Recipe {
   label: string;
@@ -255,6 +255,15 @@ const RECIPES: Record<SoundLibraryName, Recipe> = {
       noise(o, r, n, 0.11, 0.06, 0.5, decay(5), () => 0.6);
     },
   },
+  "ui-confirm": { label: "UI confirm", category: "Feedback", durationMs: 360, render: (o, r) => { tone(o, r, 0, 740, 0.08, 0.35, 740, 0.18); tone(o, r, 0.12, 1110, 0.12, 0.4, 1110, 0.24); } },
+  "ui-cancel": { label: "UI cancel", category: "Feedback", durationMs: 300, render: (o, r) => { tone(o, r, 0, 520, 0.07, 0.35, 420, 0.14); tone(o, r, 0.11, 310, 0.09, 0.35, 260, 0.18); } },
+  swipe: { label: "Swipe", category: "Transitions", durationMs: 320, render: (o, r, n) => noise(o, r, n, 0, 0.32, 0.75, bell, (p) => 0.55 - 0.45 * p) },
+  "riser-short": { label: "Riser, short", category: "Transitions", durationMs: 1200, render: (o, r, n) => { tone(o, r, 0, 110, 0.8, 0.3, 880, 1.2); noise(o, r, n, 0, 1.2, 0.3, (p) => p * p, (p) => 0.05 + p * 0.45); } },
+  "riser-long": { label: "Riser, long", category: "Transitions", durationMs: 2600, render: (o, r, n) => { tone(o, r, 0, 80, 1.5, 0.28, 960, 2.6); noise(o, r, n, 0, 2.6, 0.28, (p) => p * p, (p) => 0.04 + p * 0.5); } },
+  "chime-warm": { label: "Chime, warm", category: "Chimes", durationMs: 1500, render: (o, r) => { tone(o, r, 0, 440, 0.45, 0.35, 440, 1.5); tone(o, r, 0.04, 660, 0.35, 0.22, 660, 1.3); tone(o, r, 0.08, 880, 0.25, 0.12, 880, 1.1); } },
+  "ambient-calm": { label: "Ambient, calm", category: "Ambient", durationMs: 6000, render: (o, r, n) => { tone(o, r, 0, 110, 5, 0.12, 116, 6); tone(o, r, 0, 165, 4, 0.08, 172, 6); noise(o, r, n, 0, 6, 0.05, bell, () => 0.03); } },
+  "ambient-focus": { label: "Ambient, focus", category: "Ambient", durationMs: 6000, render: (o, r) => { for (let at = 0; at < 6; at += 0.75) { tone(o, r, at, 220, 0.35, 0.1, 330, 0.7); tone(o, r, at + 0.18, 440, 0.25, 0.06, 440, 0.5); } } },
+  "ambient-pulse": { label: "Ambient, pulse", category: "Ambient", durationMs: 4000, render: (o, r, n) => { for (let at = 0; at < 4; at += 0.5) { tone(o, r, at, 82, 0.12, 0.18, 62, 0.35); noise(o, r, n, at, 0.08, 0.05, decay(4), () => 0.15); } } },
 };
 
 export interface LibrarySound {

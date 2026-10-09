@@ -40,6 +40,15 @@ export const SOUND_LIBRARY_NAMES = [
   "drum-roll",
   "applause",
   "camera-shutter",
+  "ui-confirm",
+  "ui-cancel",
+  "swipe",
+  "riser-short",
+  "riser-long",
+  "chime-warm",
+  "ambient-calm",
+  "ambient-focus",
+  "ambient-pulse",
 ] as const;
 
 export type SoundLibraryName = (typeof SOUND_LIBRARY_NAMES)[number];

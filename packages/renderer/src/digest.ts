@@ -62,6 +62,9 @@ function summarisePayload(node: SceneNode): string {
     case "image":
       return `image ${payload.assetId} fit=${payload.objectFit} at=${payload.objectPosition}`;
 
+    case "video":
+      return `video ${payload.assetId} poster=${payload.posterAssetId ?? "-"} fit=${payload.objectFit} range=${payload.startTimeMs}-${payload.endTimeMs ?? "end"}`;
+
     case "equation":
       // The source, hashed: two equations of one length that typeset
       // differently must not digest the same.

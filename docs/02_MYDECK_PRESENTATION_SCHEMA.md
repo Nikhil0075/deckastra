@@ -1393,6 +1393,44 @@ export interface AudioElement extends BaseElement {
 
 `scope: "presentation"` is how a background track survives slide changes — and it is also the hook video export needs for narration mixing (doc 04 §35.2).
 
+Phase 5 makes narration timing and the presentation music bed explicit rather
+than encoding either as a visual audio element:
+
+```ts
+interface NarrationTake {
+  assetId: Id;
+  durationMs: number;
+  voice?: string;
+  textHash: string;
+  wordTimings?: { word: string; startMs: number; endMs: number }[];
+}
+
+interface NarrationCue {
+  id: Id;
+  step: number;
+  text: string;
+  voice?: string;          // cue-specific speaker; otherwise the chosen default
+  advanceOnWord?: number;  // zero-based word timing; otherwise end of line
+  takes?: Record<Locale, NarrationTake>;
+}
+
+interface Soundtrack {
+  source: { assetId: Id } | { library: string };
+  volume?: Normalized;
+  loop?: boolean;
+  fadeInMs?: number;
+  fadeOutMs?: number;
+  ducking?: { gainDb: number; attackMs?: number; releaseMs?: number };
+  fromSlideId?: Id;        // absent: first slide
+  throughSlideId?: Id;     // absent: last slide
+}
+```
+
+Word timings belong to a take because two voices can align the same sentence
+differently. Ducking is compiled to a gain curve together with narrated
+playback; a player consumes that curve and does not make its own speech/music
+decision at runtime.
+
 ### 19.6 Web embed
 
 ```ts

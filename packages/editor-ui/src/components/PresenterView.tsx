@@ -48,7 +48,7 @@ export interface PresenterViewProps {
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
   /** Narration (integration plan 01 §3.4): muted on the projector, and the line being spoken. */
   muted?: boolean;
-  speaking?: { text: string; remainingMs: number } | null;
+  speaking?: { text: string; remainingMs: number; wordIndex?: number; word?: string } | null;
   /** Whether the deck has any narration or sound, so the control is offered at all. */
   hasAudio?: boolean;
   onMute?: () => void;
@@ -219,7 +219,7 @@ export function PresenterView({
               <span className="dk-label">Narration</span>
               {speaking ? (
                 <p className="dk-presenter__script" dir="auto">
-                  {scriptForDisplay(speaking.text)}
+                  <HighlightedNarration text={scriptForDisplay(speaking.text)} wordIndex={speaking.wordIndex} />
                   <span className="dk-presenter__script-left"> · {Math.ceil(speaking.remainingMs / 1000)}s left</span>
                 </p>
               ) : (
@@ -299,4 +299,21 @@ export function PresenterView({
       </main>
     </div>
   );
+}
+
+function HighlightedNarration({ text, wordIndex }: { text: string; wordIndex?: number }) {
+  if (wordIndex === undefined) return <>{text}</>;
+  let index = 0;
+  const parts: Array<string | ReturnType<typeof import("react").createElement>> = [];
+  let last = 0;
+  for (const match of text.matchAll(/[\p{L}\p{M}\p{N}_]+/gu)) {
+    const at = match.index ?? 0;
+    parts.push(text.slice(last, at));
+    const word = match[0];
+    parts.push(index === wordIndex ? <mark key={at}>{word}</mark> : word);
+    index += 1;
+    last = at + word.length;
+  }
+  parts.push(text.slice(last));
+  return <>{parts}</>;
 }

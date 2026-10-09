@@ -29,7 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import assets as asset_service
-from . import agent_service, audio, backup, local_mode
+from . import audio, backup, local_mode
 from . import object_storage, office_theme, quotas, sharing, store, telemetry, themes
 from .auth import (
     Principal,
@@ -54,7 +54,6 @@ from .db.session import get_session
 from .ids import new_id
 from .patch import PatchError, apply_patch
 from .schema import validate_document, validate_theme
-from deckastra_agents.router import generation_status
 
 logger = logging.getLogger("deckastra.workspace")
 
@@ -150,19 +149,8 @@ def _account_context(session: Session, principal: Principal) -> dict[str, Any]:
         # `workspace.origin` would switch sharing off for every deck in the
         # product.
         #
-        # `checkpoints`: whether a generation can pause at its outline for the
-        # person to approve or revise. It needs a durable saver, and a client
-        # that offered "review the outline first" where none exists would start
-        # a run that cannot stop — so the option is absent rather than broken.
-        #
-        # `generation`: what pressing Generate will do here — which provider,
-        # whether it can work, and why not (final package review, item 19). Read
-        # before anyone starts, so "not set up" is a sentence in the drawer rather
-        # than a failure after they wrote a brief.
         "capabilities": {
             "sharing": not local_mode.enabled(),
-            "checkpoints": agent_service.checkpoints_available(),
-            "generation": generation_status(),
             "assistant": __import__("deckastra_api.assistant_routes", fromlist=["capabilities"]).capabilities(),
         },
     }

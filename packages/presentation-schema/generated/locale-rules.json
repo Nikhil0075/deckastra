@@ -42,7 +42,16 @@
     "heartbeat",
     "drum-roll",
     "applause",
-    "camera-shutter"
+    "camera-shutter",
+    "ui-confirm",
+    "ui-cancel",
+    "swipe",
+    "riser-short",
+    "riser-long",
+    "chime-warm",
+    "ambient-calm",
+    "ambient-focus",
+    "ambient-pulse"
   ],
   "hashSamples": [
     {

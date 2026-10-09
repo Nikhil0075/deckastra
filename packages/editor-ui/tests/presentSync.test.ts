@@ -96,6 +96,32 @@ describe("PresentChannel", () => {
     expect(onIndex).toHaveBeenCalledWith(4);
   });
 
+  it("preserves the current narrated word while sanitizing presenter state", () => {
+    const fake = new FakeChannel();
+    const onState = vi.fn();
+    const channel = new PresentChannel(
+      "test",
+      { onIndex: vi.fn(), currentIndex: () => 0, slideCount: () => 5, onState },
+      () => fake as unknown as BroadcastChannel,
+    );
+    channel.open();
+
+    fake.deliver({
+      type: "state",
+      index: 1,
+      step: 2,
+      blacked: false,
+      speaking: { text: "A precisely timed reveal", remainingMs: -20, wordIndex: 2.8, word: "timed" },
+    });
+
+    expect(onState).toHaveBeenCalledWith({
+      index: 1,
+      step: 2,
+      blacked: false,
+      speaking: { text: "A precisely timed reveal", remainingMs: 0, wordIndex: 2, word: "timed" },
+    });
+  });
+
   it("ignores a bye and a malformed message rather than throwing mid-talk", () => {
     const { fake, onIndex } = channelWith(5);
 

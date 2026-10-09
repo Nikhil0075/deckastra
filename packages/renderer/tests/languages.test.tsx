@@ -121,6 +121,7 @@ describe("glyph coverage (W325)", () => {
 
 describe("the sound library", () => {
   it("has a recipe for every name the schema lists", () => {
+    expect(SOUND_LIBRARY).toHaveLength(40);
     expect(SOUND_LIBRARY.map((sound) => sound.name)).toEqual([...SOUND_LIBRARY_NAMES]);
     for (const name of SOUND_LIBRARY_NAMES) {
       const samples = librarySoundSamples(name)!;

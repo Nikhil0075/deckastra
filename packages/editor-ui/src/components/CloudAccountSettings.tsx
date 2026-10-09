@@ -13,17 +13,7 @@ import { Button, StatusChip, TextField } from "../ui";
 
 /** What the hosted AI can do for this account, task by task. */
 const TASK_WORDS: Record<string, string> = {
-  planning: "Planning a deck",
-  authoring: "Writing and changing slides",
-  cleanup: "Tidying slides",
-  critique: "Reviewing a deck",
-  translation: "Translating",
-  narration: "Writing narration",
-  vision: "Reading pictures",
-  research: "Research",
   image: "Making pictures",
-  consistency: "Checking consistency",
-  organise: "Organising slides",
 };
 
 export function AiTaskSettings() {

@@ -25,9 +25,8 @@ describe("finding a command", () => {
     expect(labels("notes dock")).toEqual(["Speaker notes"]);
   });
 
-  it("always offers the words to the assistant, last", () => {
-    const items = findCommands("make the title shorter", { canExit: true });
-    expect(items.at(-1)).toEqual({ kind: "ask", text: "make the title shorter" });
+  it("does not turn unmatched deck text into an assistant request", () => {
+    expect(findCommands("make the title shorter", { canExit: true })).toEqual([]);
   });
 });
 
@@ -78,11 +77,12 @@ describe("the palette", () => {
     expect(onCommand).toHaveBeenCalledWith(last.kind === "command" ? last.entry.command : null);
   });
 
-  it("hands a sentence to the assistant without sending it", () => {
+  it("shows no synthetic assistant command for an unmatched sentence", () => {
     const { input, onAsk, onCommand } = open();
     fireEvent.change(input, { target: { value: "add a slide about pricing" } });
-    fireEvent.click(screen.getByTestId("command-ask"));
-    expect(onAsk).toHaveBeenCalledWith("add a slide about pricing");
+    expect(screen.queryByTestId("command-ask")).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAsk).not.toHaveBeenCalled();
     expect(onCommand).not.toHaveBeenCalled();
   });
 

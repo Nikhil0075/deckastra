@@ -1596,9 +1596,6 @@
   margin: 0 var(--dk-space-3) var(--dk-space-2);
   font-size: var(--dk-text-sm);
 }
-.dk-assistant__research {
-  white-space: pre-wrap;
-}
 .dk-assistant__error {
   margin: 0 var(--dk-space-3) var(--dk-space-2);
   color: var(--dk-red);
@@ -3732,6 +3729,13 @@
   flex-direction: column;
   gap: var(--dk-space-1);
 }
+
+.dk-presenter__script mark {
+  color: inherit;
+  background: color-mix(in srgb, var(--dk-blue) 32%, transparent);
+  border-radius: 0;
+  padding: 0 0.08em;
+}
 .dk-presenter__script {
   margin: 0;
   font-size: var(--dk-text-md);
@@ -4087,6 +4091,71 @@
 .dk-settings__confirm-actions {
   display: flex;
   gap: var(--dk-space-2);
+}
+
+.dk-agent-setup {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--dk-space-3);
+  margin-top: var(--dk-space-3);
+  padding-top: var(--dk-space-3);
+  border-top: var(--dk-line) solid var(--dk-rule);
+}
+.dk-agent-setup p {
+  margin: var(--dk-space-1) 0 0;
+}
+.dk-agent-setup__clients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+}
+.dk-agent-setup__client {
+  padding: var(--dk-space-1) var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-surface);
+  color: var(--dk-ink-muted);
+  font: inherit;
+  font-size: var(--dk-text-sm);
+  cursor: pointer;
+}
+.dk-agent-setup__client--active {
+  border-color: var(--dk-blue);
+  background: var(--dk-sunk);
+  color: var(--dk-ink);
+}
+.dk-agent-setup__client:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-agent-setup__config {
+  min-width: 0;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-sunk);
+}
+.dk-agent-setup__config-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+  font-size: var(--dk-text-sm);
+}
+.dk-agent-setup__config pre {
+  max-height: 240px;
+  margin: 0;
+  padding: var(--dk-space-2);
+  overflow: auto;
+  color: var(--dk-ink);
+  font-size: var(--dk-text-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dk-agent-setup__steps {
+  margin: 0;
+  padding-left: var(--dk-space-4);
+  font-size: var(--dk-text-sm);
 }
 
 /* --- A shared deck (apps/web shared/[token]) -------------------------------- */

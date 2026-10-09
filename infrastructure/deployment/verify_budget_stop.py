@@ -20,8 +20,8 @@ SERVICES = ("aiplatform.googleapis.com", "translate.googleapis.com", "texttospee
 def verify(cloud):
     api = json.loads(cloud.run("run", "services", "describe", "deckastra-api", f"--region={cloud.region}", "--format=json").stdout)
     env = {entry["name"]: entry.get("value") for entry in api["spec"]["template"]["spec"]["containers"][0]["env"]}
-    if json.loads(env.get("DECKASTRA_VERTEX_MODELS", "null")) != {}:
-        raise RuntimeError("Refusing shutdown rehearsal with enabled Gemini tasks.")
+    if env.get("DECKASTRA_VERTEX_IMAGE_MODEL", "").strip():
+        raise RuntimeError("Refusing shutdown rehearsal with image generation enabled.")
     subscriber = json.loads(cloud.run("run", "services", "describe", "deckastra-budget-stop", f"--region={cloud.region}", "--format=json").stdout)
     settings = {entry["name"]: entry.get("value") for entry in subscriber["spec"]["template"]["spec"]["containers"][0]["env"]}
     with httpx.Client(timeout=40) as http:

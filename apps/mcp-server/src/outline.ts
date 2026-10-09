@@ -41,10 +41,12 @@ export interface SlideOutline {
   name?: string;
   intent?: string;
   keyMessage?: string;
+  /** Author-facing semantic pattern, without composer geometry. */
+  pattern?: string;
   elements: ElementOutline[];
   animationTrackCount: number;
   /** Narration lines by click step (integration plan 01 §3.3), and which languages have recordings. */
-  narration?: { id: string; step: number; text: string; recordedIn: string[] }[];
+  narration?: { id: string; step: number; text: string; voice?: string; advanceOnWord?: number; recordedIn: string[] }[];
   soundCount?: number;
 }
 
@@ -64,6 +66,7 @@ export interface DocumentOutline {
   title?: string;
   slideCount: number;
   themeId?: string;
+  motionStyle?: string;
   /**
    * The deck's named colours (`theme.colors.custom`), name to value. Listed so
    * an agent asked for "brand red" refers to `token:colors.custom.Brand red`
@@ -159,12 +162,16 @@ export function outlineDocument(
       if (slide.name) summary.name = String(slide.name);
       if (slide.semanticIntent) summary.intent = String(slide.semanticIntent);
       if (slide.keyMessage) summary.keyMessage = String(slide.keyMessage);
+      const pattern = slide.layout?.styleLabel ?? slide.layout?.templateId;
+      if (pattern) summary.pattern = String(pattern).replace(/^preset\./, "");
       const cues: any[] = Array.isArray(slide.narration?.cues) ? slide.narration.cues : [];
       if (cues.length) {
         summary.narration = cues.map((cue) => ({
           id: String(cue.id),
           step: Number(cue.step),
           text: String(cue.text ?? "").slice(0, TEXT_LIMIT),
+          ...(cue.voice ? { voice: String(cue.voice) } : {}),
+          ...(cue.advanceOnWord !== undefined ? { advanceOnWord: Number(cue.advanceOnWord) } : {}),
           recordedIn: Object.keys(cue.takes ?? {}),
         }));
       }
@@ -174,6 +181,7 @@ export function outlineDocument(
   };
 
   if (raw.metadata?.title) outline.title = String(raw.metadata.title);
+  if (raw.metadata?.motionStyle) outline.motionStyle = String(raw.metadata.motionStyle);
   if (raw.theme?.id) outline.themeId = String(raw.theme.id);
   const custom = raw.theme?.colors?.custom;
   if (custom && typeof custom === "object" && Object.keys(custom).length) outline.namedColors = { ...custom };

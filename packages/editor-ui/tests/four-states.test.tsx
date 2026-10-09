@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
 
-import { RepositoryPanel } from "../src/components/RepositoryPanel";
 import { ThemePanel } from "../src/components/ThemePanel";
 import { useEditor } from "../src/lib/useEditor";
 
@@ -23,34 +22,6 @@ afterEach(() => {
 
 const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
 const failed = (status: number, detail: string) => ({ ok: false, status, json: async () => ({ detail }) }) as Response;
-
-describe("connected repositories", () => {
-  it("says it is reading, never 'nothing connected', before the list arrives", async () => {
-    let answer: (value: Response) => void = () => {};
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))));
-    render(<RepositoryPanel selected={[]} onSelectionChange={() => {}} embedded />, { wrapper: withWorkspaceClient() });
-    expect(screen.getByText("Reading connected repositories…")).toBeTruthy();
-    expect(screen.queryByText(/Nothing connected yet/)).toBeNull();
-    answer(ok({ repositories: [], github: { install_url: null }, local_allowed: false }));
-    expect(await screen.findByText(/Nothing connected yet/)).toBeTruthy();
-    // Whoever runs the server configures GitHub; the panel names no setting.
-    expect(screen.getByText("Connecting GitHub repositories is not set up on this server.")).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/GITHUB_/);
-  });
-
-  it("says when the list could not be read, and reads it again on request", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(failed(503, "Service unavailable"))
-      .mockResolvedValueOnce(ok({ repositories: [], github: { install_url: null }, local_allowed: false }));
-    vi.stubGlobal("fetch", fetcher);
-    render(<RepositoryPanel selected={[]} onSelectionChange={() => {}} embedded />, { wrapper: withWorkspaceClient() });
-    expect((await screen.findByRole("alert")).textContent).toMatch(/Service unavailable/);
-    expect(screen.queryByText(/Nothing connected yet/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText(/Nothing connected yet/)).toBeTruthy();
-  });
-});
 
 describe("saved workspace themes", () => {
   const document = loadFixture("technical");

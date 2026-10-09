@@ -78,6 +78,17 @@ export interface RenderResponse {
   criticReport: CriticRenderReport;
 }
 
+export interface MotionStripResponse {
+  slideId: string;
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  durationMs: number;
+  frameTimesMs: number[];
+  warnings: ExportWarning[];
+  metricsEstimated: boolean;
+}
+
 /** Doc 04 §41.3. A render that has not finished by here is a render that hung. */
 export const RENDER_TIMEOUT_MS = 20_000;
 
@@ -315,7 +326,7 @@ function beforeDeadline<T>(
  * decode. Neither throws, neither is visible in a log, and both are fixed by
  * waiting for the two things the browser can tell us about.
  */
-async function settle(page: RenderPage): Promise<string[]> {
+export async function settle(page: RenderPage): Promise<string[]> {
   return page.evaluate(async () => {
     // Every declared face, not only the ones layout has asked for yet: a face
     // requested after `ready` resolved would be captured as its fallback.
@@ -386,6 +397,119 @@ export async function render(
       criticReport: buildCriticReport(scene),
     };
   });
+}
+
+/**
+ * Six (or another deliberately small number of) points on one slide's motion
+ * timeline, captured as one contact sheet.
+ *
+ * This is intentionally a sibling of `render`, not a loop in the API. The
+ * scene is measured once, one browser page paints every frame, and the exact
+ * animation compiler used by export decides every state.
+ */
+export async function renderMotionStrip(
+  document: PresentationDocument,
+  slideId: string,
+  frameCount: number,
+  pool: RenderPool,
+  assets?: InlineAsset[],
+  scale = 1,
+): Promise<MotionStripResponse> {
+  const count = Math.max(3, Math.min(8, Math.floor(frameCount)));
+  const library = new AssetLibrary(assets);
+  return pool.withPage(scale, async (page) => {
+    const fontCss = await pageFontCss(document, library);
+    const scene = await buildBrowserScene(document, page, fontCss);
+    const slide = scene.slides.find((candidate) => candidate.slideId === slideId);
+    if (!slide) throw new Error("No such slide in this deck.");
+
+    const timeline = compileTimeline(
+      slide,
+      (slide.animations ?? []) as AnimationTrack[],
+      { userMotionPreference: "full" },
+    );
+    const frameTimesMs = Array.from({ length: count }, (_, index) =>
+      count === 1 ? 0 : Math.round((timeline.durationMs * index) / (count - 1)),
+    );
+    const warnings: ExportWarning[] = [];
+    const { html, width, height } = motionStripHtml(
+      slide,
+      frameTimesMs,
+      warnings,
+      library.resolve,
+      fontCss,
+    );
+    await page.setContent(html, { waitUntil: "load" });
+    const undecodable = await settle(page);
+    warnings.push(...library.problems([slide], undecodable));
+    const bytes = await page.screenshot({
+      type: "png",
+      clip: { x: 0, y: 0, width, height },
+      animations: "disabled",
+    });
+
+    return {
+      slideId,
+      bytes: new Uint8Array(bytes),
+      width,
+      height,
+      durationMs: timeline.durationMs,
+      frameTimesMs,
+      warnings,
+      metricsEstimated: sceneUsedEstimatedMetrics(slide),
+    };
+  });
+}
+
+/** Deterministic, inspectable contact-sheet markup used by `renderMotionStrip`. */
+export function motionStripHtml(
+  slide: SlideScene,
+  frameTimesMs: number[],
+  warnings: ExportWarning[],
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
+  fontCss = "",
+): { html: string; width: number; height: number } {
+  const columns = frameTimesMs.length <= 3 ? frameTimesMs.length : Math.ceil(frameTimesMs.length / 2);
+  const rows = Math.ceil(frameTimesMs.length / columns);
+  const labelHeight = 56;
+  const cellWidth = slide.width / columns;
+  const cellHeight = slide.height / columns;
+  const width = slide.width;
+  const height = (cellHeight + labelHeight) * rows;
+  const textTargets = new Set<string>();
+  const frameStyles = frameTimesMs.map((at, index) =>
+    motionStyles(slide, at, warnings, textTargets, `[data-motion-frame="${index}"] `),
+  );
+  const markup = renderToStaticMarkup(
+    createElement(SlideView, {
+      scene: withoutFaces(slide),
+      mode: "export" as const,
+      resolveAssetUrl,
+      segmentText: false,
+      textAnimationTargets: [...textTargets],
+    }),
+  );
+  const frames = frameTimesMs.map((at, index) =>
+    `<section class="motion-frame" data-motion-frame="${index}">` +
+      `<div class="motion-time">${at} ms</div>` +
+      `<div class="motion-slide"><div class="motion-canvas">${markup}${frameStyles[index]}</div></div>` +
+    `</section>`,
+  ).join("");
+
+  return {
+    width,
+    height,
+    html:
+      '<!doctype html><meta charset="utf-8">' +
+      `<style>${fontCss}${pageStyles(slide)}` +
+      `html,body{width:${width}px;height:${height}px;background:#11151d}` +
+      `body{display:grid;grid-template-columns:repeat(${columns},${cellWidth}px);grid-auto-rows:${cellHeight + labelHeight}px}` +
+      `.motion-frame{position:relative;width:${cellWidth}px;height:${cellHeight + labelHeight}px;overflow:hidden}` +
+      `.motion-time{height:${labelHeight}px;box-sizing:border-box;padding:12px 20px;color:#f5f7fa;background:#11151d;font:600 24px/32px Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums}` +
+      `.motion-slide{position:relative;width:${cellWidth}px;height:${cellHeight}px;overflow:hidden}` +
+      `.motion-canvas{position:relative;width:${slide.width}px;height:${slide.height}px;transform:scale(${1 / columns});transform-origin:top left}` +
+      `</style><body>${frames}</body>`,
+  };
 }
 
 /**
@@ -461,6 +585,7 @@ function motionStyles(
   atTime: number | "final" | "initial",
   warnings: ExportWarning[],
   textTargets?: Set<string>,
+  selectorPrefix = "",
 ): string {
   const tracks = (slide.animations ?? []) as AnimationTrack[];
   if (tracks.length === 0) return "";
@@ -496,7 +621,7 @@ function motionStyles(
       .map(([property, value]) => `${cssName(property)}:${value} !important`)
       .join(";");
     if (!declarations) continue;
-    const element = `[data-element-id="${cssEscape(target.targetId)}"]`;
+    const element = `${selectorPrefix}[data-element-id="${cssEscape(target.targetId)}"]`;
     if (target.subTarget && /^(word|glyph|line)\//.test(target.subTarget)) textTargets?.add(target.targetId);
     const selector = target.subTarget ? `${element} [data-sub-target="${cssEscape(target.subTarget)}"]` : element;
     rules.push(`${selector}{${declarations}}`);

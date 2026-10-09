@@ -19,7 +19,7 @@ import { WebSettings } from "./WebSettings";
  * now: generation and its outline review, grounding in a repository, a blank
  * deck, and opening one. The route only decides what opening means.
  *
- * `?start=new-deck` or `?start=generate-deck` carries New deck and Generate
+ * `?start=new-deck` or `?start=generate-deck` carries New deck and New from template
  * chosen from inside a deck: the editor leaves first, then the home does it.
  * `?settings=<section>` does the same for Settings.
  */

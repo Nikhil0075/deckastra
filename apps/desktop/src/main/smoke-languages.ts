@@ -199,6 +199,10 @@ async function runLanguagesInner(window: BrowserWindow, dir: string, record: Rec
     await k.need("Translate missing was not offered", `document.querySelector('[data-testid="translate-missing-hi-IN"]') && !document.querySelector('[data-testid="translate-missing-hi-IN"]').disabled`, 10_000);
     await k.press("translate-missing-hi-IN");
     await k.need("the translation never came back", `document.querySelector('[data-testid="languages-message"]')`, 60_000);
+    if (await k.page<boolean>(`document.querySelector('[data-testid="translate-missing-hi-IN"]')?.textContent?.includes('Confirm translation') === true`)) {
+      await k.press("translate-missing-hi-IN");
+      await k.need("the confirmed translation never came back", `!document.querySelector('[data-testid="translate-missing-hi-IN"]')?.textContent?.includes('Confirm translation')`, 60_000);
+    }
     record.translateMessage = await k.page<string>(`document.querySelector('[data-testid="languages-message"]').textContent`);
     if (await k.page<boolean>(`Boolean(document.querySelector('[data-testid="proposal-apply"]'))`)) {
       await k.need("the proposal's After picture never drew", `document.querySelector('[data-testid="proposal-after"] [data-final-frame]')`, 15_000);
@@ -296,6 +300,10 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     // Voiced by the stand-in, as a proposal.
     await k.press("narration-voice");
     await k.need("voicing never answered", `document.querySelector('[data-testid="narration-message"]')`, 60_000);
+    if (await k.page<boolean>(`document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice') === true`)) {
+      await k.press("narration-voice");
+      await k.need("confirmed voicing never answered", `!document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice')`, 60_000);
+    }
     record.voiceMessage = await k.page<string>(`document.querySelector('[data-testid="narration-message"]').textContent`);
     stored = await k.stored(created);
     if (!stored.slides[0].narration.cues.every((cue: any) => cue.takes?.en)) {

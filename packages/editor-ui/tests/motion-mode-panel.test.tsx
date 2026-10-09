@@ -41,6 +41,17 @@ function stubPlanner(plan: (body: Record<string, unknown>) => unknown) {
     if (url.endsWith("/motion/capabilities")) {
       return ok({ presets: ["fade", "fadeUp"], pacing: {}, roles: [], entrance_budget_ms: 2500, read_immediately_words: 24, notes: [] });
     }
+    if (url.endsWith("/v1/presets")) return ok({
+      description: "Reviewed", purposeGroups: ["business"], slidePatterns: [], patternDefinitions: {}, presets: [], themes: [],
+      motionStyles: {
+        restrained: { name: "Restrained", summary: "Quiet and measured", entrance: "fade", pacing: "measured", sequence: ["headline"], clickReveals: 0 },
+        energetic: { name: "Energetic", summary: "Fast and vivid", entrance: "slide", pacing: "tight", sequence: ["headline", "metric"], clickReveals: 0 },
+      },
+    });
+    if (url.endsWith("/motion-style")) return ok({
+      outcome: "planned", version_id: "ver_1", style: "energetic", slides_changed: 4, warnings: [],
+      operations: [{ op: "add", path: "/metadata/motionStyle", value: "energetic" }],
+    });
     if (url.endsWith("/motion") || url.endsWith("/transition")) return ok(plan(JSON.parse(String(init?.body))));
     return ok({});
   });
@@ -51,6 +62,24 @@ function stubPlanner(plan: (body: Record<string, unknown>) => unknown) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+describe("deck motion styles", () => {
+  it("asks for a dry run and applies the returned patch as the person's edit", async () => {
+    const fetcher = stubPlanner(() => ({}));
+    const editor = fakeEditor(deck(), 0);
+    show(editor);
+    const select = await screen.findByTestId("motion-style-select");
+    fireEvent.click(select);
+    fireEvent.click(await screen.findByRole("option", { name: "Energetic" }));
+    fireEvent.click(screen.getByTestId("motion-style-apply"));
+    await waitFor(() => expect(editor.apply).toHaveBeenCalledTimes(1));
+    const request = fetcher.mock.calls.find(([url]) => String(url).endsWith("/motion-style"))!;
+    expect(JSON.parse(String(request[1]?.body))).toMatchObject({
+      expected_version_id: "ver_1", style: "energetic", dry_run: true, client_label: "editor",
+    });
+    expect(editor.apply.mock.calls[0]![1].label).toBe("Motion style: Energetic");
+  });
 });
 
 describe("the transition editor", () => {

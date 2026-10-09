@@ -6,6 +6,7 @@ import {
   IPC,
   type AgentAccess,
   type AgentAccessRequest,
+  type AgentSetupLauncher,
   type CurrentPresentation,
   type DesktopInfo,
   type OpenPresentationRequest,
@@ -237,7 +238,18 @@ function registerHandlers(): void {
     throw new Error("API keys have been retired. Sign in to use Deckastra AI credits.");
   });
 
-    handleFromWindow(IPC.agentAccess, (): Promise<AgentAccess> => readAgentAccess());
+  handleFromWindow(IPC.agentAccess, (): Promise<AgentAccess> => readAgentAccess());
+
+  handleFromWindow(IPC.agentSetup, (): AgentSetupLauncher => ({
+    command: process.execPath,
+    args: [
+      app.isPackaged
+        ? join(process.resourcesPath, "mcp", "cli.mjs")
+        : join(app.getAppPath(), "dist", "mcp", "cli.mjs"),
+    ],
+    env: { ELECTRON_RUN_AS_NODE: "1" },
+    clientLabelKey: "DECKASTRA_MCP_CLIENT",
+  }));
 
   handleFromWindow(IPC.agentAccessSet, async (_window, payload): Promise<AgentAccess> => {
     const request: AgentAccessRequest = { allow: asBoolean(asRecord(payload).allow, "allow") };

@@ -30,7 +30,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from .db.models import Asset, Repository, WorkspaceQuota
+from .db.models import Asset, WorkspaceQuota
 
 #: The plans, as data. A table rather than branching code, because the question
 #: "what does free actually include" should be answerable by reading one thing.
@@ -39,14 +39,12 @@ PLANS: dict[str, dict[str, int | None]] = {
         "monthly_generations": 30,
         "monthly_tokens": 2_000_000,
         "storage_bytes": 500 * 1024 * 1024,
-        "max_repositories": 1,
         "monthly_speech_characters": 200_000,
     },
     "pro": {
         "monthly_generations": 500,
         "monthly_tokens": 50_000_000,
         "storage_bytes": 20 * 1024 * 1024 * 1024,
-        "max_repositories": 20,
         "monthly_speech_characters": 5_000_000,
     },
     "unlimited": {
@@ -55,7 +53,6 @@ PLANS: dict[str, dict[str, int | None]] = {
         "monthly_generations": None,
         "monthly_tokens": None,
         "storage_bytes": None,
-        "max_repositories": None,
         "monthly_speech_characters": None,
     },
 }
@@ -97,7 +94,6 @@ class Usage:
     generations: tuple[int, int | None]
     tokens: tuple[int, int | None]
     storage_bytes: tuple[int, int | None]
-    repositories: tuple[int, int | None]
     resets_at: datetime
     speech_characters: tuple[int, int | None] = (0, None)
 
@@ -116,7 +112,6 @@ class Usage:
             "generations": pair(*self.generations),
             "tokens": pair(*self.tokens),
             "storage_bytes": pair(*self.storage_bytes),
-            "repositories": pair(*self.repositories),
             "speech_characters": pair(*self.speech_characters),
             "resets_at": self.resets_at.isoformat(),
         }
@@ -257,26 +252,6 @@ def record_speech(session: Session, workspace_id: str, *, characters: int) -> Wo
     return quota
 
 
-def check_repository(session: Session, workspace_id: str) -> WorkspaceQuota:
-    quota = ensure(session, workspace_id)
-    if quota.max_repositories is None:
-        return quota
-
-    connected = (
-        session.query(Repository).filter(Repository.workspace_id == workspace_id).count()
-    )
-    if connected >= quota.max_repositories:
-        raise QuotaExceeded(
-            f"This workspace can connect {quota.max_repositories} "
-            f"repositor{'y' if quota.max_repositories == 1 else 'ies'} on its current plan.",
-            limit="repositories",
-            used=connected,
-            allowed=quota.max_repositories,
-            resets_at=_resets_at(quota).isoformat(),
-        )
-    return quota
-
-
 def check_storage(session: Session, workspace_id: str, additional_bytes: int) -> WorkspaceQuota:
     quota = ensure(session, workspace_id)
     if quota.storage_bytes is None:
@@ -332,16 +307,11 @@ def recount_storage(session: Session, workspace_id: str) -> WorkspaceQuota:
 
 def usage(session: Session, workspace_id: str) -> Usage:
     quota = ensure(session, workspace_id)
-    repositories = (
-        session.query(Repository).filter(Repository.workspace_id == workspace_id).count()
-    )
-
     return Usage(
         plan=quota.plan,
         generations=(quota.used_generations, quota.monthly_generations),
         tokens=(quota.used_tokens, quota.monthly_tokens),
         storage_bytes=(quota.used_storage_bytes, quota.storage_bytes),
-        repositories=(repositories, quota.max_repositories),
         resets_at=_resets_at(quota),
         speech_characters=(quota.used_speech_characters or 0, quota.monthly_speech_characters),
     )

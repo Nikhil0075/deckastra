@@ -66,9 +66,10 @@ def export_root() -> Path:
 #: A 60-slide PDF renders in about six seconds on a warm machine. This is the
 #: point past which something is wrong rather than slow.
 EXPORT_TIMEOUT_SECONDS = 300
+VIDEO_EXPORT_TIMEOUT_SECONDS = 1800
 LEASE_SECONDS = 60
 
-KINDS = ("pdf", "pptx", "mydeck")
+KINDS = ("pdf", "pptx", "mp4", "mydeck")
 
 
 class ExportCancelled(RuntimeError):
@@ -170,8 +171,8 @@ def run_job(
             session,
             presentation_id=job.presentation_id,
             document=document,
-            still=job.kind != "pptx",
-            audio=asset_service.audio_for_export(document, (job.options_json or {}).get("locale")) if job.kind == "pptx" else set(),
+            still=job.kind not in ("pptx", "mp4"),
+            audio=asset_service.audio_for_export(document, (job.options_json or {}).get("locale")) if job.kind in ("pptx", "mp4") else set(),
         )
         if job.kind != "mydeck":
             from .font_packs import ensure_for_document
@@ -192,6 +193,7 @@ def run_job(
             options,
             should_cancel=should_cancel,
             assets=assets,
+            timeout=VIDEO_EXPORT_TIMEOUT_SECONDS if job.kind == "mp4" else None,
         )
     except ExportCancelled:
         # Nothing to publish: a file from a render the user stopped is a file they
@@ -671,6 +673,7 @@ CANCEL_POLL_SECONDS = 0.25
 
 #: A preview is something a caller waits on, unlike an export, which is a job.
 PREVIEW_TIMEOUT_SECONDS = 90
+MOTION_PREVIEW_WIDTH = 1536
 
 
 #: The eight bytes every PNG starts with, written as numbers so no escape
@@ -744,6 +747,48 @@ def render_slide_png(
     finally:
         # A preview is not an artifact anyone downloads later; the bytes go back
         # in the response and the file has no reason to outlive the request.
+        output.unlink(missing_ok=True)
+
+
+def render_motion_strip_png(
+    document: dict[str, Any],
+    slide_id: str,
+    *,
+    frame_count: int = 6,
+    assets: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """A timeline contact sheet rendered by the export worker in one pass."""
+    viewport = document.get("viewport") or {}
+    slide_width = float(viewport.get("width") or 1920)
+    logical_width = slide_width
+    scale = max(0.1, min(3.0, MOTION_PREVIEW_WIDTH / logical_width)) if logical_width else 1.0
+
+    root = export_root()
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False, dir=root) as handle:
+        output = Path(handle.name)
+
+    try:
+        answer = _invoke_worker(
+            "motion-strip",
+            document,
+            output,
+            {"slideIds": [slide_id], "scale": scale, "frameCount": frame_count},
+            timeout=PREVIEW_TIMEOUT_SECONDS,
+            assets=assets,
+        )
+        image = output.read_bytes()
+        pixels = _png_size(image)
+        return {
+            "bytes": image,
+            "width": pixels[0],
+            "height": pixels[1],
+            "duration_ms": int(answer.get("durationMs") or 0),
+            "frame_times_ms": [int(value) for value in answer.get("frameTimesMs") or []],
+            "metrics_estimated": bool(answer.get("metricsEstimated")),
+            "warnings": answer.get("warnings") or [],
+        }
+    finally:
         output.unlink(missing_ok=True)
 
 

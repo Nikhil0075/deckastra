@@ -1,0 +1,2334 @@
+{
+  "version": 1,
+  "frame": "final",
+  "scale": 1,
+  "cases": {
+    "critique-00": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B",
+      "scope": {
+        "kind": "elements",
+        "slide_ids": [
+          "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B"
+        ],
+        "element_ids": [
+          "el_01JDB20QM1GZ4V3GXXC4AW7PTG"
+        ]
+      }
+    },
+    "critique-01": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JD9G1D1206CX676CJB6GCD38",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JD9G1D1206CX676CJB6GCD38"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-02": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JD6W7VZPD07SJTQ75WM83R19",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JD6W7VZPD07SJTQ75WM83R19"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-03": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JD51S9BWHWACRZ4HQ4DJQS3B",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JD51S9BWHWACRZ4HQ4DJQS3B"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-04": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JDAMDZ64G4CWS7SG2FYBBY7P",
+      "scope": {
+        "kind": "elements",
+        "slide_ids": [
+          "sld_01JDAMDZ64G4CWS7SG2FYBBY7P"
+        ],
+        "element_ids": [
+          "el_01JDXKWEDW53JWYFREHE6AGR6F"
+        ]
+      }
+    },
+    "critique-05": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JDAQNSVZBRYAS8SDZ8088HY7",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JDAQNSVZBRYAS8SDZ8088HY7"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-06": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JDM7WWDXS04VSY20CKR1XTWY",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JDM7WWDXS04VSY20CKR1XTWY"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-07": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X01000100",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X01000100"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-08": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X01000800",
+      "scope": {
+        "kind": "elements",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X01000800"
+        ],
+        "element_ids": [
+          "el_01JB8Z9K2QW4RN7F3X01001100"
+        ]
+      }
+    },
+    "critique-09": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X01003800",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X01003800"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-10": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X01005000",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X01005000"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-11": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X01006100",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X01006100"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-12": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X02000300",
+      "scope": {
+        "kind": "elements",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X02000300"
+        ],
+        "element_ids": [
+          "el_01JB8Z9K2QW4RN7F3X02000400"
+        ]
+      }
+    },
+    "critique-13": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X02000800",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X02000800"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-14": {
+      "deck": "29ece6b60f5240d3b82694c56dea6b6832e8f563d4a3ca79e9e66ca6869c0666",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03000500",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X03000500"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-15": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03002300",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X03002300"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-16": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03003500",
+      "scope": {
+        "kind": "elements",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X03003500"
+        ],
+        "element_ids": [
+          "el_01JB8Z9K2QW4RN7F3X03003300"
+        ]
+      }
+    },
+    "critique-17": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X03003900",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X03003900"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-18": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X04000500",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X04000500"
+        ],
+        "element_ids": []
+      }
+    },
+    "critique-19": {
+      "deck": "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb",
+      "slide_id": "sld_01JB8Z9K2QW4RN7F3X04001400",
+      "scope": {
+        "kind": "slide",
+        "slide_ids": [
+          "sld_01JB8Z9K2QW4RN7F3X04001400"
+        ],
+        "element_ids": []
+      }
+    }
+  },
+  "decks": {
+    "2f4e0f4cdf4212db80c2a39fb1c6c7a2091131e428366daf89b8da119d3209cb": {
+      "title": "Project Meridian: FY26 Platform Review",
+      "slides": [
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01000100",
+          "number": 1,
+          "name": "Title",
+          "image": "previews/2ad3a437a0b554640d83cc07.png",
+          "image_sha256": "2ad3a437a0b554640d83cc07b039453d6beda33f009af9944e99ab6bf10f34a9",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000200",
+              "name": "Eyebrow",
+              "bounds": {
+                "x": 120,
+                "y": 320,
+                "width": 800,
+                "height": 40
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000400",
+              "name": "Headline",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 1300,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000600",
+              "name": "Subtitle",
+              "bounds": {
+                "x": 120,
+                "y": 650,
+                "width": 1000,
+                "height": 80
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B",
+          "number": 2,
+          "name": "Layout faults",
+          "image": "previews/4b9ca698451d013a15f305d1.png",
+          "image_sha256": "4b9ca698451d013a15f305d1f6a296323e4b488776e7752fb7ed69d0c81fa6b3",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDB20QM1GZ4V3GXXC4AW7PTG",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDNQEC6AG1CGXR63ZPATX8Z6",
+              "name": "Body overlapping title",
+              "bounds": {
+                "x": 120,
+                "y": 150,
+                "width": 1500,
+                "height": 300
+              }
+            },
+            {
+              "id": "el_01JD0DRZ1ZHCS5TNMMRJJXFYZ8",
+              "name": "Off-canvas caption",
+              "bounds": {
+                "x": -80,
+                "y": 560,
+                "width": 700,
+                "height": 60
+              }
+            },
+            {
+              "id": "el_01JD7EDP0N6SM5R9F8DH8X3NQ1",
+              "name": "Tiny footnote",
+              "bounds": {
+                "x": 1400,
+                "y": 1000,
+                "width": 400,
+                "height": 30
+              }
+            },
+            {
+              "id": "el_01JD96TAJT8J9D9CZ17MBVJ1VA",
+              "name": "Low-contrast callout",
+              "bounds": {
+                "x": 120,
+                "y": 700,
+                "width": 900,
+                "height": 80
+              }
+            },
+            {
+              "id": "el_01JDVDRV1PX9HHNF913H9PHBS3",
+              "name": "Overflowing box",
+              "bounds": {
+                "x": 1100,
+                "y": 600,
+                "width": 500,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDNFH7C5ST7T94FAV8A1SX3P",
+              "name": "Adoption chart (no alt)",
+              "bounds": {
+                "x": 1500,
+                "y": 300,
+                "width": 640,
+                "height": 360
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD9G1D1206CX676CJB6GCD38",
+          "number": 3,
+          "name": "Partner feedback",
+          "image": "previews/87efc987876275ccc6f552b1.png",
+          "image_sha256": "87efc987876275ccc6f552b1f391589bcb3577eb87dcfa6e7c9384a8c09e6f3b",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JD5YGYX62CP4R1RM6A7MSC3S",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDZBY1Q6VPQE2VKXM95FJRH8",
+              "name": "Quote",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JD9ZAPV481GPNGAFNXPFYN1G",
+              "name": "Partner asks",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 1680,
+                "height": 360
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD6W7VZPD07SJTQ75WM83R19",
+          "number": 4,
+          "name": "Revenue by region",
+          "image": "previews/fbde0c0a8b3775542c66c181.png",
+          "image_sha256": "fbde0c0a8b3775542c66c18134c11665afe0b3a13088d1b0d3fa72dffae4bd33",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDQY6CVWE77EKF6BFT1YHB1P",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDKKW6NJ0GTWVYCKXNGRBBNN",
+              "name": "Revenue lines",
+              "bounds": {
+                "x": 120,
+                "y": 230,
+                "width": 1100,
+                "height": 700
+              }
+            },
+            {
+              "id": "el_01JDBDMCX1T21KHK1Q98002WDY",
+              "name": "Takeaways",
+              "bounds": {
+                "x": 1280,
+                "y": 260,
+                "width": 520,
+                "height": 600
+              }
+            },
+            {
+              "id": "el_01JDXHXS487ABXQ60KGTQRDPGB",
+              "name": "Source",
+              "bounds": {
+                "x": 120,
+                "y": 950,
+                "width": 1680,
+                "height": 40
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD51S9BWHWACRZ4HQ4DJQS3B",
+          "number": 5,
+          "name": "Pricing model",
+          "image": "previews/2ab210a5a04ca81670aba8cf.png",
+          "image_sha256": "2ab210a5a04ca81670aba8cff8bb2258d555c81fe0d02abeef901daec8259680",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDG2W4D0S46B2N11JM0YYZK4",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDN595X9PAMVG9XW4JAPZ2FV",
+              "name": "Price curve",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JDAQAGZMVSDARFXAJFQPMDED",
+              "name": "Pricing snippet",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 1680,
+                "height": 380
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDAMDZ64G4CWS7SG2FYBBY7P",
+          "number": 6,
+          "name": "Field photos",
+          "image": "previews/4ce9152c4e0d264cc765f60f.png",
+          "image_sha256": "4ce9152c4e0d264cc765f60f141d4bfe22be39c3ea489b373511f29a8feb68e5",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDXKWEDW53JWYFREHE6AGR6F",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JD2QJ3NJAQX9KG5PGEBRDEC0",
+              "name": "Regional adoption",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1000,
+                "height": 563
+              }
+            },
+            {
+              "id": "el_01JDZXYAAY1CNHWDNKJABGCXC3",
+              "name": "Swoosh",
+              "bounds": {
+                "x": 0,
+                "y": 980,
+                "width": 1920,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JD8T4DBDEV1RD3KWRJHZPFA9",
+              "name": "Q3 offsite photo",
+              "bounds": {
+                "x": 1180,
+                "y": 240,
+                "width": 620,
+                "height": 413
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDAQNSVZBRYAS8SDZ8088HY7",
+          "number": 7,
+          "name": "Languages",
+          "image": "previews/8ada306ab633873e5536ddba.png",
+          "image_sha256": "8ada306ab633873e5536ddba61ab62f21278dd33934d47bd77246d1cf01274d8",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JD54CMJCPPEYT86MBRM083SM",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JD93JWK2TV2KP0GBH721K1VR",
+              "name": "Hindi",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDNDN3S2EXM7YQPBJRP3PK5D",
+              "name": "Arabic",
+              "bounds": {
+                "x": 120,
+                "y": 420,
+                "width": 1680,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDE935571DD3K1MAQNMMJ7Z3",
+              "name": "Japanese",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 1680,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDM7WWDXS04VSY20CKR1XTWY",
+          "number": 8,
+          "name": "Risks",
+          "image": "previews/4aa4b6d5e4b91565b25bbc87.png",
+          "image_sha256": "4aa4b6d5e4b91565b25bbc8732644c00c7fbe6f8cb56bcec1fd77e833c875b16",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDA3R4Y4JHHACP8WV858BQXM",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDATN5ETC7T4HEMC6QPR41DG",
+              "name": "Wall",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1680,
+                "height": 760
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01000800",
+          "number": 9,
+          "name": "Budgets",
+          "image": "previews/97539a046b03321bf13ce819.png",
+          "image_sha256": "97539a046b03321bf13ce819cb22eb9aa22bee9bff1d394581a14b0005ce1b94",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 120,
+                "width": 1200,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001100",
+              "name": "KPI row",
+              "bounds": {
+                "x": 120,
+                "y": 340,
+                "width": 1680,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001200",
+              "name": "KPI Typical slide first paint",
+              "bounds": {
+                "x": 120,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001300",
+              "name": "text",
+              "bounds": {
+                "x": 152,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001500",
+              "name": "text",
+              "bounds": {
+                "x": 152,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001700",
+              "name": "KPI Drag frame time p95",
+              "bounds": {
+                "x": 546,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001800",
+              "name": "text",
+              "bounds": {
+                "x": 578,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002000",
+              "name": "text",
+              "bounds": {
+                "x": 578,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002200",
+              "name": "KPI Slide switch, warm",
+              "bounds": {
+                "x": 972,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002300",
+              "name": "text",
+              "bounds": {
+                "x": 1004,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002500",
+              "name": "text",
+              "bounds": {
+                "x": 1004,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002700",
+              "name": "KPI 60-slide deck memory",
+              "bounds": {
+                "x": 1398,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002800",
+              "name": "text",
+              "bounds": {
+                "x": 1430,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01003000",
+              "name": "text",
+              "bounds": {
+                "x": 1430,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01003800",
+          "number": 10,
+          "name": "Architecture",
+          "image": "previews/52449d2d7365a62d3847df63.png",
+          "image_sha256": "52449d2d7365a62d3847df63e3f32edf508080efc32c39bf20e4198648cde4ce",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01003900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01004100",
+              "name": "Agent pipeline",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 620
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006900",
+              "name": "Pipeline photograph",
+              "bounds": {
+                "x": 120,
+                "y": 900,
+                "width": 280,
+                "height": 158
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01005000",
+          "number": 11,
+          "name": "Export fidelity",
+          "image": "previews/3203a10545aed6f5e1f59901.png",
+          "image_sha256": "3203a10545aed6f5e1f599017ed9f3fecce67f0d87dc69958725c2f536ff7719",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01005100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01005300",
+              "name": "Export capability",
+              "bounds": {
+                "x": 120,
+                "y": 280,
+                "width": 1680,
+                "height": 480
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01006100",
+          "number": 12,
+          "name": "Patch shape",
+          "image": "previews/16349e8aab1282a7c5c26f35.png",
+          "image_sha256": "16349e8aab1282a7c5c26f3530b5030fb80aa30d9c24944f0d4f506559776d46",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006200",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006400",
+              "name": "Patch example",
+              "bounds": {
+                "x": 120,
+                "y": 300,
+                "width": 1680,
+                "height": 320
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006500",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 660,
+                "width": 1400,
+                "height": 60
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X02000300",
+          "number": 13,
+          "name": "Repository overview",
+          "image": "previews/aec2e2317f9f5cc0c90c6edd.png",
+          "image_sha256": "aec2e2317f9f5cc0c90c6eddf5ad77636ffc6642bd38624c23452aa26dfdd47b",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000400",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 140,
+                "width": 1300,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 1100,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000200",
+              "name": "text",
+              "bounds": {
+                "x": 1400,
+                "y": 380,
+                "width": 400,
+                "height": 200
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X02000800",
+          "number": 14,
+          "name": "Language mix",
+          "image": "previews/c9c901fe3fb7dbe750c62416.png",
+          "image_sha256": "c9c901fe3fb7dbe750c62416bf8d2f414d21817a79aec394fa4ade453949f289",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02001100",
+              "name": "Lines by language",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1200,
+                "height": 600
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03000500",
+          "number": 15,
+          "name": "Sequenced entrance",
+          "image": "previews/a7628e8e5a2a1b4a815b3fde.png",
+          "image_sha256": "a7628e8e5a2a1b4a815b3fde4ce0ed396c9dcfc9da90ceeff13b7d4e0af7496f",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 200,
+                "width": 1400,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000200",
+              "name": "Proposed",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 480,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000300",
+              "name": "Applied",
+              "bounds": {
+                "x": 640,
+                "y": 520,
+                "width": 480,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000400",
+              "name": "text",
+              "bounds": {
+                "x": 1240,
+                "y": 520,
+                "width": 560,
+                "height": 240
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03002300",
+          "number": 16,
+          "name": "Click to reveal",
+          "image": "previews/5afb680527889316cf6b4852.png",
+          "image_sha256": "5afb680527889316cf6b4852632605b80aeb8f51551064e39edb1fa0b7917094",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002400",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 160,
+                "width": 1400,
+                "height": 140
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03001800",
+              "name": "Bullets",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 900,
+                "height": 300
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03001900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002000",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 480,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002200",
+              "name": "line",
+              "bounds": {
+                "x": 1140,
+                "y": 420,
+                "width": 560,
+                "height": 200
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03003500",
+          "number": 17,
+          "name": "Transition target",
+          "image": "previews/31b3ed16fc1dbb1dbe0c916d.png",
+          "image_sha256": "31b3ed16fc1dbb1dbe0c916d2ce78c9917428072170c6a0a5a5b07f4ad75a075",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003300",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 440,
+                "width": 1400,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003400",
+              "name": "shape",
+              "bounds": {
+                "x": 1500,
+                "y": 180,
+                "width": 220,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03003900",
+          "number": 18,
+          "name": "Morph target",
+          "image": "previews/532912fdcacf9c0231075f42.png",
+          "image_sha256": "532912fdcacf9c0231075f4250ac2193307f3584e2a9e4768940d277bface348",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003700",
+              "name": "text",
+              "bounds": {
+                "x": 200,
+                "y": 120,
+                "width": 1520,
+                "height": 420
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003800",
+              "name": "shape",
+              "bounds": {
+                "x": 200,
+                "y": 760,
+                "width": 220,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04000500",
+          "number": 19,
+          "name": "Title",
+          "image": "previews/4e04da2bc4f5c38ae6e546ee.png",
+          "image_sha256": "4e04da2bc4f5c38ae6e546eed667c57203bfb07b741559b3d78985e4d1b87bc3",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 360,
+                "width": 1600,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000200",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 1400,
+                "height": 80
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04001400",
+          "number": 20,
+          "name": "Three steps",
+          "image": "previews/8b88c554650587f105a23a37.png",
+          "image_sha256": "8b88c554650587f105a23a37c886edf92de079d029f512da8ee96a259449c53d",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000600",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 140,
+                "width": 1600,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000800",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 360,
+                "width": 1400,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 500,
+                "width": 1400,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04001000",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 640,
+                "width": 1400,
+                "height": 100
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04003900",
+          "number": 21,
+          "name": "Languages",
+          "image": "previews/65c531a5324b97e2fd722914.png",
+          "image_sha256": "65c531a5324b97e2fd722914608feef462550ca214ad38313210de56f9503c20",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04003400",
+              "name": "table",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1200,
+                "height": 300
+              }
+            }
+          ]
+        }
+      ],
+      "supplied_assets": [
+        {
+          "asset_id": "ast_01JDZJD4WE9SS3HE57R5QG0C7S",
+          "filename": "adoption.png",
+          "sha256": "682232c2c3adba277930c7e0b451b494a8ebdd6c40d71ad8f7aaf7cbedf7469e"
+        },
+        {
+          "asset_id": "ast_01JD8ZZY4P7VM818WRPE4G7SVS",
+          "filename": "swoosh.png",
+          "sha256": "936218a54a7db6b4f7a5c08d8306aeebcfd5c271707106fb2df32d75ce6844c4"
+        }
+      ],
+      "warnings": [
+        {
+          "severity": "warning",
+          "slideId": "sld_01JDAMDZ64G4CWS7SG2FYBBY7P",
+          "elementId": "el_01JD8T4DBDEV1RD3KWRJHZPFA9",
+          "feature": "asset:ast_01JDWHM6R320ZZTS2E52VD82H4",
+          "action": "dropped",
+          "message": "An image could not be drawn because it was not available to the renderer. The slide shows a placeholder where it should be."
+        },
+        {
+          "severity": "warning",
+          "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+          "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+          "feature": "asset:ast_01JB8Z9K2QW4RN7F3X01006800",
+          "action": "dropped",
+          "message": "An image could not be drawn because it was not available to the renderer. The slide shows a placeholder where it should be."
+        }
+      ],
+      "metrics_estimated": false
+    },
+    "29ece6b60f5240d3b82694c56dea6b6832e8f563d4a3ca79e9e66ca6869c0666": {
+      "title": "Project Meridian: FY26 Platform Review",
+      "slides": [
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01000100",
+          "number": 1,
+          "name": "Title",
+          "image": "previews/2ad3a437a0b554640d83cc07.png",
+          "image_sha256": "2ad3a437a0b554640d83cc07b039453d6beda33f009af9944e99ab6bf10f34a9",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000200",
+              "name": "Eyebrow",
+              "bounds": {
+                "x": 120,
+                "y": 320,
+                "width": 800,
+                "height": 40
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000400",
+              "name": "Headline",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 1300,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000600",
+              "name": "Subtitle",
+              "bounds": {
+                "x": 120,
+                "y": 650,
+                "width": 1000,
+                "height": 80
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDP9KVRVKQ5DA5SR6D8QHJ8B",
+          "number": 2,
+          "name": "Layout faults",
+          "image": "previews/4b9ca698451d013a15f305d1.png",
+          "image_sha256": "4b9ca698451d013a15f305d1f6a296323e4b488776e7752fb7ed69d0c81fa6b3",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDB20QM1GZ4V3GXXC4AW7PTG",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDNQEC6AG1CGXR63ZPATX8Z6",
+              "name": "Body overlapping title",
+              "bounds": {
+                "x": 120,
+                "y": 150,
+                "width": 1500,
+                "height": 300
+              }
+            },
+            {
+              "id": "el_01JD0DRZ1ZHCS5TNMMRJJXFYZ8",
+              "name": "Off-canvas caption",
+              "bounds": {
+                "x": -80,
+                "y": 560,
+                "width": 700,
+                "height": 60
+              }
+            },
+            {
+              "id": "el_01JD7EDP0N6SM5R9F8DH8X3NQ1",
+              "name": "Tiny footnote",
+              "bounds": {
+                "x": 1400,
+                "y": 1000,
+                "width": 400,
+                "height": 30
+              }
+            },
+            {
+              "id": "el_01JD96TAJT8J9D9CZ17MBVJ1VA",
+              "name": "Low-contrast callout",
+              "bounds": {
+                "x": 120,
+                "y": 700,
+                "width": 900,
+                "height": 80
+              }
+            },
+            {
+              "id": "el_01JDVDRV1PX9HHNF913H9PHBS3",
+              "name": "Overflowing box",
+              "bounds": {
+                "x": 1100,
+                "y": 600,
+                "width": 500,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDNFH7C5ST7T94FAV8A1SX3P",
+              "name": "Adoption chart (no alt)",
+              "bounds": {
+                "x": 1500,
+                "y": 300,
+                "width": 640,
+                "height": 360
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD9G1D1206CX676CJB6GCD38",
+          "number": 3,
+          "name": "Partner feedback",
+          "image": "previews/87efc987876275ccc6f552b1.png",
+          "image_sha256": "87efc987876275ccc6f552b1f391589bcb3577eb87dcfa6e7c9384a8c09e6f3b",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JD5YGYX62CP4R1RM6A7MSC3S",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDZBY1Q6VPQE2VKXM95FJRH8",
+              "name": "Quote",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JD9ZAPV481GPNGAFNXPFYN1G",
+              "name": "Partner asks",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 1680,
+                "height": 360
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD6W7VZPD07SJTQ75WM83R19",
+          "number": 4,
+          "name": "Revenue by region",
+          "image": "previews/fbde0c0a8b3775542c66c181.png",
+          "image_sha256": "fbde0c0a8b3775542c66c18134c11665afe0b3a13088d1b0d3fa72dffae4bd33",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDQY6CVWE77EKF6BFT1YHB1P",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDKKW6NJ0GTWVYCKXNGRBBNN",
+              "name": "Revenue lines",
+              "bounds": {
+                "x": 120,
+                "y": 230,
+                "width": 1100,
+                "height": 700
+              }
+            },
+            {
+              "id": "el_01JDBDMCX1T21KHK1Q98002WDY",
+              "name": "Takeaways",
+              "bounds": {
+                "x": 1280,
+                "y": 260,
+                "width": 520,
+                "height": 600
+              }
+            },
+            {
+              "id": "el_01JDXHXS487ABXQ60KGTQRDPGB",
+              "name": "Source",
+              "bounds": {
+                "x": 120,
+                "y": 950,
+                "width": 1680,
+                "height": 40
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JD51S9BWHWACRZ4HQ4DJQS3B",
+          "number": 5,
+          "name": "Pricing model",
+          "image": "previews/2ab210a5a04ca81670aba8cf.png",
+          "image_sha256": "2ab210a5a04ca81670aba8cff8bb2258d555c81fe0d02abeef901daec8259680",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDG2W4D0S46B2N11JM0YYZK4",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDN595X9PAMVG9XW4JAPZ2FV",
+              "name": "Price curve",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JDAQAGZMVSDARFXAJFQPMDED",
+              "name": "Pricing snippet",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 1680,
+                "height": 380
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDAMDZ64G4CWS7SG2FYBBY7P",
+          "number": 6,
+          "name": "Field photos",
+          "image": "previews/4ce9152c4e0d264cc765f60f.png",
+          "image_sha256": "4ce9152c4e0d264cc765f60f141d4bfe22be39c3ea489b373511f29a8feb68e5",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDXKWEDW53JWYFREHE6AGR6F",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JD2QJ3NJAQX9KG5PGEBRDEC0",
+              "name": "Regional adoption",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1000,
+                "height": 563
+              }
+            },
+            {
+              "id": "el_01JDZXYAAY1CNHWDNKJABGCXC3",
+              "name": "Swoosh",
+              "bounds": {
+                "x": 0,
+                "y": 980,
+                "width": 1920,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JD8T4DBDEV1RD3KWRJHZPFA9",
+              "name": "Q3 offsite photo",
+              "bounds": {
+                "x": 1180,
+                "y": 240,
+                "width": 620,
+                "height": 413
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDAQNSVZBRYAS8SDZ8088HY7",
+          "number": 7,
+          "name": "Languages",
+          "image": "previews/8ada306ab633873e5536ddba.png",
+          "image_sha256": "8ada306ab633873e5536ddba61ab62f21278dd33934d47bd77246d1cf01274d8",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JD54CMJCPPEYT86MBRM083SM",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JD93JWK2TV2KP0GBH721K1VR",
+              "name": "Hindi",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDNDN3S2EXM7YQPBJRP3PK5D",
+              "name": "Arabic",
+              "bounds": {
+                "x": 120,
+                "y": 420,
+                "width": 1680,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JDE935571DD3K1MAQNMMJ7Z3",
+              "name": "Japanese",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 1680,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JDM7WWDXS04VSY20CKR1XTWY",
+          "number": 8,
+          "name": "Risks",
+          "image": "previews/4aa4b6d5e4b91565b25bbc87.png",
+          "image_sha256": "4aa4b6d5e4b91565b25bbc8732644c00c7fbe6f8cb56bcec1fd77e833c875b16",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JDA3R4Y4JHHACP8WV858BQXM",
+              "name": "Title",
+              "bounds": {
+                "x": 120,
+                "y": 96,
+                "width": 1680,
+                "height": 110
+              }
+            },
+            {
+              "id": "el_01JDATN5ETC7T4HEMC6QPR41DG",
+              "name": "Wall",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1680,
+                "height": 760
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01000800",
+          "number": 9,
+          "name": "Budgets",
+          "image": "previews/97539a046b03321bf13ce819.png",
+          "image_sha256": "97539a046b03321bf13ce819cb22eb9aa22bee9bff1d394581a14b0005ce1b94",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 120,
+                "width": 1200,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001100",
+              "name": "KPI row",
+              "bounds": {
+                "x": 120,
+                "y": 340,
+                "width": 1680,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001200",
+              "name": "KPI Typical slide first paint",
+              "bounds": {
+                "x": 120,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001300",
+              "name": "text",
+              "bounds": {
+                "x": 152,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001500",
+              "name": "text",
+              "bounds": {
+                "x": 152,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001700",
+              "name": "KPI Drag frame time p95",
+              "bounds": {
+                "x": 546,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01001800",
+              "name": "text",
+              "bounds": {
+                "x": 578,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002000",
+              "name": "text",
+              "bounds": {
+                "x": 578,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002200",
+              "name": "KPI Slide switch, warm",
+              "bounds": {
+                "x": 972,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002300",
+              "name": "text",
+              "bounds": {
+                "x": 1004,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002500",
+              "name": "text",
+              "bounds": {
+                "x": 1004,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002700",
+              "name": "KPI 60-slide deck memory",
+              "bounds": {
+                "x": 1398,
+                "y": 340,
+                "width": 402,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01002800",
+              "name": "text",
+              "bounds": {
+                "x": 1430,
+                "y": 372,
+                "width": 316,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01003000",
+              "name": "text",
+              "bounds": {
+                "x": 1430,
+                "y": 488,
+                "width": 316,
+                "height": 56
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01003800",
+          "number": 10,
+          "name": "Architecture",
+          "image": "previews/52449d2d7365a62d3847df63.png",
+          "image_sha256": "52449d2d7365a62d3847df63e3f32edf508080efc32c39bf20e4198648cde4ce",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01003900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01004100",
+              "name": "Agent pipeline",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1680,
+                "height": 620
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006900",
+              "name": "Pipeline photograph",
+              "bounds": {
+                "x": 120,
+                "y": 900,
+                "width": 280,
+                "height": 158
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01005000",
+          "number": 11,
+          "name": "Export fidelity",
+          "image": "previews/3203a10545aed6f5e1f59901.png",
+          "image_sha256": "3203a10545aed6f5e1f599017ed9f3fecce67f0d87dc69958725c2f536ff7719",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01005100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01005300",
+              "name": "Export capability",
+              "bounds": {
+                "x": 120,
+                "y": 280,
+                "width": 1680,
+                "height": 480
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X01006100",
+          "number": 12,
+          "name": "Patch shape",
+          "image": "previews/16349e8aab1282a7c5c26f35.png",
+          "image_sha256": "16349e8aab1282a7c5c26f3530b5030fb80aa30d9c24944f0d4f506559776d46",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006200",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006400",
+              "name": "Patch example",
+              "bounds": {
+                "x": 120,
+                "y": 300,
+                "width": 1680,
+                "height": 320
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X01006500",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 660,
+                "width": 1400,
+                "height": 60
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X02000300",
+          "number": 13,
+          "name": "Repository overview",
+          "image": "previews/aec2e2317f9f5cc0c90c6edd.png",
+          "image_sha256": "aec2e2317f9f5cc0c90c6eddf5ad77636ffc6642bd38624c23452aa26dfdd47b",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000400",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 140,
+                "width": 1300,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 1100,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000200",
+              "name": "text",
+              "bounds": {
+                "x": 1400,
+                "y": 380,
+                "width": 400,
+                "height": 200
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X02000800",
+          "number": 14,
+          "name": "Language mix",
+          "image": "previews/c9c901fe3fb7dbe750c62416.png",
+          "image_sha256": "c9c901fe3fb7dbe750c62416bf8d2f414d21817a79aec394fa4ade453949f289",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 100,
+                "width": 1200,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X02001100",
+              "name": "Lines by language",
+              "bounds": {
+                "x": 120,
+                "y": 260,
+                "width": 1200,
+                "height": 600
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03000500",
+          "number": 15,
+          "name": "Sequenced entrance",
+          "image": "previews/a7628e8e5a2a1b4a815b3fde.png",
+          "image_sha256": "a7628e8e5a2a1b4a815b3fde4ce0ed396c9dcfc9da90ceeff13b7d4e0af7496f",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 200,
+                "width": 1400,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000200",
+              "name": "Proposed",
+              "bounds": {
+                "x": 120,
+                "y": 520,
+                "width": 480,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000300",
+              "name": "Applied",
+              "bounds": {
+                "x": 640,
+                "y": 520,
+                "width": 480,
+                "height": 240
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03000400",
+              "name": "text",
+              "bounds": {
+                "x": 1240,
+                "y": 520,
+                "width": 560,
+                "height": 240
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03002300",
+          "number": 16,
+          "name": "Click to reveal",
+          "image": "previews/5afb680527889316cf6b4852.png",
+          "image_sha256": "5afb680527889316cf6b4852632605b80aeb8f51551064e39edb1fa0b7917094",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002400",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 160,
+                "width": 1400,
+                "height": 140
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03001800",
+              "name": "Bullets",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 900,
+                "height": 300
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03001900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 380,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002000",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 480,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 900,
+                "height": 90
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03002200",
+              "name": "line",
+              "bounds": {
+                "x": 1140,
+                "y": 420,
+                "width": 560,
+                "height": 200
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03003500",
+          "number": 17,
+          "name": "Transition target",
+          "image": "previews/31b3ed16fc1dbb1dbe0c916d.png",
+          "image_sha256": "31b3ed16fc1dbb1dbe0c916d2ce78c9917428072170c6a0a5a5b07f4ad75a075",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003300",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 440,
+                "width": 1400,
+                "height": 200
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003400",
+              "name": "shape",
+              "bounds": {
+                "x": 1500,
+                "y": 180,
+                "width": 220,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X03003900",
+          "number": 18,
+          "name": "Morph target",
+          "image": "previews/532912fdcacf9c0231075f42.png",
+          "image_sha256": "532912fdcacf9c0231075f4250ac2193307f3584e2a9e4768940d277bface348",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003700",
+              "name": "text",
+              "bounds": {
+                "x": 200,
+                "y": 120,
+                "width": 1520,
+                "height": 420
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X03003800",
+              "name": "shape",
+              "bounds": {
+                "x": 200,
+                "y": 760,
+                "width": 220,
+                "height": 120
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04000500",
+          "number": 19,
+          "name": "Title",
+          "image": "previews/4e04da2bc4f5c38ae6e546ee.png",
+          "image_sha256": "4e04da2bc4f5c38ae6e546eed667c57203bfb07b741559b3d78985e4d1b87bc3",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000100",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 360,
+                "width": 1600,
+                "height": 180
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000200",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 580,
+                "width": 1400,
+                "height": 80
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04001400",
+          "number": 20,
+          "name": "Three steps",
+          "image": "previews/8b88c554650587f105a23a37.png",
+          "image_sha256": "8b88c554650587f105a23a37c886edf92de079d029f512da8ee96a259449c53d",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000600",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 140,
+                "width": 1600,
+                "height": 120
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000800",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 360,
+                "width": 1400,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04000900",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 500,
+                "width": 1400,
+                "height": 100
+              }
+            },
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04001000",
+              "name": "text",
+              "bounds": {
+                "x": 120,
+                "y": 640,
+                "width": 1400,
+                "height": 100
+              }
+            }
+          ]
+        },
+        {
+          "id": "sld_01JB8Z9K2QW4RN7F3X04003900",
+          "number": 21,
+          "name": "Languages",
+          "image": "previews/65c531a5324b97e2fd722914.png",
+          "image_sha256": "65c531a5324b97e2fd722914608feef462550ca214ad38313210de56f9503c20",
+          "width": 1920,
+          "height": 1080,
+          "elements": [
+            {
+              "id": "el_01JB8Z9K2QW4RN7F3X04003400",
+              "name": "table",
+              "bounds": {
+                "x": 120,
+                "y": 240,
+                "width": 1200,
+                "height": 300
+              }
+            }
+          ]
+        }
+      ],
+      "supplied_assets": [
+        {
+          "asset_id": "ast_01JDZJD4WE9SS3HE57R5QG0C7S",
+          "filename": "adoption.png",
+          "sha256": "682232c2c3adba277930c7e0b451b494a8ebdd6c40d71ad8f7aaf7cbedf7469e"
+        },
+        {
+          "asset_id": "ast_01JD8ZZY4P7VM818WRPE4G7SVS",
+          "filename": "swoosh.png",
+          "sha256": "936218a54a7db6b4f7a5c08d8306aeebcfd5c271707106fb2df32d75ce6844c4"
+        }
+      ],
+      "warnings": [
+        {
+          "severity": "warning",
+          "slideId": "sld_01JDAMDZ64G4CWS7SG2FYBBY7P",
+          "elementId": "el_01JD8T4DBDEV1RD3KWRJHZPFA9",
+          "feature": "asset:ast_01JDWHM6R320ZZTS2E52VD82H4",
+          "action": "dropped",
+          "message": "An image could not be drawn because it was not available to the renderer. The slide shows a placeholder where it should be."
+        },
+        {
+          "severity": "warning",
+          "slideId": "sld_01JB8Z9K2QW4RN7F3X01003800",
+          "elementId": "el_01JB8Z9K2QW4RN7F3X01006900",
+          "feature": "asset:ast_01JB8Z9K2QW4RN7F3X01006800",
+          "action": "dropped",
+          "message": "An image could not be drawn because it was not available to the renderer. The slide shows a placeholder where it should be."
+        }
+      ],
+      "metrics_estimated": false
+    }
+  },
+  "notice": "Original source deck, with its existing defects. Static final-frame view; gold outlines mark the case selection. The AI did not see these renders or the supplied fixture images. Missing assets stay placeholders. Review motion and narration in the source data."
+}

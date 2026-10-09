@@ -33,6 +33,7 @@ export interface NarrationTakeInput {
   durationMs: number;
   gainDb?: number;
   textHash?: string;
+  wordTimings?: { word: string; startMs: number; endMs: number }[];
 }
 
 export interface NarrationCueInput {
@@ -40,6 +41,8 @@ export interface NarrationCueInput {
   step: number;
   text?: string;
   takes?: Record<string, NarrationTakeInput>;
+  voice?: string;
+  advanceOnWord?: number;
 }
 
 export interface SoundCueInput {
@@ -59,6 +62,7 @@ export interface NarrationClip {
   startMs: number;
   endMs: number;
   gainDb?: number;
+  wordTimings: { word: string; startMs: number; endMs: number }[];
 }
 
 export interface NarratedSegment {
@@ -71,6 +75,8 @@ export interface NarratedSegment {
   narrationEndMs: number;
   /** When the deck moves on: the next segment, or the next slide after the last. */
   advanceAtMs: number;
+  /** The exact narrated time that caused a word-linked step to advance. */
+  wordAdvanceAtMs?: number;
   narration: NarrationClip[];
   /** Cues for this step that have no recording in this language. */
   missing: string[];
@@ -101,6 +107,26 @@ export interface NarratedSchedule {
   totalMs: number;
   /** Cues naming a step this timeline does not have (W323). Kept, never played. */
   orphaned: string[];
+  /** Music and its already-compiled gain curve; players do not improvise ducking. */
+  soundtrack?: ScheduledSoundtrack;
+}
+
+export interface SoundtrackInput {
+  source: { assetId: string } | { library: string };
+  volume?: number;
+  loop?: boolean;
+  fadeInMs?: number;
+  fadeOutMs?: number;
+  ducking?: { gainDb: number; attackMs?: number; releaseMs?: number };
+}
+
+export interface SoundtrackGainPoint { atMs: number; volume: number }
+
+export interface ScheduledSoundtrack {
+  source: SoundtrackInput["source"];
+  loop: boolean;
+  durationMs: number;
+  gain: SoundtrackGainPoint[];
 }
 
 export interface NarrationCompileOptions {
@@ -115,6 +141,8 @@ export interface NarrationCompileOptions {
    * exactly what the document says unless a player asks for a floor.
    */
   silentStepMs?: number;
+  soundtrack?: SoundtrackInput;
+  soundtrackDurationMs?: number;
 }
 
 export const DEFAULT_GAP_MS = 600;
@@ -139,13 +167,15 @@ export function compileNarratedPlayback(
 
   const segments: NarratedSegment[] = [];
   let cursor = 0;
+  let voiceUntil = 0;
   for (let index = 0; index < segmentCount; index += 1) {
     const source = timeline.segments[index] ?? { startMs: 0, endMs: 0 };
     const animationMs = Math.max(0, source.endMs - source.startMs);
     const start = cursor;
     const narration: NarrationClip[] = [];
     const missing: string[] = [];
-    let voiceCursor = start;
+    let voiceCursor = Math.max(start, voiceUntil);
+    let wordAdvanceAtMs: number | undefined;
     for (const cue of cues) {
       if (cue.step !== index) continue;
       const take = cue.takes?.[options.locale];
@@ -153,26 +183,43 @@ export function compileNarratedPlayback(
         missing.push(cue.id);
         continue;
       }
-      narration.push({
+      const wordTimings = (take.wordTimings ?? []).filter((timing) =>
+        timing.startMs >= 0 && timing.endMs >= timing.startMs && timing.endMs <= take.durationMs,
+      );
+      const clip: NarrationClip = {
         cueId: cue.id,
         step: index,
         assetId: take.assetId,
         startMs: voiceCursor,
         endMs: voiceCursor + take.durationMs,
+        wordTimings,
         ...(take.gainDb !== undefined ? { gainDb: take.gainDb } : {}),
-      });
+      };
+      narration.push(clip);
+      if (cue.advanceOnWord !== undefined) {
+        const timing = wordTimings[cue.advanceOnWord];
+        if (timing) wordAdvanceAtMs = clip.startMs + timing.startMs;
+      }
       voiceCursor += take.durationMs;
     }
     const animationEndMs = start + animationMs;
     const narrationEndMs = voiceCursor;
     const floor = narration.length === 0 ? start + Math.max(0, options.silentStepMs ?? 0) : start;
-    const advanceAtMs = Math.max(animationEndMs, narrationEndMs, floor) + gapMs;
+    voiceUntil = Math.max(voiceUntil, narrationEndMs);
+    const ordinaryAdvance = Math.max(animationEndMs, narrationEndMs, voiceUntil, floor) + gapMs;
+    // A word-linked cue intentionally lets the next reveal begin while the
+    // current recording continues. Motion still cannot advance before this
+    // step's own animation has settled.
+    const advanceAtMs = wordAdvanceAtMs === undefined
+      ? ordinaryAdvance
+      : Math.max(animationEndMs, wordAdvanceAtMs);
     segments.push({
       index,
       startMs: start,
       animationEndMs,
       narrationEndMs,
       advanceAtMs,
+      ...(wordAdvanceAtMs !== undefined ? { wordAdvanceAtMs } : {}),
       narration,
       missing,
       timelineStartMs: source.startMs,
@@ -182,6 +229,10 @@ export function compileNarratedPlayback(
   }
 
   const scheduledSounds = scheduleSounds(timeline, segments, sounds, options);
+  const totalMs = segments.at(-1)?.advanceAtMs ?? 0;
+  const soundtrack = options.soundtrack
+    ? scheduleSoundtrack(options.soundtrack, segments.flatMap((segment) => segment.narration), totalMs, options.soundtrackDurationMs ?? 0)
+    : undefined;
 
   return {
     slideId: timeline.slideId,
@@ -189,9 +240,49 @@ export function compileNarratedPlayback(
     gapMs,
     segments,
     sounds: scheduledSounds,
-    totalMs: segments.at(-1)?.advanceAtMs ?? 0,
+    totalMs,
     orphaned,
+    ...(soundtrack ? { soundtrack } : {}),
   };
+}
+
+/** Compile fades and narration ducking into an explicit, seekable gain curve. */
+export function scheduleSoundtrack(
+  soundtrack: SoundtrackInput,
+  narration: readonly NarrationClip[],
+  totalMs: number,
+  durationMs: number,
+): ScheduledSoundtrack {
+  const base = Math.max(0, Math.min(1, soundtrack.volume ?? 0.35));
+  const duck = base * 10 ** (Math.max(-30, Math.min(0, soundtrack.ducking?.gainDb ?? -12)) / 20);
+  const attack = Math.max(0, soundtrack.ducking?.attackMs ?? 180);
+  const release = Math.max(0, soundtrack.ducking?.releaseMs ?? 280);
+  const fadeIn = Math.max(0, soundtrack.fadeInMs ?? 800);
+  const fadeOut = Math.max(0, soundtrack.fadeOutMs ?? 800);
+  const points: SoundtrackGainPoint[] = [];
+  const push = (atMs: number, volume: number) => {
+    const at = Math.max(0, Math.min(totalMs, Math.round(atMs)));
+    const inFactor = fadeIn > 0 ? Math.min(1, at / fadeIn) : 1;
+    const outFactor = fadeOut > 0 ? Math.min(1, (totalMs - at) / fadeOut) : 1;
+    const fadeCap = base * Math.max(0, Math.min(inFactor, outFactor));
+    points.push({ atMs: at, volume: Math.max(0, Math.min(1, Math.min(volume, fadeCap))) });
+  };
+  push(0, fadeIn > 0 ? 0 : base);
+  if (fadeIn > 0) push(Math.min(fadeIn, totalMs), base);
+  for (const clip of narration) {
+    push(clip.startMs - attack, base);
+    push(clip.startMs, duck);
+    push(clip.endMs, duck);
+    push(clip.endMs + release, base);
+  }
+  if (fadeOut > 0) push(Math.max(0, totalMs - fadeOut), base);
+  push(totalMs, fadeOut > 0 ? 0 : base);
+  points.sort((a, b) => a.atMs - b.atMs);
+  const gain = points.filter((point, index) => {
+    const next = points[index + 1];
+    return !next || next.atMs !== point.atMs;
+  });
+  return { source: soundtrack.source, loop: soundtrack.loop ?? true, durationMs: Math.max(0, durationMs), gain };
 }
 
 /**
@@ -292,6 +383,15 @@ export function narrationAt(schedule: NarratedSchedule, timeMs: number): Narrati
     }
   }
   return undefined;
+}
+
+/** The spoken word at narrated time `t`, for captions and word-linked UI. */
+export function spokenWordAt(schedule: NarratedSchedule, timeMs: number): { cueId: string; index: number; word: string } | undefined {
+  const position = narrationAt(schedule, timeMs);
+  if (!position) return undefined;
+  const timing = position.clip.wordTimings.find((word) => position.offsetMs >= word.startMs && position.offsetMs < word.endMs);
+  if (!timing) return undefined;
+  return { cueId: position.clip.cueId, index: position.clip.wordTimings.indexOf(timing), word: timing.word };
 }
 
 /** Sounds audible at `t`, each with how far into it `t` is. */

@@ -60,6 +60,8 @@ export const IPC = {
   serviceStatus: "deckastra:service:status",
   /** Whether agents may reach this install, and until when. */
   agentAccess: "deckastra:agents:get",
+  /** Exact command and arguments an MCP client needs for this installation. */
+  agentSetup: "deckastra:agents:setup",
   /** Allow agents, or stop them. The user's decision, made in the window. */
   agentAccessSet: "deckastra:agents:set",
   /** Main → renderer: that decision changed, including when it lapses. */
@@ -199,6 +201,14 @@ export interface AgentAccessRequest {
   allow: boolean;
 }
 
+/** Main-process-resolved MCP launcher. Paths differ between checkout and package. */
+export interface AgentSetupLauncher {
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  clientLabelKey: string;
+}
+
 export interface DesktopInfo {
   appVersion: string;
   /**
@@ -316,6 +326,8 @@ export interface DesktopBridge {
   /** Returns an unsubscribe function. Fires immediately with the current state. */
   onServiceStatus(listener: (status: ServiceStatus) => void): () => void;
   agentAccess(): Promise<AgentAccess>;
+  /** Copy-ready launcher data for the coding-agent setup guide. */
+  agentSetup(): Promise<AgentSetupLauncher>;
   /**
    * Allow agents, or stop them.
    *

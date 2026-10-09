@@ -68,6 +68,7 @@ export interface ShapeContext {
    * §33.4 exists to prevent.
    */
   placePicture?(assetId: string): { placed: { relationshipId: string } } | { refused: string };
+  placeVideo?(assetId: string, posterAssetId?: string): { placed: { videoRelationshipId: string; mediaRelationshipId: string; posterRelationshipId: string } } | { refused: string };
   /**
    * An asset's own pixel dimensions, from the document's manifest.
    *
@@ -133,6 +134,9 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
     case "image":
       return pictureShape(node, context);
 
+    case "video":
+      return videoShape(node, context);
+
     case "equation":
       return equationShape(node, context);
 
@@ -150,6 +154,30 @@ export function shapeFor(node: SceneNode, context: ShapeContext): string | undef
     default:
       return unsupported(node, context);
   }
+}
+
+function videoShape(node: SceneNode, context: ShapeContext): string {
+  const payload = node.renderPayload;
+  if (payload.kind !== "video") return unsupported(node, context)!;
+  const claim = context.placeVideo?.(payload.assetId, payload.posterAssetId);
+  if (!claim || "refused" in claim) {
+    context.ledger.record({
+      severity: "warning", slideId: context.scene.slideId, elementId: node.id,
+      feature: "video", action: "dropped",
+      message: `This video is not embedded because ${claim && "refused" in claim ? claim.refused : "the exporter received no video registry"}.`,
+    });
+    return unsupported(node, context)!;
+  }
+  const id = context.nextId();
+  return "<p:pic><p:nvPicPr>" +
+    `<p:cNvPr id="${id}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"><a:hlinkClick r:id="" action="ppaction://media"/></p:cNvPr>` +
+    '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
+    `<p:nvPr><a:videoFile r:link="${claim.placed.videoRelationshipId}"/>` +
+    '<p:extLst><p:ext uri="{DAA4B4D4-6D71-4841-9C94-3DA51E9BB16C}">' +
+    `<p14:media xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" r:embed="${claim.placed.mediaRelationshipId}"/>` +
+    '</p:ext></p:extLst></p:nvPr></p:nvPicPr>' +
+    `<p:blipFill><a:blip r:embed="${claim.placed.posterRelationshipId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    `<p:spPr>${transform(node, context.units)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 }
 
 // ------------------------------------------------------------------- pieces

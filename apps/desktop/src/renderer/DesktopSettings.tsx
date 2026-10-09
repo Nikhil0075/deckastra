@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
-import { Button, StatusChip } from "@deckastra/editor-ui/ui";
-import { AccountSettings, CreditsMeter, SettingsShell, generationRoute, type SettingsSectionId } from "@deckastra/editor-ui";
-import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { GenerationStatus } from "@deckastra/workspace-contracts";
+import { Button } from "@deckastra/editor-ui/ui";
+import {
+  AccountSettings,
+  AgentSetupGuide,
+  CreditsMeter,
+  SettingsShell,
+  type AgentLauncher,
+  type SettingsSectionId,
+} from "@deckastra/editor-ui";
 
 import type { AccountState } from "../shared/account";
 import type { AgentAccess, DesktopBridge } from "../shared/ipc";
@@ -54,56 +59,24 @@ export function DesktopSettings({
         ),
         plans: <Plans onSignIn={() => onSection("account")} />,
         ai: <AiAndPrivacy />,
-        agents: <Agents access={access} onChange={onAgentAccessChange} />,
+        agents: <Agents access={access} onChange={onAgentAccessChange} bridge={bridge} />,
       }}
     />
   );
 }
 
 function AiAndPrivacy() {
-  const client = useWorkspaceClient();
-  const [status, setStatus] = useState<GenerationStatus | undefined>();
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void client.session
-      .account({ fresh: true })
-      .then((account) => {
-        if (cancelled) return;
-        setStatus(account.capabilities.generation);
-        setError(null);
-      })
-      .catch(() => {
-        if (!cancelled) setError("How AI is set up here could not be read. Check that Deckastra is running.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client]);
-
-  const route = generationRoute(status);
-
   return (
     <div className="dk-settings__section" data-testid="settings-ai">
-      <h3 className="dk-settings__heading">Writing and changing decks</h3>
-      {error ? (
-        <p className="dk-settings__error" role="alert">
-          {error}
-        </p>
-      ) : route ? (
-        <div className="dk-generate__route" data-testid="intelligence-route">
-          <StatusChip tone={route.tone}>{route.title}</StatusChip>
-          <p className="dk-muted">{route.detail}</p>
-        </div>
-      ) : (
-        <p className="dk-muted">Reading how this install is set up…</p>
-      )}
+      <h3 className="dk-settings__heading">Creating decks</h3>
+      <p className="dk-muted">
+        Templates and StoryPlans are composed on this computer by deterministic layout code. Connect your own agent
+        in Agents when you want it to write the story; Deckastra does not run a hidden writing model.
+      </p>
       <h3 className="dk-settings__heading">What is sent</h3>
       <p className="dk-muted">
-        Your decks stay on this computer. When you ask the assistant for something, only your request and what you
-        chose for it to work on are sent to Deckastra&apos;s AI service, for that request alone. Editing, checks and
-        exports never send anything and never use credits.
+        Your decks stay on this computer. Only paid media, translation and voice requests send the content needed for
+        that request to Deckastra&apos;s service. Editing, templates, design checks and exports do not.
       </p>
     </div>
   );
@@ -195,7 +168,33 @@ function Plans({ onSignIn }: { onSignIn: () => void }) {
  * where the decision is explained. Its own test ids, so the chip's popover and
  * this panel are never the same element to the acceptance harness.
  */
-function Agents({ access, onChange }: { access: AgentAccess | null; onChange: (allow: boolean) => void }) {
+function Agents({
+  access,
+  onChange,
+  bridge,
+}: {
+  access: AgentAccess | null;
+  onChange: (allow: boolean) => void;
+  bridge: DesktopBridge;
+}) {
+  const [launcher, setLauncher] = useState<AgentLauncher | null>(null);
+  const [setupError, setSetupError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void bridge
+      .agentSetup()
+      .then((value) => {
+        if (!cancelled) setLauncher(value);
+      })
+      .catch(() => {
+        if (!cancelled) setSetupError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bridge]);
+
   const until = access?.expiresAt
     ? new Date(access.expiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : null;
@@ -203,9 +202,8 @@ function Agents({ access, onChange }: { access: AgentAccess | null; onChange: (a
     <div className="dk-settings__section" data-testid="settings-agents">
       <h3 className="dk-settings__heading">Agents</h3>
       <p className="dk-muted">
-        Claude Code and Codex can write and change decks here, using the same commands you have. They suggest changes;
-        anything large or destructive waits for you. Nothing is sent anywhere by this app: the agent runs where you run
-        it.
+        Your coding agent can write and change decks here, using the same commands you have. It suggests changes;
+        anything large or destructive waits for you. Nothing is sent anywhere by this app: the agent runs where you run it.
       </p>
       {access ? (
         <>
@@ -225,6 +223,15 @@ function Agents({ access, onChange }: { access: AgentAccess | null; onChange: (a
         </>
       ) : (
         <p className="dk-muted">Reading whether agents may connect…</p>
+      )}
+      {launcher ? (
+        <AgentSetupGuide launcher={launcher} onCopy={(text) => bridge.writeClipboardText(text)} />
+      ) : setupError ? (
+        <p className="dk-settings__error" role="alert">
+          The setup command could not be prepared. Restart Deckastra and try again.
+        </p>
+      ) : (
+        <p className="dk-muted" role="status">Preparing setup instructions…</p>
       )}
     </div>
   );

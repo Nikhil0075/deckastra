@@ -1,21 +1,31 @@
 import type { PatchOperation, PresentationDocument } from "@deckastra/presentation-schema";
-export type AssistantTask = "generate" | "edit" | "tidy" | "alt_text" | "consistency" | "translation" | "narration" | "motion" | "organise" | "research" | "image" | "speech" | "export";
+export type AssistantTask = "tidy" | "motion" | "image" | "video" | "speech" | "export";
 export interface AssistantRequest {
   task: AssistantTask; presentation_id: string; expected_version_id: string; operation_key: string;
   instruction?: string;
   scope: { kind: "deck" | "slide" | "elements"; slide_ids: string[]; element_ids: string[] };
-  quality?: "quality"; locale?: string; voice?: string; slide_count?: number;
-  source_asset_ids?: string[]; web_search?: boolean; export_kind?: "pdf" | "pptx";
-  generation_mode?: "append" | "replace"; research_run_id?: string;
+  quality?: "quality"; locale?: string; voice?: string;
+  source_asset_ids?: string[]; export_kind?: "pdf" | "pptx" | "mp4";
   motion_entrance?: string; motion_pacing?: "tight" | "measured" | "deliberate"; motion_click_reveals?: number;
   /** Replace a slide's existing animation tracks; otherwise those slides are kept. */
   motion_replace?: boolean;
+  video_duration_seconds?: 4 | 6 | 8;
+  video_aspect_ratio?: "16:9" | "9:16";
+  video_generate_audio?: false;
+  video_quote_token?: string;
+  image_quote_token?: string;
+}
+
+export interface ImageQuoteRequest {
+  expected_version_id: string;
+  slide_id: string;
+  prompt: string;
 }
 export interface AssistantRun {
   id: string; presentation_id: string; task: AssistantTask;
   status: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
   error: string | null;
-  result: { document?: PresentationDocument; version_id?: string; transaction_id?: string; status?: string; summary?: string; clarification?: string; metadata_proposal?: { asset_id: string; tags: string[]; description: string }[]; warnings?: string[]; research?: string; sources?: { id?: string; url?: string; title?: string }[]; assets?: AssistantAsset[]; export?: { id: string } } | null;
+  result: { document?: PresentationDocument; version_id?: string; transaction_id?: string; status?: string; summary?: string; clarification?: string; warnings?: string[]; assets?: AssistantAsset[]; export?: { id: string } } | null;
   budget: { used_cost_usd?: number; reserved_cost_usd?: number; used_tokens?: number } | null;
   last_sequence: number; created_at: string; cancel_requested: boolean;
 }

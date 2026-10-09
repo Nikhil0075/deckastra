@@ -26,7 +26,7 @@ router = APIRouter(prefix="/v1")
 
 
 class ExportRequest(BaseModel):
-    kind: Literal["pdf", "pptx", "mydeck"]
+    kind: Literal["pdf", "pptx", "mp4", "mydeck"]
     slide_ids: list[str] = Field(default_factory=list, max_length=500)
     include_hidden_slides: bool = False
     include_notes: bool = False
@@ -46,6 +46,8 @@ class ExportRequest(BaseModel):
     #: absent, or one of its overlays. Recorded on the job, because an export is
     #: of a version *in a language*, and a retry must not change which.
     locale: str | None = Field(default=None, min_length=2, max_length=35)
+    #: Video cadence. Ignored by document formats; explicit so retries keep it.
+    fps: Literal[24, 30, 60] = 30
 
 
 @router.post("/presentations/{presentation_id}/exports", status_code=status.HTTP_202_ACCEPTED)
@@ -101,6 +103,7 @@ def start_export(
                 "includeNotes": request.include_notes,
                 "atTime": request.at_time,
                 **({"locale": request.locale} if request.locale else {}),
+                **({"fps": request.fps} if request.kind == "mp4" else {}),
             },
             idempotency_key=request.idempotency_key,
         )

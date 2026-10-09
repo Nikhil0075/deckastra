@@ -20,11 +20,11 @@ Three properties this file exists to guarantee:
 - **Port zero.** The OS picks a free port. A fixed port collides with whatever
   else the user is running and, worse, makes the service predictable to anything
   probing localhost.
-- **Everything is derived from one directory.** The database, its checkpoints and
-  the asset bytes all live under `--data-dir`. That says where the bytes are and
+- **Everything is derived from one directory.** The database and asset bytes
+  live under `--data-dir`. That says where the bytes are and
   **not** that copying them while the app runs is a backup: a live SQLite file
-  copied by hand is whatever was flushed, and three separate walks give three
-  different moments. `backup.py` is the supported answer, and `--restore-from`
+  copied by hand is whatever was flushed, and separate walks give different
+  moments. `backup.py` is the supported answer, and `--restore-from`
   below is its other half.
 """
 

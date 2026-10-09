@@ -36,6 +36,12 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     onRestoreJournals: () => () => {},
     restartService: async () => ({ state: "failed" as const, attempt: 1 }),
     agentAccess: async () => ({ allowed: false, scopes: [], expiresAt: null, decidedAt: null }),
+    agentSetup: async () => ({
+      command: "Deckastra",
+      args: ["mcp/cli.mjs"],
+      env: { ELECTRON_RUN_AS_NODE: "1" },
+      clientLabelKey: "DECKASTRA_MCP_CLIENT",
+    }),
     setAgentAccess: async ({ allow }) => ({
       allowed: allow,
       scopes: allow ? ["read", "write", "export"] : [],

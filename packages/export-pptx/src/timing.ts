@@ -41,6 +41,7 @@ const EXIT: Record<string, { presetId: number; subtype: number; note?: string }>
   springOut: { presetId: 23, subtype: 16, note: "A spring exit becomes a plain zoom exit." },
   blurOut: { presetId: 10, subtype: 0, note: "Blur has no PowerPoint exit equivalent, so it becomes a fade out." },
   maskOut: { presetId: 22, subtype: 4, note: "The mask exit becomes a wipe out." },
+  wipeOut: { presetId: 22, subtype: 4 },
   drawPathOut: { presetId: 22, subtype: 4, note: "The drawn-path exit becomes a wipe out." },
   staggerOut: { presetId: 10, subtype: 0, note: "The staggered exit becomes one fade out." },
 };
@@ -119,9 +120,13 @@ export function timingFor(input: TimingInput): string {
 
         const preset = clip.preset ?? "fade";
         const resolved = resolvePreset(preset);
-        const category = resolved.preset.category;
+        // The animation compiler resolves theme-local custom presets before the
+        // export adapter runs. Preserve that category here; looking the name up
+        // only in the built-in catalog would misclassify every custom exit or
+        // emphasis as an entrance.
+        const category = clip.category ?? resolved.preset.category;
 
-        if (["byWord", "byLetter", "typewriter"].includes(preset)) {
+        if (["byWord", "byLetter", "typewriter", "lineByLine", "wordCascade"].includes(preset)) {
           const sourceId = clip.id.split(":", 1)[0]!;
           if (emittedTextClips.has(sourceId)) return "";
           emittedTextClips.add(sourceId);
@@ -133,7 +138,11 @@ export function timingFor(input: TimingInput): string {
           const delayPercent = unitDelayMs > 0
             ? Math.max(1, Math.min(100_000, Math.round(unitDelayMs / durationMs * 100_000)))
             : 10_000;
-          const unit = preset === "byWord" ? "wd" : "lt";
+          const unit = preset === "lineByLine"
+            ? null
+            : preset === "byWord" || preset === "wordCascade"
+              ? "wd"
+              : "lt";
           textBuildShapeIds.add(shapeId);
           ledger.record({
             severity: "info",
@@ -141,9 +150,11 @@ export function timingFor(input: TimingInput): string {
             elementId: clip.targetId,
             feature: `animation:${preset}`,
             action: "approximated",
-            message: preset === "byWord"
-              ? "The text uses PowerPoint's native word-by-word build."
-              : "The text uses PowerPoint's native character-by-character build.",
+            message: preset === "lineByLine"
+              ? "The text uses PowerPoint's native paragraph build."
+              : preset === "byWord" || preset === "wordCascade"
+                ? "The text uses PowerPoint's native word-by-word build."
+                : "The text uses PowerPoint's native character-by-character build.",
           });
           return effect(
             next,
@@ -164,6 +175,21 @@ export function timingFor(input: TimingInput): string {
             shapeId,
             preset,
             durationMs: Math.round(clip.periodMs || 1),
+            delayMs: Math.max(0, Math.round(clip.startMs - segment.startMs)),
+            iterations: clip.iterations,
+            alternate: clip.direction === "alternate",
+            ledger,
+            slideId,
+            elementId: clip.targetId,
+          });
+        }
+
+        if (category === "path") {
+          return loopEffect({
+            next,
+            shapeId,
+            preset,
+            durationMs: Math.round(clip.periodMs || clip.settledEndMs - clip.startMs),
             delayMs: Math.max(0, Math.round(clip.startMs - segment.startMs)),
             iterations: clip.iterations,
             alternate: clip.direction === "alternate",
@@ -345,9 +371,20 @@ function emphasisEffect(input: {
       note = "Pop is approximated with PowerPoint Grow/Shrink.";
       break;
     case "wiggle":
+    case "shake":
       presetId = 8;
       behavior = `<p:animRot by="480000">${common("<p:attrName>r</p:attrName>")}</p:animRot>`;
-      note = "Wiggle is approximated with a small PowerPoint spin.";
+      note = `${preset === "shake" ? "Shake" : "Wiggle"} is approximated with a small PowerPoint spin.`;
+      break;
+    case "highlightSweep":
+    case "underlineDraw":
+      behavior = `<p:animScale>${common("<p:attrName>ppt_w</p:attrName><p:attrName>ppt_h</p:attrName>")}<p:by x="108000" y="100000"/></p:animScale>`;
+      note = `${preset === "underlineDraw" ? "Underline draw" : "Highlight sweep"} is approximated with a horizontal Grow/Shrink emphasis.`;
+      break;
+    case "colorShift":
+      presetId = 7;
+      behavior = `<p:animClr clrSpc="rgb" dir="cw">${common("<p:attrName>style.color</p:attrName>")}<p:to><a:srgbClr val="4472C4"/></p:to></p:animClr>`;
+      note = "Colour shift is approximated with PowerPoint's native colour emphasis.";
       break;
     default:
       ledger.record({
@@ -390,13 +427,13 @@ function effect(
   iterations: number,
   alternate: boolean,
   kind: "entrance" | "exit",
-  textUnit?: { unit: "wd" | "lt"; delayPercent: number },
+  textUnit?: { unit: "wd" | "lt" | null; delayPercent: number },
 ): string {
   const target = `<p:tgtEl><p:spTgt spid="${shapeId}"/></p:tgtEl>`;
   const repeat = repeatAttribute(iterations);
   const autoRev = alternate ? ' autoRev="1"' : "";
   const entrance = kind === "entrance";
-  const iterate = textUnit
+  const iterate = textUnit?.unit
     ? `<p:iterate type="${textUnit.unit}"><p:tmPct val="${textUnit.delayPercent}"/></p:iterate>`
     : "";
   const visibility = entrance
@@ -470,6 +507,10 @@ function loopEffect(input: {
     case "marquee":
       behavior = `<p:animMotion origin="layout" path="M 0 0 L -0.12 0 E" pathEditMode="relative" ptsTypes="">${common("<p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName>")}</p:animMotion>`;
       note = "Marquee distance is approximated with a relative PowerPoint motion path.";
+      break;
+    case "moveAlongPath":
+      behavior = `<p:animMotion origin="layout" path="M 0 0 L 0.12 0 E" pathEditMode="relative" ptsTypes="">${common("<p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName>")}</p:animMotion>`;
+      note = "The path vector is mapped to a native PowerPoint motion path.";
       break;
     case "spin":
       presetId = 8;
@@ -546,8 +587,40 @@ export function transitionFor(
     case "fade":
       return `<p:transition spd="med" advTm="${duration}"><p:fade/></p:transition>`;
     case "slide":
+    case "cover":
     case "push":
       return `<p:transition spd="med" advTm="${duration}"><p:push dir="l"/></p:transition>`;
+    case "wipe":
+      return `<p:transition spd="med" advTm="${duration}"><p:wipe dir="l"/></p:transition>`;
+    case "split":
+      return `<p:transition spd="med" advTm="${duration}"><p:split orient="vert" dir="out"/></p:transition>`;
+    case "iris":
+      ledger.record({
+        severity: "info",
+        slideId,
+        feature: "transition:iris",
+        action: "approximated",
+        message: "The iris transition uses PowerPoint's nearest circular reveal.",
+      });
+      return `<p:transition spd="med" advTm="${duration}"><p:circle/></p:transition>`;
+    case "blurDissolve":
+      ledger.record({
+        severity: "info",
+        slideId,
+        feature: "transition:blurDissolve",
+        action: "approximated",
+        message: "Blur dissolve becomes PowerPoint Dissolve; the blur component is omitted.",
+      });
+      return `<p:transition spd="med" advTm="${duration}"><p:dissolve/></p:transition>`;
+    case "flip":
+      ledger.record({
+        severity: "info",
+        slideId,
+        feature: "transition:flip",
+        action: "approximated",
+        message: "The 3D flip becomes a fade in PowerPoint.",
+      });
+      return `<p:transition spd="med" advTm="${duration}"><p:fade/></p:transition>`;
     case "zoom":
       ledger.record({
         severity: "info",

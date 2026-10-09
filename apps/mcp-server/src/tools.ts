@@ -7,6 +7,7 @@ import { languagesOf, outlineDocument, slideOf } from "./outline";
 import {
   addLocaleOperations,
   addNarrationCuesOperations,
+  setNarrationDeliveryOperations,
   OperationError,
   setLocaleEntriesOperations,
   setNarrationTextOperations,
@@ -54,6 +55,31 @@ function failure(message: string) {
 
 function json(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
+}
+
+/**
+ * Creation endpoints return the whole document because the editor needs it.
+ * An MCP client does not: echoing every element into the model's context is
+ * expensive and can make a one-call template creation larger than the prompt
+ * that requested it. Return enough to continue, then let the agent use the
+ * deliberately compact, versioned document_read outline.
+ */
+function createdDeck(result: Awaited<ReturnType<WorkspaceClient["presets"]["create"]>>) {
+  return {
+    presentation_id: result.presentation_id,
+    version_id: result.version_id,
+    ...(result.template_id ? { template_id: result.template_id } : {}),
+    title: result.document.metadata.title,
+    slides: result.document.slides.map((slide) => ({
+      slide_id: slide.id,
+      ...(slide.name ? { name: slide.name } : {}),
+      ...(slide.semanticIntent ? { semantic_intent: slide.semanticIntent } : {}),
+      ...(slide.layout?.styleLabel || slide.layout?.templateId
+        ? { pattern: String(slide.layout?.styleLabel ?? slide.layout?.templateId).replace(/^preset\./, "") }
+        : {}),
+    })),
+    next: "Use document_read with presentation_id before proposing a versioned revision.",
+  };
 }
 
 /** An image the model can actually look at, with a line saying what it is. */
@@ -107,6 +133,260 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     async ({ asset_id, ...request }) => guard(async () => untrustedAssets({ assets: [await assistant().assetUpdate(asset_id, request)], next_cursor: null })));
   server.registerTool("asset_duplicates", { title: "Find duplicate candidates", description: "Read bounded exact-hash and perceptual-hash duplicate candidates. Perceptual matches require human review; this tool never deletes.", inputSchema: { workspace_id: z.string().optional(), cursor: z.string().optional() } },
     async ({ workspace_id, cursor }) => guard(async () => json(await assistant().assetDuplicates(workspace_id, cursor))));
+  server.registerTool("media_quote", {
+    title: "Quote a generated video clip",
+    description: "Get the exact credit cost for one muted 720p clip before generation. The quote expires in 15 minutes and is bound to this deck and exact brief.",
+    annotations: { readOnlyHint: true },
+    inputSchema: { presentation_id: z.string().min(1), prompt: z.string().min(1).max(2000), duration_seconds: z.union([z.literal(4), z.literal(6), z.literal(8)]).default(4), aspect_ratio: z.enum(["16:9", "9:16"]).default("16:9") },
+  }, async (request) => guard(async () => json(await quotedVideo(attached, request))));
+  server.registerTool("media_generate", {
+    title: "Generate a quoted video clip",
+    description: "Generate the exact clip described by a still-valid media_quote. The MP4 and poster become workspace assets and a proposal the user must approve; this tool cannot approve it.",
+    inputSchema: { presentation_id: z.string().min(1), expected_version_id: z.string().min(1), slide_id: z.string().min(1), prompt: z.string().min(1).max(2000), quote_token: z.string().min(20), duration_seconds: z.union([z.literal(4), z.literal(6), z.literal(8)]).default(4), aspect_ratio: z.enum(["16:9", "9:16"]).default("16:9") },
+  }, async ({ presentation_id, expected_version_id, slide_id, prompt, quote_token, duration_seconds, aspect_ratio }) =>
+    guard(async () => json(await assistant().start({ task: "video", presentation_id, expected_version_id,
+      operation_key: `media-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, instruction: prompt,
+      scope: { kind: "slide", slide_ids: [slide_id], element_ids: [] }, video_duration_seconds: duration_seconds,
+      video_aspect_ratio: aspect_ratio, video_generate_audio: false, video_quote_token: quote_token }))));
+  server.registerTool("image_quote", {
+    title: "Quote a generated image",
+    description: "Get the exact credit cost for one generated slide image. The quote expires in 15 minutes and is bound to this deck version, slide, and brief.",
+    annotations: { readOnlyHint: true },
+    inputSchema: { presentation_id: z.string().min(1), expected_version_id: z.string().min(1), slide_id: z.string().min(1), prompt: z.string().min(1).max(2000) },
+  }, async ({ presentation_id, ...request }) => guard(async () => {
+    if (!client.assistant) throw new Error("This workspace service does not support generated images.");
+    return json(await client.assistant.quoteImage(presentation_id, request));
+  }));
+  server.registerTool("image_generate", {
+    title: "Generate a quoted slide image",
+    description: "Generate the exact image accepted through image_quote. The image becomes a workspace asset and a proposal the user must approve; this tool cannot approve it.",
+    inputSchema: { presentation_id: z.string().min(1), expected_version_id: z.string().min(1), slide_id: z.string().min(1), prompt: z.string().min(1).max(2000), quote_token: z.string().min(20) },
+  }, async ({ presentation_id, expected_version_id, slide_id, prompt, quote_token }) => guard(async () => {
+    if (!client.assistant) throw new Error("This workspace service does not support generated images.");
+    return json(await client.assistant.start({ task: "image", presentation_id, expected_version_id,
+      operation_key: `image-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, instruction: prompt,
+      scope: { kind: "slide", slide_ids: [slide_id], element_ids: [] }, image_quote_token: quote_token }));
+  }));
+
+  // -------------------------------------------------------- deterministic creation
+
+  server.registerTool(
+    "preset_list",
+    {
+      title: "List reviewed deck templates",
+      description:
+        "Reviewed templates grouped by purpose, including their stable slide keys, named content slots, " +
+        "default theme and motion style. Read this before deck_from_template; no geometry is exposed.",
+      annotations: { readOnlyHint: true },
+      inputSchema: { purpose: z.enum(["business", "product", "teaching", "technical", "team", "personal"]).optional() },
+    },
+    async ({ purpose }) =>
+      guard(async () => {
+        const catalog = await client.presets.list({ fresh: true });
+        const presets = purpose ? catalog.presets.filter((preset) => preset.purpose === purpose) : catalog.presets;
+        const relevantThemeKeys = purpose ? new Set(presets.map((preset) => preset.themeKey)) : null;
+        return json({
+          ...catalog,
+          presets,
+          themes: relevantThemeKeys ? catalog.themes.filter((theme) => relevantThemeKeys.has(theme.key)) : catalog.themes,
+        });
+      }),
+  );
+
+  server.registerTool(
+    "deck_from_template",
+    {
+      title: "Create a deck from a reviewed template",
+      description:
+        "Create a schema-valid deck in one call. Supply content by stable slide key and named slot; " +
+        "Deckastra owns all geometry. Use preset_list to discover valid keys and slots.",
+      inputSchema: {
+        template_id: z.string().min(1),
+        project_id: z.string().min(1).optional(),
+        theme_key: z.string().min(1).optional(),
+        title: z.string().min(1).max(300).optional(),
+        content: z.record(z.string(), z.record(z.string(), z.union([
+          z.string(),
+          z.array(z.string()),
+          z.array(z.object({ value: z.string(), label: z.string() })),
+        ]))).optional(),
+      },
+    },
+    async ({ template_id, project_id, theme_key, title, content }) =>
+      guard(async () => json(createdDeck(await client.presets.create({ template_id, project_id, theme_key, title, content })))),
+  );
+
+  const storySlide = z.object({
+    layout: z.enum(["title", "statement", "bullets", "metrics", "quote", "code", "split"]),
+    purpose: z.string(),
+    key_message: z.string(),
+    headline: z.string(),
+    eyebrow: z.string().optional(),
+    subtitle: z.string().optional(),
+    body: z.string().optional(),
+    bullets: z.array(z.string()).optional(),
+    metrics: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
+    quote: z.string().optional(),
+    attribution: z.string().optional(),
+    code: z.string().optional(),
+    language: z.string().optional(),
+    caption: z.string().optional(),
+    speaker_notes: z.string().optional(),
+  });
+  server.registerTool(
+    "deck_compose",
+    {
+      title: "Compose a deck from a StoryPlan",
+      description:
+        "Create a deck from narrative intent, words and fixed layout names. Do not send coordinates, " +
+        "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry.",
+      inputSchema: {
+        project_id: z.string().min(1).optional(),
+        theme_key: z.string().min(1).optional(),
+        story_plan: z.object({
+          title: z.string().min(1),
+          audience: z.string(),
+          objective: z.string(),
+          narrative_arc: z.string(),
+          slides: z.array(storySlide).min(1).max(60),
+        }),
+      },
+    },
+    async ({ project_id, theme_key, story_plan }) =>
+      guard(async () => json(createdDeck(await client.presets.compose({ project_id, theme_key, story_plan })))),
+  );
+
+  const slotValue = z.union([
+    z.string(),
+    z.array(z.string()),
+    z.array(z.object({ value: z.string(), label: z.string() })),
+  ]);
+  server.registerTool(
+    "slide_insert_pattern",
+    {
+      title: "Insert a reviewed slide pattern",
+      description:
+        "Insert one deterministic, schema-valid slide after a named slide (or at the end). " +
+        "Use preset_list to discover pattern names and named slots. Deckastra owns geometry; " +
+        "the result is a proposal the user reviews in the app, and this tool cannot approve it.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        pattern: z.string().min(1).max(80),
+        slots: z.record(z.string(), slotValue).optional(),
+        after_slide_id: z.string().min(1).optional(),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, expected_version_id, pattern, slots, after_slide_id, intent }) =>
+      guard(async () => {
+        const result = await client.presets.insertPattern(presentation_id, {
+          expected_version_id,
+          pattern: pattern as never,
+          slots,
+          after_slide_id,
+          intent,
+          client_label: client.clientId.replace(/^mcp:/, ""),
+        });
+        return json({
+          ...result,
+          ...(result.outcome === "pending"
+            ? { awaiting: "The user approves the inserted slide in Deckastra › AI › Pending changes." }
+            : {}),
+        });
+      }),
+  );
+
+  server.registerTool(
+    "motion_style_apply",
+    {
+      title: "Apply a reviewed motion style",
+      description:
+        "Apply one reviewed motion vocabulary across the deck. Timing and entrance budgets are " +
+        "computed by Deckastra. The result is one proposal the user reviews in the app; this tool cannot approve it.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        style: z.enum(["restrained", "dynamic", "cinematic", "editorial", "energetic", "technical", "playful"]),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, expected_version_id, style, intent }) =>
+      guard(async () => {
+        const result = await client.motion.proposeStyle(presentation_id, {
+          expected_version_id,
+          style,
+          intent,
+          client_label: client.clientId.replace(/^mcp:/, ""),
+        });
+        return json({
+          ...result,
+          ...(result.outcome === "pending"
+            ? { awaiting: "The user approves the deck-wide motion change in Deckastra › AI › Pending changes." }
+            : {}),
+        });
+      }),
+  );
+
+  server.registerTool(
+    "voice_quote",
+    {
+      title: "Quote voiced narration",
+      description: "Get the exact credit cost for the due narration lines before sending any script to the configured cloud voice service. The quote expires in 15 minutes.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        presentation_id: z.string().min(1), expected_version_id: z.string().min(1),
+        locale: z.string().regex(/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/),
+        cue_ids: z.array(z.string().min(1)).max(200).optional(), voice: z.string().min(1).max(120).optional(),
+        rate: z.number().min(0.5).max(2).optional(),
+        pronunciations: z.array(z.object({ term: z.string().min(1).max(200), say: z.string().min(1).max(300) })).max(100).optional(),
+      },
+    },
+    async ({ presentation_id, ...request }) => guard(async () => {
+      if (!client.languages) throw new Error("This Deckastra workspace does not have speech synthesis enabled.");
+      return json(await client.languages.quoteSpeech(presentation_id, request));
+    }),
+  );
+
+  server.registerTool(
+    "voice_lines",
+    {
+      title: "Voice narration lines",
+      description:
+        "Synthesize existing narration cues with the connected speech provider, including word timings. " +
+        "This may use provider or AI credits depending on the user's configured service. Audio is stored as workspace assets, " +
+        "and attaching it to the deck is a proposal the user reviews in the app; this tool cannot approve it.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        locale: z.string().regex(/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$/),
+        cue_ids: z.array(z.string().min(1)).max(200).optional(),
+        voice: z.string().min(1).max(120).optional(),
+        rate: z.number().min(0.5).max(2).optional(),
+        pronunciations: z.array(z.object({ term: z.string().min(1).max(200), say: z.string().min(1).max(300) })).max(100).optional(),
+        quote_token: z.string().min(20).optional().describe("Required when voice_quote reports a paid cloud provider."),
+      },
+    },
+    async ({ presentation_id, expected_version_id, locale, cue_ids, voice, rate, pronunciations, quote_token }) =>
+      guard(async () => {
+        if (!client.languages) throw new Error("This Deckastra workspace does not have speech synthesis enabled.");
+        const result = await client.languages.synthesize(presentation_id, {
+          expected_version_id,
+          locale,
+          cue_ids,
+          voice,
+          rate,
+          pronunciations,
+          quote_token,
+        });
+        return json({
+          ...result,
+          ...(result.outcome === "pending"
+            ? { awaiting: "The user approves voiced narration in Deckastra › AI › Pending changes." }
+            : {}),
+        });
+      }),
+  );
   // ------------------------------------------------------------------ reading
 
   server.registerTool(
@@ -258,6 +538,40 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 
   server.registerTool(
+    "motion_preview",
+    {
+      title: "See a slide's motion",
+      description:
+        "Render one slide at six evenly spaced points on its animation timeline. The result is " +
+        "one time-labelled 3×2 contact sheet produced by the same browser and animation engine " +
+        "as export. Use it after motion_propose to inspect sequence and pacing without playing video.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_id: z.string().min(1),
+        frame_count: z.number().int().min(3).max(8).default(6),
+      },
+    },
+    async ({ presentation_id, slide_id, frame_count }) =>
+      guard(async () => {
+        const preview = await client.documents.motionPreview(
+          presentation_id,
+          { slide_id, frame_count },
+          { fresh: true },
+        );
+        return image(
+          preview.image_base64,
+          `Motion on slide ${preview.slide_id} at version ${preview.version_id}: ` +
+            `${preview.frame_count} frames across ${preview.duration_ms}ms ` +
+            `(${preview.frame_times_ms.join(", ")}ms), ${preview.width}×${preview.height}.` +
+            (preview.metrics_estimated
+              ? " Some text was estimated rather than measured; treat spacing as approximate."
+              : ""),
+        );
+      }),
+  );
+
+  server.registerTool(
     "motion_capabilities",
     {
       title: "What motion a deck can be given",
@@ -344,7 +658,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         presentation_id: z.string().min(1),
         slide_id: z.string().min(1).describe("The slide being entered; its transition is the one set."),
         expected_version_id: z.string().min(1),
-        kind: z.enum(["cut", "fade", "slide", "push", "zoom", "morph"]).optional(),
+        kind: z.enum(["cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph"]).optional(),
         pacing: z.enum(["tight", "measured", "deliberate"]).optional(),
         carry: z
           .array(z.string().min(1))
@@ -624,8 +938,18 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         presentation_id: z.string().min(1),
         expected_version_id: z.string().min(1),
         slide_id: z.string().min(1),
-        add: z.array(z.object({ step: z.number().int().min(0).max(200), text: z.string().min(1).max(5_000) })).max(60).default([]),
-        rewrite: z.array(z.object({ cue_id: z.string().min(1), text: z.string().min(1).max(5_000) })).max(60).default([]),
+        add: z.array(z.object({
+          step: z.number().int().min(0).max(200),
+          text: z.string().min(1).max(5_000),
+          voice: z.string().min(1).max(120).optional(),
+          advance_on_word: z.number().int().min(0).max(1999).optional(),
+        })).max(60).default([]),
+        rewrite: z.array(z.object({
+          cue_id: z.string().min(1),
+          text: z.string().min(1).max(5_000),
+          voice: z.string().min(1).max(120).nullable().optional(),
+          advance_on_word: z.number().int().min(0).max(1999).nullable().optional(),
+        })).max(60).default([]),
       },
     },
     async ({ presentation_id, expected_version_id, slide_id, add, rewrite }) =>
@@ -633,8 +957,19 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         if (!add.length && !rewrite.length) return failure("Nothing to do: give lines to add or to rewrite.");
         const read = await client.documents.read(presentation_id, { fresh: true });
         const operations = [
-          ...rewrite.flatMap((line) => setNarrationTextOperations(read.document, slide_id, line.cue_id, line.text)),
-          ...(add.length ? addNarrationCuesOperations(read.document, slide_id, add).operations : []),
+          ...rewrite.flatMap((line) => [
+            ...setNarrationTextOperations(read.document, slide_id, line.cue_id, line.text),
+            ...setNarrationDeliveryOperations(read.document, slide_id, line.cue_id, {
+              voice: line.voice,
+              advanceOnWord: line.advance_on_word,
+            }),
+          ]),
+          ...(add.length ? addNarrationCuesOperations(read.document, slide_id, add.map((line) => ({
+            step: line.step,
+            text: line.text,
+            ...(line.voice ? { voice: line.voice } : {}),
+            ...(line.advance_on_word !== undefined ? { advanceOnWord: line.advance_on_word } : {}),
+          }))).operations : []),
         ];
         const result = await proposeAuthored(client, attached, presentation_id, {
           operations,
@@ -684,11 +1019,11 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     {
       title: "Export a deck",
       description:
-        "Start a PDF or PPTX export. Returns a job; poll it with export_status. The file stays " +
+        "Start a PDF, PPTX or narrated MP4 export. Returns a job; poll it with export_status. The file stays " +
         "in Deckastra: this tool cannot write to a path, and the user saves it from the app.",
       inputSchema: {
         presentation_id: z.string().min(1),
-        kind: z.enum(["pdf", "pptx"]),
+        kind: z.enum(["pdf", "pptx", "mp4"]),
         include_notes: z.boolean().default(false),
         at_time: z.enum(["final", "initial"]).default("final"),
         locale: z
@@ -740,6 +1075,25 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 }
 
+async function quotedVideo(
+  attached: Attached,
+  request: { presentation_id: string; prompt: string; duration_seconds: 4 | 6 | 8; aspect_ratio: "16:9" | "9:16" },
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`${attached.baseUrl}/v1/media/quotes/video`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${attached.attachment.grant}` },
+    body: JSON.stringify({ ...request, generate_audio: false }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) {
+    const detail = payload.detail as { message?: string } | string | undefined;
+    const error = new Error(typeof detail === "string" ? detail : detail?.message ?? `The quote was refused (${response.status}).`);
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
 interface AuthoredResult {
   outcome: string;
   risk_tier: string;
@@ -754,12 +1108,11 @@ interface AuthoredResult {
 /**
  * The authored-proposal route, called directly.
  *
- * The one place this adapter reaches past `WorkspaceClient`. `client.agent.edit`
- * sends an *instruction*, and the API pays a model to turn it into operations —
- * which is exactly the bill an external agent must not generate, having already
- * done that work itself. Rather than widening the shared interface for a route
- * only this surface uses, it goes through fetch here and moves onto the interface
- * if a second caller ever appears.
+ * The one place this adapter reaches past `WorkspaceClient`. An MCP caller has
+ * already authored operations, so it submits them directly to the proposal
+ * boundary. Rather than widening the shared interface for a route only this
+ * surface uses, it goes through fetch here and moves onto the interface if a
+ * second caller ever appears.
  */
 export async function proposeAuthored(
   client: WorkspaceClient,

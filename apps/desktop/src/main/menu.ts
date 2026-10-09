@@ -69,7 +69,7 @@ export function menuTemplate(
       submenu: [
         item("New deck", "new-deck", "CmdOrCtrl+N"),
         { id: "open-deck-file", label: "Open a .mydeck file…", accelerator: "CmdOrCtrl+O", click: () => void actions?.openDeckFile?.() },
-        item("Generate a deck…", "generate-deck", "CmdOrCtrl+Shift+N"),
+        item("New from template…", "generate-deck", "CmdOrCtrl+Shift+N"),
         { type: "separator" },
         item("All decks", "all-decks", "CmdOrCtrl+Shift+O"),
         { type: "separator" },

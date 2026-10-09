@@ -330,10 +330,6 @@ resource "google_cloud_run_v2_service" "api" {
         value = "0.30"
       }
       env {
-        name  = "DECKASTRA_ASSISTANT_MODE"
-        value = "vertex"
-      }
-      env {
         name  = "DECKASTRA_CREDITS_ENABLED"
         value = "1"
       }
@@ -368,10 +364,6 @@ resource "google_cloud_run_v2_service" "api" {
         value = "10"
       }
       env {
-        name  = "DECKASTRA_INTELLIGENCE"
-        value = "vertex"
-      }
-      env {
         name  = "DECKASTRA_OIDC_AUDIENCE"
         value = "deckastra"
       }
@@ -398,8 +390,8 @@ resource "google_cloud_run_v2_service" "api" {
         value = "global"
       }
       env {
-        name  = "DECKASTRA_VERTEX_MODELS"
-        value = jsonencode({})
+        name  = "DECKASTRA_VERTEX_IMAGE_MODEL"
+        value = ""
       }
       env {
         name  = "DECKASTRA_VERTEX_PRICES"

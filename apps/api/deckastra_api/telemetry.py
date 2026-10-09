@@ -45,7 +45,6 @@ PRESENTATION_ID = "deckastra.presentation_id"
 WORKSPACE_ID = "deckastra.workspace_id"
 RUN_ID = "deckastra.run_id"
 VERSION_ID = "deckastra.version_id"
-STAGE = "deckastra.stage"
 MODEL = "deckastra.model"
 TOKENS_IN = "deckastra.tokens_in"
 TOKENS_OUT = "deckastra.tokens_out"
@@ -61,15 +60,13 @@ _ID_PREFIXES = {
 }
 _ENUMS = {
     "outcome": {"completed", "failed", "refused", "exhausted", "awaiting_approval", "model", "stub"},
-    "stage": {"orchestrator", "research", "story", "creative", "layout", "motion", "critic", "propose", "edit", "unknown"},
-    "task_type": {"planning", "structured", "critique", "fast"},
     "direction": {"input", "output", "total"},
-    "kind": {"png", "pdf", "pptx", "mydeck"},
+    "kind": {"png", "pdf", "pptx", "mp4", "mydeck"},
     "limit": {"monthly_generations", "monthly_tokens", "storage_bytes", "daily_credits"},
     "http.request.method": {"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"},
 }
 _COUNTS = {"tokens_in", "tokens_out", "slide_count", "http.response.status_code"}
-_SPAN_NAMES = {"http.request", "export", "generation", "agent.run", "agent.model", "agent.edit", "index"}
+_SPAN_NAMES = {"http.request", "export", "generation", "agent.run", "index"}
 
 
 def _safe_attributes(attributes: dict[str, Any] | None) -> dict[str, Any]:
@@ -90,10 +87,6 @@ def _safe_attributes(attributes: dict[str, Any] | None) -> dict[str, Any]:
             result[key] = value
         elif bare in _COUNTS and type(value) is int and value >= 0:
             result[key] = value
-        elif bare == "model" and isinstance(value, str):
-            from deckastra_agents.router import MODELS
-            if value in {*MODELS.values(), "stub"}:
-                result[key] = value
     return result
 
 
@@ -237,26 +230,6 @@ async def http_middleware(request: Any, call_next: Any) -> Any:
         return response
 
 
-class TracedModelClient:
-    """Measure model calls at the API boundary without tracing prompt content."""
-
-    def __init__(self, client: Any, run_id: str) -> None:
-        self._client, self._run_id = client, run_id
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._client, name)
-
-    def complete(self, request: Any, budget: Any) -> Any:
-        with span("agent.model", **{RUN_ID: self._run_id, "task_type": request.task_type}) as current:
-            response = self._client.complete(request, budget)
-            current.set_attributes({
-                MODEL: response.model, TOKENS_IN: response.input_tokens,
-                TOKENS_OUT: response.output_tokens,
-                OUTCOME: "refused" if response.refusal else "completed",
-            })
-            return response
-
-
 def enabled() -> bool:
     return _enabled
 
@@ -395,7 +368,6 @@ EXPORTS = counter("deckastra.exports", "Exports produced")
 EXPORT_MS = histogram("deckastra.export_duration", "How long an export took")
 QUOTA_REFUSALS = counter("deckastra.quota_refusals", "Requests refused by a quota")
 SHARE_VIEWS = counter("deckastra.share_views", "Shared decks opened by a link")
-INDEX_MS = histogram("deckastra.index_duration", "How long a repository index took")
 
 
 def record_generation(

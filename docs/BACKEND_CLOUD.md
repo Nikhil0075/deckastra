@@ -9,7 +9,7 @@ Deployment handoff, 2026-10-05. Frontend integration and public launch remain se
 | Google Cloud project | `deckastra` (524807414967) | `deckastra-prod` (794139896808) |
 | API | https://deckastra-api-zit47xh5eq-el.a.run.app | https://deckastra-api-fwqqltaqta-el.a.run.app |
 | Compute / SQL / storage region | `asia-south1` | `asia-south1` |
-| Vertex location | `global`, tasks disabled pending qualification | `global`, tasks disabled pending qualification |
+| Vertex location | `global`, image generation disabled pending an approved media model and budget | `global`, image generation disabled pending an approved media model and budget |
 
 Owner: `nikhilranjanmurmu75@gmail.com`. Repository: https://github.com/Nikhil0075/deckastra.
 Public Identity Platform configuration is in `infrastructure/deployment/public-auth.json`.
@@ -57,9 +57,9 @@ The `.mydeck` reader validates paths, entries, digests, sizes, compression ratio
 ## Remaining launch gates
 
 * Connect frontend account/sign-in, credit/capability state, cloud deletion and package Save/Open flows (see `FRONTEND_BACKEND_HANDOFF.md`). Build and verify an installed desktop and deploy the finished web app with its final allowed origin.
-* The approved US$30 evaluation ran 140 advanced-deck cases against `gemini-3.1-pro-preview`, global, MEDIUM thinking. The model ledger estimated US$5.407288 in returned usage and retained US$1.088102 for interrupted calls; this is not an invoice. Independent review is still required. See `docs/evaluations/2026-10-05/`; pin only the exact model/runtime/location from a passing reviewed report. Tasks remain disabled; no fallback model is selected.
+* Text-model routing and qualification have been removed. Before enabling paid image generation, approve a pinned media model, verified pricing, and a separate live-test budget. The historical text evaluations remain evidence only. The approved US$30 total remains in force; the shared ledger holds interrupted requests and reports estimates rather than billing invoices.
 * Cost protections are documented in `BUDGET_STOPS.md`: the live app ledger, the existing INR 5,000 project alerts connected to an authenticated AI shutdown subscriber, and a separate native INR 5,000 monthly gross Vertex spend cap per project. The native caps are Configured in Google Cloud Console; they are Preview and are not instant invoice ceilings. Fixed quota is unsupported by the evaluated model. Cloud SQL and the always-on worker incur baseline charges even with Gemini tasks disabled. Confirm the operator's Monitoring email verification to receive the custom outage/shutdown-failure alerts.
 * Finalize the operator's legal identity, domain, support address, privacy/terms/data-processing text and consent publication. Drafts are in `docs/legal/` and must not be published with placeholders.
 * Paid subscriptions, top-ups, payment verification, GST registration/invoices, Business-tier launch decisions and signing/release credentials remain Track 3/4 work. There is no live paid checkout in this backend change.
 
-Do not replace the disabled model map with a guessed model ID or treat an unreviewed benchmark as qualification.
+Do not set `DECKASTRA_VERTEX_IMAGE_MODEL` to a guessed model ID or enable live media without verified pricing and an approved budget.

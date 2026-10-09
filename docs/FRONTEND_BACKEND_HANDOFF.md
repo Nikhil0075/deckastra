@@ -14,10 +14,18 @@ Initialize Firebase Auth with the public `projectId`, `authDomain` and `apiKey`;
 
 * `GET /v1/account`: user and available workspace/project IDs.
 * `GET /v1/account/credits`: credit balance, allowance and current period.
-* `GET /v1/account/capabilities`: each task's availability and configured-model reason. Render unavailable tasks honestly; the current model map is intentionally empty.
+* `GET /v1/account/capabilities`: paid image-generation availability and its configured-media reason. No text-model tasks are exposed.
 * `DELETE /v1/account` with `{"confirm":"DELETE"}`: returns a deletion receipt. Handle a shared-ownership conflict by offering ownership transfer. Sign out locally after an accepted request; poll `GET /v1/account/deletions/{receipt}` for its minimal status.
 
 Do not show an active subscription or purchased-credit balance until Track 3's payment verification exists.
+
+## Paid media contract
+
+`POST /v1/assistant/infer` accepts only `task: "image"` and always requests
+image output. The desktop private gateway forwards that bounded request; it does
+not expose planning, authoring, critique, research, translation, or other text
+tasks. Deterministic tidy and motion, exports, Cloud Translation, and spoken
+narration remain on their dedicated surfaces.
 
 ## Files and export
 

@@ -128,4 +128,3 @@ def erase(session, row):
     session.execute(delete(User).where(User.id == user_id))
     row.user_id, row.identities_json = None, []
     row.status, row.completed_at = "completed", datetime.now(timezone.utc)
-

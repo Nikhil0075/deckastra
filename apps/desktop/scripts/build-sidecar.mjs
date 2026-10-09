@@ -26,10 +26,10 @@ import { dataEntries, missingData } from "./sidecar-data.mjs";
  * - **The generated JSON Schema** is read from disk by `schema.py` for the same
  *   reason: it is the artifact the whole product validates against, and it is not
  *   an import.
- * - **SQLAlchemy dialects, uvicorn's protocol implementations and the LangGraph
- *   savers** are all resolved by name at runtime.
+ * - **SQLAlchemy dialects and uvicorn's protocol implementations** are resolved
+ *   by name at runtime.
  *
- * Deliberately *excluded*: `psycopg`, `boto3` and the Postgres saver. A local
+ * Deliberately *excluded*: `psycopg` and `boto3`. A local
  * install has SQLite and a directory; shipping the cloud's drivers would add tens
  * of megabytes to serve a configuration this binary cannot be in.
  */
@@ -64,8 +64,6 @@ const hidden = [
   "uvicorn.protocols.websockets.auto",
   "uvicorn.lifespan.on",
   "sqlalchemy.dialects.sqlite",
-  "langgraph.checkpoint.sqlite",
-  "aiosqlite",
   "alembic.ddl.sqlite",
   // Google credentials (google_credentials.py) import their classes by name at
   // run time: a user's sign-in file and a service account, and the transport
@@ -82,7 +80,6 @@ const excluded = [
   "psycopg_binary",
   "boto3",
   "botocore",
-  "langgraph.checkpoint.postgres",
   // Test and notebook machinery that arrives transitively.
   "pytest",
   "IPython",
@@ -187,12 +184,10 @@ const args = [
   // windowed build has no stdout, and the supervisor would wait for a ready line
   // that can never arrive.
   "--console",
-  // Three source roots, because the product is three top-level packages by
-  // design: the API must not import agent internals, and neither knows about
-  // `integrations`. PyInstaller has to be told about each.
+  // Two source roots, because the API must not import agent internals.
+  // PyInstaller has to be told about both.
   "--paths", api,
   "--paths", join(root, "agents"),
-  "--paths", join(root, "integrations"),
   ...data.flatMap(([from, to]) => ["--add-data", `${from}${sep}${to}`]),
   ...hidden.flatMap((name) => ["--hidden-import", name]),
   ...excluded.flatMap((name) => ["--exclude-module", name]),

@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Deckastra — an AI-native presentation studio. The product thesis, applied consistently across every design document: **agents propose, deterministic engines compose, humans stay in control.**
 
-**Phase 9 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/editor-ui`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `packages/workspace-contracts`, `packages/workspace-client`, `agents/`, `integrations/`, `apps/api`, `apps/desktop`, `apps/mcp-server`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
+**Phase 9 of a 10-phase plan.** Built so far: `packages/presentation-schema`, `packages/presentation-core`, `packages/transactions`, `packages/renderer`, `packages/layout-engine`, `packages/editor`, `packages/editor-ui`, `packages/animation-engine`, `packages/export-core`, `packages/export-pdf`, `packages/export-pptx`, `packages/workspace-contracts`, `packages/workspace-client`, `agents/`, `apps/api`, `apps/desktop`, `apps/mcp-server`, `apps/web`, `apps/worker`. The remaining `packages/*` directories are empty placeholders reserved by `docs/05_MVP_SYSTEM_REPOSITORY_ARCHITECTURE.md` §4 — do not treat an empty directory as a missing implementation to fill in unless the current phase calls for it.
 
-The build order is a **walking skeleton first**, not doc 05's layering: Phase 1 is prompt → story → 5 rendered slides → present, deliberately shallow, to find out early how reliably an LLM emits valid documents against this schema. Every later phase deepens one layer.
+The product is now **template- and agent-first**: reviewed presets or an external coding agent produce versioned proposals, deterministic engines compose and render them, and a person approves risky changes. The removed in-app story graph is not an implementation surface.
 
 ## Commands
 
@@ -29,8 +29,7 @@ npm run dev:desktop     # build all three Electron bundles, then launch
 npm run db:migrate      # alembic upgrade head
 npm run db:revision -- "message"
 python -m pytest apps/api/tests -q
-python -m pytest agents -q          # the agent graph, against the stub client
-python -m pytest integrations -q    # ignore rules, ranking, chunking, GitHub
+python -m pytest agents -q          # agent tools, budgets, and paid-media transport
 python -m pytest apps/api -q -m "not slow"   # skip the browser and subprocess tests
 ```
 
@@ -91,33 +90,22 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 
 ## Architecture
 
-### Generation: the model proposes intent, code composes geometry
+### Deck creation: callers provide intent, code composes geometry
 
 ```
-prompt → Orchestrator → Research → Story → [human checkpoint] → Creative → Layout → Critic
-                                                                                      ↓
-                                              composer → .mydeck → renderer ← proposal
+reviewed preset ─┐
+                 ├→ StoryPlan → composer → .mydeck → renderer
+agent over MCP ──┘
 ```
-
-The graph is Phase 5 (`agents/`). `GenerateRequest.use_graph` still selects the
-Phase 1 single-shot chain — the flag exists so an operator can go back without a
-rollback, not as a permanent fork.
 
 `apps/api/deckastra_api/models.py` defines `StoryPlan`: narrative, copy, and a
 **layout name from a closed set**. It carries no coordinates, font sizes or
 colours. `compose.py` turns that into a document — every geometric decision is
 made there, by code, the same way every time.
 
-Do not move geometry across that line. Doc 03 §10 forbids the Creative Director
-from emitting pixel coordinates and doc 03 §2.3 puts geometry on the deterministic
-side. Two consequences that are the point of the design: generated slides cannot
-overlap, and the composer's output is always schema-valid, so the interesting
-failure mode is the plan — small and cheap to re-ask — rather than the document.
-
-**The stub planner (`stub.py`) is not a test mock.** It is what makes the whole
-vertical slice runnable without an API key, so the composer, renderer and present
-mode work on a fresh clone and in CI without spending money. Keep it working, and
-keep its decks visibly labelled as stub-composed.
+Do not move geometry across that line. Agents and preset authors name layouts,
+roles, tokens and slots; they never place pixels. This keeps composition
+deterministic and schema-valid without a second in-app text model.
 
 **Container layout runs in the scene build** (pipeline stage 6). A group with a
 `containerLayout` positions its children through `layoutChildren`, and their own
@@ -151,42 +139,16 @@ depends on every future agent remembering it lasts until the next agent:
 - **Nothing an agent emits carries geometry.** The Creative Director names a
   theme token; a literal colour is rejected and replaced, with a warning.
 
-Nodes are plain `(state, ctx)` functions and nothing in `agents/` imports
-LangGraph except `graph.py`. That is doc 03 §24's argument about model providers,
-applied to the graph library: a node is testable by calling it, and the framework
-stays replaceable.
-
-**The state is a TypedDict, and LangGraph merges only the keys it declares.** An
-undeclared key is silently dropped between nodes and the routing then falls
-through to its default as though the node had said nothing. If a node starts
-returning something new, declare it in `state.py` in the same change.
+There is no in-app agent graph, text-model router, task-to-model map, or model
+qualification gate. `agents/` now holds the bounded tool registry, proposal
+support, budgets, and the native Vertex media transport. Connected agents do
+the reasoning in their own client; Deckastra validates their operations.
 
 ### Budgets degrade; ceilings stop
 
-`budgets.py` holds the numbers doc 03 left unstated (gap S1). The distinction
-that shapes it: a **token or wall-clock ceiling raises**, because past it the run
-is spending money or a user's patience on something they did not agree to. A
-**revision budget returns False**, because past it the run still has something
-worth handing over — so the Critic accepts the best draft and attaches the
-unresolved issues (gap S3). A user can act on an attached issue; they can do
-nothing with a run that never finished.
-
-"The best draft was kept" has to be true of something. Every reviewed draft is
-retained in `reviewed_drafts` with its score, and on a forced acceptance
-`propose` composes the highest-scoring one — a later revision can score *worse*
-than the one it replaced, and the sentence is shown exactly when reviewer and
-writer did not converge. The unresolved issues go into the document under
-`extensions["deckastra.unresolvedIssues"]`, keyed by slide: graph state ends with
-the run, and the editor reads a document.
-
-Candidates are deep snapshots of story, creative direction, motion, layout,
-research and the matching review. Proposal returns the selected inputs into
-graph state so provenance describes the selected content. The API applies all
-final proposal operations to the composed document and validates it before
-persistence. Planning slide indexes in unresolved issues resolve to generated
-slide IDs; `CriticIssues` displays deck-wide and selected-slide findings. The
-runner's traversal limit scales with the supported revision budget, including
-the multi-node story revision path.
+`budgets.py` enforces time, token, and paid-service cost ceilings. The request
+scoped cost observer lives there because image generation, speech, and Cloud
+Translation share account billing; it is not a model-routing decision.
 
 ### The proposal lifecycle
 
@@ -206,45 +168,22 @@ the proposal's own base, or `expected_version_id` when the approver names the
 version they were shown. A blanket refusal would have been wrong in the other
 direction, stranding every pending proposal behind an unrelated edit elsewhere in
 the deck, so the way through is to look again and say what you looked at.
-`ProposalsPanel` and `AskPanel` send what they had on screen.
+`ProposalsPanel` sends the version it had on screen.
 
 **The check belongs where the base is loaded.** A route that compared the
 caller's `expected_version_id` against the head and then called `create_proposal`
 was checking a different read: that function loads the document again, and
 anything committed in between became the silent base of the agent's change. The
 version now travels into `create_proposal` and is compared there, before any
-transaction or version row exists. The product's own edit agent is not exempt —
-it passes the version it composed against.
+transaction or version row exists.
 
-### The Ask panel writes operations, like an external agent (2026-09-26)
+### Connected agents write operations; Deckastra validates them (2026-10-06)
 
-With a real model configured, `agent/edit` runs `nodes/author.py` rather than the
-four-verb `edit.py`. A person with a cloud key asked it to "add images and change
-the theme to something light" and was refused: text, role, delete and reorder on
-selected elements cannot add anything or touch a theme, however good the model.
-An MCP client had no such ceiling, because it writes the patch and the product
-holds it to account at the boundary. The built-in agent now does the same.
-
-This is a deliberate exception to "nothing an agent emits carries geometry" for
-**edits**, not for generation: a new deck is still planned in intent and
-composed by code. What keeps an edit safe is everything after the node, which is
-unchanged: `author_service.check` applies the operations to a copy and validates
-the schema, a refusal goes back to the agent with the reason (three attempts in
-all), and only a change that applies becomes a proposal, with risk computed from
-the operations and a large change held for the person.
-
-- **New ids are placeholders** (`el_new1`), minted by `author_service.materialise`
-  the same way everywhere they appear. A model writing ULIDs gets the alphabet
-  wrong.
-- **Values travel as `value_json` text**: structured output cannot constrain a
-  value that may be any JSON at all, so the server parses it.
-- **Pictures come from the workspace**, listed to the agent by id and name, and
-  their manifest entries are added server-side from the asset rows. The agent
-  cannot download or make an image, and says so rather than drawing a frame.
-- **Nothing selected is a request about the slide on screen**, or the deck when
-  it says so. The panel no longer refuses to send one.
-- The stub keeps the four verbs, because that is the path it exists to exercise
-  without a key.
+The built-in Ask/edit agent is gone. A connected agent reads the bounded deck
+outline or one slide, authors id-addressed operations, and submits them to
+`POST /v1/presentations/{id}/proposals`. The server applies those operations to
+a copy, validates the document, computes risk, and either applies a low-risk
+change or holds it for the person. No second text model is called.
 
 ### The autosave queue is emptied by an acknowledgement, never by an attempt
 
@@ -1537,20 +1476,14 @@ left to change it. Full geometry is one slide at a time, asked for deliberately.
 
 **An external client supplying its own intelligence must not trigger a paid model
 call.** `POST /v1/presentations/{id}/proposals` (`agent_routes.py`) takes
-caller-authored operations straight to `create_proposal`. `agent/edit` exists for
-words and pays a model to turn them into operations; a caller that has already
-done that work would be billed twice, and the second bill buys a worse answer.
-There is no client in that function to call, and a test makes any model call an
-error.
+caller-authored operations straight to `create_proposal`. There is no client in
+that function to call, and a test makes any model call an error.
 
 Three refusals in that route are structural rather than conventional:
 
 - **`expected_version_id` is required**, and checked against the head before
-  anything is created. `create_proposal` derives its own base version, which is
-  right for the editor's agent — it composes operations from the document it just
-  loaded, in the same request — and is last-write-wins for an agent that read the
-  deck thirty seconds ago while the user was typing. A caller that could omit it
-  would eventually omit it.
+  anything is created. An agent can think while the person keeps typing, so a
+  caller that could omit the version would eventually overwrite newer work.
 - **The caller cannot declare a risk tier**, so it cannot mark a destructive
   change low-risk and skip the human who would have caught it.
 - **The caller cannot claim to be an internal agent.** Its label is prefixed
@@ -1726,7 +1659,12 @@ intelligence, paid for no second model call, could not choose its own risk tier,
 and could not approve its own change. The session also found the `workspace_list`
 gap above, which is the other thing a real session is for.
 
-### Local intelligence is chosen, never fallen back to
+### Historical local intelligence experiment (removed)
+
+The local/cloud text-model router, model packs, qualification layer and story
+graph described below were removed in Phase 0. This section is retained only as
+design history; do not restore or extend these paths. Paid model access is now
+limited to explicit media and language services.
 
 D3. `ModelClient` is one method, so a third provider is plumbing
 (`local_model.py`, a llama.cpp server on loopback). Everything around it is not.
@@ -3261,7 +3199,21 @@ and the edit's version is still listed. It then undoes the restore, and finally
 restores again, which leaves the deck as it found it. A screenshot is taken with
 the drawer open (`history-drawer.png`).
 
-**Phase 6: AI mode, and the story checkpoint.**
+**Phase 6 is now agent proposals plus template-first creation.** The home uses
+`NewDeckStart.tsx`: `GET /v1/presets` lists reviewed presets and built-in theme
+previews; `POST /v1/decks/from-template` turns named slot content into a fixed
+`StoryPlan`; and `POST /v1/decks/compose` accepts a `StoryPlan` whose layouts are
+names, never geometry. Both pass through `compose.py`, validate the resulting
+document, store one initial version, and use no model. The MCP surface exposes
+the same seam as `preset_list`, `deck_from_template`, and `deck_compose`.
+`packages/deck-presets` is data-only and emits
+`generated/deck-presets.json`; `npm run presets:check` is the drift gate.
+
+`GenerateDeck.tsx`, `StoryCheckpoint.tsx`, the model graph, `/v1/generate*`, the
+story checkpoint routes and their LangGraph savers have been removed. Composer
+tests use fixed `StoryPlan` fixtures; there is no stub planner.
+
+**Historical implementation (removed): AI mode, and the story checkpoint.**
 
 *The story checkpoint belongs to new-deck generation.* The graph could always
 pause before the story stage; nothing asked it to, and no route resumed a run.
@@ -4072,22 +4024,20 @@ easy to undo:
   - The dock is one F6 region (`dock`), whichever tab is showing.
   - A smoke step that types a note or drags a clip in Design calls
     `needDockTab` first.
-- **One assistant, beside any mode** (`AssistantPanel.tsx`). AI mode,
-  `AskPanel` and the task form are gone.
+- **One small services hub, beside any mode** (`AssistantPanel.tsx`). AI mode,
+  `AskPanel`, the prompt box and the task form are gone.
   - It opens from the bar's Assistant button, View › Assistant and the
     command palette (host command `assistant`, which replaced `mode-ai`). The modes are now
     Design, Motion and Code, on Ctrl+1 to 3.
-  - The prompt box still calls `agent/edit`. A change the server holds back
-    shows under "Waiting for you" (`ProposalsPanel`) rather than as a second
-    card.
+  - It has four sections: Waiting for you (`ProposalsPanel`), Languages, Voice,
+    and Media. Tidy lives in Design Check and motion in Motion mode.
   - Its words go through `lib/assistant-words.ts`. `plain()` replaces any
     service sentence that carries engineering words or a setting name.
-  - The prompt textarea lets Ctrl+K through to the shell, so the palette opens
-    from inside it too.
 - **Ctrl+K is the command palette** (`CommandPalette.tsx`, `lib/commands.ts`),
   not the assistant. Each entry is a `HostCommand`, run through `onCommand`,
-  the same dispatcher as the desktop menu, so the two cannot drift. "Ask the
-  assistant" fills the assistant's prompt and sends nothing.
+  the same dispatcher as the desktop menu, so the two cannot drift. Free-form
+  text only describes a deck on the home screen; it is not an edit command
+  inside a deck.
 - **Settings replaced the Intelligence drawer** (`SettingsShell.tsx`, desktop
   `DesktopSettings.tsx`, host command `open-settings`, which replaced
   `open-intelligence`; View › Settings…, Ctrl+,). A section the host does not
@@ -4097,15 +4047,10 @@ easy to undo:
 - **Share and Export are one menu** (`open-share`, `export-popover`).
 - **One home for both shells** (`DeckList`). `apps/web/app/page.tsx` is only
   the route now; `AccountPicker` and `EmptyState` are deleted.
-  - Its prompt bar is `GenerateDeck`, rendered inline: `generate-instruction`,
-    `generate-submit` (Create), `new-deck` (Blank deck), and audience, slides,
-    outline review and repositories under Options. The drawer
-    (`generate-drawer`) opens only after Create, for progress and the outline.
-    There is no `generate-deck` button; File › Generate focuses the prompt.
-  - **Create is refused while an outline waits.** The prompt is always on
-    screen, and a second run would replace the project's remembered run
-    (item 02), abandoning an outline nobody decided on.
-  - The web editor's exit carries New deck and Generate as `/?start=…`.
+  - Its creation surface is `NewDeckStart`: purpose filters, a built-in theme
+    switcher, reviewed template cards, Blank deck, Open `.mydeck`, and expandable
+    **Build with your agent** setup steps. File › New from template focuses it.
+  - The web editor's exit carries New deck and New from template as `/?start=…`.
 - **Credits are read, never computed** (`CreditsMeter`, `lib/credits.ts`).
   On the desktop `GET /v1/account/credits` on the local service answers from
   the cloud account through the gateway (`gateway_routes.balance`, local mode
@@ -4177,7 +4122,9 @@ easy to undo:
 
 ### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
 
-The plan is `docs/integrations/01_MULTILINGUAL_DECKS_NARRATION_AND_SOUND.md`.
+The active agent-first plan is
+`docs/integrations/09_AGENT_FIRST_ENGINE_AND_DECK_PRESETS.md` §5. The deleted
+plan 01 is historical only.
 Rules that are easy to undo:
 
 - **A language is an overlay, not a copy** (`presentation-schema/src/locales.ts`).
@@ -4208,8 +4155,8 @@ Rules that are easy to undo:
   `risk.py`, kept identical). Overlay entries live under `/locales`, and without
   this a forty-slide translation counted as touching no slide.
 - **Translation and voicing are proposals** (`language_routes.py`). Providers
-  are chosen, never fallen back to: `DECKASTRA_TRANSLATION` = stub | model |
-  google, `DECKASTRA_SPEECH` = stub | google. Unset in a checkout is the stub
+  are chosen, never fallen back to: `DECKASTRA_TRANSLATION` = stub | google,
+  `DECKASTRA_SPEECH` = stub | google. Unset in a checkout is the stub
   (visibly `[hi-IN] …` and soft tones); in an installed product it refuses.
   Protected spans (numbers, links, `{{placeholders}}`, kept words) are masked;
   a translator that loses one is refused for that slot. An agent's own
@@ -4649,11 +4596,11 @@ flight. Rotation in `full` match mode is exact only at the two ends — the
 midpoint can arc slightly, because a rotation about the slide origin is not
 linear in the angle.
 
-### The Motion Agent names roles; code computes milliseconds
+### Motion plans name roles; code computes milliseconds
 
-Same split as the Story Architect's, applied to time. `nodes/motion.py` emits
-semantic roles, a preset name and one word of pacing;
-`apps/api/deckastra_api/motion.py` turns that into tracks.
+Connected agents and the editor send semantic roles, a preset name and one word
+of pacing through MCP/API; `apps/api/deckastra_api/motion.py` deterministically
+turns that intent into tracks. There is no in-process Motion Agent.
 
 It has to work this way — the agent runs before the composer, so no element id
 exists to name — and the constraint pays for itself twice. A sequence written in
@@ -4929,86 +4876,30 @@ defaults to the classic runtime and every `.tsx` in the renderer fails with
 "React is not defined" — which is why a root config exists even though nothing
 compiles through it.
 
-### The Critic scores eight dimensions, and measures before it judges
+### Design Check is deterministic; the Critic is removed
 
-Doc 03 §13's full score model: hierarchy, readability, contrast, alignment,
-density, consistency, narrative clarity, and motion quality when there is motion.
-Eight rather than one because the verdict has to *route* — a single 0.6 leaves a
-human to work out what to do, while `hierarchy: 0.4, narrative_clarity: 0.9` says
-the words are fine and the slides are not.
+The model Critic and its `_signals.py` helper were removed in Phase 0. Current
+quality checks operate on composed documents and resolved measurements through
+Design Check and the preset gate. Do not add critique back as a hidden text-model
+task; external agents may propose revisions, but the product's measurements and
+proposal boundary remain authoritative.
 
-`nodes/_signals.py` is doc 03 §14's deterministic service: word counts, layout
-misfits, uncited numbers, repeated layouts, motion counts. Nothing there has an
-opinion. It exists because density is a count, and a model asked to count will
-sometimes say four where there are three and then raise an issue about the four.
-The Critic argues about what the numbers mean, never about what they are.
+### Source evidence belongs to the document, not to a Deckastra index
 
-Doc 03 §13 also allows a rendered preview image, and the render service now makes
-that a wiring job rather than a missing capability — it needs a vision model and
-a composed document, and the Critic runs before the composer.
-
-### Repository grounding runs on bytes, never on execution
-
-`integrations/` reads repositories; `apps/api` indexes, searches and cites them.
-The pipeline is `tree → ignore → rank → read the top N → chunk → index`, and the
-step that makes it viable is **read only what ranked** — deciding from the tree
-alone is the difference between seconds and an hour.
-
-Five things there are load-bearing:
-
-- **No repository code is executed**, and that includes `git`:
-  `LocalDirectorySource` parses `.git/HEAD` as a file. A rule with an exception
-  is not a rule.
-- **`ignore.py` runs before the ranking.** A path that will never be indexed must
-  not occupy a slot in it, and `looks_like_secret` is the one check that must
-  never be relaxed — an embedded private key is a private key in a database.
-- **Retrieval declares which kind it is.** `default_embedder()` returns `None`
-  without a key and the index falls back to BM25 (`lexical.py`), labelling itself
-  `embedding_model="bm25"`, `embedding_semantic=False`, which the UI surfaces.
-  The previous hashing "embedder" was deleted rather than kept as a fallback: 1024
-  hashed dimensions are mostly collisions, and a search that confidently returns
-  the wrong file is worse than one that admits it matches words.
-- **`staleness()` has three states and "unknown" is not "fresh".** A working
-  directory with no commit, or a repository whose head cannot be read, lands
-  there. Reporting it as up to date is how a deck silently drifts from `main`.
-- **Losing access deletes content.** `apply_webhook` removes the chunks on an
-  uninstall, a suspension or a repository deletion. An index that outlives its
-  permission is data we are no longer allowed to hold.
-
-A hit carries **its own repository** (`repository_full_name`, `source_id`), and
-deduplication is keyed on `(repository, reference)`. A search spans every
-connected repository: attributing every hit to the first one is correct only when
-there is exactly one, and with two it cites a file that is not in the repository
-it names — while collapsing two same-named files into one citation. A citation
-naming the wrong repository is worse than no citation.
-
-Provenance lives in the document (`provenance.py`, doc 02 §30) as
-`owner/repo#path:12-48`, attached to the element carrying the claim — not to the
-slide, because the schema targets an element. A slide that cites nothing gets no
-record: the absence is information.
-
-The webhook is the only unauthenticated endpoint in the product. It verifies
-HMAC-SHA256 over the **raw body** (re-serialising the JSON changes the bytes),
-**no configured secret means reject**, and a rejection returns 401 with nothing
-in it — a detailed error is an oracle for guessing the secret.
-
-### The stub planner is repository-aware, and that is deliberate
-
-When research retrieved repository chunks, `stub_repository_story_plan` writes
-the deck out of those chunks and cites them. It is not decoration: without it,
-the entire provenance path — records, the sources endpoint, the UI panel — would
-be unreachable in CI and only exercised by hand with an API key. The citations
-are true because the slides quote the blocks that were actually retrieved.
-`StubClient.register` therefore accepts a callable, so a stub answer can depend
-on what the prompt actually contains.
+Deckastra no longer connects to, indexes or searches source-code repositories.
+Coding agents already operate in the repository and submit reviewed deck changes
+through MCP. Provenance remains part of the document schema, so an agent or an
+import can attach evidence to the element carrying a claim. The slide sources
+endpoint reads only those embedded records; it performs no retrieval and stores
+no separate copy of source code.
 
 ### One session per request, committed before the response
 
 `session_middleware` in `db/session.py`, not a `Depends` with `yield`. FastAPI
 runs a yield-dependency's teardown *after* the response is sent, so a client that
 reads a write's response and immediately issues the next request beats the
-commit. That is not hypothetical — connect-a-repository and index-it are two
-calls the UI makes back to back, and the second returned 404 until this moved.
+commit. That is not hypothetical — a successful write followed immediately by
+a dependent read used to race the commit.
 `get_session` reads the session off `request.state` and falls back to
 `session_scope()` when there is no middleware.
 
@@ -5055,10 +4946,6 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
   safe, and a filter would block a legitimate deck about prompt injection.
   Registration now rejects an untrusted tool without field declarations and
   rejects blank field names. This is a configuration error before any tool call.
-- Durable checkpoints are PostgreSQL's saver on a server and SQLite's on the
-  desktop, in a file beside the database (`<db>.checkpoints`). An in-memory
-  SQLite cannot hold one across connections, so `agent_service._checkpointer`
-  returns None there and `checkpoints_available()` answers no.
 - Models and migrations are two descriptions of one schema, so `test_migrations.py` gates the drift. Add a column → generate a revision.
 - The schema is **not** dialect-neutral: `JsonColumn` is JSONB on PostgreSQL and
   JSON everywhere else. `test_postgres.py` compiles the DDL for both dialects
@@ -5085,9 +4972,9 @@ Fixture ids are **deterministic** so regeneration produces a zero-line diff — 
 Current implementation work is tracked in `docs/PHASE_0_TO_9_FIX_PROGRESS.md`.
 This does not declare all audited phases complete.
 
-Autosave callers share an active drain promise. An AI document arriving during
-unsaved/in-flight edits is refused rather than clearing local work, and AskPanel
-reports that refusal. A versioned browser recovery journal holds the local
+Autosave callers share an active drain promise. A proposal document arriving
+during unsaved/in-flight edits is refused rather than clearing local work, and
+the proposals panel reports that refusal. A versioned browser recovery journal holds the local
 snapshot, operations and base version before sending. A successful acknowledgement
 removes only acknowledged work from recovery. Reload on the same base recovers the
 queue; another server version recovers the local snapshot as a conflict, without
@@ -5165,11 +5052,11 @@ own listeners on disposal. An unavailable initialization attempt can be retried.
 This implements scene invalidation, not a complete font manifest/loading barrier;
 live delayed-font and hydration acceptance remain open in the progress report.
 
-Blank authoring uses `POST /v1/presentations`, not the generation endpoint. It
+Blank authoring uses `POST /v1/presentations`, not a composition endpoint. It
 requires project/workspace editor access, creates one empty slide in the canonical
 document shell and saves a user-attributed initial version without an agent run.
-The home and generation-failure actions open the persisted editor route; a failed
-request retains the brief and exposes retry. Blank documents omit fabricated
+The home opens the persisted editor route only after the save succeeds; a failed
+request stays on the home and exposes retry. Blank documents omit fabricated
 generation provenance. HTTP/component tests cover creation, persistence, editing,
 role boundaries and retry; the full live authoring/onboarding journey remains open.
 

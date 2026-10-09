@@ -22,37 +22,34 @@ most of the window.
   Motion. Ctrl+Alt+4 and 5 show or put away each tab.
 - **Enforced by** `tests/dock.test.ts` and `tests/panels.test.ts`.
 
-## 2. One assistant
+## 2. One small services hub
 
-There is one prompt box with quick actions (`src/components/AssistantPanel.tsx`).
-It opens beside any mode from the Assistant button in the top bar, from View ›
-Assistant, or from the command palette, where typing a sentence offers "Ask the
-assistant" with the words put in the prompt (never sent until Run). AI is no
-longer a mode: the mode switch is Design, Motion, Code.
+`src/components/AssistantPanel.tsx` opens beside any mode from the Assistant
+button in the top bar or from View › Assistant. AI is not a mode: the mode
+switch is Design, Motion, Code.
 
-- **The prompt box keeps Ask's contract.** It never applies anything itself. The
-  server decides from the operations: a small change comes back applied, with
-  Undo; a larger one waits under "Waiting for you" as Before and After pictures.
-- **Quick actions run the existing assistant tasks:** Fix layout, Write alt
-  text, Translate (opens Languages), Write narration, Plan motion, Add slides.
-  Add slides needs words in the prompt box and adds after the existing slides
-  unless Options says otherwise.
-- **Also in the panel:** what is waiting, languages, review issues, sources and
-  history.
+- **Waiting for you** shows proposals from connected agents as Before and After
+  pictures. The panel never authors or applies them itself.
+- **Languages, Voice, and Media** open the product services that coding agents
+  cannot provide locally.
+- Tidy remains in Design Check and motion remains in Motion mode. There is no
+  general prompt box or model-writing quick action in a deck.
 - **Enforced by** `tests/assistant-panel.test.tsx`.
 
-A new deck starts in the home's prompt bar ("Describe a deck and we'll draft
-it…", `GenerateDeck.tsx`), shared by the web and desktop homes. Create writes
-the outline, which is reviewed in a drawer (`StoryCheckpoint`); Blank deck sits
-beside it. One deck at a time per project: while an outline waits, Create says
-to decide on it first, because a second run would silently replace it.
+A new deck starts in the shared web and desktop home at **New from template**
+(`NewDeckStart.tsx`). Templates are filtered by purpose and previewed in any
+built-in theme; selecting one calls the deterministic composer. Blank deck and
+Open `.mydeck` remain beside it. **Build with your agent** gives the MCP path:
+`preset_list`, then `deck_from_template` or `deck_compose`; no model graph runs
+inside Deckastra.
 
 ### The command palette and Settings
 
 - **Ctrl+K opens the command palette** (`shell/CommandPalette.tsx`,
   `src/lib/commands.ts`). Every entry names a host command and runs through the
-  same dispatcher as the desktop menu. A new feature adds a command there, not a
-  button. **Enforced by** `tests/command-palette.test.tsx`.
+  same dispatcher as the desktop menu. Unmatched text is not converted into an
+  assistant edit. A new feature adds a command there, not a button. **Enforced
+  by** `tests/command-palette.test.tsx`.
 - **Settings** (`SettingsShell.tsx`) is shared by both shells. Its sections are
   Account, Plans and billing, AI and privacy, Agents and Languages. A section
   the host does not pass is absent. The desktop passes Account, AI and privacy,

@@ -1,6 +1,6 @@
 # Deckastra AI spending stops
 
-Operator handoff, 2026-10-05. These controls do not guarantee an exact invoice ceiling. Gemini tasks remain disabled pending reviewed qualification.
+Operator handoff, 2026-10-05. These controls do not guarantee an exact invoice ceiling. Paid image generation remains disabled pending an approved model, verified pricing, and a separate live-test budget.
 
 ## Live controls
 
@@ -44,7 +44,7 @@ python infrastructure/deployment/monitoring.py --project deckastra --email nikhi
 
 Repeat for `deckastra-prod`. For first-time setup only, `--configure-native-cap` creates a missing native cap; confirm its amount, project, service and state in Console. Do not recreate an already configured cap just because a Preview API read omits it. The isolated subscriber build uploads an explicit allowlist of five source files, copies only its Python handler/policy and requirements into the image, and uses the existing attached build identity. The deployed image tag is a digest of those source files. Subscriber IAM, Pub/Sub, caps and alerts are scripted; they are outside the core Terraform module.
 
-Rehearsal is an explicit operator action and requires an empty Gemini model map:
+Rehearsal is an explicit operator action and requires `DECKASTRA_VERTEX_IMAGE_MODEL` to be empty:
 
 ```powershell
 python infrastructure/deployment/verify_budget_stop.py --project deckastra --exercise-shutdown
@@ -52,4 +52,4 @@ python infrastructure/deployment/verify_budget_stop.py --project deckastra --exe
 
 It briefly disables the three real AI APIs with a synthetic budget message through an isolated temporary topic/subscription. It removes test delivery resources before restoring only initially enabled APIs. It sends no model inference request. Do not run it during live paid AI use.
 
-After a real breach, investigate usage and the budget first. Keep Gemini tasks disabled until qualification passes. The subscriber has no permission to resume services. An authorized owner can explicitly re-enable the three APIs, and an enforced native cap must separately be lifted in Cloud Billing. Re-enabling does not change the continuing charges for SQL, storage or already completed usage. The foundation provisioning command also enables APIs; do not use it as an accidental recovery from a budget stop.
+After a real breach, investigate usage and the budget first. Keep paid media disabled until the operator explicitly approves resumption. The subscriber has no permission to resume services. An authorized owner can explicitly re-enable the three APIs, and an enforced native cap must separately be lifted in Cloud Billing. Re-enabling does not change the continuing charges for SQL, storage or already completed usage. The foundation provisioning command also enables APIs; do not use it as an accidental recovery from a budget stop.

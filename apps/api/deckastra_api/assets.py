@@ -83,6 +83,7 @@ def register(
     height: int | None = None,
     duration_ms: int | None = None,
     waveform_peaks: list[float] | None = None,
+    word_timings: list[dict[str, Any]] | None = None,
 ) -> Asset:
     """Record a file the workspace now owns.
 
@@ -124,6 +125,7 @@ def register(
         height=height,
         duration_ms=duration_ms,
         waveform_peaks=waveform_peaks,
+        word_timings=word_timings,
         reference_count=0,
     )
     session.add(asset)
@@ -147,7 +149,7 @@ def referenced_ids(document: dict[str, Any]) -> set[str]:
     def walk(value: Any) -> None:
         if isinstance(value, dict):
             for key, inner in value.items():
-                if key in ("assetId", "asset_id") and isinstance(inner, str):
+                if key in ("assetId", "asset_id", "posterAssetId") and isinstance(inner, str):
                     found.add(inner)
                 elif key == "id" and value.get("storageKey") and isinstance(inner, str):
                     # An entry in the document's own asset manifest.
@@ -170,7 +172,8 @@ def referenced_ids(document: dict[str, Any]) -> set[str]:
 #: memory to be told no by the process downstream is the cost the check exists to
 #: avoid. The API's limits are the tighter pair, so the worker's are a backstop.
 MAX_RENDER_ASSET_BYTES = 8 * 1024 * 1024
-MAX_RENDER_TOTAL_BYTES = 32 * 1024 * 1024
+MAX_RENDER_VIDEO_BYTES = 32 * 1024 * 1024
+MAX_RENDER_TOTAL_BYTES = 96 * 1024 * 1024
 
 
 def inline_for_package(session, *, presentation_id, document):
@@ -201,6 +204,9 @@ def audio_for_export(document: dict[str, Any], locale: str | None) -> set[str]:
     """
     language = locale or (document.get("metadata") or {}).get("language") or "en"
     wanted: set[str] = set()
+    soundtrack_asset = ((document.get("soundtrack") or {}).get("source") or {}).get("assetId")
+    if isinstance(soundtrack_asset, str):
+        wanted.add(soundtrack_asset)
     for slide in document.get("slides") or []:
         for cue in ((slide.get("narration") or {}).get("cues") or []):
             take = (cue.get("takes") or {}).get(language)
@@ -289,12 +295,15 @@ def inline_for_render(
                 continue
         # Fonts travel the same way as pictures: a deck's uploaded face has to
         # reach a render host that cannot fetch it (Design tab review, 2026-09-26).
-        if not kind.startswith("image/") and not _is_font(kind) and not kind.startswith("audio/"):
+        if row.kind == "video" and still:
+            entry["problem"] = "moving video is represented by its poster frame in a still export"
+        elif not kind.startswith("image/") and not _is_font(kind) and not kind.startswith("audio/") and kind != "video/mp4":
             entry["problem"] = f"it is stored as {kind or 'an unknown type'}, which this renderer cannot embed"
-        elif row.bytes > MAX_RENDER_ASSET_BYTES:
+        elif row.bytes > (MAX_RENDER_VIDEO_BYTES if kind == "video/mp4" else MAX_RENDER_ASSET_BYTES):
+            limit = MAX_RENDER_VIDEO_BYTES if kind == "video/mp4" else MAX_RENDER_ASSET_BYTES
             entry["problem"] = (
                 f"it is {row.bytes // (1024 * 1024)}MB, over the "
-                f"{MAX_RENDER_ASSET_BYTES // (1024 * 1024)}MB limit for an embedded image"
+                f"{limit // (1024 * 1024)}MB limit for an embedded asset"
             )
         elif total + row.bytes > MAX_RENDER_TOTAL_BYTES:
             entry["problem"] = (
@@ -320,13 +329,14 @@ def inline_for_render(
                 # smaller is a budget that does not bound anything, and it is the
                 # *disagreement* that would let a deck through.
                 charge = max(len(data), row.bytes)
-                if len(data) > MAX_RENDER_ASSET_BYTES or total + charge > MAX_RENDER_TOTAL_BYTES:
+                mime = (stored_type or kind).split(";", 1)[0].strip().lower()
+                per_file = MAX_RENDER_VIDEO_BYTES if mime == "video/mp4" else MAX_RENDER_ASSET_BYTES
+                if len(data) > per_file or total + charge > MAX_RENDER_TOTAL_BYTES:
                     entry["problem"] = (
                         f"this deck's images exceed the {MAX_RENDER_TOTAL_BYTES // (1024 * 1024)}MB "
                         "a single render can embed"
                     )
                 else:
-                    mime = (stored_type or kind).split(";", 1)[0].strip().lower()
                     frame = representative_frame(data) if still and mime.startswith("image/") else None
                     if frame is not None:
                         data, mime = frame, "image/png"

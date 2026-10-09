@@ -93,10 +93,8 @@ export interface CreditBalance {
 }
 
 /**
- * What each hosted AI task can do right now (`GET /v1/account/capabilities`).
- *
- * The model map is empty until a model is qualified, so every task may be
- * unavailable with a reason. Render that honestly; never guess a model.
+ * What paid media can do right now (`GET /v1/account/capabilities`).
+ * Image generation may be unavailable until an operator pins a media model.
  */
 export interface AccountTaskCapability {
   available: boolean;
@@ -123,31 +121,7 @@ export interface AccountDeletion {
 
 export interface Capabilities {
   sharing: boolean;
-  /**
-   * Whether a generation can pause at its outline for review (editor Phase 6).
-   * It needs a durable checkpoint store; where there is none, "review the
-   * outline first" is not offered rather than offered and refused. Optional
-   * because a server older than the field says nothing, which means no.
-   */
-  checkpoints?: boolean;
-  /**
-   * What pressing Generate will do here (final package review, item 19).
-   * Optional because an older server says nothing.
-   */
-  generation?: GenerationStatus;
   assistant?: import("./assistant").AssistantCapabilities;
-}
-
-/**
- * Which provider writes a generated deck, whether it can, and why not.
- *
- * `stub` is the development planner (a template, not a model) and only a
- * checkout answers it; `none` is an installed product with nothing set up.
- */
-export interface GenerationStatus {
-  provider: "cloud" | "local" | "hybrid" | "vertex" | "stub" | "none" | "unavailable" | "misconfigured";
-  available: boolean;
-  reason: string | null;
 }
 
 export interface AccountContext {
@@ -156,7 +130,9 @@ export interface AccountContext {
   capabilities: Capabilities;
 }
 
-/** What `/health` answers. `generation` says whether a real key is configured. */
+/** What `/health` answers. */
 export interface HealthReport {
-  generation: "model" | "stub" | "unavailable";
+  status: "ok";
+  database: string;
+  migrations: string;
 }

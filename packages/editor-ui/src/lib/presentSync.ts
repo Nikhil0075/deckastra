@@ -30,7 +30,7 @@ export interface SyncMessage {
   /** Narration muted on the projector (integration plan 01 §3.4). */
   muted?: boolean;
   /** The line being narrated, for the presenter's script view. */
-  speaking?: { text: string; remainingMs: number } | null;
+  speaking?: { text: string; remainingMs: number; wordIndex?: number; word?: string } | null;
   /**
    * `command` (presenter → audience): an intent the audience window carries
    * out, because it owns the motion. "Next" from the laptop has to reveal the
@@ -47,7 +47,7 @@ export interface PresentState {
   blacked: boolean;
   motionPaused?: boolean;
   muted?: boolean;
-  speaking?: { text: string; remainingMs: number } | null;
+  speaking?: { text: string; remainingMs: number; wordIndex?: number; word?: string } | null;
 }
 
 export type PresentCommand = { action: "advance"; delta: 1 | -1 } | { action: "black" } | { action: "motion" } | { action: "mute" };
@@ -130,7 +130,12 @@ export class PresentChannel {
         ...(typeof message.motionPaused === "boolean" ? { motionPaused: message.motionPaused } : {}),
         ...(typeof message.muted === "boolean" ? { muted: message.muted } : {}),
         ...(message.speaking && typeof message.speaking.text === "string" && typeof message.speaking.remainingMs === "number"
-          ? { speaking: { text: message.speaking.text.slice(0, 2000), remainingMs: Math.max(0, message.speaking.remainingMs) } }
+          ? { speaking: {
+              text: message.speaking.text.slice(0, 2000),
+              remainingMs: Math.max(0, message.speaking.remainingMs),
+              ...(typeof message.speaking.wordIndex === "number" ? { wordIndex: Math.max(0, Math.trunc(message.speaking.wordIndex)) } : {}),
+              ...(typeof message.speaking.word === "string" ? { word: message.speaking.word.slice(0, 200) } : {}),
+            } }
           : message.speaking === null
             ? { speaking: null }
             : {}),

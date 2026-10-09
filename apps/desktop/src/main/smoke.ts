@@ -1973,9 +1973,9 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
         // drawer's content lives there now.
         "settings",
         async () => {
-          if (!(await page(OPEN_SETTINGS))) throw new Error("cannot open Settings from the account menu");
+          await openSettings(window);
           await click("settings-tab-ai");
-          await until(window, `document.querySelector('[data-testid="intelligence-route"]')`, 20_000);
+          await until(window, `document.querySelector('[data-testid="settings-ai"]')`, 20_000);
         },
       ],
       [
@@ -1996,12 +1996,11 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
         },
       ],
       [
-        // The home's prompt bar (roadmap 08 §1.3), with its Options open so
-        // the audit covers them too.
-        "generate",
+        // Template-first creation and the connected-agent instructions.
+        "templates",
         async () => {
-          await until(window, `document.querySelector('[data-testid="generate-instruction"]')`, 10_000);
-          await page(`document.querySelector(".dk-home-prompt__options")?.setAttribute("open", "")`);
+          await until(window, `document.querySelector('[data-testid="template-start"]')`, 10_000);
+          await page(`document.querySelector('[data-testid="build-with-agent"]')?.setAttribute("open", "")`);
         },
       ],
     ];
@@ -2210,16 +2209,14 @@ async function runMotion(window: BrowserWindow, dir: string, record: Record<stri
 }
 
 /**
- * AI mode and the story checkpoint, driven through what a person presses
- * (editor Phase 6).
+ * Agent proposals and template-first creation, driven through what a person presses.
  *
  * 1. A pending change reaches the AI panel as a card with Before and After
  *    pictures drawn in this window, and Reject clears it in the store without
  *    touching the deck.
- * 2. Generate stops at an outline; Revise sends a note and stops again; Approve
- *    builds the deck and the main process opens it.
+ * 2. A reviewed template composes a deck and the main process opens it.
  *
- * It leaves the profile as it found it: the generated deck is deleted and the
+ * It leaves the profile as it found it: the templated deck is deleted and the
  * original reopened. Run it on its own profile (`DECKASTRA_SMOKE_PROFILE`).
  */
 async function runAi(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
@@ -2277,118 +2274,26 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
   if (after.pending !== 0) throw new Error("The store still has a pending proposal after Reject.");
   if (after.version !== proposal.version) throw new Error("Rejecting changed the deck.");
 
-  // ---- 2. Generate through the story checkpoint.
-  //
-  // Only where this build can generate at all. A packaged build refuses the
-  // stub on purpose (item 20) and disables Generate with a reason beside it
-  // (item 19), so on one of those there is no journey to drive — and reporting
-  // that as a failure would have every clean-environment run go red for the
-  // product working exactly as designed. Asked of the service rather than read
-  // off the button, because a skip that depends on what the deck list has
-  // finished rendering is a skip that fires intermittently.
-  const generation = (await page(
-    `fetch("/__api/v1/account").then((r) => r.json()).then((a) => a.capabilities?.generation ?? null)`,
-  )) as { provider?: string; available?: boolean; reason?: string } | null;
-  record.generationCapability = generation;
-  // Since track 2 every desktop build routes AI through the signed-in account
-  // (`sidecar.ts` sets the hosted route), so a checkout that is not signed in
-  // cannot generate either. The home then says so and disables Create, which
-  // the step checks before it records the skip by name.
-  if (generation && generation.available === false) {
-    await page(clickTestId("open-deck-list"));
-    if (!(await until(window, `document.querySelector('[data-testid="generation-route"][data-available="false"]') && document.querySelector('[data-testid="generate-submit"]')?.disabled`, 20_000))) {
-      throw new Error("Generation is unavailable, and the home did not say so or still offered Create.");
-    }
-    record.generationSkipped =
-      `generation is not available here (${generation.reason ?? generation.provider ?? "no provider"}); ` +
-      "the home said so and Create was disabled (items 19 and 20, roadmap 08 track 2)";
-    // Put things back: the original deck open again, as the full journey ends.
-    // The home lists its decks a moment after it appears; wait for the card.
-    if (!(await until(window, `document.querySelector('[data-deck-id="${original}"] .dk-card__thumb')`, 20_000))) {
-      throw new Error("The home never listed the deck the step started on.");
-    }
-    await page(`document.querySelector('[data-deck-id="${original}"] .dk-card__thumb').click()`);
-    await until(window, `document.querySelector("[data-editor-canvas]")`, 20_000);
-    return;
-  }
-
+  // ---- 2. Create through a reviewed template.
   await page(clickTestId("open-deck-list"));
-  // Generation lives in the home's prompt bar now (roadmap 08 §1.3).
-  if (!(await until(window, `document.querySelector('[data-testid="generate-instruction"]') && !document.querySelector('[data-testid="generate-instruction"]').disabled`, 20_000))) {
-    throw new Error("The home offers no prompt to describe a deck.");
+  if (!(await until(window, `document.querySelector('[data-testid="use-template-technical-architecture"]')`, 20_000))) {
+    throw new Error("The home never loaded the reviewed template catalog.");
   }
-  // What the prompt bar tells someone before they write a brief (item 19).
-  record.generationRoute = await page(
-    `document.querySelector('[data-testid="generation-route"]')?.innerText ?? null`,
-  );
-    record.reviewOffered = await page(`!!document.querySelector('[data-testid="generate-review"]')?.checked`);
-  if (!record.reviewOffered) throw new Error("This server says it cannot pause, so the outline-first option is missing.");
-  await page(`(() => {
-    const field = document.querySelector('[data-testid="generate-instruction"]');
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(field, "Why a migration needs a control tower");
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  })()`);
-  await page(clickTestId("generate-submit"));
-  // Stop at whichever comes first — the outline, or the drawer saying why there
-  // is none — and put the drawer's own words in the record.
-  await until(
-    window,
-    `document.querySelector('[data-testid="story-checkpoint"]') || document.querySelector('[data-testid="generate-drawer"] [role="alert"], [data-testid="home-prompt"] [role="alert"]')`,
-    180_000,
-  );
-  const refusal = (await page(
-    `document.querySelector('[data-testid="generate-drawer"] [role="alert"], [data-testid="home-prompt"] [role="alert"]')?.textContent ?? null`,
-  )) as string | null;
-  record.generationRefusal = refusal;
-  if (!(await page(`Boolean(document.querySelector('[data-testid="story-checkpoint"]'))`))) {
-    // A packaged build refuses stub generation on purpose (item 20), and says
-    // so in the drawer (item 19). There is then no outline to stop at, and
-    // calling that a failure would have this step reporting the product
-    // working as designed as though it were broken — on every clean-environment
-    // run, which is the run this step most needs to be believed on. The
-    // proposal journey above has already passed by here.
-    // A packaged build refuses stub generation on purpose (item 20) and says so
-    // in the route panel (item 19) — which is where the words are, not in an
-    // alert. Keying this on an alert is why the first version of the skip never
-    // fired and this step went on reporting the product working as designed as
-    // a failure.
-    const route = String(record.generationRoute ?? "");
-    const notSetUp = /not set up|GENERATION IS NOT SET UP/i.test(route) || Boolean(refusal);
-    if (app.isPackaged && notSetUp) {
-      record.generationSkipped =
-        "generation is not configured on this build, which is what a packaged build does (items 19 and 20)";
-      return;
-    }
-    throw new Error(`Generation did not stop at an outline.${refusal ? ` The drawer said: ${refusal}` : ""}`);
+  await page(clickTestId("use-template-technical-architecture"));
+  if (!(await until(window, `document.querySelector("[data-editor-canvas]")`, 30_000))) {
+    throw new Error("Using a template did not open the composed deck.");
   }
-  record.outline = await page(`[...document.querySelectorAll(".dk-checkpoint__headline")].map((node) => node.textContent)`);
-  await capture(window, join(dir, "ai-checkpoint.png"));
-
-  // Revise: disabled until there is a note, then back at an outline.
-  record.reviseDisabledWithoutNote = await page(`document.querySelector('[data-testid="checkpoint-revise"]').disabled`);
-  await page(`(() => {
-    const field = document.querySelector('[data-testid="checkpoint-note"]');
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(field, "Open with the cost of doing nothing.");
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  })()`);
-  await page(clickTestId("checkpoint-revise"));
-  const ready = `document.querySelector('[data-testid="story-checkpoint"]') && !document.querySelector('[data-testid="checkpoint-approve"]').disabled && !document.querySelector(".dk-generate__working")`;
-  if (!(await until(window, ready, 180_000))) throw new Error("Revising did not come back to an outline.");
-  record.revised = true;
-
-  await page(clickTestId("checkpoint-approve"));
-  if (!(await until(window, `document.querySelector("[data-editor-canvas]")`, 180_000))) {
-    throw new Error("Approving did not open the generated deck.");
+  const templated = await openId();
+  record.templated = templated;
+  if (templated === original) throw new Error("Template creation left the original deck open.");
+  const composed = (await page(`(async () => (await (await fetch("/__api/v1/presentations/${templated}")).json()).document)()`)) as { metadata?: { templateId?: string }; slides?: unknown[] };
+  record.templateId = composed.metadata?.templateId;
+  record.templateSlides = composed.slides?.length ?? 0;
+  if (record.templateId !== "technical-architecture" || !record.templateSlides) {
+    throw new Error("The stored deck did not preserve its template id and composed slides.");
   }
-  const generated = await openId();
-  record.generated = generated;
-  if (generated === original) throw new Error("The main process still names the original deck as open.");
-  const stored = (await page(`(async () => (await (await fetch("/__api/v1/presentations/${generated}")).json()).document.slides.length)()`)) as number;
-  record.generatedSlides = stored;
-  if (!stored) throw new Error("The generated deck has no slides in the store.");
-
-  // ---- Put things back: delete the generated deck, reopen the original.
-  await page(`fetch("/__api/v1/presentations/${generated}", { method: "DELETE" }).then((r) => r.status)`);
+  await capture(window, join(dir, "template-deck.png"));
+  await page(`fetch("/__api/v1/presentations/${templated}", { method: "DELETE" }).then((r) => r.status)`);
   await page(clickTestId("open-deck-list"));
   await until(window, `document.querySelector('[data-deck-id="${original}"]')`, 20_000);
   await page(`document.querySelector('[data-deck-id="${original}"] .dk-card__thumb').click()`);
@@ -2990,9 +2895,8 @@ async function runMenu(
   press("open-settings");
   await expect("View > Settings did not open", `document.querySelector('[data-testid="settings"]')`);
   await page(`document.querySelector('[data-testid="settings-tab-ai"]')?.click()`);
-  // It reads the account when it opens, so the route arrives a moment later.
-  await expect("Settings never named the route", `document.querySelector('[data-testid="intelligence-route"]')`);
-  record.intelligence = await page(`document.querySelector('[data-testid="intelligence-route"]').innerText`);
+  await expect("Settings never explained deck creation", `document.querySelector('[data-testid="settings-ai"]')`);
+  record.intelligence = await page(`document.querySelector('[data-testid="settings-ai"]').innerText`);
   await page(`document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))`);
   checks.push("intelligence");
 
@@ -3270,12 +3174,12 @@ async function runIntelligence(window: BrowserWindow, record: Record<string, unk
   const wait = async (what: string, expression: string, timeoutMs = 30_000) => {
     if (!(await until(window, expression, timeoutMs))) throw new Error(what);
   };
-  const route = () => page(`document.querySelector('[data-testid="intelligence-route"]')?.innerText ?? null`);
+  const route = () => page(`document.querySelector('[data-testid="settings-ai"]')?.innerText ?? null`);
 
   await wait("the editor never opened", `document.querySelector("[data-editor-canvas]")`);
-  if (!(await page(OPEN_SETTINGS))) throw new Error("Settings did not open from the account menu");
+  await openSettings(window);
   await page(`document.querySelector('[data-testid="settings-tab-ai"]')?.click()`);
-  await wait("the drawer never named a route", `document.querySelector('[data-testid="intelligence-route"]')`);
+  await wait("Settings never explained deck creation", `document.querySelector('[data-testid="settings-ai"]')`);
   record.before = await route();
 
   record.account = await page(`window.deckastraAccount.state()`);
@@ -3434,27 +3338,33 @@ const AGENT_ACCESS_STATUS = `document.querySelector('[data-testid="settings-agen
  * Open Settings the way a person does since roadmap 08 §1.4 took the gear off
  * the bar: the avatar menu, then "Settings…". Resolves whether it opened.
  */
-const OPEN_SETTINGS = `(async () => {
-  const wait = () => new Promise((done) => setTimeout(done, 50));
-  const trigger = document.querySelector('[data-testid="account-menu"]');
-  if (!trigger) return false;
-  trigger.click();
-  for (let i = 0; i < 40; i += 1) {
-    const item = [...document.querySelectorAll('[role="menuitem"]')].find((node) => /^Settings/.test(node.textContent.trim()));
-    if (item) { item.click(); break; }
-    await wait();
+async function openSettings(window: BrowserWindow): Promise<void> {
+  // A deck thumbnail also contains `[data-element-id]`, so callers that waited
+  // on elements could arrive while the deck list was still on screen. The
+  // account menu exists there too, but the editor is the acceptance journey's
+  // stable starting surface and has finished mounting its host-owned settings.
+  if (!(await until(window, `document.querySelector('[data-testid="account-menu"]')`, 30_000))) {
+    throw new Error("The account menu never appeared");
   }
-  for (let i = 0; i < 40; i += 1) {
-    if (document.querySelector('[data-testid="settings"]')) return true;
-    await wait();
+  await trustedClick(window, '[data-testid="account-menu"]');
+  const found = await window.webContents.executeJavaScript(`(() => {
+    const item = [...document.querySelectorAll('[role="menuitem"]')]
+      .find((node) => /^Settings/.test(node.textContent?.trim() ?? ""));
+    if (!item) return false;
+    item.setAttribute("data-smoke-settings", "true");
+    return true;
+  })()`);
+  if (!found) throw new Error("The account menu showed no Settings item");
+  await trustedClick(window, '[data-smoke-settings="true"]');
+  if (!(await until(window, `document.querySelector('[data-testid="settings"]')`, 10_000))) {
+    throw new Error("Settings did not open from the account menu");
   }
-  return false;
-})()`;
+}
 
 /** Settings › Agents, open and showing its switch. The switch is where consent is given now. */
 async function openAgentSettings(window: BrowserWindow): Promise<void> {
-  if (!(await window.webContents.executeJavaScript(OPEN_SETTINGS))) throw new Error("Settings did not open from the account menu");
-  await window.webContents.executeJavaScript(clickTestId("settings-tab-agents"));
+  await openSettings(window);
+  await trustedClick(window, '[data-testid="settings-tab-agents"]');
   if (!(await until(window, `document.querySelector('[data-testid="settings-agent-toggle"]')`, 10_000))) {
     throw new Error("Settings › Agents showed no switch");
   }
@@ -3782,7 +3692,6 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
 
   await need("the editor never opened", `document.querySelector("[data-editor-canvas]")`, 30_000);
   const original = await current();
-  record.generationRoute = await page(`fetch("/__api/v1/account").then((r) => r.json()).then((a) => a.capabilities?.generation ?? null).catch(() => null)`);
   // Every request the page makes from here, so "no model request" is a record.
   await page(`(() => {
     if (window.__smokeRequests) return;
@@ -3967,7 +3876,7 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     await capture(window, join(dir, "authoring.png"));
 
     const requests = (await page<string[]>(`window.__smokeRequests || []`)) ?? [];
-    const model = requests.filter((url) => /\/(generate|runs|agent|proposals)(\/|\?|$)/.test(url));
+    const model = requests.filter((url) => /\/(runs|agent|proposals)(\/|\?|$)/.test(url));
     record.requestCount = requests.length;
     record.modelRequests = model;
     if (model.length > 0) throw new Error(`authoring: the journey reached a model route: ${model[0]}`);
