@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 
 import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { runExport } from "../src/index";
+import { detectFfmpeg } from "../src/video";
 
 const encoder = process.env.DECKASTRA_FFMPEG;
 
@@ -15,7 +16,9 @@ describe.skipIf(!encoder)("generated video export handling", () => {
     try {
       const clipPath = join(work, "clip.mp4");
       const posterPath = join(work, "poster.png");
-      const makeClip = spawnSync(encoder!, ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=red:s=320x180:r=24:d=4", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", clipPath], { windowsHide: true });
+      // The clip is made with whichever H.264 encoder this ffmpeg has, as the
+      // exporter does: an LGPL desktop build has h264_mf and no libx264.
+      const makeClip = spawnSync(encoder!, ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=red:s=320x180:r=24:d=4", "-an", ...detectFfmpeg(encoder!).encoder.args, clipPath], { windowsHide: true });
       const makePoster = spawnSync(encoder!, ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:s=320x180", "-frames:v", "1", posterPath], { windowsHide: true });
       expect(makeClip.status, makeClip.stderr?.toString()).toBe(0);
       expect(makePoster.status, makePoster.stderr?.toString()).toBe(0);
