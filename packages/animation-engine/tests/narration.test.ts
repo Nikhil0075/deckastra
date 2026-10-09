@@ -11,6 +11,8 @@ import {
   segmentAt,
   soundsAt,
   soundsBetween,
+  scheduleSoundtrack,
+  spokenWordAt,
   steppedClock,
   type NarrationCueInput,
   type SoundCueInput,
@@ -86,6 +88,41 @@ describe("narrated playback", () => {
     expect(segmentAt(schedule, clip.startMs + 1)?.index).toBe(2);
   });
 
+  it("advances on the authored spoken word while the recording continues", () => {
+    const base = cues[0]!;
+    const take = base.takes!.en!;
+    const linked: NarrationCueInput = {
+      ...base,
+      advanceOnWord: 1,
+      takes: {
+        en: {
+          ...take,
+          wordTimings: [
+            { word: "Reveal", startMs: 100, endMs: 300 },
+            { word: "now", startMs: 650, endMs: 900 },
+          ],
+        },
+      },
+    };
+    const schedule = compileNarratedPlayback(timelineFor(), [linked, ...cues.slice(1)], [], { locale: "en", gapMs: 400 });
+    const first = schedule.segments[0]!;
+    const clip = first.narration[0]!;
+    expect(first.wordAdvanceAtMs).toBe(clip.startMs + 650);
+    expect(first.advanceAtMs).toBe(Math.max(first.animationEndMs, clip.startMs + 650));
+    expect(first.advanceAtMs).toBeLessThan(clip.endMs);
+    expect(schedule.segments[1]!.startMs).toBe(first.advanceAtMs);
+    expect(narrationAt(schedule, first.advanceAtMs + 20)?.clip.cueId).toBe(linked.id);
+    expect(spokenWordAt(schedule, clip.startMs + 700)).toEqual({ cueId: linked.id, index: 1, word: "now" });
+  });
+
+  it("falls back to end-of-line advancement when the selected word has no timing", () => {
+    const linked: NarrationCueInput = { ...cues[0]!, advanceOnWord: 99 };
+    const schedule = compileNarratedPlayback(timelineFor(), [linked, ...cues.slice(1)], [], { locale: "en", gapMs: 400 });
+    const first = schedule.segments[0]!;
+    expect(first.wordAdvanceAtMs).toBeUndefined();
+    expect(first.advanceAtMs).toBe(Math.max(first.animationEndMs, first.narrationEndMs) + 400);
+  });
+
   it("keeps reduced motion's shorter animation and the full narration", () => {
     const full = compileNarratedPlayback(timelineFor(false), cues, [], { locale: "en", gapMs: 0 });
     const reduced = compileNarratedPlayback(timelineFor(true), cues, [], { locale: "en", gapMs: 0 });
@@ -101,6 +138,22 @@ describe("narrated playback", () => {
     const schedule = compileNarratedPlayback(timelineFor(), [...cues, orphan], [], { locale: "en" });
     expect(schedule.orphaned).toEqual([orphan.id]);
     expect(schedule.segments.flatMap((segment) => segment.narration.map((clip) => clip.cueId))).not.toContain(orphan.id);
+  });
+});
+
+describe("soundtrack scheduling", () => {
+  it("compiles fades and voice ducking into an explicit gain envelope", () => {
+    const schedule = compileNarratedPlayback(timelineFor(), cues, [], { locale: "en", gapMs: 0 });
+    const music = scheduleSoundtrack(
+      { source: { library: "ambient-calm" }, volume: 0.5, loop: true, fadeInMs: 500, fadeOutMs: 700, ducking: { gainDb: -12, attackMs: 100, releaseMs: 200 } },
+      schedule.segments.flatMap((segment) => segment.narration),
+      schedule.totalMs,
+      6000,
+    );
+    expect(music.gain[0]).toEqual({ atMs: 0, volume: 0 });
+    expect(music.gain.at(-1)).toEqual({ atMs: schedule.totalMs, volume: 0 });
+    expect(music.gain.some((point) => point.volume < 0.2 && point.volume > 0)).toBe(true);
+    expect(music.loop).toBe(true);
   });
 });
 

@@ -48,6 +48,22 @@ export function transitionCss(
     for (const [name, value] of Object.entries(properties)) {
       if ((TRANSLATE as readonly string[]).includes(name)) continue;
       if ((SCALE as readonly string[]).includes(name)) continue;
+      if (name === "clipInset") {
+        declaration.clipPath = `inset(0 ${value}% 0 0)`;
+        continue;
+      }
+      if (name === "clipRadius") {
+        declaration.clipPath = `circle(${value}% at 50% 50%)`;
+        continue;
+      }
+      if (name === "rotateY") {
+        declaration.rotate = `y ${value}deg`;
+        continue;
+      }
+      if (name === "blur") {
+        if (Number(value) > 0) declaration.filter = `blur(${value}px)`;
+        continue;
+      }
       declaration[name] = String(value);
     }
 

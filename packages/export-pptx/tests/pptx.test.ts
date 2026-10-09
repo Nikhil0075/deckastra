@@ -23,10 +23,11 @@ import { crc32, deflateSync, inflateRawSync } from "node:zlib";
 
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
-import { fontManifest, type ExportInput } from "@deckastra/export-core";
+import { DegradationLedger, fontManifest, type ExportInput } from "@deckastra/export-core";
 import { describe, expect, it } from "vitest";
 
 import { buildPptx } from "../src/index";
+import { transitionFor } from "../src/timing";
 import { hex, rotation, unitsFor, xml } from "../src/units";
 import { createZip } from "../src/zip";
 
@@ -445,6 +446,100 @@ describe("animation mapping", () => {
     ).toBe(false);
   });
 
+  it("maps a theme-local custom exit to the nearest native effect and reports it", () => {
+    const custom = structuredClone(ANIMATION);
+    custom.theme.motion = {
+      ...(custom.theme.motion ?? {}),
+      motionPresets: {
+        brandExit: {
+          category: "exit",
+          reducedMotion: "instant",
+          propertyTracks: [
+            {
+              property: "opacity",
+              keyframes: [
+                { offset: 0, value: 1 },
+                { offset: 1, value: 0 },
+              ],
+            },
+          ],
+        },
+      },
+    };
+    custom.slides[0]!.animations![0]!.clips[0]!.preset = "brandExit";
+
+    const built = buildPptx(inputFor(custom));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="exit"');
+    expect(output).toContain('<p:animEffect transition="out" filter="fade">');
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === "animation:brandExit" && warning.action === "approximated",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["shake", "<p:animRot"],
+    ["highlightSweep", "<p:animScale"],
+    ["underlineDraw", "<p:animScale"],
+    ["colorShift", "<p:animClr"],
+  ] as const)("maps %s to a native PowerPoint emphasis", (preset, marker) => {
+    const emphasized = structuredClone(ANIMATION);
+    emphasized.slides[0]!.animations![0]!.clips[0]!.preset = preset;
+    const built = buildPptx(inputFor(emphasized));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="emph"');
+    expect(output).toContain(marker);
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === `animation:${preset}` && warning.action === "approximated",
+      ),
+    ).toBe(true);
+  });
+
+  it("maps wipeOut to a native exit", () => {
+    const exiting = structuredClone(ANIMATION);
+    exiting.slides[0]!.animations![0]!.clips[0]!.preset = "wipeOut";
+    const output = unzip(buildPptx(inputFor(exiting)).bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="exit"');
+    expect(output).toContain('<p:animEffect transition="out"');
+  });
+
+  it("maps moveAlongPath to a native PowerPoint motion path", () => {
+    const moving = structuredClone(ANIMATION);
+    const clip = moving.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = "moveAlongPath";
+    clip.presetParams = { deltaX: 180, deltaY: 40, pathElementId: "el_path" };
+    const built = buildPptx(inputFor(moving));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('presetClass="path"');
+    expect(output).toContain("<p:animMotion");
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === "animation:moveAlongPath" && warning.action === "approximated",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["lineByLine", "paragraph"],
+    ["wordCascade", "word-by-word"],
+  ] as const)("maps %s to a native PowerPoint text build", (preset, wording) => {
+    const text = structuredClone(ANIMATION);
+    const clip = text.slides[0]!.animations![0]!.clips[0]!;
+    clip.preset = preset;
+    clip.presetParams = { segmentCount: 4 };
+    const built = buildPptx(inputFor(text));
+    const output = unzip(built.bytes).get("ppt/slides/slide1.xml")!;
+    expect(output).toContain('<p:bldP spid="2" grpId="0"/>');
+    expect(
+      built.result.report.warnings.some((warning) =>
+        warning.feature === `animation:${preset}` && warning.message.includes(wording),
+      ),
+    ).toBe(true);
+  });
+
   it("exports number counts at their final value without a false fade warning", () => {
     const counting = structuredClone(ANIMATION);
     counting.slides[0]!.animations![0]!.clips[0]!.preset = "numberCount";
@@ -542,6 +637,54 @@ describe("animation mapping", () => {
       for (const match of content.matchAll(/spid="(\d+)"/g)) {
         expect(shapeIds.has(match[1]!), `${path} animates missing shape ${match[1]}`).toBe(true);
       }
+    }
+  });
+});
+
+describe("video media", () => {
+  it("embeds one MP4 with its poster and both PowerPoint media relationships", () => {
+    const document = fixture("technical-deck");
+    const videoId = "ast_01JB8Z9K2QW4RN7F3X5HTMD87";
+    const posterId = "ast_01JB8Z9K2QW4RN7F3X5HTMD88";
+    document.assets.push(
+      { id: videoId, type: "video", storageKey: "video/clip.mp4", mimeType: "video/mp4", byteSize: 8, width: 1280, height: 720, durationMs: 4000 },
+      { id: posterId, type: "image", storageKey: "video/poster.png", mimeType: "image/png", byteSize: 4, width: 1280, height: 720, altText: "Clip poster" },
+    );
+    document.slides[0]!.elements.push({ id: "el_01JB8Z9K2QW4RN7F3X5HTMD89", type: "video", assetId: videoId,
+      posterAssetId: posterId, muted: true, loop: true, transform: { x: 100, y: 100, width: 800, height: 450 } } as never);
+    const base = inputFor(document);
+    const videoBytes = new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112]);
+    const posterBytes = new Uint8Array([137, 80, 78, 71]);
+    const artifact = buildPptx({ ...base,
+      images: new Map([[posterId, { bytes: posterBytes, contentType: "image/png" }]]),
+      videos: new Map([[videoId, { bytes: videoBytes, contentType: "video/mp4" }]]),
+    });
+    const files = unzipRaw(artifact.bytes);
+    expect([...files.get("ppt/media/video1.mp4")!]).toEqual([...videoBytes]);
+    const text = unzip(artifact.bytes);
+    expect(text.get("[Content_Types].xml")).toContain('Extension="mp4" ContentType="video/mp4"');
+    expect(text.get("ppt/slides/slide1.xml")).toContain("<a:videoFile");
+    expect(text.get("ppt/slides/_rels/slide1.xml.rels")).toContain("relationships/video");
+    expect(artifact.result.report.warnings.some((warning) => warning.feature === "video")).toBe(false);
+  });
+});
+
+describe("Phase 4 transition mapping", () => {
+  it.each([
+    ["wipe", "<p:wipe"],
+    ["split", "<p:split"],
+    ["iris", "<p:circle"],
+    ["flip", "<p:fade"],
+    ["blurDissolve", "<p:dissolve"],
+  ] as const)("maps %s to the nearest PowerPoint transition", (type, marker) => {
+    const ledger = new DegradationLedger();
+    expect(transitionFor(type, 500, "sld_phase4", ledger)).toContain(marker);
+    if (["iris", "flip", "blurDissolve"].includes(type)) {
+      expect(
+        ledger.report(1, 0).warnings.some((warning) =>
+          warning.feature === `transition:${type}` && warning.action === "approximated",
+        ),
+      ).toBe(true);
     }
   });
 });
@@ -1160,6 +1303,25 @@ describe("narration and sound in PowerPoint (integration plan 01 §3.10)", () =>
   it("says that a narrated deck will not advance by itself", () => {
     const artifact = buildPptx(withAudio(fixture("multilingual-narrated")));
     expect(artifact.result.report.warnings.some((entry) => entry.feature === "narrated playback")).toBe(true);
+  });
+
+  it("carries a music bed and reports PowerPoint's ducking approximation", () => {
+    const document = fixture("multilingual-narrated");
+    document.soundtrack = {
+      source: { library: "ambient-calm" },
+      volume: 0.3,
+      loop: true,
+      fadeInMs: 800,
+      fadeOutMs: 800,
+      ducking: { gainDb: -12, attackMs: 180, releaseMs: 280 },
+    };
+    const artifact = buildPptx(withAudio(document));
+    const files = unzip(artifact.bytes);
+    expect(files.get("ppt/slides/slide1.xml")!).toContain('name="Background music"');
+    expect([...files.keys()].some((path) => /^ppt\/media\/media\d+\.wav$/.test(path))).toBe(true);
+    expect(artifact.result.report.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ feature: "soundtrack", action: "approximated" }),
+    ]));
   });
 
   it("embeds an MP3 take, which is what Google voices are now asked for", () => {

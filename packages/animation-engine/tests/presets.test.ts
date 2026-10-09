@@ -184,6 +184,40 @@ describe("the ten MVP presets expand as §24 describes", () => {
   });
 });
 
+describe("Phase 4 built-ins", () => {
+  it("shake returns to its resting position", () => {
+    const x = PRESETS.shake!.expand(context).tracks.find((one) => one.property === "x")!;
+    expect(x.keyframes[0]!.value).toBe(0);
+    expect(x.keyframes.at(-1)!.value).toBe(0);
+    expect(new Set(x.keyframes.map((frame) => frame.value)).size).toBeGreaterThan(3);
+  });
+
+  it("moveAlongPath expands into a deterministic path vector", () => {
+    const tracks = PRESETS.moveAlongPath!.expand({
+      ...context,
+      params: { pathElementId: "el_path" },
+      path: { id: "el_path", bounds: { x: 0, y: 0, width: 240, height: 80 } },
+    }).tracks;
+    expect(tracks.map((one) => one.property)).toEqual(["x", "y"]);
+    expect(tracks[0]!.keyframes.at(-1)!.value).toBe(240);
+    expect(tracks[1]!.keyframes.at(-1)!.value).toBe(80);
+  });
+
+  it("line and word builds expose stable, visible base tracks", () => {
+    expect(PRESETS.lineByLine!.expand(context).tracks[0]!.property).toBe("opacity");
+    expect(PRESETS.wordCascade!.expand(context).tracks.map((one) => one.property)).toEqual([
+      "opacity",
+      "y",
+    ]);
+  });
+
+  it("wipeOut is an exit with an instant reduced-motion result", () => {
+    expect(PRESETS.wipeOut!.category).toBe("exit");
+    expect(PRESETS.wipeOut!.reducedMotion).toBe("instant");
+    expect(PRESETS.wipeOut!.expand(context).tracks[0]!.property).toBe("clip");
+  });
+});
+
 describe("unknown presets", () => {
   it("degrade to a fade and report it", () => {
     // The schema keeps unknown preset names (doc 02 §0.8), so a v2 deck opened

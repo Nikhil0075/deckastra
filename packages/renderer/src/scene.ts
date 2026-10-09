@@ -13,6 +13,7 @@ import {
   type Rect,
   type RichTextDocument,
   type Slide,
+  type Soundtrack,
   type TypographyStyle,
 } from "@deckastra/presentation-schema";
 
@@ -144,6 +145,7 @@ export type RenderPayload =
   | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets; direction?: "rtl" }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
   | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
+  | { kind: "video"; assetId: string; posterAssetId?: string; objectFit: string; autoplay: boolean; loop: boolean; muted: boolean; controls: boolean; startTimeMs: number; endTimeMs?: number; label?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
   | EquationPayload
   | TablePayload
@@ -355,6 +357,7 @@ export interface DocumentScene {
   direction: "ltr" | "rtl";
   /** Manual or narrated playback, carried for present mode. Absent means manual. */
   playback?: { mode: "manual" | "narrated"; gapMs?: number };
+  soundtrack?: Soundtrack;
   /** Every audio file in the manifest, by asset id, so a take can be resolved to a URL. */
   audio: Record<string, SceneAudio>;
   fonts: FontUsage[];
@@ -883,6 +886,20 @@ function buildPayload(
         objectFit: el.fit ?? "cover",
         objectPosition: `${(focal.x * 100).toFixed(1)}% ${(focal.y * 100).toFixed(1)}%`,
         altText: el.altText,
+      };
+    }
+
+    case "video": {
+      const el = element as unknown as {
+        assetId: string; posterAssetId?: string; fit?: string; autoplay?: boolean; loop?: boolean;
+        muted?: boolean; controls?: boolean; startTimeMs?: number; endTimeMs?: number; name?: string;
+      };
+      return {
+        kind: "video", assetId: el.assetId, ...(el.posterAssetId ? { posterAssetId: el.posterAssetId } : {}),
+        objectFit: el.fit ?? "cover", autoplay: el.autoplay ?? false, loop: el.loop ?? false,
+        muted: el.muted ?? true, controls: el.controls ?? false, startTimeMs: el.startTimeMs ?? 0,
+        ...(el.endTimeMs !== undefined ? { endTimeMs: el.endTimeMs } : {}),
+        ...(el.name ? { label: el.name } : {}),
       };
     }
 
@@ -1453,6 +1470,7 @@ export function buildDocumentScene(
     };
   }
   const playback = (document as { playback?: DocumentScene["playback"] }).playback;
+  const soundtrack = document.soundtrack;
 
   return {
     documentId: document.id,
@@ -1463,6 +1481,7 @@ export function buildDocumentScene(
     locale: language.locale,
     direction: language.direction,
     ...(playback ? { playback } : {}),
+    ...(soundtrack ? { soundtrack } : {}),
     audio,
     fonts,
     fontDigest: fontDigest(fonts),

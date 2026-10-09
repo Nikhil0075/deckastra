@@ -76,7 +76,7 @@ function checkAltText(node: SceneNode, slideId: string): AccessibilityIssue[] {
   const payload = node.renderPayload;
 
   const carriesMeaning =
-    payload.kind === "image" || payload.kind === "chart" || payload.kind === "diagram";
+    payload.kind === "image" || payload.kind === "video" || payload.kind === "chart" || payload.kind === "diagram";
   if (!carriesMeaning) return [];
 
   // `semanticRole: "decoration"` is the author saying this carries no
@@ -95,11 +95,11 @@ function checkAltText(node: SceneNode, slideId: string): AccessibilityIssue[] {
       slideId,
       elementId: node.id,
       message:
-        payload.kind === "image"
+        payload.kind === "image" || payload.kind === "video"
           ? "This image has no alternative text, so a screen reader announces nothing."
           : `This ${payload.kind} has no description, so its content is unavailable to a screen reader.`,
       suggestedFix:
-        payload.kind === "image"
+        payload.kind === "image" || payload.kind === "video"
           ? "Add alt text describing what the image shows, or mark it decorative."
           : `Add a description of what the ${payload.kind} shows — the finding, not the shape.`,
     },

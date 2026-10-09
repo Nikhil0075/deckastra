@@ -1,7 +1,7 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
-import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult } from "./assistant";
+import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest } from "./assistant";
 
-import type { AgentEditResult, AppliedChange, EditScopePayload, PendingProposal, ProposalDetail } from "./agent";
+import type { AppliedChange, PendingProposal, ProposalDetail } from "./agent";
 import type {
   CreatePresentationRequest,
   CreatePresentationResult,
@@ -13,27 +13,31 @@ import type {
   DuplicatePresentationResult,
   PreviewRequest,
   PreviewResult,
+  MotionPreviewRequest,
+  MotionPreviewResult,
   PresentationSummary,
   TransactionRequest,
   TransactionResult,
   VersionSummary,
   RestoreVersionResult,
+  SlideSources,
 } from "./documents";
 import type { ExportJob, ExportRequest } from "./exports";
 import type {
   MotionCapabilities,
   MotionRequest,
   MotionResult,
+  MotionStyleRequest,
+  MotionStyleResult,
   TransitionRequest,
   TransitionResult,
 } from "./motion";
-import type { GenerateRequest, GenerateResult, ReviewedGeneration, StoryDecision } from "./generation";
-import type { Repository, RepositoryList, SlideSources } from "./repositories";
+import type { ComposedDeckResult, DeckComposeRequest, DeckFromTemplateRequest, InsertPatternRequest, InsertPatternResult, PresetCatalog } from "./presets";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
 import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
 import type { ImportedTheme, SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
-import type { LanguagesStatus, SynthesizeRequest, SynthesizeResult, TranslateRequest, TranslateResult, Voice } from "./languages";
+import type { LanguagesStatus, PaidServiceQuote, SynthesizeRequest, SynthesizeResult, TranslateRequest, TranslateResult, Voice } from "./languages";
 
 /**
  * Per-call transport options.
@@ -78,13 +82,13 @@ export interface RequestOptions {
 export interface WorkspaceClient {
   readonly assistant?: {
     capabilities(options?: RequestOptions & { presentationId?: string; slideId?: string; locale?: string }): Promise<AssistantCapabilities>;
+    quoteImage(presentationId: string, request: ImageQuoteRequest, options?: RequestOptions): Promise<PaidServiceQuote>;
     start(request: AssistantRequest, options?: RequestOptions): Promise<AssistantRun>;
     get(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     list(presentationId: string, options?: RequestOptions): Promise<{ runs: AssistantRun[] }>;
     events(runId: string, after?: number, options?: RequestOptions): Promise<{ events: AssistantEvent[] }>;
     cancel(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     resume(runId: string, options?: RequestOptions): Promise<AssistantRun>;
-    approveMetadata(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     designCheck(presentationId: string, slideId?: string, options?: RequestOptions): Promise<DesignCheckResult>;
     assetList(request: { workspace_id?: string; filter?: "all" | "unused" | "untagged"; cursor?: string; q?: string; limit?: number }, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
     assetView(assetId: string, maxPx?: number, options?: RequestOptions, crop?: { x: number; y: number; width: number; height: number }): Promise<{ asset_id: string; base64: string; mime_type: string; width: number; height: number }>;
@@ -104,6 +108,21 @@ export interface WorkspaceClient {
     /** Forget the cached session. The next `ensure` bootstraps again. */
     clear(): void;
     account(options?: RequestOptions): Promise<AccountContext>;
+    /**
+     * The account's AI credits. Optional: a service without an account (an
+     * older one, or a stand-in) offers none, and the meter is then absent.
+     */
+    credits?(options?: RequestOptions): Promise<import("./session").CreditBalance>;
+    /** Which hosted AI tasks are available, and why not. Optional, like credits. */
+    capabilities?(options?: RequestOptions): Promise<import("./session").AccountCapabilities>;
+    /**
+     * Ask the service to erase this cloud account. Optional: a local install has
+     * no cloud account to erase. Rejects with 409 when the person still owns a
+     * shared workspace.
+     */
+    deleteAccount?(options?: RequestOptions): Promise<import("./session").AccountDeletion>;
+    /** The status of a deletion request. Needs no session: the request ended it. */
+    deletionStatus?(receipt: string, options?: RequestOptions): Promise<{ status: string }>;
     createWorkspace(
       name: string,
       options?: RequestOptions,
@@ -137,6 +156,12 @@ export interface WorkspaceClient {
       body: PreviewRequest,
       options?: RequestOptions,
     ): Promise<PreviewResult>;
+    /** A time-labelled contact sheet sampled from the slide's motion timeline. */
+    motionPreview(
+      presentationId: string,
+      body: MotionPreviewRequest,
+      options?: RequestOptions,
+    ): Promise<MotionPreviewResult>;
     /** The decks in one project, most recently changed first. No content. */
     list(projectId: string, options?: RequestOptions): Promise<PresentationSummary[]>;
     /** The current version id and nothing else. Cheap enough to poll. */
@@ -193,19 +218,24 @@ export interface WorkspaceClient {
     duplicate(presentationId: string, options?: RequestOptions): Promise<DuplicatePresentationResult>;
     /** The decks in one project's trash, most recently deleted first. */
     trash(projectId: string, options?: RequestOptions): Promise<PresentationSummary[]>;
+    /** Evidence embedded in one slide by an agent or import. */
+    slideSources(
+      presentationId: string,
+      slideId: string,
+      options?: RequestOptions,
+    ): Promise<SlideSources>;
   };
 
-  readonly generation: {
-    run(body: GenerateRequest, options?: RequestOptions): Promise<GenerateResult>;
-    /**
-     * Generate, stopping at the outline for the person to approve or revise.
-     * Only where `capabilities.checkpoints` says a run can pause.
-     */
-    review(body: GenerateRequest, options?: RequestOptions): Promise<ReviewedGeneration>;
-    /** The outline a paused run is waiting on, read from its checkpoint. */
-    checkpoint(runId: string, options?: RequestOptions): Promise<ReviewedGeneration>;
-    /** Approve, revise or discard a paused outline. */
-    decide(runId: string, decision: StoryDecision, options?: RequestOptions): Promise<ReviewedGeneration>;
+  /** Deterministic starting points and composition. No model is called. */
+  readonly presets: {
+    list(options?: RequestOptions): Promise<PresetCatalog>;
+    create(body: DeckFromTemplateRequest, options?: RequestOptions): Promise<ComposedDeckResult>;
+    compose(body: DeckComposeRequest, options?: RequestOptions): Promise<ComposedDeckResult>;
+    insertPattern(
+      presentationId: string,
+      body: InsertPatternRequest,
+      options?: RequestOptions,
+    ): Promise<InsertPatternResult>;
   };
 
   /**
@@ -228,14 +258,15 @@ export interface WorkspaceClient {
       body: TransitionRequest,
       request?: RequestOptions,
     ): Promise<TransitionResult>;
+    /** Apply one reviewed motion style across the deck. */
+    proposeStyle(
+      presentationId: string,
+      body: MotionStyleRequest,
+      request?: RequestOptions,
+    ): Promise<MotionStyleResult>;
   };
 
   readonly agent: {
-    edit(
-      presentationId: string,
-      body: { instruction: string; scope: EditScopePayload },
-      options?: RequestOptions,
-    ): Promise<AgentEditResult>;
     proposals(presentationId: string, options?: RequestOptions): Promise<PendingProposal[]>;
     /** One pending proposal with its operations. */
     proposal(presentationId: string, proposalId: string, options?: RequestOptions): Promise<ProposalDetail>;
@@ -272,6 +303,16 @@ export interface WorkspaceClient {
       transactionId: string,
       options?: RequestOptions,
     ): Promise<AppliedChange>;
+  };
+
+  /**
+   * Bringing a `.mydeck` file in. Optional: the desktop opens files through its
+   * main process instead, and a stand-in may offer neither.
+   */
+  readonly imports?: {
+    /** Begin, upload the bytes, and complete. Resolves once the service has the file queued. */
+    upload(projectId: string, file: Blob, options?: RequestOptions): Promise<import("./exports").DeckImport>;
+    status(importId: string, options?: RequestOptions): Promise<import("./exports").DeckImport>;
   };
 
   readonly exports: {
@@ -362,7 +403,7 @@ export interface WorkspaceClient {
         width?: number;
         height?: number;
         /** Defaults to an image. A font is `"font"` with its `font/*` type. */
-        kind?: "image" | "font" | "audio";
+        kind?: "image" | "font" | "audio" | "document";
         /**
          * Audio: what the browser decoded, used only when the service cannot
          * read the container itself, and 256 peaks for the timeline's waveform.
@@ -400,34 +441,12 @@ export interface WorkspaceClient {
   readonly languages?: {
     status(options?: RequestOptions): Promise<LanguagesStatus>;
     translate(presentationId: string, locale: string, body: TranslateRequest, options?: RequestOptions): Promise<TranslateResult>;
+    quoteTranslation(presentationId: string, locale: string, body: Omit<TranslateRequest, "quote_token">, options?: RequestOptions): Promise<PaidServiceQuote>;
     voices(locale: string, options?: RequestOptions): Promise<Voice[]>;
     synthesize(presentationId: string, body: SynthesizeRequest, options?: RequestOptions): Promise<SynthesizeResult>;
+    quoteSpeech(presentationId: string, body: Omit<SynthesizeRequest, "quote_token">, options?: RequestOptions): Promise<PaidServiceQuote>;
   };
 
-  readonly repositories: {
-    list(workspaceId?: string, options?: RequestOptions): Promise<RepositoryList>;
-    connectLocal(
-      path: string,
-      label?: string,
-      workspaceId?: string,
-      options?: RequestOptions,
-    ): Promise<Repository>;
-    index(
-      id: string,
-      workspaceId?: string,
-      options?: RequestOptions,
-    ): Promise<Repository & { index: unknown }>;
-    disconnect(
-      id: string,
-      workspaceId?: string,
-      options?: RequestOptions,
-    ): Promise<{ status: string }>;
-    slideSources(
-      presentationId: string,
-      slideId: string,
-      options?: RequestOptions,
-    ): Promise<SlideSources>;
-  };
 }
 
 /** A document the caller already holds, for surfaces that render without reading. */

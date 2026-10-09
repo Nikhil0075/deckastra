@@ -23,7 +23,11 @@
  * an element that jumps at the end of its own entrance.
  */
 
-import type { Keyframe, PropertyTrack } from "@deckastra/presentation-schema";
+import type {
+  CustomMotionPreset,
+  Keyframe,
+  PropertyTrack,
+} from "@deckastra/presentation-schema";
 
 import { round, sampleSpring, type Spring } from "./easing";
 
@@ -41,6 +45,8 @@ export interface PresetContext {
    * order. Empty for every other preset.
    */
   children?: { id: string; bounds: { x: number; y: number; width: number; height: number } }[];
+  /** Optional path element named by `params.pathElementId`. */
+  path?: { id: string; bounds: { x: number; y: number; width: number; height: number } };
 }
 
 /** A preset expansion. Child clips exist only for `staggerReveal`. */
@@ -67,6 +73,8 @@ export interface PresetDefinition {
   params: { name: string; kind: "number" | "string" | "enum"; options?: string[]; default?: unknown }[];
   expand(context: PresetContext): PresetExpansion;
 }
+
+export type CustomPresetCatalog = Readonly<Record<string, CustomMotionPreset>>;
 
 // ------------------------------------------------------------------ helpers
 
@@ -425,6 +433,46 @@ const highlightSweep = simplePreset("highlightSweep", "emphasis", "Sweeps a ligh
   track("x", [{ offset: 0, value: -12 }, { offset: 1, value: 12 }]),
   track("opacity", [{ offset: 0, value: 0.72 }, { offset: 0.5, value: 1 }, { offset: 1, value: 0.72 }]),
 ]);
+const shake = simplePreset("shake", "emphasis", "Shakes quickly from side to side and returns to rest.", [
+  track("x", [
+    { offset: 0, value: 0 },
+    { offset: 0.2, value: -8 },
+    { offset: 0.4, value: 8 },
+    { offset: 0.6, value: -6 },
+    { offset: 0.8, value: 4 },
+    { offset: 1, value: 0 },
+  ]),
+]);
+
+const moveAlongPath: PresetDefinition = {
+  name: "moveAlongPath",
+  category: "path",
+  reducedMotion: "instant",
+  description: "Moves along a declared path vector while retaining a portable final frame.",
+  params: [
+    { name: "pathElementId", kind: "string" },
+    { name: "deltaX", kind: "number", default: 160 },
+    { name: "deltaY", kind: "number", default: 0 },
+  ],
+  expand: ({ params, path }) => {
+    const requestedPath = stringParam(params, "pathElementId", "");
+    return {
+      tracks: [
+        track("x", [
+          { offset: 0, value: 0 },
+          { offset: 1, value: round(numberParam(params, "deltaX", path?.bounds.width ?? 160)) },
+        ]),
+        track("y", [
+          { offset: 0, value: 0 },
+          { offset: 1, value: round(numberParam(params, "deltaY", path?.bounds.height ?? 0)) },
+        ]),
+      ],
+      warning: requestedPath && !path
+        ? `The path element ${requestedPath} was not found, so the preset used its portable fallback vector.`
+        : undefined,
+    };
+  },
+};
 
 const float = simplePreset("float", "loop", "Drifts gently up and down.", [
   track("y", [{ offset: 0, value: 0 }, { offset: 0.5, value: -10 }, { offset: 1, value: 0 }]),
@@ -503,6 +551,11 @@ function exitPreset(name: string, source: PresetDefinition, description: string)
 const byWord = { ...fade, name: "byWord", category: "entrance" as const, description: "Reveals text one word at a time." };
 const byLetter = { ...fade, name: "byLetter", category: "entrance" as const, description: "Reveals text one grapheme at a time." };
 const typewriter = { ...fade, name: "typewriter", category: "entrance" as const, description: "Types text in grapheme by grapheme." };
+const lineByLine = { ...fade, name: "lineByLine", category: "entrance" as const, description: "Reveals text one line at a time." };
+const wordCascade = simplePreset("wordCascade", "entrance", "Cascades words upward into place.", [
+  track("opacity", FADE_IN),
+  track("y", [{ offset: 0, value: 12 }, { offset: 1, value: 0 }]),
+]);
 const rotatingWord = simplePreset("rotatingWord", "emphasis", "Rotates a changing word through the text slot.", [
   track("y", [{ offset: 0, value: 0 }, { offset: 0.5, value: -8 }, { offset: 1, value: 0 }]),
   // An emphasis must return to the authored resting state. Ending at zero made
@@ -528,6 +581,8 @@ export const PRESETS: Record<string, PresetDefinition> = {
   colorShift,
   underlineDraw,
   highlightSweep,
+  shake,
+  moveAlongPath,
   float,
   breathe,
   spin,
@@ -540,12 +595,15 @@ export const PRESETS: Record<string, PresetDefinition> = {
   byWord,
   byLetter,
   typewriter,
+  lineByLine,
+  wordCascade,
   rotatingWord,
   fadeOut: exitPreset("fadeOut", fade, "Fades out."),
   slideOut: exitPreset("slideOut", slide, "Moves out of the slide."),
   scaleOut: exitPreset("scaleOut", scale, "Shrinks out of view."),
   blurOut: exitPreset("blurOut", blurReveal, "Blurs out of view."),
   maskOut: exitPreset("maskOut", maskReveal, "Wipes out of view."),
+  wipeOut: exitPreset("wipeOut", maskReveal, "Wipes out of view."),
   staggerOut: exitPreset("staggerOut", staggerReveal, "Removes children one after another."),
   drawPathOut: exitPreset("drawPathOut", drawPath, "Erases a drawn path."),
   numberCountOut: exitPreset("numberCountOut", numberCount, "Counts away from the displayed number."),
@@ -567,9 +625,25 @@ export const LEGACY_PRESET_NAMES = [
  * must still animate. Refusing would delete motion the author wrote; drawing
  * nothing would look like a broken slide.
  */
-export function resolvePreset(name: string): { preset: PresetDefinition; degraded?: string } {
+export function resolvePreset(
+  name: string,
+  customPresets?: CustomPresetCatalog,
+): { preset: PresetDefinition; degraded?: string } {
   const found = PRESETS[name];
   if (found) return { preset: found };
+  const custom = customPresets?.[name];
+  if (custom) {
+    return {
+      preset: {
+        name,
+        category: custom.category ?? "entrance",
+        description: custom.description ?? `Theme motion preset ${name}.`,
+        reducedMotion: custom.reducedMotion ?? "instant",
+        params: [],
+        expand: () => ({ tracks: custom.propertyTracks }),
+      },
+    };
+  }
   return {
     preset: fade,
     degraded: `"${name}" is not a preset this build knows, so it was drawn as a fade.`,

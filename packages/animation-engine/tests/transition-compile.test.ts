@@ -73,6 +73,19 @@ describe("compiling", () => {
     expect(pushed.tracks.map((track) => track.kind).sort()).toEqual(["incoming", "outgoing"]);
     expect(slid.tracks.map((track) => track.kind)).toEqual(["incoming"]);
   });
+
+  it.each([
+    ["wipe", "clipPath"],
+    ["split", "scale"],
+    ["iris", "clipPath"],
+    ["flip", "rotate"],
+    ["blurDissolve", "filter"],
+  ] as const)("draws %s with a concrete CSS longhand", (type, property) => {
+    const compiled = compileTransition({ type, durationMs: 400, easing: "linear" }, from, to);
+    const css = transitionCss(compiled, 200);
+    expect(Object.values(css).some((style) => style[property] !== undefined)).toBe(true);
+    expect(sampleTransition(compiled, 200)).toEqual(sampleTransition(compiled, 200));
+  });
 });
 
 describe("morph", () => {

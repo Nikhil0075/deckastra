@@ -168,6 +168,83 @@ describe("reduced motion", () => {
     expect(resolveMotionLevel(undefined, {})).toBe("full");
   });
 
+  it("compiles safe theme-local presets and clamps an oversized entrance", () => {
+    const custom = scene([node("el_a")], { maxSlideDurationMs: 2500 });
+    (custom.theme as { source?: unknown }).source = {
+      motion: {
+        motionPresets: {
+          brandRise: {
+            category: "entrance",
+            reducedMotion: "fade",
+            propertyTracks: [
+              {
+                property: "y",
+                keyframes: [
+                  { offset: 0, value: 48 },
+                  { offset: 1, value: 0 },
+                ],
+              },
+              {
+                property: "opacity",
+                keyframes: [
+                  { offset: 0, value: 0 },
+                  { offset: 1, value: 1 },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const timeline = compileTimeline(custom, [
+      track("anm_1", "el_a", { type: "slideEnter" }, [
+        { preset: "brandRise", durationMs: 9000 },
+      ]),
+    ]);
+
+    expect(timeline.clips[0]!.periodMs).toBe(2500);
+    expect(timeline.clips[0]!.category).toBe("entrance");
+    expect(timeline.clips[0]!.properties.map((property) => property.property)).toEqual([
+      "y",
+      "opacity",
+    ]);
+  });
+
+  it("uses a custom preset's reduced-motion fallback", () => {
+    const custom = scene([node("el_a")]);
+    (custom.theme as { source?: unknown }).source = {
+      motion: {
+        motionPresets: {
+          brandRise: {
+            category: "entrance",
+            reducedMotion: "fade",
+            propertyTracks: [
+              {
+                property: "y",
+                keyframes: [
+                  { offset: 0, value: 48 },
+                  { offset: 1, value: 0 },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const timeline = compileTimeline(
+      custom,
+      [track("anm_1", "el_a", { type: "slideEnter" }, [{ preset: "brandRise" }])],
+      { userMotionPreference: "reduced" },
+    );
+
+    expect(timeline.clips[0]!.periodMs).toBe(240);
+    expect(timeline.clips[0]!.properties.map((property) => property.property)).toEqual([
+      "opacity",
+    ]);
+  });
+
   it("shortens durations to 0.6x", () => {
     const tracks = [track("anm_1", "el_a", { type: "slideEnter" }, [{ durationMs: 500 }])];
     const reduced = compileTimeline(THREE, tracks, { systemPrefersReducedMotion: true });

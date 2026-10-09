@@ -79,33 +79,49 @@ export interface AccountWorkspace {
  * keys on. A cloud server's own workspaces are `local` in the D5.1 sense and
  * share perfectly well.
  */
-export interface Capabilities {
-  sharing: boolean;
-  /**
-   * Whether a generation can pause at its outline for review (editor Phase 6).
-   * It needs a durable checkpoint store; where there is none, "review the
-   * outline first" is not offered rather than offered and refused. Optional
-   * because a server older than the field says nothing, which means no.
-   */
-  checkpoints?: boolean;
-  /**
-   * What pressing Generate will do here (final package review, item 19).
-   * Optional because an older server says nothing.
-   */
-  generation?: GenerationStatus;
-  assistant?: import("./assistant").AssistantCapabilities;
+/**
+ * The signed-in account's AI credits (`GET /v1/account/credits`, roadmap 08
+ * §3.3). Read and shown, never computed by a client: the ledger reserves and
+ * reconciles on the server. `plan` is the account's plan name ("free").
+ */
+export interface CreditBalance {
+  plan: string;
+  monthly_allowance: number;
+  remaining_credits: number;
+  period_start: string;
+  period_end: string;
 }
 
 /**
- * Which provider writes a generated deck, whether it can, and why not.
- *
- * `stub` is the development planner (a template, not a model) and only a
- * checkout answers it; `none` is an installed product with nothing set up.
+ * What paid media can do right now (`GET /v1/account/capabilities`).
+ * Image generation may be unavailable until an operator pins a media model.
  */
-export interface GenerationStatus {
-  provider: "cloud" | "local" | "hybrid" | "vertex" | "stub" | "none" | "unavailable" | "misconfigured";
+export interface AccountTaskCapability {
   available: boolean;
+  model: string | null;
   reason: string | null;
+  /** The smallest reservation one call makes, in US dollars. Present only when available. */
+  minimum_reservation_usd?: number;
+}
+
+export interface AccountCapabilities {
+  provider: string;
+  tasks: Record<string, AccountTaskCapability>;
+}
+
+/**
+ * A cloud account deletion request (`DELETE /v1/account`). The receipt is
+ * readable without a session, because the request ends the session.
+ */
+export interface AccountDeletion {
+  id: string;
+  status: string;
+  message?: string;
+}
+
+export interface Capabilities {
+  sharing: boolean;
+  assistant?: import("./assistant").AssistantCapabilities;
 }
 
 export interface AccountContext {
@@ -114,7 +130,9 @@ export interface AccountContext {
   capabilities: Capabilities;
 }
 
-/** What `/health` answers. `generation` says whether a real key is configured. */
+/** What `/health` answers. */
 export interface HealthReport {
-  generation: "model" | "stub" | "unavailable";
+  status: "ok";
+  database: string;
+  migrations: string;
 }

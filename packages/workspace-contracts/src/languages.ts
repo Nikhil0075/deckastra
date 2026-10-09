@@ -27,6 +27,8 @@ export interface TranslateRequest {
   expected_version_id: string;
   /** Words never to translate: brand and product names. */
   glossary?: string[];
+  /** Signed, short-lived approval of the exact paid request. Not needed by a local stand-in. */
+  quote_token?: string;
 }
 
 export interface ServiceProposalResult {
@@ -65,6 +67,19 @@ export interface SynthesizeRequest {
   expected_version_id: string;
   /** Names the voice should say differently from how they are spelled. */
   pronunciations?: Pronunciation[];
+  /** Signed, short-lived approval of the exact paid request. Not needed by a local stand-in. */
+  quote_token?: string;
+}
+
+export interface PaidServiceQuote {
+  quote_token: string;
+  expires_at: number;
+  task: "image" | "translation" | "speech";
+  provider: string;
+  model?: string | null;
+  units: number;
+  estimated_usd: number;
+  credit_cost: number;
 }
 
 /** Say `term` as `say` when voicing narration (plan 01 §7). */
@@ -74,5 +89,5 @@ export interface Pronunciation {
 }
 
 export interface SynthesizeResult extends ServiceProposalResult {
-  voiced?: { cue_id: string; asset_id: string; duration_ms: number }[];
+  voiced?: { cue_id: string; asset_id: string; duration_ms: number; voice?: string; word_timings?: number }[];
 }

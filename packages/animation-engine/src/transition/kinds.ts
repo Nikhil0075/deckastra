@@ -112,6 +112,15 @@ const slide: TransitionKindDefinition = {
   },
 };
 
+// `slide` is the historical name for this composition; `cover` is the author-
+// facing vocabulary in plan 09. Keep both so older decks round-trip while new
+// callers can ask explicitly for the stationary outgoing slide treatment.
+const cover: TransitionKindDefinition = {
+  ...slide,
+  name: "cover",
+  description: "The next slide covers the stationary current slide from one edge.",
+};
+
 const push: TransitionKindDefinition = {
   name: "push",
   description: "Both slides move together, as one deck rather than two images.",
@@ -155,6 +164,78 @@ const zoom: TransitionKindDefinition = {
         ],
         easing,
       ),
+    ],
+  }),
+};
+
+const wipe: TransitionKindDefinition = {
+  name: "wipe",
+  description: "The next slide is revealed by a moving edge.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [incoming([
+      { offset: 0, properties: { clipInset: 100 } },
+      { offset: 1, properties: { clipInset: 0 } },
+    ], easing)],
+  }),
+};
+
+const split: TransitionKindDefinition = {
+  name: "split",
+  description: "The next slide opens outward from the centre.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [incoming([
+      { offset: 0, properties: { scaleX: 0.02, scaleY: 1, opacity: 0.75 } },
+      { offset: 1, properties: { scaleX: 1, scaleY: 1, opacity: 1 } },
+    ], easing)],
+  }),
+};
+
+const iris: TransitionKindDefinition = {
+  name: "iris",
+  description: "A circular aperture opens onto the next slide.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [incoming([
+      { offset: 0, properties: { clipRadius: 0 } },
+      { offset: 1, properties: { clipRadius: 75 } },
+    ], easing)],
+  }),
+};
+
+const flip: TransitionKindDefinition = {
+  name: "flip",
+  description: "The outgoing and incoming slides rotate like opposite faces.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [
+      outgoing([
+        { offset: 0, properties: { rotateY: 0, opacity: 1 } },
+        { offset: 1, properties: { rotateY: -90, opacity: 0 } },
+      ], easing),
+      incoming([
+        { offset: 0, properties: { rotateY: 90, opacity: 0 } },
+        { offset: 1, properties: { rotateY: 0, opacity: 1 } },
+      ], easing),
+    ],
+  }),
+};
+
+const blurDissolve: TransitionKindDefinition = {
+  name: "blurDissolve",
+  description: "The old slide softens away as the next one resolves into focus.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [
+      outgoing([
+        { offset: 0, properties: { blur: 0, opacity: 1 } },
+        { offset: 1, properties: { blur: 12, opacity: 0 } },
+      ], easing),
+      incoming([
+        { offset: 0, properties: { blur: 18, opacity: 0 } },
+        { offset: 1, properties: { blur: 0, opacity: 1 } },
+      ], easing),
     ],
   }),
 };
@@ -302,8 +383,14 @@ export const TRANSITION_KINDS: Record<string, TransitionKindDefinition> = {
   cut,
   fade,
   slide,
+  cover,
   push,
   zoom,
+  wipe,
+  split,
+  iris,
+  flip,
+  blurDissolve,
   morph,
 };
 

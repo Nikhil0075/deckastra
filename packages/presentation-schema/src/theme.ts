@@ -13,6 +13,7 @@ import {
 } from "./primitives";
 import { TypographyStyleSchema } from "./text";
 import { SemanticRoleSchema } from "./semantic-roles";
+import { PropertyTrackSchema } from "./animation";
 
 /**
  * Theme (doc 02 §22).
@@ -244,6 +245,23 @@ export const BrandRuleSchema = z.object({
 });
 export type BrandRule = z.infer<typeof BrandRuleSchema>;
 
+/**
+ * A portable, data-only motion preset.
+ *
+ * There is deliberately no expression or callback field. A `.mydeck` file may
+ * be opened from an email attachment, so a theme can carry keyframes but never
+ * executable code. `reducedMotion` remains optional at the structural layer so
+ * older readers can preserve an incomplete preset; validation rejects it with
+ * E208 before the document can be presented or exported.
+ */
+export const CustomMotionPresetSchema = z.looseObject({
+  category: z.enum(["entrance", "emphasis", "loop", "exit", "path"]).optional(),
+  description: z.string().max(280).optional(),
+  propertyTracks: z.array(PropertyTrackSchema).min(1),
+  reducedMotion: z.string().min(1).optional(),
+});
+export type CustomMotionPreset = z.infer<typeof CustomMotionPresetSchema>;
+
 /** Motion theme (doc 02 §23). Preset defaults live here so no agent hardcodes them. */
 export const MotionThemeSchema = z.looseObject({
   personality: z.enum(["subtle", "cinematic", "playful", "technical", "custom"]).optional(),
@@ -254,6 +272,11 @@ export const MotionThemeSchema = z.looseObject({
   defaultEasing: EasingSchema.optional(),
   staggerMs: MillisecondsSchema.optional(),
   reducedMotionFallback: z.enum(["fade", "none"]).optional(),
+  /** Theme-local presets travel with templates and imported `.mydeck` files. */
+  motionPresets: z.record(
+    z.string().min(1).max(80).regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
+    CustomMotionPresetSchema,
+  ).optional(),
   /**
    * The entrance budget, default 2500. Past roughly 2.5s the presenter is talking
    * over an animation that is still running. The Critic flags slides that exceed

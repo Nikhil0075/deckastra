@@ -539,7 +539,7 @@
           "$ref": "#/$defs/__schema46"
         },
         "defaultEasing": {
-          "type": "string"
+          "$ref": "#/$defs/__schema47"
         },
         "staggerMs": {
           "$ref": "#/$defs/__schema46"
@@ -550,6 +550,49 @@
             "fade",
             "none"
           ]
+        },
+        "motionPresets": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "entrance",
+                  "emphasis",
+                  "loop",
+                  "exit",
+                  "path"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 280
+              },
+              "propertyTracks": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema48"
+                }
+              },
+              "reducedMotion": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "propertyTracks"
+            ],
+            "additionalProperties": {}
+          }
         },
         "maxSlideDurationMs": {
           "$ref": "#/$defs/__schema46"
@@ -885,14 +928,14 @@
             "maxItems": 200,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema47"
+              "$ref": "#/$defs/__schema50"
             }
           },
           "circles": {
             "maxItems": 200,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema48"
+              "$ref": "#/$defs/__schema51"
             }
           },
           "fill": {
@@ -902,7 +945,7 @@
             "maxItems": 20,
             "type": "array",
             "items": {
-              "$ref": "#/$defs/__schema49"
+              "$ref": "#/$defs/__schema52"
             }
           }
         },
@@ -1666,11 +1709,67 @@
       "maximum": 9007199254740991
     },
     "__schema47": {
+      "type": "string"
+    },
+    "__schema48": {
+      "type": "object",
+      "properties": {
+        "property": {
+          "type": "string",
+          "enum": [
+            "opacity",
+            "x",
+            "y",
+            "scale",
+            "scaleX",
+            "scaleY",
+            "rotation",
+            "blur",
+            "clip",
+            "pathProgress",
+            "numberValue",
+            "fill",
+            "stroke",
+            "width",
+            "height",
+            "custom"
+          ]
+        },
+        "keyframes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema49"
+          }
+        }
+      },
+      "required": [
+        "property",
+        "keyframes"
+      ]
+    },
+    "__schema49": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "$ref": "#/$defs/__schema34"
+        },
+        "value": {},
+        "easing": {
+          "$ref": "#/$defs/__schema47"
+        }
+      },
+      "required": [
+        "offset",
+        "value"
+      ]
+    },
+    "__schema50": {
       "type": "string",
       "maxLength": 20000,
       "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\\-+\\s]+$"
     },
-    "__schema48": {
+    "__schema51": {
       "type": "array",
       "prefixItems": [
         {
@@ -1688,7 +1787,7 @@
       "minItems": 3,
       "maxItems": 3
     },
-    "__schema49": {
+    "__schema52": {
       "type": "string",
       "maxLength": 40
     }

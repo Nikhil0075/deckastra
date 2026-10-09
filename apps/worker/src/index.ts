@@ -31,13 +31,14 @@ import { buildBrowserScene } from "./text-measurement";
 import { fontsNotEmbedded, pageFontCss } from "./fonts";
 import { fontFilesInCss, repairPdfText } from "./pdf-unicode";
 import { AssetLibrary, type InlineAsset } from "./assets";
+import { renderVideo, type VideoExportOptions } from "./video";
 
-export type ExportKind = "pdf" | "pptx";
+export type ExportKind = "pdf" | "pptx" | "mp4";
 
 export interface ExportJob {
   kind: ExportKind;
   document: PresentationDocument;
-  options: ExportOptions;
+  options: VideoExportOptions;
   /**
    * The deck's pictures, as bytes.
    *
@@ -66,6 +67,7 @@ export interface ExportOutcome {
 const CONTENT_TYPES: Record<ExportKind, string> = {
   pdf: "application/pdf",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  mp4: "video/mp4",
 };
 
 export async function runExport(
@@ -115,9 +117,19 @@ export async function runExport(
       // embeds them as parts, so it needs the bytes. Same library, two shapes.
       images: library.images(),
       audio: library.audio(),
+      videos: library.videos(),
     };
 
     const filename = `${safeName(title)}${typeof locale === "string" && locale ? `-${safeName(locale)}` : ""}.${job.kind}`;
+
+    if (job.kind === "mp4") {
+      onProgress({ progress: 0.2, stage: "rendering", message: "Rendering deterministic video frames" });
+      const artifact = await renderVideo(job.document, scene, page, library, job.options as VideoExportOptions, fontCss, (done, total) => {
+        onProgress({ progress: 0.2 + 0.65 * done / total, stage: "rendering", message: `Rendering video frame ${done} of ${total}` });
+      });
+      onProgress({ progress: 1, stage: "done", message: "Done" });
+      return { bytes: artifact.bytes, report: artifact.report, filename, contentType: CONTENT_TYPES.mp4 };
+    }
 
     if (job.kind === "pptx") {
       onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
@@ -182,7 +194,7 @@ export async function runExport(
       filename,
       contentType: CONTENT_TYPES.pdf,
     };
-    }, renderDeadlineFor(slideCount));
+    }, job.kind === "mp4" ? 30 * 60 * 1_000 : renderDeadlineFor(slideCount));
   } finally {
     // Only close a pool this call created. A caller that passed one is running
     // several exports through a warm browser, and closing it here would make
@@ -229,4 +241,6 @@ export type {
 export { AssetLibrary, MAX_INLINE_ASSET_BYTES, MAX_INLINE_TOTAL_BYTES, neededAssets } from "./assets";
 export type { InlineAsset } from "./assets";
 export { buildCriticReport } from "./critic-report";
+export { compileVideoPlan, videoFrameAt, ffmpegArguments, renderVideo } from "./video";
+export type { VideoPlan, VideoSlidePlan, VideoAudioEvent, VideoExportOptions } from "./video";
 export type { CriticRenderReport, CriticSlideSignals } from "./critic-report";

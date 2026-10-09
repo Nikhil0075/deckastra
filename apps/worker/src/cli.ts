@@ -21,7 +21,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { runExport, type ExportKind } from "./index";
 import type { InlineAsset } from "./assets";
-import { RenderPool, render } from "./render";
+import { RenderPool, render, renderMotionStrip } from "./render";
+import { packageDeck } from "./package";
+import { validateDocument } from "@deckastra/presentation-schema";
 
 interface Invocation {
   /**
@@ -31,7 +33,7 @@ interface Invocation {
    * to a file. It exists so a proposal can be *seen* before it is approved —
    * an agent that cannot look at its own change has to ask the user to.
    */
-  kind: ExportKind | "png";
+  kind: ExportKind | "png" | "motion-strip" | "mydeck" | "package" | "check-package-document";
   /** Where to write the artifact. */
   output: string;
   /** The document, inline or as a path — a 60-slide deck is large for an argv. */
@@ -56,10 +58,24 @@ async function main(): Promise<void> {
     : invocation.document;
 
   if (!document) throw new Error("no document was supplied");
+  if (invocation.kind === "check-package-document") {
+    const report = validateDocument(document);
+    if (!report.valid) throw new Error(report.errors.map(e => `${e.code}: ${e.message}`).join("; "));
+    process.stdout.write(JSON.stringify({ ok: true, warnings: report.warnings }));
+    return;
+  }
 
   const assets: InlineAsset[] = invocation.assetsPath
     ? (JSON.parse(readFileSync(invocation.assetsPath, "utf8")) as InlineAsset[])
     : (invocation.assets ?? []);
+
+  if (invocation.kind === "mydeck" || invocation.kind === "package") {
+    const outcome = packageDeck(document as never, assets, (invocation.options?.extras ?? {}) as Record<string, string>);
+    writeFileSync(invocation.output, outcome.bytes);
+    process.stdout.write(JSON.stringify({ ok: true, output: invocation.output, bytes: outcome.bytes.length,
+      filename: outcome.filename, contentType: outcome.contentType, report: outcome.report }));
+    return;
+  }
 
   if (invocation.kind === "png") {
     const options = (invocation.options ?? {}) as {
@@ -98,6 +114,43 @@ async function main(): Promise<void> {
           warnings: rendered.warnings,
         }),
       );
+      return;
+    } finally {
+      await pool.close();
+    }
+  }
+
+  if (invocation.kind === "motion-strip") {
+    const options = (invocation.options ?? {}) as {
+      slideIds?: string[];
+      scale?: number;
+      frameCount?: number;
+    };
+    const slideId = options.slideIds?.[0];
+    if (!slideId) throw new Error("motion-strip needs one slide id.");
+    const pool = new RenderPool();
+    try {
+      const rendered = await renderMotionStrip(
+        document as never,
+        slideId,
+        options.frameCount ?? 6,
+        pool,
+        assets,
+        options.scale ?? 1,
+      );
+      writeFileSync(invocation.output, rendered.bytes);
+      process.stdout.write(JSON.stringify({
+        ok: true,
+        output: invocation.output,
+        bytes: rendered.bytes.length,
+        slideId: rendered.slideId,
+        width: rendered.width,
+        height: rendered.height,
+        durationMs: rendered.durationMs,
+        frameTimesMs: rendered.frameTimesMs,
+        metricsEstimated: rendered.metricsEstimated,
+        warnings: rendered.warnings,
+      }));
       return;
     } finally {
       await pool.close();

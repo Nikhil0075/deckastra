@@ -358,6 +358,24 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       );
     }
 
+    case "video": {
+      const src = resolveAssetUrl?.(payload.assetId);
+      const poster = payload.posterAssetId ? resolveAssetUrl?.(payload.posterAssetId) : undefined;
+      if (!src && poster) {
+        return <img src={poster} alt={payload.label ?? "Video poster frame"} draggable={false}
+          data-asset-id={payload.posterAssetId}
+          style={{ width: "100%", height: "100%", objectFit: payload.objectFit as CSSProperties["objectFit"], borderRadius: node.resolvedStyle.cornerRadius, display: "block" }} />;
+      }
+      if (!src) {
+        return <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", background: "rgba(127,127,127,0.12)", border: "1px dashed rgba(127,127,127,0.4)", color: "rgba(127,127,127,0.9)" }}>{payload.label ?? "Video unavailable"}</div>;
+      }
+      return <video src={src} poster={poster} muted={payload.muted} loop={payload.loop} controls={payload.controls}
+        autoPlay={payload.autoplay} playsInline preload="auto" data-asset-id={payload.assetId}
+        data-video-start-ms={payload.startTimeMs} data-video-end-ms={payload.endTimeMs}
+        aria-label={payload.label ?? "Video"}
+        style={{ width: "100%", height: "100%", objectFit: payload.objectFit as CSSProperties["objectFit"], borderRadius: node.resolvedStyle.cornerRadius, display: "block" }} />;
+    }
+
     case "equation": {
       // Markup typeset in the scene build from the document's own source, by a
       // typesetter run with `trust: false` — never markup a document carried.

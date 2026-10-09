@@ -62,7 +62,8 @@ export interface InlineAsset {
  * screenshots and refuse a video someone stored as an "image".
  */
 export const MAX_INLINE_ASSET_BYTES = 8 * 1024 * 1024;
-export const MAX_INLINE_TOTAL_BYTES = 32 * 1024 * 1024;
+export const MAX_INLINE_VIDEO_BYTES = 32 * 1024 * 1024;
+export const MAX_INLINE_TOTAL_BYTES = 96 * 1024 * 1024;
 
 /** `data:` is the only scheme `render-page.ts` lets through, so images must be it. */
 const IMAGE_TYPE = /^image\/[a-z0-9][a-z0-9.+-]*$/;
@@ -74,6 +75,7 @@ const IMAGE_TYPE = /^image\/[a-z0-9][a-z0-9.+-]*$/;
 const FONT_TYPE = /^(font\/(ttf|otf|woff|woff2|sfnt)|application\/font-woff)$/;
 /** Audio a PPTX can carry (integration plan 01 §3.10); checked again by the adapter. */
 const AUDIO_TYPE = /^audio\/(wav|x-wav|wave|mpeg|mp3|mp4|x-m4a|ogg|webm)$/;
+const VIDEO_TYPE = /^video\/mp4$/;
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /** Bytes a base64 string decodes to, without decoding it. */
@@ -84,6 +86,7 @@ function decodedBytes(data: string): number {
 
 interface Accepted {
   url: string;
+  contentType: string;
   storageKey?: string;
 }
 
@@ -126,8 +129,8 @@ export class AssetLibrary {
       }
 
       const type = (asset.mimeType ?? "").split(";", 1)[0]!.trim().toLowerCase();
-      if (!IMAGE_TYPE.test(type) && !FONT_TYPE.test(type) && !AUDIO_TYPE.test(type)) {
-        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image, a font or audio`);
+      if (!IMAGE_TYPE.test(type) && !FONT_TYPE.test(type) && !AUDIO_TYPE.test(type) && !VIDEO_TYPE.test(type)) {
+        this.refused.set(asset.assetId, `its content type (${asset.mimeType ?? "none"}) is not an image, a font, audio or MP4 video`);
         continue;
       }
 
@@ -139,10 +142,11 @@ export class AssetLibrary {
         this.refused.set(asset.assetId, "no bytes were supplied for it");
         continue;
       }
-      if (size > MAX_INLINE_ASSET_BYTES) {
+      const perFileLimit = VIDEO_TYPE.test(type) ? MAX_INLINE_VIDEO_BYTES : MAX_INLINE_ASSET_BYTES;
+      if (size > perFileLimit) {
         this.refused.set(
           asset.assetId,
-          `it is ${Math.round(size / 1024 / 1024)}MB, over the ${MAX_INLINE_ASSET_BYTES / 1024 / 1024}MB this renderer embeds`,
+          `it is ${Math.round(size / 1024 / 1024)}MB, over the ${perFileLimit / 1024 / 1024}MB this renderer embeds`,
         );
         continue;
       }
@@ -161,6 +165,7 @@ export class AssetLibrary {
       total += size;
       const entry: Accepted = {
         url: `data:${type};base64,${data}`,
+        contentType: type,
         ...(asset.storageKey ? { storageKey: asset.storageKey } : {}),
       };
       this.byId.set(asset.assetId, entry);
@@ -208,6 +213,17 @@ export class AssetLibrary {
       const header = entry.url.slice("data:".length, entry.url.indexOf(";base64"));
       if (!header.startsWith("audio/")) continue;
       byId.set(assetId, { bytes: base64Bytes(entry.url.slice(comma + 1)), contentType: header });
+    }
+    return byId;
+  }
+
+  /** Short MP4 clips for PowerPoint embedding and frame-accurate MP4 composition. */
+  videos(): ReadonlyMap<string, ExportImage> {
+    const byId = new Map<string, ExportImage>();
+    for (const [assetId, entry] of this.byId) {
+      if (!entry.contentType.startsWith("video/")) continue;
+      const comma = entry.url.indexOf(",");
+      byId.set(assetId, { bytes: base64Bytes(entry.url.slice(comma + 1)), contentType: entry.contentType });
     }
     return byId;
   }
@@ -270,6 +286,24 @@ export class AssetLibrary {
             : "it was not available to the renderer");
         note(assetId, slide.slideId, elementId, why);
       }
+      const walkVideo = (nodes: readonly SceneNode[] | undefined): void => {
+        for (const node of nodes ?? []) {
+          const payload = node.renderPayload;
+          if (payload.kind === "video") {
+            if (this.byId.has(payload.assetId)) {
+              // Real clip available: editor, PowerPoint and MP4 can play it.
+            } else if (payload.posterAssetId && this.byId.has(payload.posterAssetId)) {
+              warnings.push({ severity: "info", slideId: slide.slideId, elementId: node.id,
+                feature: `video:${payload.assetId}`, action: "approximated",
+                message: "This export uses the video's poster frame because the target is not a moving-video format." });
+            } else {
+              note(payload.assetId, slide.slideId, node.id, this.refused.get(payload.assetId) ?? "neither the clip nor its poster frame was available");
+            }
+          }
+          walkVideo(node.children);
+        }
+      };
+      walkVideo(slide.nodes);
     }
 
     // A decode failure for something no scene asked for should still be heard

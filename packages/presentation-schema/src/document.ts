@@ -25,9 +25,11 @@ import {
   PlaybackSettingsSchema,
   SlideNarrationSchema,
   SoundCueSchema,
+  SoundtrackSchema,
   type PlaybackSettings,
   type SlideNarration,
   type SoundCue,
+  type Soundtrack,
 } from "./narration";
 import { LocaleOverlaySchema, type LocaleOverlay } from "./locales";
 
@@ -238,6 +240,8 @@ export interface PresentationDocument {
   locales?: Record<string, LocaleOverlay>;
   /** Manual or narrated playback (plan 01 §3.4). Absent means manual. */
   playback?: PlaybackSettings;
+  /** A presentation-wide or section-limited music bed. */
+  soundtrack?: Soundtrack;
   createdAt: string;
   /** Always >= createdAt. */
   updatedAt: string;
@@ -262,6 +266,7 @@ export const PresentationDocumentSchema: z.ZodType<PresentationDocument> = z.loo
   provenance: z.array(ProvenanceRecordSchema).optional(),
   locales: z.record(z.string(), LocaleOverlaySchema).optional(),
   playback: PlaybackSettingsSchema.optional(),
+  soundtrack: SoundtrackSchema.optional(),
   createdAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
   extensions: z.record(z.string(), z.unknown()).optional(),

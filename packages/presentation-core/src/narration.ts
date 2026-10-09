@@ -12,6 +12,7 @@ import {
   type PresentationDocument,
   type SoundCue,
   type SoundSource,
+  type Soundtrack,
   type AnimationTrigger,
 } from "@deckastra/presentation-schema";
 
@@ -40,6 +41,8 @@ const cuePath = (slideId: string, cueId: string) => `${slidePath(slideId)}/narra
 export interface NewNarrationCue {
   step: number;
   text: string;
+  voice?: string;
+  advanceOnWord?: number;
 }
 
 /**
@@ -53,7 +56,11 @@ export function addNarrationCuesOperations(
   cues: readonly NewNarrationCue[],
 ): { operations: PatchOperation[]; ids: string[] } {
   const slide = requireSlide(document, slideId);
-  const made: NarrationCue[] = cues.map((cue) => ({ id: newId("nar"), step: Math.max(0, Math.trunc(cue.step)), text: cue.text }));
+  const made: NarrationCue[] = cues.map((cue) => ({
+    id: newId("nar"), step: Math.max(0, Math.trunc(cue.step)), text: cue.text,
+    ...(cue.voice ? { voice: cue.voice } : {}),
+    ...(cue.advanceOnWord !== undefined ? { advanceOnWord: Math.max(0, Math.trunc(cue.advanceOnWord)) } : {}),
+  }));
   const ids = made.map((cue) => cue.id);
   if (!slide.narration) {
     const sorted = [...made].sort((a, b) => a.step - b.step);
@@ -100,6 +107,29 @@ export function setNarrationStepOperations(
   return [{ op: "replace", path: `${cuePath(slideId, cueId)}/step`, value: next }];
 }
 
+/** Choose a speaker and, optionally, the spoken word that advances the step. */
+export function setNarrationDeliveryOperations(
+  document: PresentationDocument,
+  slideId: string,
+  cueId: string,
+  delivery: { voice?: string | null; advanceOnWord?: number | null },
+): PatchOperation[] {
+  const cue = requireCue(document, slideId, cueId);
+  const operations: PatchOperation[] = [];
+  for (const [key, raw] of Object.entries(delivery) as ["voice" | "advanceOnWord", string | number | null | undefined][]) {
+    if (raw === undefined) continue;
+    const current = cue[key];
+    if (raw === null || raw === "") {
+      if (current !== undefined) operations.push({ op: "remove", path: `${cuePath(slideId, cueId)}/${key}` });
+      continue;
+    }
+    const value = key === "advanceOnWord" ? Math.max(0, Math.trunc(raw as number)) : raw;
+    if (current === value) continue;
+    operations.push({ op: current === undefined ? "add" : "replace", path: `${cuePath(slideId, cueId)}/${key}`, value });
+  }
+  return operations;
+}
+
 export function removeNarrationCueOperations(
   document: PresentationDocument,
   slideId: string,
@@ -127,7 +157,7 @@ export function setNarrationTakeOperations(
   slideId: string,
   cueId: string,
   locale: string,
-  take: { assetId: string; durationMs: number; voice?: string; gainDb?: number; textHash?: string },
+  take: { assetId: string; durationMs: number; voice?: string; gainDb?: number; textHash?: string; wordTimings?: { word: string; startMs: number; endMs: number }[] },
   asset?: AssetReference,
 ): PatchOperation[] {
   const cue = requireCue(document, slideId, cueId);
@@ -268,6 +298,16 @@ export function setPlaybackOperations(
   if (playback === undefined) return document.playback ? [{ op: "remove", path: "/playback" }] : [];
   if (JSON.stringify(document.playback) === JSON.stringify(playback)) return [];
   return [{ op: document.playback ? "replace" : "add", path: "/playback", value: playback }];
+}
+
+/** Set or remove the deck/section music bed as one undoable value. */
+export function setSoundtrackOperations(
+  document: PresentationDocument,
+  soundtrack: Soundtrack | undefined,
+): PatchOperation[] {
+  if (soundtrack === undefined) return document.soundtrack ? [{ op: "remove", path: "/soundtrack" }] : [];
+  if (JSON.stringify(document.soundtrack) === JSON.stringify(soundtrack)) return [];
+  return [{ op: document.soundtrack ? "replace" : "add", path: "/soundtrack", value: soundtrack }];
 }
 
 /** The language a take for "the deck as written" is filed under. */

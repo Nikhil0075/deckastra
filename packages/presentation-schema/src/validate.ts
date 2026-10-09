@@ -113,6 +113,7 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   E205: { severity: "error", summary: "AnimationClip.durationMs <= 0" },
   E206: { severity: "error", summary: "DataBinding.targetProperty outside the allowlist" },
   E207: { severity: "error", summary: "BindingTransform.fn not in the allowlist" },
+  E208: { severity: "error", summary: "Custom motion preset has no reduced-motion fallback" },
 
   // patch
   E301: { severity: "error", summary: "Path does not resolve (id: segment not found)" },
@@ -179,6 +180,9 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   W324: { severity: "warning", summary: "Sound cue names a library sound this reader does not know" },
   W325: { severity: "warning", summary: "Text uses glyphs the chosen font cannot draw in this language" },
   W326: { severity: "warning", summary: "Overlay for the deck's own source language is ignored" },
+  W327: { severity: "warning", summary: "Word-linked narration cannot find that word in a take" },
+  E323: { severity: "error", summary: "Narration word timings are not ordered inside the recording" },
+  E324: { severity: "error", summary: "Soundtrack section range is invalid" },
 };
 
 /**
@@ -270,6 +274,7 @@ export function validateDocument(input: unknown): ValidationReport {
   validateElements(doc, c, ids);
   validateReferences(doc, c, { ids, elementsById, slidesById });
   validateAnimations(doc, c, elementsById);
+  validateCustomMotionPresets(doc, c);
   validateThemeTokens(doc, c);
   validateLocales(doc, c);
   validateNarrationAndSound(doc, c);
@@ -281,6 +286,18 @@ export function validateDocument(input: unknown): ValidationReport {
     warnings: c.warnings,
     checkedAt,
   };
+}
+
+function validateCustomMotionPresets(doc: PresentationDocument, c: IssueCollector): void {
+  for (const [name, preset] of Object.entries(doc.theme.motion?.motionPresets ?? {})) {
+    if (!preset.reducedMotion?.trim()) {
+      c.add(
+        "E208",
+        `/theme/motion/motionPresets/${name}/reducedMotion`,
+        `Custom motion preset "${name}" must name a reduced-motion fallback such as "fade" or "instant".`,
+      );
+    }
+  }
 }
 
 interface FlatIssue {
@@ -554,12 +571,15 @@ function validateReferences(
     for (const { element } of walkElements(slide.elements)) {
       const path = elementPath(slide.id, element.id);
 
-      if (element.type === "image") {
-        const assetId = (element as { assetId?: string }).assetId;
-        if (assetId && !assetIds.has(assetId)) {
-          c.add("E102", `${path}/assetId`, `assetId "${assetId}" is not in the asset manifest.`, {
-            targetIds: [element.id],
-          });
+      if (element.type === "image" || element.type === "video") {
+        const media = element as { assetId?: string; posterAssetId?: string };
+        for (const key of element.type === "video" ? ["assetId", "posterAssetId"] as const : ["assetId"] as const) {
+          const assetId = media[key];
+          if (assetId && !assetIds.has(assetId)) {
+            c.add("E102", `${path}/${key}`, `${key} "${assetId}" is not in the asset manifest.`, {
+              targetIds: [element.id],
+            });
+          }
         }
       }
 
@@ -914,6 +934,20 @@ export function clickStepCount(slide: PresentationDocument["slides"][number]): n
 function validateNarrationAndSound(doc: PresentationDocument, c: IssueCollector): void {
   const audio = new Set(doc.assets.filter((asset) => asset.type === "audio").map((asset) => asset.id));
   const library = new Set<string>(SOUND_LIBRARY_NAMES);
+  if (doc.soundtrack) {
+    const path = "/soundtrack";
+    if ("assetId" in doc.soundtrack.source && !audio.has(doc.soundtrack.source.assetId)) {
+      c.add("E111", `${path}/source/assetId`, `The soundtrack names "${doc.soundtrack.source.assetId}", which is not an audio asset in this deck.`);
+    }
+    if ("library" in doc.soundtrack.source && !library.has(doc.soundtrack.source.library)) {
+      c.add("W324", `${path}/source/library`, `"${doc.soundtrack.source.library}" is not a sound this reader has. It is kept, and plays as silence here.`);
+    }
+    const from = doc.soundtrack.fromSlideId ? doc.slides.findIndex((slide) => slide.id === doc.soundtrack!.fromSlideId) : 0;
+    const through = doc.soundtrack.throughSlideId ? doc.slides.findIndex((slide) => slide.id === doc.soundtrack!.throughSlideId) : doc.slides.length - 1;
+    if (from < 0 || through < 0 || from > through) {
+      c.add("E324", path, "The soundtrack's section must name existing slides in deck order.");
+    }
+  }
   for (const slide of doc.slides) {
     const cues = slide.narration?.cues ?? [];
     const cueLimit = checkLimit("narrationCuesPerSlide", cues.length);
@@ -941,6 +975,20 @@ function validateNarrationAndSound(doc: PresentationDocument, c: IssueCollector)
         }
         if (take.textHash !== localeTextHash(scriptIn(doc, slide.id, cue, locale))) {
           c.add("W322", takePath, `The ${locale} recording says an older script. Record or synthesize it again.`, { targetIds: [cue.id] });
+        }
+        let previous = -1;
+        for (const [index, timing] of (take.wordTimings ?? []).entries()) {
+          if (timing.startMs < previous || timing.endMs < timing.startMs || timing.endMs > take.durationMs) {
+            c.add("E323", `${takePath}/wordTimings/${index}`, "Word timings must be ordered and remain inside the recording.", { targetIds: [cue.id] });
+            break;
+          }
+          previous = timing.endMs;
+        }
+      }
+      if (cue.advanceOnWord !== undefined) {
+        const timings = Object.values(cue.takes ?? {}).map((take) => take.wordTimings ?? []);
+        if (timings.length > 0 && timings.every((words) => cue.advanceOnWord! >= words.length)) {
+          c.add("W327", `${cuePath}/advanceOnWord`, `This line advances on word ${cue.advanceOnWord + 1}, but no current take has that word timing. It will advance at the end instead.`, { targetIds: [cue.id] });
         }
       }
     }

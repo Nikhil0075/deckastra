@@ -49,6 +49,12 @@ export interface PlacedAudio {
   iconRelationshipId: string;
 }
 
+export interface PlacedVideo {
+  videoRelationshipId: string;
+  mediaRelationshipId: string;
+  posterRelationshipId: string;
+}
+
 /** Audio PowerPoint plays everywhere it runs. Anything else is reported, not embedded. */
 const AUDIO_EXTENSIONS: Record<string, string> = {
   "audio/wav": "wav",
@@ -68,6 +74,7 @@ export const MEDIA_CONTENT_TYPES: Record<string, string> = {
   wav: "audio/wav",
   mp3: "audio/mpeg",
   m4a: "audio/mp4",
+  mp4: "video/mp4",
 };
 
 /**
@@ -82,6 +89,7 @@ const ICON_PNG = Uint8Array.from(
 const RELATIONSHIP = {
   image: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
   audio: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio",
+  video: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video",
   media: "http://schemas.microsoft.com/office/2007/relationships/media",
 } as const;
 
@@ -97,11 +105,13 @@ export class MediaRegistry {
   /** Per slide: asset id → relationship id, and the ordered rels to write. */
   private slideRelationships: Array<{ id: string; target: string; type?: string }> = [];
   private audioThisSlide = new Map<string, PlacedAudio>();
+  private videoThisSlide = new Map<string, PlacedVideo>();
   private byAssetThisSlide = new Map<string, string>();
   private nextRelationship = 0;
 
   constructor(
     private readonly images: ReadonlyMap<string, ExportImage> | undefined,
+    private readonly videos: ReadonlyMap<string, ExportImage> | undefined,
       /**
      * rIds 1 and 2 are the layout and the notes slide, so pictures start at 3.
      *
@@ -117,6 +127,7 @@ export class MediaRegistry {
     this.slideRelationships = [];
     this.byAssetThisSlide = new Map();
     this.audioThisSlide = new Map();
+    this.videoThisSlide = new Map();
     this.nextRelationship = this.firstRelationship;
   }
 
@@ -202,6 +213,33 @@ export class MediaRegistry {
       iconRelationshipId: this.relate(`../media/${icon.path.slice("ppt/media/".length)}`, RELATIONSHIP.image),
     };
     this.audioThisSlide.set(key, placed);
+    return { placed };
+  }
+
+  placeVideo(assetId: string, posterAssetId?: string): { placed: PlacedVideo } | { refused: string } {
+    const existing = this.videoThisSlide.get(assetId);
+    if (existing) return { placed: existing };
+    const video = this.videos?.get(assetId);
+    if (!video) return { refused: "its MP4 bytes were not available to the exporter" };
+    if (video.contentType.split(";", 1)[0]!.trim().toLowerCase() !== "video/mp4") {
+      return { refused: `PowerPoint does not reliably play ${video.contentType || "that video format"}` };
+    }
+    if (!posterAssetId) return { refused: "it has no poster frame" };
+    const poster = this.place(posterAssetId);
+    if ("refused" in poster) return { refused: `its poster frame is unavailable because ${poster.refused}` };
+    let part = this.parts.get(`video:${assetId}`);
+    if (!part) {
+      const count = [...this.parts.keys()].filter((name) => name.startsWith("video:")).length;
+      part = { path: `ppt/media/video${count + 1}.mp4`, bytes: video.bytes, extension: "mp4" };
+      this.parts.set(`video:${assetId}`, part);
+    }
+    const target = `../media/${part.path.slice("ppt/media/".length)}`;
+    const placed: PlacedVideo = {
+      videoRelationshipId: this.relate(target, RELATIONSHIP.video),
+      mediaRelationshipId: this.relate(target, RELATIONSHIP.media),
+      posterRelationshipId: poster.placed.relationshipId,
+    };
+    this.videoThisSlide.set(assetId, placed);
     return { placed };
   }
 

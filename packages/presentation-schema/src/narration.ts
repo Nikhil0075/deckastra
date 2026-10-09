@@ -18,6 +18,14 @@ import { AnimationTriggerSchema } from "./animation";
  * words and the recording is stale, not silently wrong.
  */
 
+/** One spoken word located in a take's own audio clock. */
+export const WordTimingSchema = z.object({
+  word: z.string().min(1).max(200),
+  startMs: MillisecondsSchema,
+  endMs: MillisecondsSchema,
+});
+export type WordTiming = z.infer<typeof WordTimingSchema>;
+
 /** One recording of one cue in one language. */
 export const NarrationTakeSchema = z.looseObject({
   /** An `audio` entry in the asset manifest. */
@@ -36,6 +44,8 @@ export const NarrationTakeSchema = z.looseObject({
    * take due for voicing again, the way a different `textHash` is.
    */
   sayAs: z.string().max(64).optional(),
+  /** Provider time points, stored with the take so seek and export need no provider call. */
+  wordTimings: z.array(WordTimingSchema).max(2000).optional(),
 });
 export type NarrationTake = z.infer<typeof NarrationTakeSchema>;
 
@@ -50,6 +60,10 @@ export const NarrationCueSchema = z.looseObject({
   step: z.number().int().min(0).max(200),
   /** The script, in the deck's source language. Overlays translate it. */
   text: z.string().max(5000),
+  /** A cue-specific speaker. Absent means the deck/panel default voice. */
+  voice: z.string().min(1).max(120).optional(),
+  /** Advance to the next click step when this zero-based spoken word begins. */
+  advanceOnWord: z.number().int().min(0).max(1999).optional(),
   /** Keyed by BCP-47 locale. The source language's take sits under its own tag. */
   takes: z.record(z.string(), NarrationTakeSchema).optional(),
 });
@@ -74,6 +88,24 @@ export const SoundSourceSchema = z.union([
   z.object({ library: z.string().min(1).max(60) }),
 ]);
 export type SoundSource = z.infer<typeof SoundSourceSchema>;
+
+/** Music under the deck, optionally limited to a contiguous slide range. */
+export const SoundtrackSchema = z.looseObject({
+  source: SoundSourceSchema,
+  volume: NormalizedSchema.optional(),
+  loop: z.boolean().optional(),
+  fadeInMs: MillisecondsSchema.max(30_000).optional(),
+  fadeOutMs: MillisecondsSchema.max(30_000).optional(),
+  ducking: z.looseObject({
+    gainDb: FiniteNumber.min(-30).max(0),
+    attackMs: MillisecondsSchema.max(5000).optional(),
+    releaseMs: MillisecondsSchema.max(5000).optional(),
+  }).optional(),
+  /** Both absent means the whole presentation; together they describe a section. */
+  fromSlideId: IdSchema.optional(),
+  throughSlideId: IdSchema.optional(),
+});
+export type Soundtrack = z.infer<typeof SoundtrackSchema>;
 
 export const SoundCueSchema = z.looseObject({
   id: prefixedId("snd"),

@@ -1,4 +1,5 @@
 import type { PatchOperation } from "@deckastra/presentation-schema";
+import type { MotionStyleId } from "./presets";
 
 /**
  * Motion, as an agent may describe it (doc 03 §12, doc 04 §24).
@@ -54,6 +55,29 @@ export interface MotionResult {
   operations?: PatchOperation[];
 }
 
+/** Apply one reviewed motion vocabulary to the whole deck. */
+export interface MotionStyleRequest {
+  expected_version_id: string;
+  style: MotionStyleId;
+  intent?: string;
+  client_label?: string;
+  /** Return editor-ready operations without creating a server proposal. */
+  dry_run?: boolean;
+}
+
+export interface MotionStyleResult {
+  outcome: string;
+  risk_tier?: string;
+  reasons?: string[];
+  transaction_id?: string | null;
+  version_id?: string | null;
+  expires_at?: string | null;
+  style: MotionStyleId;
+  slides_changed: number;
+  warnings: string[];
+  operations?: PatchOperation[];
+}
+
 /**
  * How the deck moves *into* a slide (doc 02 §26).
  *
@@ -64,7 +88,7 @@ export interface MotionResult {
 export interface TransitionRequest {
   slide_id: string;
   expected_version_id: string;
-  kind?: "cut" | "fade" | "slide" | "push" | "zoom" | "morph";
+  kind?: "cut" | "fade" | "slide" | "cover" | "push" | "zoom" | "wipe" | "split" | "iris" | "flip" | "blurDissolve" | "morph";
   pacing?: "tight" | "measured" | "deliberate";
   /** Semantic roles that travel across the boundary. Only a morph carries them. */
   carry?: string[];

@@ -87,10 +87,10 @@ describe("what the renderer is handed", () => {
   });
 
   it("stops at the total a single render embeds", () => {
-    // Per-file alone is not a bound: forty 7MB photographs are forty acceptable
-    // files and one page Chromium is asked to parse 280MB of base64 for.
+    // Per-file alone is not a bound: a hundred 1MB photographs are a hundred
+    // acceptable files and still exceed the mixed-media render envelope.
     const oneMeg = "A".repeat(Math.ceil((1024 * 1024 * 4) / 3));
-    const many = Array.from({ length: 40 }, (_, index) => ({
+    const many = Array.from({ length: 100 }, (_, index) => ({
       assetId: `ast_${index}`,
       mimeType: "image/png",
       data: oneMeg,

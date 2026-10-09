@@ -80,7 +80,7 @@ describe("the HTTP workspace client", () => {
     const detail = { limit: "generations", used: 50, allowed: 50, resets_at: "2026-10-01T00:00:00Z" };
     const fetchImpl: FetchLike = async () => refusal(429, detail);
     const error = await client(fetchImpl)
-      .generation.run({ instruction: "x", audience: "y", slide_count: 5, repository_ids: [] })
+      .presets.create({ template_id: "business-pitch" })
       .catch((caught: unknown) => caught);
 
     expect(quotaDetail(error)).toEqual(detail);
@@ -142,8 +142,47 @@ describe("the HTTP workspace client", () => {
     expect(fetchImpl.mock.calls[2]![1]!.cache).toBeUndefined();
   });
 
+  it("keeps preset listing and deterministic creation on their dedicated routes", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => ok({ presentation_id: "prs_new" }));
+    const api = client(fetchImpl);
+
+    await api.presets.list();
+    await api.presets.create({ template_id: "business-pitch", project_id: "prj" });
+    await api.presets.compose({
+      project_id: "prj",
+      story_plan: {
+        title: "Composed",
+        audience: "Reviewers",
+        objective: "Decide",
+        narrative_arc: "Context to decision",
+        slides: [{ layout: "statement", purpose: "Decide", key_message: "Choose", headline: "One path" }],
+      },
+    });
+
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      "http://api.test/v1/presets",
+      "http://api.test/v1/decks/from-template",
+      "http://api.test/v1/decks/compose",
+    ]);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]![1]!.body))).toMatchObject({ template_id: "business-pitch", project_id: "prj" });
+  });
+
+  it("quotes paid image, translation, and speech requests before execution", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => ok({ quote_token: "quoted", credit_cost: 2 }));
+    const api = client(fetchImpl);
+    await api.assistant!.quoteImage("prs_1", { expected_version_id: "ver_1", slide_id: "sld_1", prompt: "A diagram" });
+    await api.languages!.quoteTranslation("prs_1", "fr", { scope: "missing", expected_version_id: "ver_1", glossary: ["Deckastra"] });
+    await api.languages!.quoteSpeech("prs_1", { locale: "en", expected_version_id: "ver_1", rate: 1 });
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+      "http://api.test/v1/media/quotes/image",
+      "http://api.test/v1/media/quotes/translation",
+      "http://api.test/v1/media/quotes/speech",
+    ]);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1]![1]!.body))).toMatchObject({ presentation_id: "prs_1", locale: "fr", glossary: ["Deckastra"] });
+  });
+
   it("does not attach a token to the two unauthenticated reads", async () => {
-    const fetchImpl = vi.fn<FetchLike>(async () => ok({ generation: "stub" }));
+    const fetchImpl = vi.fn<FetchLike>(async () => ok({ status: "ok", database: "sqlite", migrations: "test" }));
     const api = client(fetchImpl);
 
     await api.health();
@@ -173,6 +212,121 @@ describe("the HTTP workspace client", () => {
 
     await Promise.all([api.session.ensure(), api.session.ensure(), api.session.ensure()]);
     expect(bootstrapSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let one caller's abort cancel the session the others are waiting on", async () => {
+    // React's development double mount aborts the first mount's request on
+    // every load; that signal used to travel into the shared bootstrap and
+    // fail the deck list's account read too (2026-10-05).
+    let release: (value: { token: string; userId: string; workspaceId: string; projectId: null }) => void = () => {};
+    const bootstrapSession = vi.fn(
+      (context: { signal?: AbortSignal }) =>
+        new Promise<{ token: string; userId: string; workspaceId: string; projectId: null }>((resolve, reject) => {
+          release = resolve;
+          context.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        }),
+    );
+    const api = createHttpClient({
+      baseUrl: "http://api.test",
+      clientId: "test-client",
+      sessionStore: memorySessionStore(),
+      bootstrapSession,
+      fetch: async () => ok({}),
+    });
+    const first = new AbortController();
+    const abandoned = api.session.ensure({ signal: first.signal });
+    const waiting = api.session.ensure();
+    first.abort();
+    await expect(abandoned).rejects.toThrow();
+    release({ token: "fresh", userId: "usr", workspaceId: "wsp", projectId: null });
+    await expect(waiting).resolves.toMatchObject({ token: "fresh" });
+    expect(bootstrapSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks once more with a fresh token when one is refused, and only once", async () => {
+    // Identity Platform tokens last an hour; a request that meets an expired one
+    // must renew it rather than fail, and a second refusal is the answer.
+    const store = seeded();
+    const bootstrapSession = vi.fn(async (context: { refresh?: boolean }) => ({
+      token: context.refresh ? "renewed" : "first",
+      userId: "usr",
+      workspaceId: "wsp",
+      projectId: null,
+    }));
+    const sent: string[] = [];
+    const fetchImpl = vi.fn<FetchLike>(async (_url, init) => {
+      const token = (init!.headers as Record<string, string>).Authorization!;
+      sent.push(token);
+      return token === "Bearer renewed" ? ok({ version_id: "v1" }) : refusal(401, "Expired");
+    });
+    const api = createHttpClient({ baseUrl: "http://api.test", clientId: "c", sessionStore: store, bootstrapSession, fetch: fetchImpl });
+    await expect(api.documents.read("prs_1")).resolves.toMatchObject({ version_id: "v1" });
+    expect(sent).toEqual(["Bearer tkn", "Bearer renewed"]);
+    expect(bootstrapSession).toHaveBeenCalledWith(expect.objectContaining({ refresh: true }));
+
+    const refused = createHttpClient({
+      baseUrl: "http://api.test",
+      clientId: "c",
+      sessionStore: seeded(),
+      bootstrapSession,
+      fetch: async () => refusal(401, "Signed out"),
+    });
+    await expect(refused.documents.read("prs_1")).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("reports the original refusal when no fresh session can be had", async () => {
+    const api = createHttpClient({
+      baseUrl: "http://api.test",
+      clientId: "c",
+      sessionStore: seeded(),
+      bootstrapSession: async () => {
+        throw new Error("Sign in to continue.");
+      },
+      fetch: async () => refusal(401, "Not signed in."),
+    });
+    await expect(api.documents.read("prs_1")).rejects.toMatchObject({ status: 401, message: "Not signed in." });
+  });
+
+  it("deletes the account with the typed confirmation, and reads the receipt without a session", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async (url) =>
+      String(url).endsWith("/v1/account") ? ok({ id: "del_1", status: "queued" }) : ok({ status: "completed" }),
+    );
+    const api = client(fetchImpl);
+    await expect(api.session.deleteAccount!()).resolves.toMatchObject({ id: "del_1" });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(url).toBe("http://api.test/v1/account");
+    expect(init!.method).toBe("DELETE");
+    expect(JSON.parse(String(init!.body))).toEqual({ confirm: "DELETE" });
+
+    await api.session.deletionStatus!("del_1");
+    const [statusUrl, statusInit] = fetchImpl.mock.calls[1]!;
+    expect(statusUrl).toBe("http://api.test/v1/account/deletions/del_1");
+    expect((statusInit!.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+
+  it("uploads a deck file to a signed URL with exactly the headers it was signed with", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async (url) => {
+      if (String(url).endsWith("/imports")) {
+        return ok({ id: "imp_1", upload_url: "https://storage.test/put?sig=1", method: "PUT", headers: { "Content-Type": "application/vnd.deckastra.mydeck" } });
+      }
+      if (String(url).startsWith("https://storage.test")) return ok({});
+      return ok({ id: "imp_1", status: "queued", presentation_id: null, error: null, warnings: [] });
+    });
+    const file = new Blob(["deck"]);
+    await expect(client(fetchImpl).imports!.upload("prj_1", file)).resolves.toMatchObject({ status: "queued" });
+    const [beginUrl, begin] = fetchImpl.mock.calls[0]!;
+    expect(beginUrl).toBe("http://api.test/v1/projects/prj_1/imports");
+    expect(JSON.parse(String(begin!.body))).toEqual({ size_bytes: 4, copy: true });
+    const [, put] = fetchImpl.mock.calls[1]!;
+    expect(put!.headers).toEqual({ "Content-Type": "application/vnd.deckastra.mydeck" });
+    expect(fetchImpl.mock.calls[2]![0]).toBe("http://api.test/v1/imports/imp_1/complete");
+  });
+
+  it("refuses a deck file over the service's limit before sending anything", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => ok({}));
+    const huge = { size: 129 * 1024 * 1024 } as Blob;
+    await expect(client(fetchImpl).imports!.upload("prj_1", huge)).rejects.toMatchObject({ status: 413 });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("records the client that authored a patch", async () => {

@@ -174,3 +174,57 @@ describe("the entrance budget is computed, not requested", () => {
     }
   });
 });
+
+const PHASE_4_PRESETS = [
+  "pulse",
+  "highlightSweep",
+  "underlineDraw",
+  "colorShift",
+  "shake",
+  "fadeOut",
+  "slideOut",
+  "scaleOut",
+  "wipeOut",
+  "moveAlongPath",
+  "lineByLine",
+  "wordCascade",
+] as const;
+
+const PHASE_4_TRANSITIONS = ["wipe", "split", "iris", "flip", "blurDissolve"] as const;
+
+describe("Phase 4 built-in acceptance", () => {
+  it.each(PHASE_4_PRESETS)("%s keeps seek and play identical and has reduced motion", (preset) => {
+    const targetId = scene.slides[0]!.nodes[0]!.id;
+    const authored = [{
+      id: `anm_${preset}`,
+      targetId,
+      trigger: { type: "slideEnter" as const },
+      clips: [{
+        id: `clp_${preset}`,
+        preset,
+        presetParams: { segmentCount: 4, deltaX: 180, deltaY: 40 },
+        startMs: 0,
+        durationMs: 400,
+      }],
+    }];
+    const full = compileTimeline(scene.slides[0]!, authored);
+    const reduced = compileTimeline(scene.slides[0]!, authored, { userMotionPreference: "reduced" });
+    const at = Math.round(full.durationMs / 2);
+    expect(playTo(full, at, sampleAt)).toEqual(sampleAt(full, at));
+    expect(reduced.durationMs).toBeLessThanOrEqual(full.durationMs);
+  });
+
+  it.each(PHASE_4_TRANSITIONS)("%s keeps parity and cuts under reduced motion", (type) => {
+    const previous = transitionSlideFromScene(scene.slides[0]!);
+    const incoming = transitionSlideFromScene(scene.slides[1]!);
+    const full = compileTransition({ type, durationMs: 500 }, previous, incoming);
+    const at = 250;
+    expect(playTo(full, at, sampleTransition)).toEqual(sampleTransition(full, at));
+
+    const reduced = compileTransition({ type, durationMs: 500 }, previous, incoming, {
+      motion: "reduced",
+    });
+    expect(reduced.type).toBe("cut");
+    expect(reduced.durationMs).toBe(0);
+  });
+});

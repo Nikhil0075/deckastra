@@ -1,4 +1,8 @@
-export type ExportKind = "pdf" | "pptx";
+/**
+ * `mydeck` is the exchange package: the whole deck, its pictures and its
+ * sounds, for someone else to open in Deckastra (FRONTEND_BACKEND_HANDOFF.md).
+ */
+export type ExportKind = "pdf" | "pptx" | "mp4" | "mydeck";
 
 /**
  * One degradation, as the ledger recorded it (doc 04 §32.2).
@@ -57,4 +61,26 @@ export interface ExportRequest {
    * does not have rather than exporting the original under its name.
    */
   locale?: string;
+  /** Deterministic video cadence; used only by MP4 export. */
+  fps?: 24 | 30 | 60;
 }
+
+/**
+ * A `.mydeck` file being brought into a project (`/v1/projects/{id}/imports`).
+ *
+ * `completed` names the new deck; `existing` names a deck the person can
+ * already open (a file that came from this account); `failed` carries a safe
+ * sentence. The upload itself goes straight to storage.
+ */
+export type DeckImportStatus = "uploading" | "queued" | "running" | "completed" | "existing" | "failed";
+
+export interface DeckImport {
+  id: string;
+  status: DeckImportStatus;
+  presentation_id: string | null;
+  error: string | null;
+  warnings: string[];
+}
+
+/** The service refuses larger files; checked before any bytes are sent. */
+export const DECK_IMPORT_MAX_BYTES = 128 * 1024 * 1024;

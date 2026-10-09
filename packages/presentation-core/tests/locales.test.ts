@@ -14,7 +14,9 @@ import {
   removeNarrationCueOperations,
   setLocaleEntriesOperations,
   setNarrationTakeOperations,
+  setNarrationDeliveryOperations,
   setPlaybackOperations,
+  setSoundtrackOperations,
 } from "../src/index";
 
 const deck = () => loadFixture("multilingual");
@@ -142,6 +144,25 @@ describe("narration and sound operations", () => {
     expect(doc.slides[0]!.soundCues).toHaveLength(1);
     doc = applyPatch(doc, setPlaybackOperations(doc, { mode: "manual" })).document;
     expect(doc.playback).toEqual({ mode: "manual" });
+    expect(validateDocument(doc).errors).toEqual([]);
+  });
+
+  it("sets a cue speaker, a word-linked reveal, and a ducked music bed", () => {
+    let doc = deck();
+    const slide = doc.slides[0]!;
+    const made = addNarrationCuesOperations(doc, slide.id, [{ step: 0, text: "Reveal this now", voice: "speaker-b", advanceOnWord: 2 }]);
+    doc = applyPatch(doc, made.operations).document;
+    const cue = doc.slides[0]!.narration!.cues.find((candidate) => candidate.id === made.ids[0])!;
+    expect(cue).toMatchObject({ voice: "speaker-b", advanceOnWord: 2 });
+    doc = applyPatch(doc, setNarrationDeliveryOperations(doc, slide.id, cue.id, { voice: null, advanceOnWord: 1 })).document;
+    const changed = doc.slides[0]!.narration!.cues.find((candidate) => candidate.id === cue.id)!;
+    expect(changed).toMatchObject({ advanceOnWord: 1 });
+    expect(changed.voice).toBeUndefined();
+    doc = applyPatch(doc, setSoundtrackOperations(doc, {
+      source: { library: "ambient-calm" }, volume: 0.35, loop: true,
+      ducking: { gainDb: -12, attackMs: 180, releaseMs: 280 },
+    })).document;
+    expect(doc.soundtrack?.source).toEqual({ library: "ambient-calm" });
     expect(validateDocument(doc).errors).toEqual([]);
   });
 });

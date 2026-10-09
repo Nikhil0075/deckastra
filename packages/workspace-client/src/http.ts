@@ -3,8 +3,12 @@ import type {
   TransitionRequest,
   TransitionResult,
   AccountContext,
+  CreditBalance,
+  ComposedDeckResult,
+  AccountCapabilities,
+  AccountDeletion,
+  DeckImport,
   AccountProject,
-  AgentEditResult,
   AppliedChange,
   CreatePresentationRequest,
   CreatePresentationResult,
@@ -15,23 +19,26 @@ import type {
   DeletePresentationResult,
   RestorePresentationResult,
   DuplicatePresentationResult,
-  EditScopePayload,
   ExportJob,
   ExportRequest,
-  GenerateRequest,
-  GenerateResult,
+  DeckComposeRequest,
+  DeckFromTemplateRequest,
   HealthReport,
   MotionCapabilities,
   MotionRequest,
   MotionResult,
+  MotionStyleRequest,
+  MotionStyleResult,
   PendingProposal,
   ProposalDetail,
-  ReviewedGeneration,
   PresentationSummary,
+  PresetCatalog,
+  InsertPatternRequest,
+  InsertPatternResult,
   PreviewRequest,
   PreviewResult,
-  Repository,
-  RepositoryList,
+  MotionPreviewRequest,
+  MotionPreviewResult,
   RequestOptions,
   ImportedTheme,
   SaveThemeRequest,
@@ -49,15 +56,29 @@ import type {
   WorkspaceClient,
   UploadedAsset,
   LanguagesStatus,
+  PaidServiceQuote,
   SynthesizeResult,
   TranslateResult,
   Voice,
 } from "@deckastra/workspace-contracts";
+import { DECK_IMPORT_MAX_BYTES } from "@deckastra/workspace-contracts";
 
 import { WorkspaceRequestError, messageFromDetail } from "./errors";
 import { browserSessionStore, type SessionStore } from "./session-store";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+
+export interface BootstrapContext {
+  baseUrl: string;
+  fetch: FetchLike;
+  signal?: AbortSignal;
+  /**
+   * The service refused the session it was given. A sign-in whose tokens expire
+   * (an hour, for Identity Platform) must fetch a fresh one rather than hand the
+   * cached one back.
+   */
+  refresh?: boolean;
+}
 
 export interface HttpClientOptions {
   /** Origin of the authority. No trailing slash; one is stripped if present. */
@@ -77,7 +98,7 @@ export interface HttpClientOptions {
    * is disabled in production. A real sign-in and the desktop's launch-secret
    * session both replace this and nothing else.
    */
-  bootstrapSession?: (context: { baseUrl: string; fetch: FetchLike; signal?: AbortSignal }) => Promise<Session>;
+  bootstrapSession?: (context: BootstrapContext) => Promise<Session>;
   fetch?: FetchLike;
 }
 
@@ -98,22 +119,36 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
 
   let inflight: Promise<Session> | undefined;
 
-  async function ensureSession(request?: RequestOptions): Promise<Session> {
+  async function ensureSession(request?: RequestOptions, refresh = false): Promise<Session> {
     const cached = store.read();
-    if (cached) return cached;
+    if (cached && !refresh) return cached;
 
     // One request even if several components ask at once, so a fresh load does
     // not create three users.
-    inflight ??= bootstrap({ baseUrl, fetch: doFetch, ...(request?.signal ? { signal: request.signal } : {}) })
+    //
+    // And no one caller's signal goes into it. The bootstrap is shared, so a
+    // signal passed in belonged to whichever component asked first, and that
+    // component unmounting (React's development double mount does it on every
+    // load) aborted the session for everyone waiting on it: the deck list read
+    // "signal is aborted without reason" on a fresh load (2026-10-05). Each
+    // caller stops waiting on its own abort; the request runs on for the rest.
+    const shared = (inflight ??= bootstrap({ baseUrl, fetch: doFetch, ...(refresh ? { refresh: true } : {}) })
       .then((session) => {
         store.write(session);
         return session;
       })
       .finally(() => {
         inflight = undefined;
-      });
+      }));
 
-    return inflight;
+    const signal = request?.signal;
+    if (!signal) return shared;
+    if (signal.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+    return new Promise<Session>((resolve, reject) => {
+      const onAbort = () => reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      signal.addEventListener("abort", onAbort, { once: true });
+      shared.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+    });
   }
 
   interface SendInit extends RequestOptions {
@@ -127,7 +162,7 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
     fallback?: string;
   }
 
-  async function send(path: string, init: SendInit = {}): Promise<Response> {
+  async function send(path: string, init: SendInit = {}, retried = false): Promise<Response> {
     const headers: Record<string, string> = {};
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
     if (init.raw !== undefined) headers["Content-Type"] = init.raw.type || "application/octet-stream";
@@ -169,6 +204,20 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
           ? error.message
           : "Could not reach the workspace.",
       );
+    }
+
+    // A 401 on an authenticated request means the token was refused before
+    // anything was done, so asking once more with a fresh one is safe even for a
+    // write. Once: a second refusal is the answer (signed out, or deleted).
+    if (response.status === 401 && init.auth !== false && !retried) {
+      let renewed = false;
+      try {
+        await ensureSession(init, true);
+        renewed = true;
+      } catch {
+        /* No fresh session to be had: report the original refusal. */
+      }
+      if (renewed) return send(path, init, true);
     }
 
     if (!response.ok) {
@@ -213,13 +262,15 @@ const q = encodeURIComponent;
     clientId: options.clientId,
     assistant: {
       capabilities: (o) => json<AssistantCapabilities>(`/v1/assistant/capabilities${o?.presentationId ? `?presentation_id=${q(o.presentationId)}${o.slideId ? `&slide_id=${q(o.slideId)}` : ""}${o.locale ? `&locale=${q(o.locale)}` : ""}` : ""}`, { ...o }),
+      quoteImage: (presentationId, body, o) => json<PaidServiceQuote>("/v1/media/quotes/image", {
+        ...o, body: { presentation_id: presentationId, ...body }, fallback: "The image price could not be checked.",
+      }),
       start: (body, o) => json<AssistantRun>("/v1/assistant/runs", { ...o, body }),
       get: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}`, { ...o }),
       list: (id, o) => json<{ runs: AssistantRun[] }>(`/v1/assistant/runs?presentation_id=${q(id)}`, { ...o }),
       events: (id, after = 0, o) => json<{ events: AssistantEvent[] }>(`/v1/assistant/runs/${q(id)}/events?after=${after}`, { ...o }),
       cancel: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/cancel`, { ...o, body: {} }),
       resume: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/resume`, { ...o, body: {} }),
-      approveMetadata: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}/approve-metadata`, { ...o, body: {} }),
       designCheck: (id, slide, o) => json<DesignCheckResult>(`/v1/presentations/${q(id)}/design-check${slide ? `?slide_id=${q(slide)}` : ""}`, { ...o }),
       assetList: (request, o) => {
         const params = new URLSearchParams();
@@ -247,6 +298,17 @@ const q = encodeURIComponent;
       ensure: ensureSession,
       clear: () => store.clear(),
       account: (request) => json<AccountContext>("/v1/account", { ...request }),
+      credits: (request) => json<CreditBalance>("/v1/account/credits", { ...request }),
+      capabilities: (request) => json<AccountCapabilities>("/v1/account/capabilities", { ...request }),
+      deleteAccount: (request) =>
+        json<AccountDeletion>("/v1/account", {
+          method: "DELETE",
+          body: { confirm: "DELETE" },
+          fallback: "Your account could not be deleted just now.",
+          ...request,
+        }),
+      deletionStatus: (receipt, request) =>
+        json<{ status: string }>(`/v1/account/deletions/${q(receipt)}`, { auth: false, fresh: true, ...request }),
       createWorkspace: (name, request) =>
         json<{ workspace_id: string; project_id: string }>("/v1/workspaces", {
           body: { name },
@@ -279,6 +341,11 @@ const q = encodeURIComponent;
         ).then((body) => body.presentations),
       preview: (presentationId, body: PreviewRequest, request) =>
         json<PreviewResult>(`/v1/presentations/${q(presentationId)}/preview`, {
+          body,
+          ...request,
+        }),
+      motionPreview: (presentationId, body: MotionPreviewRequest, request) =>
+        json<MotionPreviewResult>(`/v1/presentations/${q(presentationId)}/motion-preview`, {
           body,
           ...request,
         }),
@@ -332,6 +399,11 @@ const q = encodeURIComponent;
           `/v1/projects/${q(projectId)}/presentations?deleted=true`,
           { fresh: true, ...request },
         ).then((body) => body.presentations),
+      slideSources: (presentationId, slideId, request) =>
+        json<SlideSources>(
+          `/v1/presentations/${q(presentationId)}/slides/${q(slideId)}/sources`,
+          { ...request },
+        ),
     },
 
     motion: {
@@ -343,23 +415,30 @@ const q = encodeURIComponent;
           body,
           ...request,
         }),
+      proposeStyle: (presentationId, body: MotionStyleRequest, request) =>
+        json<MotionStyleResult>(`/v1/presentations/${q(presentationId)}/motion-style`, {
+          body,
+          fallback: "That motion style could not be applied.",
+          ...request,
+        }),
     },
 
-    generation: {
-      run: (body: GenerateRequest, request) => json<GenerateResult>("/v1/generate", { body, ...request }),
-      review: (body, request) => json<ReviewedGeneration>("/v1/generate/review", { body, ...request }),
-      checkpoint: (runId, request) =>
-        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/checkpoint`, { fresh: true, ...request }),
-      decide: (runId, decision, request) =>
-        json<ReviewedGeneration>(`/v1/runs/${q(runId)}/resume`, { method: "POST", body: decision, ...request }),
+
+    presets: {
+      list: (request) => json<PresetCatalog>("/v1/presets", { fresh: true, ...request }),
+      create: (body: DeckFromTemplateRequest, request) =>
+        json<ComposedDeckResult>("/v1/decks/from-template", { body, ...request }),
+      compose: (body: DeckComposeRequest, request) =>
+        json<ComposedDeckResult>("/v1/decks/compose", { body, ...request }),
+      insertPattern: (presentationId, body: InsertPatternRequest, request) =>
+        json<InsertPatternResult>(`/v1/presentations/${q(presentationId)}/patterns/insert`, {
+          body,
+          fallback: "That slide pattern could not be inserted.",
+          ...request,
+        }),
     },
 
     agent: {
-      edit: (presentationId, body: { instruction: string; scope: EditScopePayload }, request) =>
-        json<AgentEditResult>(`/v1/presentations/${q(presentationId)}/agent/edit`, {
-          body,
-          ...request,
-        }),
       proposals: (presentationId, request) =>
         json<PendingProposal[]>(`/v1/presentations/${q(presentationId)}/proposals`, { ...request }),
       proposal: (presentationId, proposalId, request) =>
@@ -386,6 +465,39 @@ const q = encodeURIComponent;
           `/v1/presentations/${q(presentationId)}/transactions/${q(transactionId)}/revert`,
           { method: "POST", ...request },
         ),
+    },
+
+    imports: {
+      upload: async (projectId, file, request) => {
+        // The service checks the size too; refusing here saves sending 200MB
+        // to be told so.
+        if (file.size > DECK_IMPORT_MAX_BYTES) {
+          throw new WorkspaceRequestError(413, undefined, "Deckastra files up to 128 MB can be opened here.");
+        }
+        const begin = await json<{ id: string; upload_url: string; method: string; headers: Record<string, string> }>(
+          `/v1/projects/${q(projectId)}/imports`,
+          { body: { size_bytes: file.size, copy: true }, fallback: "That file could not be opened.", ...request },
+        );
+        // As for assets: an absolute URL is a signed storage URL whose signature
+        // is the credential, and it must be sent exactly the headers it was
+        // signed with. A relative one is this service's own route.
+        const absolute = /^https?:\/\//i.test(begin.upload_url);
+        const headers: Record<string, string> = { ...begin.headers };
+        if (!absolute) {
+          const cached = store.read();
+          headers.Authorization = `Bearer ${(cached ?? (await ensureSession(request ?? {}))).token}`;
+        }
+        const put: RequestInit = { method: begin.method || "PUT", headers, body: file };
+        if (request?.signal) put.signal = request.signal;
+        const stored = await doFetch(absolute ? begin.upload_url : `${baseUrl}${begin.upload_url}`, put);
+        if (!stored.ok) throw new WorkspaceRequestError(stored.status, undefined, "The file could not be uploaded.");
+        return json<DeckImport>(`/v1/imports/${q(begin.id)}/complete`, {
+          method: "POST",
+          fallback: "That file could not be opened.",
+          ...request,
+        });
+      },
+      status: (importId, request) => json<DeckImport>(`/v1/imports/${q(importId)}`, { fresh: true, ...request }),
     },
 
     exports: {
@@ -425,12 +537,24 @@ const q = encodeURIComponent;
           fallback: "The translation could not be made.",
           ...request,
         }),
+      quoteTranslation: (presentationId, locale, body, request) =>
+        json<PaidServiceQuote>("/v1/media/quotes/translation", {
+          body: { presentation_id: presentationId, locale, ...body },
+          fallback: "The translation price could not be checked.",
+          ...request,
+        }),
       voices: (locale, request) =>
         json<{ voices: Voice[] }>(`/v1/speech/voices?locale=${q(locale)}`, { ...request }).then((answer) => answer.voices),
       synthesize: (presentationId, body, request) =>
         json<SynthesizeResult>(`/v1/presentations/${q(presentationId)}/narration/synthesize`, {
           body,
           fallback: "The narration could not be voiced.",
+          ...request,
+        }),
+      quoteSpeech: (presentationId, body, request) =>
+        json<PaidServiceQuote>("/v1/media/quotes/speech", {
+          body: { presentation_id: presentationId, ...body },
+          fallback: "The narration price could not be checked.",
           ...request,
         }),
     },
@@ -581,30 +705,6 @@ const q = encodeURIComponent;
         json<ImportedTheme>(`/v1/presentations/${q(presentationId)}/themes/import`, { raw: file, ...request }),
     },
 
-    repositories: {
-      list: (workspaceId, request) =>
-        json<RepositoryList>(`/v1/repositories${workspaceQuery(workspaceId)}`, { ...request }),
-      connectLocal: (path, label, workspaceId, request) =>
-        json<Repository>(`/v1/repositories/local${workspaceQuery(workspaceId)}`, {
-          body: { path, label: label || null },
-          ...request,
-        }),
-      index: (id, workspaceId, request) =>
-        json<Repository & { index: unknown }>(
-          `/v1/repositories/${q(id)}/index${workspaceQuery(workspaceId)}`,
-          { method: "POST", ...request },
-        ),
-      disconnect: (id, workspaceId, request) =>
-        json<{ status: string }>(`/v1/repositories/${q(id)}${workspaceQuery(workspaceId)}`, {
-          method: "DELETE",
-          ...request,
-        }),
-      slideSources: (presentationId, slideId, request) =>
-        json<SlideSources>(
-          `/v1/presentations/${q(presentationId)}/slides/${q(slideId)}/sources`,
-          { ...request },
-        ),
-    },
   };
 }
 
@@ -615,11 +715,7 @@ const q = encodeURIComponent;
  * replaceable because it is the one thing a real sign-in and the desktop's
  * launch-secret session both need to change.
  */
-async function devSessionBootstrap(context: {
-  baseUrl: string;
-  fetch: FetchLike;
-  signal?: AbortSignal;
-}): Promise<Session> {
+async function devSessionBootstrap(context: BootstrapContext): Promise<Session> {
   const init: RequestInit = {
     method: "POST",
     headers: { "Content-Type": "application/json" },

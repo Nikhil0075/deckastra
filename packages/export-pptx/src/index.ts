@@ -77,7 +77,7 @@ import { createZip, type ZipEntry } from "./zip";
 export const PPTX_CAPABILITIES: ExportCapability = {
   supportsBlur: false,
   supportsMorph: true,
-  supportsVideo: false,
+  supportsVideo: true,
   supportsAnimation: true,
   supportsVectorText: true,
   supportsInteractivity: false,
@@ -109,7 +109,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
   const entries: ZipEntry[] = [];
   const notesPerSlide: (string | undefined)[] = [];
   // rId1 is the layout and rId2 the notes slide, so pictures start at 3.
-  const media = new MediaRegistry(input.images, 3);
+  const media = new MediaRegistry(input.images, input.videos, 3);
   const intrinsic = intrinsicSizes(document);
 
   ids.forEach((slideId, index) => {
@@ -293,6 +293,7 @@ function shapesFor(
     // elements with different ids — and PowerPoint's Morph pairs nothing, which
     // made "exported with matching shape names" a claim the file did not keep.
     placePicture: (assetId) => media.place(assetId),
+    placeVideo: (assetId, posterAssetId) => media.placeVideo(assetId, posterAssetId),
     intrinsic,
     nameOverrides: new Map(
       (scene.transition?.type === "morph" ? (scene.transition.sharedElements ?? []) : []).map(
@@ -344,7 +345,13 @@ function audioFor(
 ): { xml: string; plays: AudioPlay[] } {
   const cues = (scene.narration?.cues ?? []) as NarrationCueInput[];
   const sounds = (scene.soundCues ?? []) as SoundCueInput[];
-  if (!cues.length && !sounds.length) return { xml: "", plays: [] };
+  const soundtrack = document.soundtrack;
+  const slideIndex = document.slides.findIndex((slide) => slide.id === scene.slideId);
+  const musicFrom = soundtrack?.fromSlideId
+    ? document.slides.findIndex((slide) => slide.id === soundtrack.fromSlideId)
+    : 0;
+  const carriesSoundtrack = Boolean(soundtrack && slideIndex === Math.max(0, musicFrom));
+  if (!cues.length && !sounds.length && !carriesSoundtrack) return { xml: "", plays: [] };
 
   const durations = new Map((document.assets ?? []).map((asset) => [asset.id, asset.durationMs ?? 0]));
   const schedule = compileNarratedPlayback(timeline, cues, sounds, {
@@ -391,6 +398,27 @@ function audioFor(
       delayMs: sound.atMs - (schedule.segments[sound.segment]?.startMs ?? 0),
       durationMs: Math.max(1, sound.durationMs),
       volume: sound.volume,
+    });
+  }
+  if (carriesSoundtrack && soundtrack) {
+    const library = "library" in soundtrack.source ? soundtrack.source.library : undefined;
+    const assetId = "assetId" in soundtrack.source ? soundtrack.source.assetId : undefined;
+    const wav = library ? librarySoundWav(library) : undefined;
+    items.push({
+      key: library ? `library:${library}` : assetId!,
+      name: "Background music",
+      media: library ? (wav ? { bytes: wav, contentType: "audio/wav" } : undefined) : audio?.get(assetId!),
+      segment: 0,
+      delayMs: 0,
+      durationMs: library ? librarySoundDurationMs(library) : (durations.get(assetId!) ?? 1),
+      volume: soundtrack.volume ?? 0.35,
+    });
+    ledger.record({
+      severity: "info",
+      slideId: scene.slideId,
+      feature: "soundtrack",
+      action: "approximated",
+      message: "PowerPoint carries the music as a background audio object; looping, fades and narration ducking depend on the player and may not match Deckastra exactly.",
     });
   }
 
