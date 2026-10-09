@@ -16,7 +16,7 @@ async function request(path: string, body?: unknown) {
   return response.json();
 }
 async function createDeck() {
-  const created = await request("/v1/generate", { instruction: "Recovery browser regression", slide_count: 3 });
+  const created = await request("/v1/decks/from-template", { template_id: "technical-architecture", title: "Recovery browser regression" });
   const id = created.presentation_id as string;
   await page.goto(`${WEB}/edit/${id}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Rect", exact: true }).waitFor({ timeout: 60_000 });
@@ -47,7 +47,7 @@ async function saveReview(id: string, tab = page) {
 beforeAll(async () => {
   if (!ENABLED) return;
   const health = await fetch(`${API}/health`).then(r => r.json());
-  if (health.generation !== "stub") throw new Error("Recovery E2E requires an isolated stub-mode API; it must not spend model credits.");
+  if (health.status !== "ok") throw new Error("Recovery E2E requires a ready isolated API.");
   const { chromium } = await import("playwright");
   browser = await chromium.launch();
   context = await browser.newContext({ viewport: { width: 1600, height: 1100 } });

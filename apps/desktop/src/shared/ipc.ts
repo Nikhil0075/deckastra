@@ -40,6 +40,12 @@ export const IPC = {
    * the wrong deck edits one nobody is looking at.
    */
   openPresentation: "deckastra:workspace:open",
+  /**
+   * Open a `.mydeck` file, from the home's "Open .mydeck file" (roadmap 08
+   * §1.3). No payload: the main process shows the dialog and reads the file,
+   * exactly as File › Open does, so the page never names a path.
+   */
+  openDeckFile: "deckastra:deck-file:open",
   /** Hand the user a file through a native save dialog. */
   saveFile: "deckastra:file:save",
   /** Put plain text on the operating-system clipboard. */
@@ -54,6 +60,8 @@ export const IPC = {
   serviceStatus: "deckastra:service:status",
   /** Whether agents may reach this install, and until when. */
   agentAccess: "deckastra:agents:get",
+  /** Exact command and arguments an MCP client needs for this installation. */
+  agentSetup: "deckastra:agents:setup",
   /** Allow agents, or stop them. The user's decision, made in the window. */
   agentAccessSet: "deckastra:agents:set",
   /** Main → renderer: that decision changed, including when it lapses. */
@@ -148,13 +156,14 @@ export const MENU_COMMANDS = [
   "version-history",
   "colors",
   "mode-design",
-  "mode-ai",
+  "assistant",
+  "command-palette",
   "mode-motion",
   "mode-code",
   "theme-system",
   "theme-light",
   "theme-dark",
-  "open-intelligence",
+  "open-settings",
   "panel-tools",
   "panel-slides",
   "panel-inspector",
@@ -190,6 +199,14 @@ export interface AgentAccess {
 
 export interface AgentAccessRequest {
   allow: boolean;
+}
+
+/** Main-process-resolved MCP launcher. Paths differ between checkout and package. */
+export interface AgentSetupLauncher {
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+  clientLabelKey: string;
 }
 
 export interface DesktopInfo {
@@ -298,6 +315,8 @@ export interface DesktopBridge {
   currentPresentation(): Promise<CurrentPresentation>;
   /** Make another deck the open one. Rejects if it does not exist or cannot be read. */
   openPresentation(request: OpenPresentationRequest): Promise<CurrentPresentation>;
+  /** Choose a `.mydeck` file in a native dialog and open it in a window of its own. */
+  openDeckFile(): Promise<void>;
   saveFile(request: SaveFileRequest): Promise<SaveFileResult>;
   writeClipboardText(text: string): Promise<void>;
   openPresenter(request: OpenPresenterRequest): void;
@@ -307,6 +326,8 @@ export interface DesktopBridge {
   /** Returns an unsubscribe function. Fires immediately with the current state. */
   onServiceStatus(listener: (status: ServiceStatus) => void): () => void;
   agentAccess(): Promise<AgentAccess>;
+  /** Copy-ready launcher data for the coding-agent setup guide. */
+  agentSetup(): Promise<AgentSetupLauncher>;
   /**
    * Allow agents, or stop them.
    *
@@ -353,5 +374,7 @@ declare global {
   interface Window {
     /** Absent in a browser. Every consumer must handle that. */
     deckastra?: DesktopBridge;
+    /** Sign-in state only: never a token (FRONTEND_BACKEND_HANDOFF.md). Absent in a browser. */
+    deckastraAccount?: import("./account").AccountBridge;
   }
 }

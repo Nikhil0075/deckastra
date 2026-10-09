@@ -39,8 +39,6 @@ describe("a diagnostics report", () => {
     expect(report.service).toMatchObject({ state: "failed", kind: "crashed", attempt: 2 });
     expect(report.service.detail).toContain("code 3");
     expect(report.dataDir).toContain("workspace");
-    // The service was not running, so this says so rather than claiming a route.
-    expect(report.generation).toHaveProperty("error");
   });
 
   it("says whether a key is set, and never what it is", async () => {
@@ -57,7 +55,7 @@ describe("a diagnostics report", () => {
     });
     const text = JSON.stringify(report);
 
-    expect(report.cloudKey.set).toBe(true);
+    expect(report.account.signedIn).toBe(false);
     expect(text).not.toContain(KEY);
     expect(text).not.toContain("0123456789abcdefghij");
     // Whether an agent may reach this install, never the credential it holds.

@@ -2,7 +2,7 @@ import { app } from "electron";
 
 import type { ServiceStatus } from "../shared/ipc";
 import { buildManifest } from "./build-manifest";
-import { cloudKeyState } from "./cloud-key";
+import { accountState } from "./account";
 import { readAgentAccess } from "./agent-access";
 import { logsDir, tail } from "./logs";
 
@@ -30,28 +30,9 @@ export interface Diagnostics {
   dataDir: string;
   logsDir: string;
   service: { state: string; detail?: string; kind?: string; attempt: number };
-  generation: { provider: string; available: boolean; reason: string | null } | { error: string };
-  cloudKey: { set: boolean; updatedAt: string | null; storable: boolean };
+  account: { signedIn: boolean; configured: boolean };
   agentAccess: { allowed: boolean; expiresAt: string | null; decidedAt: string | null };
   logs: { app: string[]; service: string[] };
-}
-
-/** Ask the service what it would do, without going through the window. */
-async function generation(service: { port: number; secret: string } | null) {
-  if (!service) return { error: "the workspace service was not running when this was written" };
-  try {
-    const response = await fetch(`http://127.0.0.1:${service.port}/health`, {
-      headers: { authorization: `Bearer ${service.secret}` },
-    });
-    const body = (await response.json()) as { intelligence?: string; intelligence_error?: string | null };
-    return {
-      provider: String(body.intelligence ?? "unknown"),
-      available: body.intelligence !== "none" && body.intelligence !== "misconfigured" && !body.intelligence_error,
-      reason: body.intelligence_error ?? null,
-    };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
 }
 
 export async function collectDiagnostics(input: {
@@ -79,8 +60,7 @@ export async function collectDiagnostics(input: {
       kind: input.status.kind,
       attempt: input.status.attempt,
     },
-    generation: await generation(input.service),
-    cloudKey: await cloudKeyState(),
+    account: await accountState().then(({ signedIn, configured }) => ({ signedIn, configured })),
     // Whether an agent may reach this install, and until when. Never the grant.
     agentAccess: { allowed: access.allowed, expiresAt: access.expiresAt, decidedAt: access.decidedAt },
     logs: { app: tail("app"), service: tail("service") },

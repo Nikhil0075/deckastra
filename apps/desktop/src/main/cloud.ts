@@ -1,0 +1,26 @@
+// Public OAuth client IDs and Identity Platform browser keys; no service credentials.
+import { app } from "electron";
+
+const environments = {
+  "deckastra": {
+    "projectId": "deckastra",
+    "authDomain": "deckastra.firebaseapp.com",
+    "apiKey": "AIzaSyCfkc4esP_PFu-J0RDVXUnsgvtYF0rZ5Ho",
+    "googleWebClientId": "524807414967-v67jv38fid9ijejp2i0g9g3go7mdvhj7.apps.googleusercontent.com",
+    "googleDesktopClientId": "524807414967-f32n1dbaid8fil4k69pbtspme20tddf6.apps.googleusercontent.com",
+    "apiUrl": "https://deckastra-api-zit47xh5eq-el.a.run.app"
+  },
+  "deckastra-prod": {
+    "projectId": "deckastra-prod",
+    "authDomain": "deckastra-prod.firebaseapp.com",
+    "apiKey": "AIzaSyBT5BUBU7XXOYz7qf9GdxOJqTqN_8-R5ds",
+    "googleWebClientId": "524807414967-v67jv38fid9ijejp2i0g9g3go7mdvhj7.apps.googleusercontent.com",
+    "googleDesktopClientId": "524807414967-f32n1dbaid8fil4k69pbtspme20tddf6.apps.googleusercontent.com",
+    "apiUrl": "https://deckastra-api-fwqqltaqta-el.a.run.app"
+  }
+} as const;
+
+export function cloudConfig() {
+  const project = process.env.DECKASTRA_CLOUD_ENV === "dev" ? "deckastra" : process.env.DECKASTRA_CLOUD_ENV === "prod" || app.isPackaged ? "deckastra-prod" : "deckastra";
+  return environments[project];
+}

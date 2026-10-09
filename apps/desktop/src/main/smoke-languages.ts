@@ -199,6 +199,10 @@ async function runLanguagesInner(window: BrowserWindow, dir: string, record: Rec
     await k.need("Translate missing was not offered", `document.querySelector('[data-testid="translate-missing-hi-IN"]') && !document.querySelector('[data-testid="translate-missing-hi-IN"]').disabled`, 10_000);
     await k.press("translate-missing-hi-IN");
     await k.need("the translation never came back", `document.querySelector('[data-testid="languages-message"]')`, 60_000);
+    if (await k.page<boolean>(`document.querySelector('[data-testid="translate-missing-hi-IN"]')?.textContent?.includes('Confirm translation') === true`)) {
+      await k.press("translate-missing-hi-IN");
+      await k.need("the confirmed translation never came back", `!document.querySelector('[data-testid="translate-missing-hi-IN"]')?.textContent?.includes('Confirm translation')`, 60_000);
+    }
     record.translateMessage = await k.page<string>(`document.querySelector('[data-testid="languages-message"]').textContent`);
     if (await k.page<boolean>(`Boolean(document.querySelector('[data-testid="proposal-apply"]'))`)) {
       await k.need("the proposal's After picture never drew", `document.querySelector('[data-testid="proposal-after"] [data-final-frame]')`, 15_000);
@@ -275,6 +279,8 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     await k.settle();
 
     // A line per step, typed into the Motion panel.
+    // The assistant (where Languages lives) sits over the mode's own panel.
+    await k.page(`document.querySelector('[data-testid="close-assistant"]')?.click()`);
     await k.press("mode-motion");
     await k.need("the narration panel did not appear", `document.querySelectorAll('[data-testid="narration-step"]').length === 4`, 10_000);
     const lines = ["Three steps make this work.", "First, write it.", "Then translate it.", "Finally, narrate it."];
@@ -294,14 +300,19 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     // Voiced by the stand-in, as a proposal.
     await k.press("narration-voice");
     await k.need("voicing never answered", `document.querySelector('[data-testid="narration-message"]')`, 60_000);
+    if (await k.page<boolean>(`document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice') === true`)) {
+      await k.press("narration-voice");
+      await k.need("confirmed voicing never answered", `!document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice')`, 60_000);
+    }
     record.voiceMessage = await k.page<string>(`document.querySelector('[data-testid="narration-message"]').textContent`);
     stored = await k.stored(created);
     if (!stored.slides[0].narration.cues.every((cue: any) => cue.takes?.en)) {
-      await k.press("mode-ai");
+      await k.press("open-assistant");
       await k.need("the voices did not arrive as a proposal", `document.querySelector('[data-testid="proposal-apply"]')`, 20_000);
       await k.press("proposal-apply");
       await k.need("applying the voices did not clear the card", `!document.querySelector('[data-testid="proposal-card"]')`, 20_000);
       await k.settle();
+      await k.press("close-assistant");
       await k.press("mode-motion");
     }
     stored = await k.stored(created);

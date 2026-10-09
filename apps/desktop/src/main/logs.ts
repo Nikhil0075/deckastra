@@ -42,7 +42,7 @@ export function redact(text: string): string {
     .replace(/sk-ant-[A-Za-z0-9_-]{8,}/g, "sk-ant-[redacted]")
     .replace(/\b(bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi, "$1[redacted]")
     .replace(/\b(authorization|x-api-key)(["']?\s*[:=]\s*["']?)[^\s"',}]+/gi, "$1$2[redacted]")
-    .replace(/\b(DECKASTRA_LOCAL_SECRET|ANTHROPIC_API_KEY|ANTHROPIC_AUTH_TOKEN)(=|["']?\s*[:=]\s*["']?)[^\s"',}]+/g, "$1$2[redacted]")
+    .replace(/\b(DECKASTRA_LOCAL_SECRET|DECKASTRA_GATEWAY_SECRET|ANTHROPIC_API_KEY|ANTHROPIC_AUTH_TOKEN|idToken|refreshToken|id_token|refresh_token)(=|["']?\s*[:=]\s*["']?)[^\s"',}]+/g, "$1$2[redacted]")
     // A grant is three base64url segments; the service prints one when it
     // refuses a request, and it is a working credential until it expires.
     .replace(/\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}/g, "[redacted token]");

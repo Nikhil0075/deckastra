@@ -31,6 +31,7 @@ export interface MenuActions {
   restore: () => Promise<void>;
   /** Show the licences of what ships (item 33). Optional so older callers compile. */
   showNotices?: () => Promise<void>;
+  openDeckFile?: () => Promise<void>;
 }
 
 export function installMenu(
@@ -67,7 +68,8 @@ export function menuTemplate(
       label: "&File",
       submenu: [
         item("New deck", "new-deck", "CmdOrCtrl+N"),
-        item("Generate a deck…", "generate-deck", "CmdOrCtrl+Shift+N"),
+        { id: "open-deck-file", label: "Open a .mydeck file…", accelerator: "CmdOrCtrl+O", click: () => void actions?.openDeckFile?.() },
+        item("New from template…", "generate-deck", "CmdOrCtrl+Shift+N"),
         { type: "separator" },
         item("All decks", "all-decks", "CmdOrCtrl+Shift+O"),
         { type: "separator" },
@@ -95,9 +97,13 @@ export function menuTemplate(
       label: "&View",
       submenu: [
         item("Design", "mode-design", "CmdOrCtrl+1"),
-        item("AI", "mode-ai", "CmdOrCtrl+2"),
-        item("Motion", "mode-motion", "CmdOrCtrl+3"),
-        item("Code", "mode-code", "CmdOrCtrl+4"),
+        item("Motion", "mode-motion", "CmdOrCtrl+2"),
+        item("Code", "mode-code", "CmdOrCtrl+3"),
+        // The page binds Ctrl+K (roadmap 08 §1.5): every command by name, and
+        // the assistant for anything that is not one.
+        pageOwned("Command palette…", "command-palette", "CmdOrCtrl+K"),
+        // Beside any mode rather than one of them (roadmap 08 §1.2 rule 2).
+        item("Assistant", "assistant"),
         { type: "separator" },
         {
           label: "Theme",
@@ -125,7 +131,7 @@ export function menuTemplate(
           ],
         },
         { type: "separator" },
-        item("Intelligence…", "open-intelligence"),
+        item("Settings…", "open-settings", "CmdOrCtrl+,"),
         { type: "separator" },
         { role: "togglefullscreen" },
       ],

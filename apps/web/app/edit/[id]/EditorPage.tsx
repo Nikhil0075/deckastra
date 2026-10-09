@@ -5,9 +5,12 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { buildDocumentScene } from "@deckastra/renderer";
 
-import { EditorShell, PresentMode, useBrowserMeasurer } from "@deckastra/editor-ui";
+import { EditorShell, PresentMode, useBrowserMeasurer, type SettingsSectionId } from "@deckastra/editor-ui";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { isWorkspaceError } from "@deckastra/workspace-contracts";
+
+import { useAccountMenu } from "../../../lib/use-account-menu";
+import { WebSettings } from "../../WebSettings";
 
 
 type State =
@@ -24,6 +27,8 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
   const client = useWorkspaceClient();
   const measurer = useBrowserMeasurer();
   const [state, setState] = useState<State>({ phase: "loading" });
+  const accountMenu = useAccountMenu();
+  const [settings, setSettings] = useState<{ open: boolean; section: SettingsSectionId }>({ open: false, section: "account" });
 
   useEffect(() => {
     let cancelled = false;
@@ -100,20 +105,34 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
   }
 
   return (
-    <EditorShell
-      initialDocument={state.document}
-      presentationId={presentationId}
-      initialVersionId={state.versionId}
-      onExit={() => {
-        window.location.href = "/";
-      }}
-    />
+    <>
+      <EditorShell
+        initialDocument={state.document}
+        presentationId={presentationId}
+        initialVersionId={state.versionId}
+        // Back to the home, carrying New deck or Generate when one was chosen
+        // from inside the deck; the editor has already drained its save queue.
+        onExit={(next) => {
+          window.location.href = next ? `/?start=${next}` : "/";
+        }}
+        // Settings opens over the deck rather than leaving it, so nothing waiting
+        // to save is put at risk by a look at the account.
+        onOpenSettings={() => setSettings((current) => ({ ...current, open: true }))}
+        account={accountMenu}
+      />
+      <WebSettings
+        open={settings.open}
+        onClose={() => setSettings((current) => ({ ...current, open: false }))}
+        section={settings.section}
+        onSection={(section) => setSettings({ open: true, section })}
+      />
+    </>
   );
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--fg-muted)" }}>
+    <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--dk-ink-muted)", background: "var(--dk-ground)" }}>
       {children}
     </div>
   );

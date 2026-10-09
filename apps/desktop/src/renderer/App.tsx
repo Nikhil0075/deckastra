@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildDocumentScene } from "@deckastra/renderer";
 import {
   DeckList,
@@ -13,9 +13,10 @@ import {
   type SubscribeHostCommands,
 } from "@deckastra/editor-ui";
 import { Button } from "@deckastra/editor-ui/ui";
+import type { SettingsSectionId } from "@deckastra/editor-ui";
 import { AgentAccessControl } from "./AgentAccessControl";
 import { FirstRunNotice } from "./FirstRunNotice";
-import { IntelligenceSettings } from "./IntelligenceSettings";
+import { DesktopSettings } from "./DesktopSettings";
 import { ServiceFailure, ServiceRetry, advice, worthRetrying } from "./ServiceFailure";
 import { WorkspaceClientProvider } from "@deckastra/workspace-client/react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
@@ -70,13 +71,28 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   // The application menu, as the editor's `commands` prop wants it. Stable, so
   // the editor and the list subscribe once rather than on every render.
   const menuCommands = useMemo<SubscribeHostCommands>(() => (listener) => bridge.onMenuCommand(listener), [bridge]);
-  // Where decks are written, and how to change it (item 19). Held here rather
-  // than in either screen, because both reach it and it outlives both.
-  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
-  useEffect(
-    () => bridge.onMenuCommand((command) => command === "open-intelligence" && setIntelligenceOpen(true)),
-    [bridge],
-  );
+  // Settings (roadmap 08 §1.3), which replaced the Intelligence drawer. Held
+  // here rather than in either screen, because both reach it and it outlives
+  // both.
+  const [settings, setSettings] = useState<{ open: boolean; section: SettingsSectionId }>({ open: false, section: "account" });
+  // Who the bar's account menu names: the signed-in email, never a token. Read
+  // again whenever Settings closes, because that is where signing in happens.
+  const [accountIdentity, setAccountIdentity] = useState<{ email: string | null } | null>(null);
+  useEffect(() => {
+    if (settings.open) return;
+    let live = true;
+    void window.deckastraAccount
+      ?.state()
+      .then((state) => live && setAccountIdentity(state.signedIn ? { email: state.email ?? null } : null))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [settings.open]);
+  const openSettings = useCallback((section?: SettingsSectionId) => {
+    setSettings((current) => ({ open: true, section: section ?? current.section }));
+  }, []);
+  useEffect(() => bridge.onMenuCommand((command) => command === "open-settings" && openSettings()), [bridge, openSettings]);
   // Before this window closes, every open editor saves or journals what is on
   // screen, drafts included, and says which (item 01).
   useEffect(() => bridge.onPrepareToClose(() => prepareToClose()), [bridge]);
@@ -204,21 +220,22 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
     );
   }
 
-  const agentControl = (
-    <>
-      <Button size="sm" variant="secondary" icon="ai" title="Intelligence" onClick={() => setIntelligenceOpen(true)} data-testid="open-intelligence">
-        Intelligence
-      </Button>
-      <AgentAccessControl access={access} onChange={(allow) => void bridge.setAgentAccess({ allow }).then(setAccess)} />
-    </>
-  );
+  // The chip is on the bar only while agents can reach this app (roadmap 08
+  // §1.4 removes "Agents off"): a live grant is the one thing worth seeing at a
+  // glance. Allowing them, and the full explanation, are in Settings › Agents.
+  const agentControl = access?.allowed ? (
+    <AgentAccessControl access={access} onChange={(allow) => void bridge.setAgentAccess({ allow }).then(setAccess)} />
+  ) : null;
+  const accountMenu = { identity: accountIdentity };
 
   const intelligence = (
     <>
-    <FirstRunNotice onOpenIntelligence={() => setIntelligenceOpen(true)} />
-    <IntelligenceSettings
-      open={intelligenceOpen}
-      onClose={() => setIntelligenceOpen(false)}
+    <FirstRunNotice onOpenSettings={() => openSettings("ai")} />
+    <DesktopSettings
+      open={settings.open}
+      onClose={() => setSettings((current) => ({ ...current, open: false }))}
+      section={settings.section}
+      onSection={(section) => setSettings((current) => ({ ...current, section }))}
       access={access}
       onAgentAccessChange={(allow) => void bridge.setAgentAccess({ allow }).then(setAccess)}
       bridge={bridge}
@@ -245,11 +262,14 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
         {view === "decks" ? (
           <DeckList
             onOpen={openDeck}
-            onSetUpGeneration={() => setIntelligenceOpen(true)}
+            onSetUpGeneration={() => openSettings("account")}
+            onOpenSettings={() => openSettings("account")}
+            onOpenFile={() => void bridge.openDeckFile().catch(() => {})}
             commands={menuCommands}
             startWith={listStart}
             openPresentationId={state.deck.presentationId}
             barExtras={agentControl}
+            accountMenu={accountMenu}
             notices={
               <>
                 {service.state !== "ready" ? <ServiceBanner status={service} bridge={bridge} onStatus={setService} /> : null}
@@ -281,6 +301,8 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
             motionAuthoring={desktopMotionAuthoring}
             notices={service.state !== "ready" ? <ServiceBanner status={service} bridge={bridge} onStatus={setService} /> : null}
             barExtras={agentControl}
+            account={accountMenu}
+            onOpenSettings={openSettings}
           />
         )}
         </>

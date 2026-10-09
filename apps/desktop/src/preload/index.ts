@@ -1,4 +1,12 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { ACCOUNT_IPC, type AccountBridge } from "../shared/account";
+
+const accountBridge: AccountBridge = {
+  state: () => ipcRenderer.invoke(ACCOUNT_IPC.state),
+  signIn: () => ipcRenderer.invoke(ACCOUNT_IPC.signIn),
+  signOut: () => ipcRenderer.invoke(ACCOUNT_IPC.signOut),
+};
+contextBridge.exposeInMainWorld("deckastraAccount", accountBridge);
 
 import {
   IPC,
@@ -9,6 +17,7 @@ import {
   type MenuCommand,
   type AgentAccess,
   type AgentAccessRequest,
+  type AgentSetupLauncher,
   type CurrentPresentation,
   type DesktopBridge,
   type DesktopInfo,
@@ -44,6 +53,8 @@ const bridge: DesktopBridge = {
   openPresentation: (request: OpenPresentationRequest) =>
     ipcRenderer.invoke(IPC.openPresentation, request) as Promise<CurrentPresentation>,
 
+  openDeckFile: () => ipcRenderer.invoke(IPC.openDeckFile) as Promise<void>,
+
   saveFile: (request: SaveFileRequest) =>
     ipcRenderer.invoke(IPC.saveFile, request) as Promise<SaveFileResult>,
 
@@ -69,6 +80,8 @@ const bridge: DesktopBridge = {
   },
 
   agentAccess: () => ipcRenderer.invoke(IPC.agentAccess) as Promise<AgentAccess>,
+
+  agentSetup: () => ipcRenderer.invoke(IPC.agentSetup) as Promise<AgentSetupLauncher>,
 
   setAgentAccess: (request: AgentAccessRequest) =>
     ipcRenderer.invoke(IPC.agentAccessSet, request) as Promise<AgentAccess>,
@@ -151,4 +164,3 @@ const bridge: DesktopBridge = {
 };
 
 contextBridge.exposeInMainWorld("deckastra", bridge);
-
