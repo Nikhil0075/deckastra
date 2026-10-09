@@ -125,12 +125,28 @@
   gap: var(--dk-space-2);
 }
 
+/*
+ * One scroll for the whole home: the template gallery, the heading and the
+ * person's own decks move together. The decks used to be a separate scroll
+ * area taking whatever height the gallery left, and once the gallery grew to
+ * 24 templates that was a 24px strip the decks could not be reached in.
+ */
 .dk-decks__main {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-ink) transparent;
+}
+.dk-decks__main > * {
+  flex-shrink: 0;
+}
+.dk-decks__main > .dk-decks__scroll {
+  flex: none;
+  overflow: visible;
 }
 .dk-decks__heading {
   display: flex;

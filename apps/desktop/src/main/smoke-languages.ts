@@ -303,8 +303,11 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     if (await k.page<boolean>(`document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice') === true`)) {
       await k.press("narration-voice");
       await k.need("confirmed voicing never answered", `!document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice')`, 60_000);
+      // The quote's message is replaced by the result's, and between the two
+      // there is a moment with neither; reading it then threw.
+      await k.need("voicing never reported its result", `document.querySelector('[data-testid="narration-message"]')`, 60_000);
     }
-    record.voiceMessage = await k.page<string>(`document.querySelector('[data-testid="narration-message"]').textContent`);
+    record.voiceMessage = await k.page<string | null>(`document.querySelector('[data-testid="narration-message"]')?.textContent ?? null`);
     stored = await k.stored(created);
     if (!stored.slides[0].narration.cues.every((cue: any) => cue.takes?.en)) {
       await k.press("open-assistant");
