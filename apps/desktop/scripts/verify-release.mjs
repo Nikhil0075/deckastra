@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { auditFfmpeg, probeFfmpeg } from "./check-ffmpeg.mjs";
+
 /**
  * Is this release what was built, is it current, and is it signed? (Register
  * items 11 and 12; manual-authoring plan MA-34.)
@@ -74,9 +76,9 @@ function posix(root, file) {
  * @param {string | undefined} input.publisher Required subject substring for our executables.
  * @param {boolean} input.requireSigned Whether an unsigned executable is a failure.
  */
-export function verifyRelease({ releaseDir, distManifest, current, probe, publisher, requireSigned }) {
+export function verifyRelease({ releaseDir, distManifest, current, probe, publisher, requireSigned, ffmpegProbe = probeFfmpeg }) {
   const problems = [];
-  const report = { installer: null, embedded: null, payloads: {}, signatures: [], unsignedThirdParty: [] };
+  const report = { installer: null, embedded: null, payloads: {}, signatures: [], unsignedThirdParty: [], ffmpeg: null };
 
   // 1. One installer.
   const installers = existsSync(releaseDir)
@@ -198,6 +200,19 @@ export function verifyRelease({ releaseDir, distManifest, current, probe, publis
     join(resources, "sidecar", "deckastra-service.exe"),
   ];
   for (const file of ours) if (!existsSync(file)) problems.push(`Expected executable is missing: ${file}.`);
+
+  // 5. ffmpeg, when shipped, is an LGPL build that can do the export's job,
+  // and it is signed like our own executables: the installer distributes it.
+  // Its absence is not a failure, only a release without MP4 export.
+  const ffmpeg = join(resources, "ffmpeg", "ffmpeg.exe");
+  if (existsSync(ffmpeg)) {
+    const { problems: ffmpegProblems, warnings } = auditFfmpeg(ffmpegProbe(ffmpeg));
+    report.ffmpeg = { present: true, file: posix(releaseDir, ffmpeg), warnings };
+    for (const problem of ffmpegProblems) problems.push(`${posix(releaseDir, ffmpeg)}: ${problem}`);
+    ours.push(ffmpeg);
+  } else {
+    report.ffmpeg = { present: false };
+  }
   const statuses = probe([...new Set([...ours.filter(existsSync), ...native])]);
 
   for (const file of ours.filter(existsSync)) {
@@ -276,6 +291,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       `[verify-release] native files: ${report.signatures.length}, validly signed: ${signed}, ` +
       `unsigned but unchanged third-party: ${report.unsignedThirdParty.length}`,
   );
+  console.log(
+    report.ffmpeg?.present
+      ? `[verify-release] ffmpeg: ${report.ffmpeg.file}${report.ffmpeg.warnings.length ? ` (${report.ffmpeg.warnings.length} note(s))` : ""}`
+      : "[verify-release] ffmpeg: not shipped; this build cannot export MP4.",
+  );
+  for (const warning of report.ffmpeg?.warnings ?? []) console.log(`[verify-release] note: ${warning}`);
   for (const row of report.signatures.filter((entry) => entry.ours)) {
     console.log(`[verify-release] ${row.status === "Valid" ? "signed  " : "UNSIGNED"} ${row.file} ${row.subject ?? ""}`);
   }
