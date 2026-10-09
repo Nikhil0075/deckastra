@@ -18,7 +18,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "presets:emit": "tsx scripts/emit.ts",
-    "presets:check": "tsx scripts/emit.ts --check && python -m pytest ../../apps/api/tests/test_preset_exports.py -q",
+    "presets:catalog": "tsx scripts/emit.ts --check",
+    "presets:exports": "python -m pytest ../../apps/api/tests/test_preset_exports.py -q",
+    "presets:check": "npm run presets:catalog && npm run presets:exports",
     "contact-sheet": "tsx scripts/emit.ts"
   },
   "devDependencies": {

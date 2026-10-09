@@ -62,9 +62,10 @@ jobs:
 
       # A preset is public authoring API. Validate its named slots, prove each
       # validator family with a negative control, and keep the human review
-      # contact sheet in sync with the source catalog.
+      # contact sheet in sync with the source catalog. Exporting every template
+      # needs Python and Chromium, so that half runs in the Export job.
       - name: Deck preset catalog and review sheet
-        run: npm run presets:check
+        run: npm run presets:catalog
 
       # Fixtures are generated from the schema too. A drifted fixture would make
       # every downstream test assert against a document shape that no longer exists.
@@ -258,6 +259,12 @@ jobs:
       # only place the whole path is exercised as a user would.
       - name: Export end to end
         run: python -m pytest apps/api/tests/test_exports.py apps/api/tests/test_pptx_opens.py -q
+
+      # Every reviewed template, moved by its own motion style, exported to PDF
+      # and PowerPoint and reopened by pypdf and python-pptx. Marked slow, so
+      # this is the only CI job that runs it.
+      - name: Every deck preset exports and reopens
+        run: npm run presets:exports --workspace @deckastra/deck-presets
 
   # Recovery is a release control, not a paragraph in an operations document.
   # This job restores a complete PostgreSQL dump into a second database and
