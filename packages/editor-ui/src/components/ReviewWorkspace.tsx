@@ -39,6 +39,8 @@ export interface ReviewWorkspaceProps {
   onClose: () => void;
   /** How many are waiting, for the bar's button. */
   onCount?: (count: number) => void;
+  /** Version history, where each approval and each undo is listed. */
+  onOpenHistory?: () => void;
 }
 
 type Compare = "side" | "wipe";
@@ -52,7 +54,14 @@ interface Applied {
   undone?: boolean;
 }
 
-export function ReviewWorkspace({ editor, presentationId, initialProposalId, onClose, onCount }: ReviewWorkspaceProps) {
+export function ReviewWorkspace({
+  editor,
+  presentationId,
+  initialProposalId,
+  onClose,
+  onCount,
+  onOpenHistory,
+}: ReviewWorkspaceProps) {
   const { proposals, readFailed, status, approve, reject } = useProposals({
     presentationId,
     currentVersionId: editor.currentVersionId,
@@ -184,12 +193,23 @@ export function ReviewWorkspace({ editor, presentationId, initialProposalId, onC
         {applied.length ? (
           <section className="dk-review__applied" aria-label="Applied this session">
             <h3 className="dk-label">Applied this session</h3>
+            <p className="dk-muted dk-review__applied-note">
+              Each approval is saved as a new version, and so is each undo.
+              {onOpenHistory ? (
+                <>
+                  {" "}
+                  <Button size="sm" variant="ghost" icon="history" onClick={onOpenHistory} data-testid="review-history">
+                    Version history
+                  </Button>
+                </>
+              ) : null}
+            </p>
             <ul className="dk-review__list">
               {applied.map((change) => (
                 <li key={change.id} className="dk-review__applied-row" data-testid="review-applied" data-proposal-id={change.id}>
                   <span>{change.intent}</span>
                   {change.undone ? (
-                    <span className="dk-muted">Undone</span>
+                    <span className="dk-muted">Undone · new version</span>
                   ) : (
                     <Button size="sm" variant="ghost" icon="undo" disabled={busy} onClick={() => void onUndo(change)} data-testid="review-undo">
                       {undoing === change.id ? "Undoing…" : "Undo"}

@@ -144,7 +144,10 @@ describe("the Review view", () => {
 
   it("saves first, approves the version on screen, and offers Undo through a server revert", async () => {
     const ed = editor();
-    render(<ReviewWorkspace editor={ed} presentationId="prs_1" onClose={() => {}} />, { wrapper: withWorkspaceClient() });
+    const history = vi.fn();
+    render(<ReviewWorkspace editor={ed} presentationId="prs_1" onClose={() => {}} onOpenHistory={history} />, {
+      wrapper: withWorkspaceClient(),
+    });
     await screen.findAllByTestId("review-proposal");
     fireEvent.click(screen.getByTestId("review-approve"));
     const row = await screen.findByTestId("review-applied");
@@ -157,7 +160,11 @@ describe("the Review view", () => {
 
     fireEvent.click(within(row).getByTestId("review-undo"));
     await waitFor(() => expect(ed.revertChange).toHaveBeenCalledWith("txn_a_applied"));
-    expect(await within(row).findByText("Undone")).toBeTruthy();
+    expect(await within(row).findByText("Undone · new version")).toBeTruthy();
+
+    // Approving and undoing are versions, and the history is where they are listed.
+    fireEvent.click(screen.getByTestId("review-history"));
+    expect(history).toHaveBeenCalled();
   });
 
   it("approves nothing while local edits cannot be saved", async () => {

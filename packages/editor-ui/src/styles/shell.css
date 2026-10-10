@@ -4703,3 +4703,15 @@
   color: var(--dk-ink-muted);
   font-size: var(--dk-text-sm);
 }
+
+/* What an approval became, with the way to version history (UI audit Unit 9). */
+.dk-proposals__applied,
+.dk-review__applied-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-1) var(--dk-space-2);
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}

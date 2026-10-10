@@ -968,6 +968,7 @@ export function EditorShell(props: EditorShellProps) {
       onLanguagesOpen={setLanguagesOpen}
       onClose={() => setAssistantOpen(false)}
       onReview={(proposalId) => setReview({ open: true, proposalId })}
+      onOpenHistory={() => setHistoryOpen(true)}
       onVoiceOpen={() => {
         setAssistantOpen(false);
         setMode("motion");
@@ -1200,6 +1201,7 @@ export function EditorShell(props: EditorShellProps) {
             initialProposalId={review.proposalId}
             onClose={() => setReview({ open: false })}
             onCount={() => void pending.refresh()}
+            onOpenHistory={() => setHistoryOpen(true)}
           />
         </div>
       ) : (

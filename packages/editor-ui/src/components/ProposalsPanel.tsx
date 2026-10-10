@@ -59,6 +59,8 @@ export interface ProposalsPanelProps {
    * narrow is no place to read it.
    */
   onReview?: (proposalId: string) => void;
+  /** Version history, where every approval and every undo is listed (UI audit Unit 9). */
+  onOpenHistory?: () => void;
 }
 
 export function ProposalsPanel({
@@ -72,6 +74,7 @@ export function ProposalsPanel({
   locale = null,
   refreshToken = 0,
   onReview,
+  onOpenHistory,
 }: ProposalsPanelProps) {
   const { proposals, readFailed, status, approve, reject } = useProposals({
     presentationId,
@@ -117,11 +120,7 @@ export function ProposalsPanel({
           {status.message}
         </p>
       ) : null}
-      {status.kind === "done" ? (
-        <p role="status" className="dk-muted">
-          {status.message}
-        </p>
-      ) : null}
+      {status.kind === "done" ? <AppliedNote message={status.message} onOpenHistory={onOpenHistory} /> : null}
     </div>
   );
 }
@@ -330,5 +329,23 @@ function ProposalCard({
         </Button>
       </div>
     </article>
+  );
+}
+
+/**
+ * What an approval became, and where to see it (UI audit Unit 9). Approving,
+ * undoing and the version history are one story: each approval and each undo
+ * is a version, and the history is where they are all listed.
+ */
+export function AppliedNote({ message, onOpenHistory }: { message: string; onOpenHistory?: () => void }) {
+  return (
+    <p role="status" className="dk-proposals__applied" data-testid="proposal-applied">
+      <span>{message}. Saved as a new version.</span>
+      {onOpenHistory ? (
+        <Button size="sm" variant="ghost" icon="history" onClick={onOpenHistory} data-testid="proposal-history">
+          Version history
+        </Button>
+      ) : null}
+    </p>
   );
 }

@@ -18,6 +18,8 @@ export interface AssistantPanelProps {
   onClose?: () => void;
   /** Open the Review view on a proposal (UI audit unit 4). */
   onReview?: (proposalId: string) => void;
+  /** Version history, linked from what an approval became. */
+  onOpenHistory?: () => void;
 }
 
 /**
@@ -38,6 +40,7 @@ export function AssistantPanel({
   onMediaOpen,
   onClose,
   onReview,
+  onOpenHistory,
 }: AssistantPanelProps) {
   const [pending, setPending] = useState(0);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -72,6 +75,7 @@ export function AssistantPanel({
           currentVersionId={editor.currentVersionId}
           onCount={setPending}
           onReview={onReview}
+          onOpenHistory={onOpenHistory}
         />
       </Section>
 
