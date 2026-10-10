@@ -129,6 +129,7 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
       theme={themeFor(preset)}
       themeKey={themeKey || preset.themeKey}
       motionName={catalog?.motionStyles?.[preset.motionStyle]?.name ?? preset.motionStyle}
+      languageName={preset.designLanguage && preset.designLanguage !== "neutral" ? catalog?.designLanguages?.[preset.designLanguage]?.name : undefined}
       featured={featuredCard}
       creating={creating === preset.id}
       disabled={unavailable}
@@ -272,6 +273,7 @@ function TemplateCard({
   theme,
   themeKey,
   motionName,
+  languageName,
   featured,
   creating,
   disabled,
@@ -282,6 +284,8 @@ function TemplateCard({
   theme?: PresetTheme;
   themeKey: string;
   motionName: string;
+  /** The design language, when it is one of the named ones. */
+  languageName?: string;
   featured: boolean;
   creating: boolean;
   disabled: boolean;
@@ -299,6 +303,7 @@ function TemplateCard({
           <p>{preset.summary}</p>
         </div>
         <span className="dk-template-card__meta">
+          {languageName ? <strong className="dk-template-card__language">{languageName}</strong> : null}
           <StatusChip tone="neutral">{preset.slides.length} slides</StatusChip>
           <span>{motionName} motion</span>
         </span>

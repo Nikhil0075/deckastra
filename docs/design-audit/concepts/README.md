@@ -48,3 +48,20 @@ centre, the queue with Approve, Reject and Undo for what was applied this
 session. The built view follows it. In the desktop `ai` step at a 1426px window,
 the Review picture was 407px wide against the Assistant column's 150px.
 
+## Unit 5 · Design languages (two pilots)
+
+`unit5-languages/*.webp` are contact sheets of the four pilot templates, each
+composed by the real composer and rendered through the export worker:
+`swiss-strategy-brief` and `swiss-launch-signal` in Swiss Signal, and
+`noir-case-file` and `noir-night-story` in Cinema Noir. No OpenArt concept was
+generated for this unit. The languages are taken from the design movements
+named in `../research/2026-10-10-design-languages.md`, and the evidence is the
+composer's own output rather than a picture of what it might become.
+
+The preview sheet's new language-distance report compares each pilot cover with
+the nearest neutral cover. Pilot covers sit 73 to 76 of 256 difference-hash bits
+away, against the 24-bit near-duplicate threshold. None shares a neutral
+cover's grammar (headline size, alignment, position and shapes). The two Noir
+covers are 24 bits apart, so they are a near-duplicate pair. That is expected for two
+title cards in one language, and unit 7's gate will compare across languages
+rather than within one.

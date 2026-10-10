@@ -7813,6 +7813,766 @@
           "backdropFilters": []
         }
       }
+    },
+    {
+      "key": "swiss-signal",
+      "name": "Swiss Signal",
+      "summary": "White ground, black grotesque, one red signal and square corners: the International Typographic Style.",
+      "category": "Styles",
+      "theme": {
+        "id": "thm_01JB8Z9K2QW4RN7F3XP0000020",
+        "name": "Swiss Signal",
+        "description": "White ground, black grotesque, one red signal and square corners: the International Typographic Style.",
+        "mode": "light",
+        "colors": {
+          "background": "#FFFFFF",
+          "surface": "#F4F4F2",
+          "surfaceAlt": "#E8E8E5",
+          "overlay": "#FFFFFFCC",
+          "foreground": "#0A0A0A",
+          "foregroundMuted": "#3A3A3A",
+          "foregroundSubtle": "#5E5E5E",
+          "accent": "#D0021B",
+          "accentForeground": "#FFFFFF",
+          "accentMuted": "#E8E8E5",
+          "secondary": "#0A0A0A",
+          "secondaryForeground": "#FFFFFF",
+          "border": "#D9D9D6",
+          "borderStrong": "#0A0A0A",
+          "divider": "#D9D9D6",
+          "success": "#15803D",
+          "warning": "#B45309",
+          "danger": "#B91C1C",
+          "info": "#D0021B",
+          "chartSeries": [
+            "#D0021B",
+            "#0A0A0A",
+            "#6E6E6E",
+            "#A8A8A4",
+            "#7A0010",
+            "#3A3A3A"
+          ],
+          "chartPositive": "#15803D",
+          "chartNegative": "#B91C1C",
+          "chartNeutral": "#5E5E5E"
+        },
+        "typography": {
+          "display": {
+            "fontFamily": "Inter",
+            "fontSize": 96,
+            "fontWeight": 800,
+            "lineHeight": 1.05,
+            "letterSpacing": -2
+          },
+          "h1": {
+            "fontFamily": "Inter",
+            "fontSize": 64,
+            "fontWeight": 800,
+            "lineHeight": 1.1,
+            "letterSpacing": -1
+          },
+          "h2": {
+            "fontFamily": "Inter",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "lineHeight": 1.15
+          },
+          "h3": {
+            "fontFamily": "Inter",
+            "fontSize": 32,
+            "fontWeight": 600,
+            "lineHeight": 1.2
+          },
+          "body": {
+            "fontFamily": "Inter",
+            "fontSize": 24,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "bodySmall": {
+            "fontFamily": "Inter",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "caption": {
+            "fontFamily": "Inter",
+            "fontSize": 16,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "quote": {
+            "fontFamily": "Inter",
+            "fontSize": 32,
+            "fontWeight": 400,
+            "fontStyle": "italic",
+            "lineHeight": 1.35
+          },
+          "code": {
+            "fontFamily": "JetBrains Mono",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.5
+          },
+          "metric": {
+            "fontFamily": "Inter",
+            "fontSize": 88,
+            "fontWeight": 800,
+            "lineHeight": 1,
+            "fontFeatures": [
+              "tnum"
+            ]
+          },
+          "scaleRatio": 1.25
+        },
+        "spacing": {
+          "base": 8,
+          "xs": 4,
+          "sm": 8,
+          "md": 16,
+          "lg": 32,
+          "xl": 64,
+          "xxl": 96,
+          "slideMargin": {
+            "top": 80,
+            "right": 120,
+            "bottom": 80,
+            "left": 120
+          }
+        },
+        "radii": {
+          "none": 0,
+          "sm": 0,
+          "md": 0,
+          "lg": 0,
+          "full": 9999
+        },
+        "shadows": {
+          "none": [],
+          "sm": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 1,
+              "blur": 3,
+              "color": "#0000001F"
+            }
+          ],
+          "md": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 6,
+              "blur": 18,
+              "color": "#00000024"
+            }
+          ],
+          "lg": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 18,
+              "blur": 48,
+              "color": "#0000002E"
+            }
+          ]
+        },
+        "grid": {
+          "columns": 12,
+          "gutter": 24,
+          "margin": 120,
+          "baseUnit": 8,
+          "baselineGrid": 8
+        },
+        "chart": {
+          "series": [
+            "#D0021B",
+            "#0A0A0A",
+            "#6E6E6E",
+            "#A8A8A4",
+            "#7A0010",
+            "#3A3A3A"
+          ],
+          "gridlineColor": "#D9D9D6",
+          "axisColor": "#5E5E5E",
+          "showGridlines": true,
+          "barCornerRadius": 0,
+          "lineWidth": 3,
+          "pointSize": 6
+        },
+        "diagram": {
+          "nodeFill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "nodeStroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "nodeRadius": 0,
+          "nodePadding": {
+            "top": 16,
+            "right": 20,
+            "bottom": 16,
+            "left": 20
+          },
+          "roleStyles": {
+            "service": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              }
+            },
+            "datastore": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surfaceAlt"
+              }
+            },
+            "external": {
+              "fill": {
+                "type": "none"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 1,
+                "dash": [
+                  6,
+                  4
+                ]
+              }
+            }
+          }
+        },
+        "imagery": {
+          "treatment": "none",
+          "defaultCornerRadius": 0
+        },
+        "motion": {
+          "personality": "subtle",
+          "defaultEntrance": "fadeUp",
+          "defaultDurationMs": 400,
+          "defaultEasing": "emphasized",
+          "staggerMs": 70,
+          "reducedMotionFallback": "fade",
+          "maxSlideDurationMs": 2500
+        },
+        "contrastPairs": [
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.surface",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.accentForeground",
+            "background": "colors.accent",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.secondaryForeground",
+            "background": "colors.secondary",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundMuted",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundSubtle",
+            "background": "colors.background",
+            "minimumRatio": 3
+          }
+        ],
+        "brandRules": [
+          {
+            "id": "type-sizes",
+            "kind": "must-not",
+            "scope": "typography",
+            "statement": "Use no more than three type sizes on a single slide.",
+            "check": {
+              "type": "maxFontSizesPerSlide",
+              "value": 3
+            }
+          },
+          {
+            "id": "no-literals",
+            "kind": "should",
+            "scope": "color",
+            "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+            "check": {
+              "type": "forbiddenColorLiterals",
+              "value": true
+            }
+          },
+          {
+            "id": "whitespace",
+            "kind": "should",
+            "scope": "layout",
+            "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+          }
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 2
+              },
+              "cornerRadius": 0
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 0
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
+      },
+      "kit": {
+        "card": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.borderStrong"
+            },
+            "width": 2
+          },
+          "cornerRadius": 0,
+          "shadow": [],
+          "backdropFilters": []
+        }
+      }
+    },
+    {
+      "key": "cinema-noir",
+      "name": "Cinema Noir",
+      "summary": "Near-black frames, a cream high-contrast serif and one warm lamplight accent: a film-noir title card.",
+      "category": "Styles",
+      "theme": {
+        "id": "thm_01JB8Z9K2QW4RN7F3XP0000021",
+        "name": "Cinema Noir",
+        "description": "Near-black frames, a cream high-contrast serif and one warm lamplight accent: a film-noir title card.",
+        "mode": "dark",
+        "colors": {
+          "background": "#0A0A0B",
+          "surface": "#141416",
+          "surfaceAlt": "#1E1E21",
+          "overlay": "#000000B3",
+          "foreground": "#EFE9DE",
+          "foregroundMuted": "#C4BDB1",
+          "foregroundSubtle": "#9C9588",
+          "accent": "#D9B26B",
+          "accentForeground": "#0A0A0B",
+          "accentMuted": "#1E1E21",
+          "secondary": "#8E2A24",
+          "secondaryForeground": "#EFE9DE",
+          "border": "#2A2A2E",
+          "borderStrong": "#5A564F",
+          "divider": "#2A2A2E",
+          "success": "#3DDC97",
+          "warning": "#F2C14E",
+          "danger": "#FF6B6B",
+          "info": "#D9B26B",
+          "chartSeries": [
+            "#D9B26B",
+            "#EFE9DE",
+            "#8A8478",
+            "#B4504A",
+            "#6B7A82",
+            "#C4BDB1"
+          ],
+          "chartPositive": "#3DDC97",
+          "chartNegative": "#FF6B6B",
+          "chartNeutral": "#9C9588"
+        },
+        "typography": {
+          "display": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 96,
+            "fontWeight": 700,
+            "lineHeight": 1.05,
+            "letterSpacing": -2
+          },
+          "h1": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "lineHeight": 1.1,
+            "letterSpacing": -1
+          },
+          "h2": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "lineHeight": 1.15
+          },
+          "h3": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 32,
+            "fontWeight": 600,
+            "lineHeight": 1.2
+          },
+          "body": {
+            "fontFamily": "Source Serif 4",
+            "fontSize": 24,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "bodySmall": {
+            "fontFamily": "Source Serif 4",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "caption": {
+            "fontFamily": "Source Serif 4",
+            "fontSize": 16,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "quote": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 32,
+            "fontWeight": 400,
+            "fontStyle": "italic",
+            "lineHeight": 1.35
+          },
+          "code": {
+            "fontFamily": "JetBrains Mono",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.5
+          },
+          "metric": {
+            "fontFamily": "Playfair Display",
+            "fontSize": 88,
+            "fontWeight": 700,
+            "lineHeight": 1,
+            "fontFeatures": [
+              "tnum"
+            ]
+          },
+          "scaleRatio": 1.25
+        },
+        "spacing": {
+          "base": 8,
+          "xs": 4,
+          "sm": 8,
+          "md": 16,
+          "lg": 32,
+          "xl": 64,
+          "xxl": 96,
+          "slideMargin": {
+            "top": 80,
+            "right": 120,
+            "bottom": 80,
+            "left": 120
+          }
+        },
+        "radii": {
+          "none": 0,
+          "sm": 0,
+          "md": 0,
+          "lg": 0,
+          "full": 9999
+        },
+        "shadows": {
+          "none": [],
+          "sm": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 1,
+              "blur": 3,
+              "color": "#00000059"
+            }
+          ],
+          "md": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 6,
+              "blur": 18,
+              "color": "#00000073"
+            }
+          ],
+          "lg": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 18,
+              "blur": 48,
+              "color": "#00000099"
+            }
+          ]
+        },
+        "grid": {
+          "columns": 12,
+          "gutter": 24,
+          "margin": 120,
+          "baseUnit": 8,
+          "baselineGrid": 8
+        },
+        "chart": {
+          "series": [
+            "#D9B26B",
+            "#EFE9DE",
+            "#8A8478",
+            "#B4504A",
+            "#6B7A82",
+            "#C4BDB1"
+          ],
+          "gridlineColor": "#2A2A2E",
+          "axisColor": "#9C9588",
+          "showGridlines": true,
+          "barCornerRadius": 0,
+          "lineWidth": 3,
+          "pointSize": 6
+        },
+        "diagram": {
+          "nodeFill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "nodeStroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "nodeRadius": 0,
+          "nodePadding": {
+            "top": 16,
+            "right": 20,
+            "bottom": 16,
+            "left": 20
+          },
+          "roleStyles": {
+            "service": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              }
+            },
+            "datastore": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surfaceAlt"
+              }
+            },
+            "external": {
+              "fill": {
+                "type": "none"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 1,
+                "dash": [
+                  6,
+                  4
+                ]
+              }
+            }
+          }
+        },
+        "imagery": {
+          "treatment": "none",
+          "defaultCornerRadius": 0
+        },
+        "motion": {
+          "personality": "subtle",
+          "defaultEntrance": "fadeUp",
+          "defaultDurationMs": 400,
+          "defaultEasing": "emphasized",
+          "staggerMs": 70,
+          "reducedMotionFallback": "fade",
+          "maxSlideDurationMs": 2500
+        },
+        "contrastPairs": [
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.surface",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.accentForeground",
+            "background": "colors.accent",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.secondaryForeground",
+            "background": "colors.secondary",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundMuted",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundSubtle",
+            "background": "colors.background",
+            "minimumRatio": 3
+          }
+        ],
+        "brandRules": [
+          {
+            "id": "type-sizes",
+            "kind": "must-not",
+            "scope": "typography",
+            "statement": "Use no more than three type sizes on a single slide.",
+            "check": {
+              "type": "maxFontSizesPerSlide",
+              "value": 3
+            }
+          },
+          {
+            "id": "no-literals",
+            "kind": "should",
+            "scope": "color",
+            "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+            "check": {
+              "type": "forbiddenColorLiterals",
+              "value": true
+            }
+          },
+          {
+            "id": "whitespace",
+            "kind": "should",
+            "scope": "layout",
+            "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+          }
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surfaceAlt"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 0
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 0
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
+      },
+      "kit": {
+        "card": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surfaceAlt"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "cornerRadius": 0,
+          "shadow": [],
+          "backdropFilters": []
+        }
+      }
     }
   ]
 }

@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 
 import {
   DECK_PRESETS,
+  DESIGN_LANGUAGES,
+  PILOT_SOURCES,
+  validatePresetSources,
   MOTION_STYLES,
   PATTERN_DEFINITIONS,
   PURPOSE_GROUPS,
@@ -22,7 +25,7 @@ const themeCatalog = JSON.parse(await readFile(themesInput, "utf8")) as {
   presets: Array<{ key: string; name: string; theme: { colors?: Record<string, string> } }>;
 };
 const themeKeys = new Set(themeCatalog.presets.map((theme) => theme.key));
-const issues = validateDeckPresets(DECK_PRESETS, { themeKeys });
+const issues = [...validateDeckPresets(DECK_PRESETS, { themeKeys }), ...validatePresetSources(PILOT_SOURCES)];
 if (issues.length > 0) {
   for (const issue of issues) console.error(`${issue.code} ${issue.path}: ${issue.message}`);
   process.exit(1);
@@ -43,6 +46,7 @@ const body = `${JSON.stringify({
   slidePatterns: SLIDE_PATTERNS,
   patternDefinitions: PATTERN_DEFINITIONS,
   motionStyles: MOTION_STYLES,
+  designLanguages: DESIGN_LANGUAGES,
   presets: DECK_PRESETS,
 }, null, 2)}\n`;
 

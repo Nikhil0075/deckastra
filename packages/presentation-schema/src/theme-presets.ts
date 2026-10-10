@@ -901,6 +901,46 @@ export const THEME_PRESETS: readonly ThemePreset[] = [
     radii: { sm: 4, md: 8, lg: 12 },
     kit: { card: { fill: solid("token:colors.surface"), stroke: line("token:colors.border", 1), cornerRadius: 8, shadow: [], backdropFilters: [] } },
   }),
+  // The two pilot design languages' own themes (UI audit unit 5). A language is
+  // more than its theme, but its theme is where its colour logic lives.
+  build(20, {
+    key: "swiss-signal",
+    name: "Swiss Signal",
+    summary: "White ground, black grotesque, one red signal and square corners: the International Typographic Style.",
+    category: "Styles",
+    mode: "light",
+    heading: "Inter",
+    body: "Inter",
+    headingWeight: 800,
+    palette: {
+      background: "#FFFFFF", surface: "#F4F4F2", surfaceAlt: "#E8E8E5",
+      foreground: "#0A0A0A", foregroundMuted: "#3A3A3A", foregroundSubtle: "#5E5E5E",
+      accent: "#D0021B", accentForeground: "#FFFFFF", secondary: "#0A0A0A", secondaryForeground: "#FFFFFF",
+      border: "#D9D9D6", borderStrong: "#0A0A0A",
+      chartSeries: ["#D0021B", "#0A0A0A", "#6E6E6E", "#A8A8A4", "#7A0010", "#3A3A3A"],
+    },
+    radii: { sm: 0, md: 0, lg: 0 },
+    kit: { card: { fill: solid("token:colors.surface"), stroke: line("token:colors.borderStrong", 2), cornerRadius: 0, shadow: [], backdropFilters: [] } },
+  }),
+  build(21, {
+    key: "cinema-noir",
+    name: "Cinema Noir",
+    summary: "Near-black frames, a cream high-contrast serif and one warm lamplight accent: a film-noir title card.",
+    category: "Styles",
+    mode: "dark",
+    heading: "Playfair Display",
+    body: "Source Serif 4",
+    palette: {
+      background: "#0A0A0B", surface: "#141416", surfaceAlt: "#1E1E21",
+      foreground: "#EFE9DE", foregroundMuted: "#C4BDB1", foregroundSubtle: "#9C9588",
+      accent: "#D9B26B", accentForeground: "#0A0A0B", secondary: "#8E2A24", secondaryForeground: "#EFE9DE",
+      border: "#2A2A2E", borderStrong: "#5A564F",
+      chartSeries: ["#D9B26B", "#EFE9DE", "#8A8478", "#B4504A", "#6B7A82", "#C4BDB1"],
+    },
+    radii: { sm: 0, md: 0, lg: 0 },
+    motion: "subtle",
+    kit: { card: { fill: solid("token:colors.surfaceAlt"), stroke: line("token:colors.border", 1), cornerRadius: 0, shadow: [], backdropFilters: [] } },
+  }),
 ];
 
 export function findPreset(key: string): ThemePreset | undefined {

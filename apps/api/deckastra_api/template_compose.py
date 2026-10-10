@@ -43,12 +43,15 @@ def compose_template(
     theme, theme_id = presets.resolve_theme(theme_key or str(preset["themeKey"]))
     motion_plan = presets.motion_plan_from_preset(preset)
 
+    language = str(preset.get("designLanguage") or "neutral")
     document = compose_document(
         plan,
         instruction=f"Deck template: {template_id}",
         motion_plan=motion_plan,
         theme_definition=theme,
         theme_id=theme_id,
+        language=language,
+        language_version=presets.language_version(language),
     )
     document.setdefault("metadata", {})["templateId"] = template_id
     document["metadata"]["motionStyle"] = str(preset["motionStyle"])
@@ -90,9 +93,20 @@ def content_size(content: dict[str, dict[str, object]] | None) -> int:
 
 def preview_key(template_id: str, theme_key: str | None, slides: str) -> str:
     """The cache and ETag key. Only previews without the person's words are cached."""
-    language_version = ""  # A template's design-language version joins this in unit 5.
+    # A new version of the template's language composes differently, so it is a
+    # different preview.
+    language_version = str(template_language_version(template_id) or "")
     raw = "\x1f".join([template_id, theme_key or "", language_version, catalog_revision(), slides])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+def template_language_version(template_id: str) -> int | None:
+    """The version of the language a template composes in, or None if it is not known."""
+    try:
+        preset = presets.find_preset(template_id)
+    except presets.PresetError:
+        return None
+    return presets.language_version(str(preset.get("designLanguage") or "neutral"))
 
 
 class _PreviewCache:
@@ -155,7 +169,7 @@ def preview(
     body = {
         "template_id": template_id,
         "catalog_revision": catalog_revision(),
-        "language_version": None,
+        "language_version": template_language_version(template_id),
         "slides": slides,
         "document": document,
     }

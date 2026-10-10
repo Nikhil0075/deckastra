@@ -449,6 +449,11 @@ export interface DeckPreset {
   summary: string;
   purpose: PurposeGroup;
   tags: string[];
+  /**
+   * The design language the template is composed in (`languages.ts`). The four
+   * fields below are its resolved defaults plus any override the template makes.
+   */
+  designLanguage: string;
   themeKey: string;
   motionStyle: MotionStyleId;
   transitionStyle: string;

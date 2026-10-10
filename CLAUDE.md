@@ -4185,6 +4185,34 @@ easy to undo:
   `STILL_TO_REMOVE` is a ratchet: the test fails when a listed file has gone
   clean, so the list can only get shorter.
 
+### Design languages: a grammar, not a recolour (UI audit unit 5, 2026-10-10)
+
+A design language decides grid, type scale, alignment and motifs; a theme
+decides colours and faces beneath it. Research and sources are in
+`docs/design-audit/research/2026-10-10-design-languages.md`. Rules that are easy
+to undo:
+
+- **The contract is data, the geometry is code.** `deck-presets/src/languages.ts`
+  holds each language's axes, rules, `forbid` list and `defaults`;
+  `apps/api/deckastra_api/languages.py` overrides individual layouts and any it
+  does not supply falls back to neutral (`layout_for`). Agents and templates
+  still name layouts only.
+- **A language's `defaults` are the single source of truth** for theme, motion,
+  transition and voice. A template (`PresetSource` in `pilots.ts`) may override
+  one; an override equal to the default is refused (`E_PRESET_OVERRIDE_REDUNDANT`),
+  because it is the copy that drifts. The emitted catalog carries the resolved
+  values, so readers that predate languages see no change.
+- **The neutral composer must not move a byte.** `apps/api/tests/goldens/
+  compose_neutral.json` is a SHA-256 per neutral template, composed with fixed
+  ids and clock (`compose_golden.py`). Regenerate it only after a deliberate
+  neutral change: `python apps/api/tests/compose_golden.py`.
+- **A deck records its language** as `metadata.designLanguage {id, version}`;
+  a neutral deck records nothing. The version is in the preview cache key, so
+  a new version of a language never answers from an old preview.
+- **The preview sheet compares grammar, not only pixels**: a language cover
+  with the same headline size, alignment, position and shapes as a neutral
+  cover is a recolour and a finding.
+
 ### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
 
 The active agent-first plan is
