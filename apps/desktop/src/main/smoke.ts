@@ -1992,6 +1992,8 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
         async () => {
           await escape();
           await click("open-deck-list");
+          // The home remembers its destination; this view is the decks.
+          await click("view-all");
           await until(window, `document.querySelector('[data-testid="deck-card"]')`, 20_000);
         },
       ],
@@ -1999,6 +2001,8 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
         // Template-first creation and the connected-agent instructions.
         "templates",
         async () => {
+          // Templates are a destination of their own (UI audit 2026-10-10, unit 1).
+          await click("view-templates");
           await until(window, `document.querySelector('[data-testid="template-start"]')`, 10_000);
           await page(`document.querySelector('[data-testid="build-with-agent"]')?.setAttribute("open", "")`);
         },
@@ -2009,8 +2013,11 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
       findings[`${theme.toLowerCase()}/${name}`] = await audit();
       if (theme === "Dark") await capture(window, join(dir, `a11y-dark-${name}.png`));
     }
-    // Back to the editor for the next theme.
+    // Back to the editor for the next theme, from the decks rather than the
+    // template catalog the last view left on screen.
     await escape();
+    await click("view-all");
+    await until(window, `document.querySelector('[data-deck-id="${original}"] .dk-card__thumb')`, 20_000);
     await page(`document.querySelector('[data-deck-id="${original}"] .dk-card__thumb').click()`);
     await until(window, `document.querySelector("[data-editor-canvas]")`, 20_000);
   }
@@ -2276,11 +2283,26 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
 
   // ---- 2. Create through a reviewed template.
   await page(clickTestId("open-deck-list"));
-  if (!(await until(window, `document.querySelector('[data-testid="use-template-technical-architecture"]')`, 20_000))) {
+  await until(window, `document.querySelector('[data-testid="view-templates"]')`, 20_000);
+  await page(clickTestId("view-templates"));
+  // Enabled, not merely present: the catalog can arrive before the account has
+  // said which project a new deck would go to.
+  if (!(await until(window, `document.querySelector('[data-testid="use-template-technical-architecture"]') && !document.querySelector('[data-testid="use-template-technical-architecture"]').disabled`, 20_000))) {
     throw new Error("The home never loaded the reviewed template catalog.");
   }
+  record.templateButton = await page(`(() => {
+    const button = document.querySelector('[data-testid="use-template-technical-architecture"]');
+    return { disabled: button?.disabled ?? null, text: button?.textContent ?? null };
+  })()`);
   await page(clickTestId("use-template-technical-architecture"));
   if (!(await until(window, `document.querySelector("[data-editor-canvas]")`, 30_000))) {
+    // Say where it arrived: a disabled button, a refusal, or still creating.
+    record.templateArrived = await page(`(() => ({
+      destination: document.querySelector("[data-home-destination]")?.getAttribute("data-home-destination") ?? null,
+      alert: document.querySelector('[data-testid="template-start"] [role="alert"]')?.textContent ?? null,
+      button: document.querySelector('[data-testid="use-template-technical-architecture"]')?.textContent ?? null,
+    }))()`);
+    await capture(window, join(dir, "template-failure.png")).catch(() => {});
     throw new Error("Using a template did not open the composed deck.");
   }
   const templated = await openId();

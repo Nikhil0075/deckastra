@@ -31,7 +31,7 @@ export default function Home() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const start = params.get("start");
-    if (start === "new-deck" || start === "generate-deck") setStartWith(start);
+    if (start === "new-deck" || start === "generate-deck" || start === "all-decks") setStartWith(start);
     const section = params.get("settings");
     const known = SETTINGS_SECTIONS.find(({ id }) => id === section);
     if (known) setSettings({ open: true, section: known.id });

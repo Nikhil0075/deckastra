@@ -11,9 +11,10 @@ describe("host commands", () => {
     expect(themeForCommand("present")).toBeNull();
   });
 
-  it("send only New deck and Generate on to the deck list", () => {
+  it("send only New deck, Generate and All decks on to the deck list", () => {
     expect(isDeckListCommand("new-deck")).toBe(true);
     expect(isDeckListCommand("generate-deck")).toBe(true);
-    expect(isDeckListCommand("all-decks")).toBe(false);
+    expect(isDeckListCommand("all-decks")).toBe(true);
+    expect(isDeckListCommand("open-settings")).toBe(false);
   });
 });

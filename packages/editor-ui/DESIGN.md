@@ -36,10 +36,11 @@ switch is Design, Motion, Code.
   general prompt box or model-writing quick action in a deck.
 - **Enforced by** `tests/assistant-panel.test.tsx`.
 
-A new deck starts in the shared web and desktop home at **New from template**
-(`NewDeckStart.tsx`). Templates are filtered by purpose and previewed in any
-built-in theme; selecting one calls the deterministic composer. Blank deck and
-Open `.mydeck` remain beside it. **Build with your agent** gives the MCP path:
+A new deck starts in the shared web and desktop home. **Templates** is its own
+destination (`TemplatesView.tsx`), separate from the person's decks: templates
+are filtered by purpose, previewed in any built-in theme, and looked at in a
+detail drawer before use; using one calls the deterministic composer. Blank
+deck and Open `.mydeck` sit on the Projects destination's start strip. **Build with your agent** gives the MCP path:
 `preset_list`, then `deck_from_template` or `deck_compose`; no model graph runs
 inside Deckastra.
 

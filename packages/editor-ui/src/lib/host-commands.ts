@@ -10,8 +10,12 @@ import type { EditorMode } from "./editor-layout";
 
 export type { HostCommand, SubscribeHostCommands } from "@deckastra/workspace-contracts";
 
-/** Commands the deck list carries out; from the editor they leave the deck first. */
-export type DeckListCommand = Extract<HostCommand, "new-deck" | "generate-deck">;
+/**
+ * Commands the deck list carries out; from the editor they leave the deck first.
+ * `all-decks` is one too: the home remembers whether it last showed Projects or
+ * Templates, and leaving a deck through "All decks" must land on the decks.
+ */
+export type DeckListCommand = Extract<HostCommand, "new-deck" | "generate-deck" | "all-decks">;
 
 export function modeForCommand(command: HostCommand): EditorMode | null {
   switch (command) {
@@ -40,5 +44,5 @@ export function themeForCommand(command: HostCommand): ThemePreference | null {
 }
 
 export function isDeckListCommand(command: HostCommand): command is DeckListCommand {
-  return command === "new-deck" || command === "generate-deck";
+  return command === "new-deck" || command === "generate-deck" || command === "all-decks";
 }

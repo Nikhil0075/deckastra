@@ -13,6 +13,7 @@ import { loadView, viewKey, viewTitle, type DeckView, type ListedDeck } from "..
 import { setThemePreference } from "../lib/chrome-theme";
 import { themeForCommand, type DeckListCommand, type HostCommand, type SubscribeHostCommands } from "../lib/host-commands";
 import { deckSummary, projectSummary, relativeTime, visibleDecks, type DeckSort } from "../lib/deck-list";
+import { loadDestination, saveDestination, type HomeDestination } from "../lib/home-destination";
 import { useBrowserMeasurer } from "../lib/measurer";
 import {
   Button,
@@ -29,7 +30,7 @@ import { cx } from "../ui/cx";
 import { ExportPanel } from "./ExportPanel";
 import { FinalFrameSlide } from "./FinalFrameSlide";
 import { CreditsMeter } from "./CreditsMeter";
-import { NewDeckStart } from "./NewDeckStart";
+import { TemplatesView } from "./TemplatesView";
 import { CommandPalette } from "./shell/CommandPalette";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
 
@@ -108,7 +109,16 @@ export function DeckList({
   // to, whichever view is showing.
   const [view, setView] = useState<DeckView | null>(initialProjectId ? { kind: "project", projectId: initialProjectId } : null);
   const [listError, setListError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  // Projects or Templates: two destinations, each with its own scroll and its
+  // own search text (UI audit 2026-10-10, unit 1). Remembered across launches.
+  const [destination, setDestinationState] = useState<HomeDestination>(() => loadDestination());
+  const setDestination = useCallback((next: HomeDestination) => {
+    setDestinationState(next);
+    saveDestination(next);
+  }, []);
+  const [deckQuery, setDeckQuery] = useState("");
+  const [templateQuery, setTemplateQuery] = useState("");
+  const query = deckQuery;
   const [sort, setSort] = useState<DeckSort>("recent");
   const [banner, setBanner] = useState<{ text: string; undo?: () => void; tone: "notice" | "danger" } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -199,6 +209,11 @@ export function DeckList({
   const showProject = (id: string) => {
     setProjectId(id);
     setView({ kind: "project", projectId: id });
+    setDestination("projects");
+  };
+  const showView = (next: DeckView) => {
+    setView(next);
+    setDestination("projects");
   };
 
   // The trash keeps its own order, most recently deleted first: "recent" there
@@ -292,6 +307,7 @@ export function DeckList({
   // ------------------------------------------------------------------ render
 
   const editable = located ? located.workspace.role !== "viewer" : false;
+  const onProjects = destination === "projects";
 
   // The menu's commands. A ref for the same reason as the editor's: one
   // subscription per host, a handler that sees the current project.
@@ -301,9 +317,9 @@ export function DeckList({
     if (theme) setThemePreference(theme);
     else if (command === "new-deck" && editable && !busy) void createDeck();
     else if (command === "generate-deck" && editable) {
-      if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
+      setDestination("templates");
       setTemplateFocus((count) => count + 1);
-    } else if (command === "all-decks") setView({ kind: "all" });
+    } else if (command === "all-decks") showView({ kind: "all" });
     else if (command === "open-settings") onOpenSettings?.();
     else if (command === "command-palette") setPaletteOpen(true);
   };
@@ -322,7 +338,9 @@ export function DeckList({
   useEffect(() => commands?.((command) => onCommand.current(command)), [commands]);
   const started = useRef(false);
   useEffect(() => {
-    if (!startWith || started.current || !editable || !projectId) return;
+    // Showing the decks needs nothing; starting one needs a project to put it in.
+    if (!startWith || started.current) return;
+    if (startWith !== "all-decks" && (!editable || !projectId)) return;
     started.current = true;
     onCommand.current(startWith);
   }, [startWith, editable, projectId]);
@@ -336,18 +354,35 @@ export function DeckList({
           <span className="dk-appbar__sep" aria-hidden="true">
             /
           </span>
-          <span className="dk-appbar__deck">{project?.name ?? "Decks"}</span>
+          <span className="dk-appbar__deck">{destination === "templates" ? "Templates" : (project?.name ?? "Decks")}</span>
         </h1>
         <span className="dk-decks__search">
           <Icon name="search" size={14} />
-          <TextField
-            label="Search decks"
-            hideLabel
-            placeholder="Search decks"
-            value={query}
-            onChange={setQuery}
-            data-testid="deck-search"
-          />
+          {/* One search box, scoped to the destination on screen: it never
+              searches decks and templates at once. */}
+          {destination === "templates" ? (
+            <TextField
+              key="templates"
+              type="search"
+              label="Search templates"
+              hideLabel
+              placeholder="Search templates: pitch, workshop, architecture…"
+              value={templateQuery}
+              onChange={setTemplateQuery}
+              data-testid="template-search"
+            />
+          ) : (
+            <TextField
+              key="decks"
+              type="search"
+              label="Search decks"
+              hideLabel
+              placeholder="Search decks"
+              value={deckQuery}
+              onChange={setDeckQuery}
+              data-testid="deck-search"
+            />
+          )}
         </span>
         <span className="dk-decks__bar-end">
           {barExtras}
@@ -360,6 +395,18 @@ export function DeckList({
       <div className="dk-decks__body">
         <nav className="dk-decks__projects" aria-label="Decks and projects">
           <ul className="dk-decks__project-list dk-decks__views">
+            <li>
+              <button
+                type="button"
+                className={cx("dk-decks__project", destination === "templates" && "dk-decks__project--current")}
+                aria-current={destination === "templates" ? "page" : undefined}
+                onClick={() => setDestination("templates")}
+                data-testid="view-templates"
+              >
+                <Icon name="theme" size={14} />
+                Templates
+              </button>
+            </li>
             {(
               [
                 { kind: "all", label: "All decks", icon: "grid" },
@@ -369,9 +416,9 @@ export function DeckList({
               <li key={entry.kind}>
                 <button
                   type="button"
-                  className={cx("dk-decks__project", view?.kind === entry.kind && "dk-decks__project--current")}
-                  aria-current={view?.kind === entry.kind ? "true" : undefined}
-                  onClick={() => setView({ kind: entry.kind })}
+                  className={cx("dk-decks__project", onProjects && view?.kind === entry.kind && "dk-decks__project--current")}
+                  aria-current={onProjects && view?.kind === entry.kind ? "true" : undefined}
+                  onClick={() => showView({ kind: entry.kind })}
                   data-testid={`view-${entry.kind}`}
                 >
                   <Icon name={entry.icon} size={14} />
@@ -392,8 +439,8 @@ export function DeckList({
                   <li key={candidate.id}>
                     <button
                       type="button"
-                      className={cx("dk-decks__project", view?.kind === "project" && candidate.id === view.projectId && "dk-decks__project--current")}
-                      aria-current={view?.kind === "project" && candidate.id === view.projectId ? "true" : undefined}
+                      className={cx("dk-decks__project", onProjects && view?.kind === "project" && candidate.id === view.projectId && "dk-decks__project--current")}
+                      aria-current={onProjects && view?.kind === "project" && candidate.id === view.projectId ? "true" : undefined}
                       onClick={() => showProject(candidate.id)}
                     >
                       {candidate.name}
@@ -428,9 +475,9 @@ export function DeckList({
           )}
           <button
             type="button"
-            className={cx("dk-decks__project", "dk-decks__trash", view?.kind === "trash" && "dk-decks__project--current")}
-            aria-current={view?.kind === "trash" ? "true" : undefined}
-            onClick={() => setView({ kind: "trash" })}
+            className={cx("dk-decks__project", "dk-decks__trash", onProjects && view?.kind === "trash" && "dk-decks__project--current")}
+            aria-current={onProjects && view?.kind === "trash" ? "true" : undefined}
+            onClick={() => showView({ kind: "trash" })}
             data-testid="view-trash"
           >
             <Icon name="trash" size={14} />
@@ -443,19 +490,19 @@ export function DeckList({
           </div>
         </nav>
 
-        <main className="dk-decks__main">
-          {projectId && view?.kind !== "trash" ? (
-            <NewDeckStart
-              key={projectId}
+        {destination === "templates" ? (
+          <main className="dk-decks__main" data-home-destination="templates">
+            <TemplatesView
               projectId={projectId}
+              query={templateQuery}
               onCreated={onOpen}
-              onBlank={() => void createDeck()}
               disabled={!editable}
               focusToken={templateFocus}
-              onOpenFile={openFile}
               onBuildWithAgent={onSetUpGeneration}
             />
-          ) : null}
+          </main>
+        ) : (
+        <main className="dk-decks__main" data-home-destination="projects">
           {browserImport ? (
             <input
               ref={fileInput}
@@ -496,6 +543,24 @@ export function DeckList({
             />
           </div>
 
+          {/* The quick ways to start, beside the decks they join. Templates have
+              their own destination; this strip only points there. */}
+          {projectId && view?.kind !== "trash" ? (
+            <div className="dk-decks__start" data-testid="project-start">
+              <Button variant="primary" icon="plus" onClick={() => void createDeck()} disabled={!editable || busy} data-testid="new-deck">
+                Blank deck
+              </Button>
+              <Button variant="secondary" icon="theme" onClick={() => setDestination("templates")} data-testid="browse-templates">
+                From a template
+              </Button>
+              {openFile ? (
+                <Button variant="ghost" icon="upload" onClick={openFile} data-testid="open-deck-file">
+                  Open .mydeck file
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+
           {banner ? (
             <div className={cx("dk-banner", banner.tone === "danger" ? "dk-banner--danger" : "dk-banner--notice", "dk-decks__banner")} role="status">
               <span>{banner.text}</span>
@@ -518,8 +583,8 @@ export function DeckList({
                   {view?.kind === "trash"
                     ? "Nothing in the trash. Decks you delete wait here until you restore them."
                     : view?.kind === "project"
-                      ? "No decks in this project yet. Describe one above, or start from a blank deck."
-                      : "No decks yet. Describe one above, or start from a blank deck."}
+                      ? "No decks in this project yet. Start from a blank deck or a template."
+                      : "No decks yet. Start from a blank deck or a template."}
                 </p>
               </div>
             ) : null}
@@ -552,6 +617,7 @@ export function DeckList({
             </ul>
           </ScrollArea>
         </main>
+        )}
       </div>
 
       <CommandPalette
@@ -566,7 +632,7 @@ export function DeckList({
         }}
         onAsk={(text) => {
           setPaletteOpen(false);
-          if (view?.kind === "trash") setView(projectId ? { kind: "project", projectId } : { kind: "all" });
+          setDestination("templates");
           setBanner({ tone: "notice", text: `Choose a template here, or build “${text}” with your connected agent.` });
           setTemplateFocus((count) => count + 1);
         }}
