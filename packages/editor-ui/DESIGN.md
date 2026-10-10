@@ -71,6 +71,13 @@ inside Deckastra.
   - that stylesheets use no colour literals and no rounded corners;
   - that every text and background pair passes AA in light and in dark;
   - that yellow is never used as a text colour.
+- **Colour is never the only signal** (WCAG 1.4.1). A state says itself in
+  words (the task centre's "Working", "Ready", "Failed"), or changes shape as
+  well as hue: a bar, a ring, an outline, a weight, or an inverted fill. A
+  selection that only turns its border blue is not one. The Unit 9 audit
+  (2026-10-11) fixed the three that did: the font picker, the agent setup
+  client and the shared deck's thumbnails. **Not enforced by a test**; a
+  stylesheet cannot tell a hue change from a shape change without rendering.
 
 ### Tokens v1 (frozen 2026-10-04)
 
@@ -115,6 +122,11 @@ state. Each one is written and tested.
 An error says what to do next. A capability that is missing is absent from the
 screen, not shown as broken (CLAUDE.md, "A missing capability is absent, not
 broken").
+
+Loading is a placeholder the shape of what is coming (`Skeleton`,
+`SkeletonCards` in `ui/feedback.tsx`), never a "Loading…" sentence; its label
+is still the status a screen reader hears. A failure is said where it
+happened (`InlineError`), with Try again when there is something to retry.
 
 **Partly enforced**, by each surface's own tests. Nothing yet checks this
 across all surfaces.
