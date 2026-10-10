@@ -88,7 +88,7 @@ export function CreditsMeter({
         <>
           <p className={state.signIn ? "dk-credits__line" : "dk-muted"}>{state.text}</p>
           {state.signIn && onOpenSettings ? (
-            <Button size="sm" variant="secondary" onClick={onOpenSettings} data-testid="credits-sign-in">
+            <Button size="sm" variant="secondary" onClick={() => onOpenSettings()} data-testid="credits-sign-in">
               Sign in
             </Button>
           ) : !state.signIn ? (

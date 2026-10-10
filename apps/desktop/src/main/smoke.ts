@@ -2135,10 +2135,23 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
     if (!pressed) throw new Error(`cannot press ${id}`);
     await sleep(400);
   };
-  const setTheme = async (name: "Light" | "Dark") => {
+  // Light or dark is chosen in Settings › Appearance (UI audit Unit 8), reached
+  // from the account menu's Appearance item the way a person does.
+  const chooseTheme = async (value: "light" | "dark" | "system") => {
     await click("account-menu");
-    await page(`[...document.querySelectorAll('[role="menuitemradio"]')].find((item) => item.textContent.trim() === ${JSON.stringify(name)}).click()`);
-    await sleep(300);
+    const found = await page(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find((node) => /^Appearance/.test(node.textContent.trim()));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    if (!found) throw new Error("the account menu offered no Appearance item");
+    await until(window, `document.querySelector('[data-testid="appearance-theme-${value}"]')`, 10_000);
+    await click(`appearance-theme-${value}`);
+    await escape();
+  };
+  const setTheme = async (name: "Light" | "Dark") => {
+    await chooseTheme(name === "Light" ? "light" : "dark");
     const applied = await page(`document.documentElement.dataset.dkTheme`);
     if (applied !== name.toLowerCase()) throw new Error(`the theme did not change to ${name}`);
   };
@@ -2248,6 +2261,37 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
           await until(window, `document.querySelector('[data-testid="settings-ai"]')`, 20_000);
         },
       ],
+      // The sections Unit 8 added, each with its own controls.
+      [
+        "settings-workspaces",
+        async () => {
+          await click("settings-tab-workspaces");
+          await until(window, `document.querySelector('[data-testid="settings-workspaces"]')`, 20_000);
+        },
+      ],
+      [
+        "settings-appearance",
+        async () => {
+          await click("settings-tab-appearance");
+          await until(window, `document.querySelector('[data-testid="settings-appearance"]')`, 20_000);
+        },
+      ],
+      [
+        "settings-about",
+        async () => {
+          await click("settings-tab-about");
+          await until(window, `document.querySelector('[data-testid="settings-about-version"]')`, 20_000);
+        },
+      ],
+      [
+        // The account menu's identity card, open.
+        "account",
+        async () => {
+          await escape();
+          await click("account-menu");
+          await until(window, `document.querySelector('[data-testid="account-card"]')`, 10_000);
+        },
+      ],
       [
         "history",
         async () => {
@@ -2281,7 +2325,9 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
     for (const [name, open] of views) {
       await open();
       findings[`${theme.toLowerCase()}/${name}`] = await audit();
-      if (theme === "Dark") await capture(window, join(dir, `a11y-dark-${name}.png`));
+      if (theme === "Dark" || name.startsWith("settings") || name === "account") {
+        await capture(window, join(dir, `a11y-${theme.toLowerCase()}-${name}.png`));
+      }
     }
     // Back to the editor for the next theme, from the decks rather than the
     // template catalog the last view left on screen.
@@ -2294,8 +2340,7 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
 
   // Leave the profile as found.
   await setTheme("Light");
-  await click("account-menu");
-  await page(`[...document.querySelectorAll('[role="menuitemradio"]')].find((item) => item.textContent.trim() === "Match the system").click()`);
+  await chooseTheme("system");
 
   record.findings = findings;
   const failing = Object.entries(findings).flatMap(([view, list]) =>

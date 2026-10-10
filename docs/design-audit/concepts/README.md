@@ -86,3 +86,11 @@ export worker: Play Lab, System Terminal, Quiet Luxe, Data Desk, Earth Story
 and Spatial Future. No OpenArt concepts were generated for this unit. Each
 language is drawn from its described grammar (`../research/2026-10-10-design-languages.md`),
 and these sheets are what it actually composes.
+
+## Unit 8 · Account and Settings
+
+`unit8-settings/` holds screenshots from the desktop `a11y` step on a fresh
+profile, in the real app: the account menu's identity card (light and dark),
+and full-screen Settings at Privacy & data, Workspaces, Appearance and About.
+No OpenArt concept was generated for this unit. Settings is a page of words
+and controls, laid out on the existing primitives.

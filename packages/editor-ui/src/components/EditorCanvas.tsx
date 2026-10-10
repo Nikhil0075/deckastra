@@ -707,6 +707,10 @@ export function EditorCanvas({
         width,
         height: doc.viewport.height * scale,
         position: "relative",
+        // The selection chrome below sits at z-index 1000 to stay above every
+        // element. Isolated, that number means "above the slide" and nothing
+        // more; without it, the handles showed through full-screen Settings.
+        isolation: "isolate",
         overflow: "hidden",
         background: "var(--dk-backdrop)",
         touchAction: "none",

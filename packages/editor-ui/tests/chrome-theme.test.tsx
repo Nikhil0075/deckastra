@@ -1,8 +1,12 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppearanceSettings } from "../src/components/SettingsShell";
 import { AccountMenu, initials } from "../src/components/shell/AccountMenu";
 import { THEME_KEY, resetChromeThemeForTests, resolveTheme } from "../src/lib/chrome-theme";
+
+// No service: the account card's credits meter has nothing to read and stays absent.
+vi.mock("@deckastra/workspace-client/react", () => ({ useWorkspaceClient: () => ({ session: {} }) }));
 
 /**
  * The chrome's light or dark (editor Phase 8): a per-viewer preference that
@@ -47,7 +51,7 @@ describe("the chrome theme", () => {
   });
 
   it("follows the system until someone chooses, then keeps their choice", () => {
-    render(<AccountMenu />);
+    render(<AppearanceSettings />);
     expect(rootTheme()).toBe("light");
 
     // The operating system goes dark.
@@ -56,26 +60,23 @@ describe("the chrome theme", () => {
     expect(rootTheme()).toBe("dark");
 
     // The person picks Light: stored for them, and the system no longer decides.
-    fireEvent.click(screen.getByTestId("account-menu"));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Light" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Light" }));
     expect(rootTheme()).toBe("light");
     expect(localStorage.getItem(THEME_KEY)).toBe("light");
     act(() => changeListeners.forEach((listener) => listener()));
     expect(rootTheme()).toBe("light");
 
     // "Match the system" forgets the choice.
-    fireEvent.click(screen.getByTestId("account-menu"));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Match the system" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Match the system" }));
     expect(localStorage.getItem(THEME_KEY)).toBeNull();
     expect(rootTheme()).toBe("dark");
   });
 
   it("says which choice is current, as radios a screen reader can read", () => {
     localStorage.setItem(THEME_KEY, "dark");
-    render(<AccountMenu />);
+    render(<AppearanceSettings />);
     expect(rootTheme()).toBe("dark");
-    fireEvent.click(screen.getByTestId("account-menu"));
-    const radios = screen.getAllByRole("menuitemradio");
+    const radios = screen.getAllByRole("radio");
     expect(radios.map((radio) => [radio.textContent, radio.getAttribute("aria-checked")])).toEqual([
       ["Match the system", "false"],
       ["Light", "false"],
@@ -84,7 +85,7 @@ describe("the chrome theme", () => {
   });
 
   it("follows a choice made in another window", () => {
-    render(<AccountMenu />);
+    render(<AppearanceSettings />);
     expect(rootTheme()).toBe("light");
     localStorage.setItem(THEME_KEY, "dark");
     act(() => {
@@ -93,7 +94,18 @@ describe("the chrome theme", () => {
     expect(rootTheme()).toBe("dark");
   });
 
-  it("is the account menu too: initials, Settings and signing out where the host offers them", () => {
+  it("is chosen in Settings › Appearance; the account menu only links there", () => {
+    const settings = vi.fn();
+    render(<AccountMenu identity={{ email: "ann@example.com" }} onOpenSettings={settings} />);
+    fireEvent.click(screen.getByTestId("account-menu"));
+    expect(screen.queryAllByRole("menuitemradio")).toEqual([]);
+    fireEvent.click(screen.getByRole("menuitem", { name: /Appearance/ }));
+    expect(settings).toHaveBeenCalledWith("appearance");
+  });
+});
+
+describe("the account menu", () => {
+  it("opens on who is signed in, then Settings and signing out where the host offers them", () => {
     expect(initials({ name: "Nikhil Ranjan Murmu" })).toBe("NM");
     expect(initials({ email: "ann@example.com" })).toBe("A");
     expect(initials(null)).toBeNull();
@@ -104,10 +116,25 @@ describe("the chrome theme", () => {
     expect(trigger.textContent).toBe("AL");
     expect(trigger.getAttribute("aria-label")).toBe("Account: ann@example.com");
     fireEvent.click(trigger);
+
+    // The card is read, never focused, and sits outside the menu role.
+    const card = screen.getByTestId("account-card");
+    expect(card.textContent).toContain("Ann Lee");
+    expect(card.textContent).toContain("ann@example.com");
+    expect(card.closest('[role="menu"]')).toBeNull();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Settings…", "Appearance…", "Sign out"]);
+
     fireEvent.click(screen.getByRole("menuitem", { name: /Settings/ }));
-    expect(settings).toHaveBeenCalled();
+    expect(settings).toHaveBeenCalledWith();
     fireEvent.click(screen.getByTestId("account-menu"));
     fireEvent.click(screen.getByRole("menuitem", { name: /Sign out/ }));
     expect(signOut).toHaveBeenCalled();
+  });
+
+  it("says when nobody is signed in rather than showing an empty card", () => {
+    render(<AccountMenu onOpenSettings={() => {}} />);
+    fireEvent.click(screen.getByTestId("account-menu"));
+    expect(screen.getByTestId("account-card").textContent).toContain("Not signed in");
+    expect(screen.getByTestId("account-menu").getAttribute("aria-label")).toBe("Account");
   });
 });

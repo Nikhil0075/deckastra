@@ -4082,9 +4082,27 @@ easy to undo:
 - **Settings replaced the Intelligence drawer** (`SettingsShell.tsx`, desktop
   `DesktopSettings.tsx`, host command `open-settings`, which replaced
   `open-intelligence`; View › Settings…, Ctrl+,). A section the host does not
-  pass is absent; Plans and billing appears with track 3. The own-key section
-  stays until track 2 replaces it. The agent chip is still in the bar, because
-  it shows a live grant at a glance and the `consent` smoke step drives it.
+  pass is absent. The agent chip is still in the bar, because it shows a live
+  grant at a glance and the `consent` smoke step drives it.
+  - **Eight sections, in this order** (UI audit Unit 8): Profile, Plan &
+    credits, Workspaces, Agents & services, Languages & voice, Appearance,
+    Privacy & data, About. The ids are older than the labels and are what the
+    harness and hosts address: `account`, `plans`, `workspaces`, `agents`,
+    `languages`, `appearance`, `ai` (Privacy & data) and `about`.
+  - **The desktop fills the window; the web is a wide dialog**
+    (`placement="full"` / `"center"`, through `Drawer`'s `placement`).
+  - **Technical facts go under Advanced** (`SettingsAdvanced`, a closed
+    `<details>`): workspace ids and raw access states, the build commit,
+    runtime versions and the data directory. The section reads in words first.
+  - **Languages & voice edits the same preferences the panels read**
+    (`translation`, `pronunciations`, `speech`), so there is one copy of each.
+  - **Settings runs main's own dialogs by name** (IPC `hostAction`,
+    `HOST_ACTIONS`: back up, restore, export diagnostics, third-party notices).
+    Each is a menu item already, a test holds the two lists together, and no
+    path crosses: main opens the dialog and the person picks where.
+  - **A host's `onOpenSettings` takes an optional section and checks it**
+    (`isSettingsSection`), because some callers wire it straight to a click
+    and a mouse event is not a section.
 - **Share and Export are one menu** (`open-share`, `export-popover`).
 - **One home for both shells** (`DeckList`). `apps/web/app/page.tsx` is only
   the route now; `AccountPicker` and `EmptyState` are deleted.
@@ -4158,12 +4176,17 @@ easy to undo:
     exactly its headers, complete, poll); the home shows a file input only when
     the host gives no `onOpenFile`. Locally, imports need the worker
     (`python -m deckastra_api.export_worker`); plain uvicorn leaves them queued.
-- **The bars end in an account menu** (`shell/AccountMenu.tsx`, `account-menu`):
-  initials, light/dark/system, Settings…, Sign out where the host has one.
-  It replaced the contrast and Panels buttons and the desktop's gear; panels
-  are in the View menu and the command palette. The desktop's agent chip shows
-  only while access is on; consent is given in Settings › Agents
-  (`settings-agent-toggle`), which is what the `consent` step drives.
+- **The bars end in an account menu** (`shell/AccountMenu.tsx`, `account-menu`).
+  It opens on an identity card (`account-card`: initials, name, email, and the
+  credits where the service keeps any), then Settings…, Appearance… and Sign
+  out where the host has one. The card is `Menu`'s `header`, outside the
+  `menu` role, so it is read and never focused. Light, dark and system moved
+  to Settings › Appearance (`appearance-theme-*`); the menu links there, and
+  the `a11y` step changes theme that way. It replaced the contrast and Panels
+  buttons and the desktop's gear; panels are in the View menu and the command
+  palette. The desktop's agent chip shows only while access is on; consent is
+  given in Settings › Agents & services (`settings-agent-toggle`), which is
+  what the `consent` step drives.
 - **The home has views** (`lib/deck-views.ts`): All decks, Recent (12) and
   Trash are one request per project, merged, and a project that cannot be read
   fails the view rather than vanishing from it. Trash cards have no thumbnail

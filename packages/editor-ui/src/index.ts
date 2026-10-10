@@ -20,7 +20,17 @@ export { EditorShell } from "./components/EditorShell";
 export type { EditorShellProps, MotionAuthoringExtension, MotionAuthoringPanelProps } from "./components/EditorShell";
 export { PresentMode } from "./components/PresentMode";
 export { DeckList } from "./components/DeckList";
-export { SettingsShell, AccountSettings, SETTINGS_SECTIONS, type SettingsSectionId } from "./components/SettingsShell";
+export {
+  SettingsShell,
+  AccountSettings,
+  WorkspaceSettings,
+  AppearanceSettings,
+  LanguageVoiceSettings,
+  SettingsAdvanced,
+  SETTINGS_SECTIONS,
+  isSettingsSection,
+  type SettingsSectionId,
+} from "./components/SettingsShell";
 export { CreditsMeter } from "./components/CreditsMeter";
 export { AgentSetupGuide, agentConfiguration, type AgentLauncher } from "./components/AgentSetupGuide";
 export { useChromeTheme } from "./lib/chrome-theme";

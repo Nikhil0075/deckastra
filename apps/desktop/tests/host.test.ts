@@ -26,6 +26,7 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     currentPresentation: async () => ({ presentationId: "doc_test" }),
     openPresentation: async ({ presentationId }) => ({ presentationId }),
     openDeckFile: async () => {},
+    hostAction: async () => {},
     saveFile: async () => ({ saved: false }),
     writeClipboardText: async () => {},
     openPresenter: () => {},

@@ -60,6 +60,7 @@ import { MotionPreview } from "./MotionPreview";
 import { Inspector, type ReorderDirection } from "./inspector/Inspector";
 import { AppBar } from "./shell/AppBar";
 import type { AccountIdentity } from "./shell/AccountMenu";
+import type { SettingsSectionId } from "./SettingsShell";
 import { CanvasStage } from "./shell/CanvasStage";
 import { AssistantPanel } from "./AssistantPanel";
 import { MotionModePanel } from "./shell/MotionModePanel";
@@ -130,7 +131,7 @@ export interface EditorShellProps extends UseEditorInput {
    */
   onExit?: (next?: DeckListCommand) => void;
   /** Open the host's Settings (roadmap 08 §1.3). Absent: the palette does not offer it. */
-  onOpenSettings?: () => void;
+  onOpenSettings?: (section?: SettingsSectionId) => void;
   /** Who is signed in, and signing out, for the bar's account menu. */
   account?: { identity?: AccountIdentity | null; onSignOut?: () => void };
   /**

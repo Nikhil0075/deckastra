@@ -54,6 +54,12 @@ export interface MenuProps {
   /** Accessible name of the menu itself, e.g. "Deck actions". */
   label: string;
   align?: "start" | "end";
+  /**
+   * Shown above the items and outside the `menu` role (the account card: who is
+   * signed in, and their credits). Read, never focused: the arrows still move
+   * only between items.
+   */
+  header?: ReactNode;
 }
 
 /**
@@ -62,7 +68,7 @@ export interface MenuProps {
  * focus back to the trigger. Disabled items are skipped by the keyboard, never
  * landed on.
  */
-export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
+export function Menu({ trigger, items, label, align = "start", header }: MenuProps) {
   const menuId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -124,6 +130,30 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
     }
   };
 
+  const rows = items.map((item, index) => (
+    <button
+      key={item.id}
+      ref={(element) => {
+        itemRefs.current[index] = element;
+      }}
+      type="button"
+      role={item.checked === undefined ? "menuitem" : item.kind === "checkbox" ? "menuitemcheckbox" : "menuitemradio"}
+      aria-checked={item.checked}
+      tabIndex={index === active ? 0 : -1}
+      aria-disabled={item.disabled || undefined}
+      className={cx("dk-menu__item", item.danger && "dk-menu__item--danger")}
+      onClick={() => activate(item)}
+      onPointerMove={() => {
+        if (!item.disabled && index !== active) setActive(index);
+      }}
+    >
+      {item.icon && <Icon name={item.icon} size={14} />}
+      <span>{item.label}</span>
+      {item.shortcut ? <kbd className="dk-menu__shortcut">{item.shortcut}</kbd> : null}
+      {item.checked ? <Icon name="check" size={14} className="dk-icon dk-menu__check" /> : null}
+    </button>
+  ));
+
   return (
     <span className="dk-popup-anchor">
       {trigger({
@@ -143,39 +173,28 @@ export function Menu({ trigger, items, label, align = "start" }: MenuProps) {
       })}
       {open &&
         floatingPortal(
-          <div
-            ref={listRef}
-            id={menuId}
-            role="menu"
-            aria-label={label}
-            className={cx("dk-menu", `dk-menu--${align}`)}
-            style={position}
-            onKeyDown={onListKeyDown}
-          >
-            {items.map((item, index) => (
-              <button
-                key={item.id}
-                ref={(element) => {
-                  itemRefs.current[index] = element;
-                }}
-                type="button"
-                role={item.checked === undefined ? "menuitem" : item.kind === "checkbox" ? "menuitemcheckbox" : "menuitemradio"}
-                aria-checked={item.checked}
-                tabIndex={index === active ? 0 : -1}
-                aria-disabled={item.disabled || undefined}
-                className={cx("dk-menu__item", item.danger && "dk-menu__item--danger")}
-                onClick={() => activate(item)}
-                onPointerMove={() => {
-                  if (!item.disabled && index !== active) setActive(index);
-                }}
-              >
-                {item.icon && <Icon name={item.icon} size={14} />}
-                <span>{item.label}</span>
-                {item.shortcut ? <kbd className="dk-menu__shortcut">{item.shortcut}</kbd> : null}
-                {item.checked ? <Icon name="check" size={14} className="dk-icon dk-menu__check" /> : null}
-              </button>
-            ))}
-          </div>,
+          header === undefined ? (
+            <div
+              ref={listRef}
+              id={menuId}
+              role="menu"
+              aria-label={label}
+              className={cx("dk-menu", `dk-menu--${align}`)}
+              style={position}
+              onKeyDown={onListKeyDown}
+            >
+              {rows}
+            </div>
+          ) : (
+            // The header sits beside the menu, not inside it: a `menu` may own
+            // only items, and a screen reader reads the card as ordinary text.
+            <div ref={listRef} className={cx("dk-menu", "dk-menu--carded", `dk-menu--${align}`)} style={position}>
+              <div className="dk-menu__header">{header}</div>
+              <div id={menuId} role="menu" aria-label={label} className="dk-menu__items" onKeyDown={onListKeyDown}>
+                {rows}
+              </div>
+            </div>
+          ),
         )}
     </span>
   );

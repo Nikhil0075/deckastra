@@ -3994,12 +3994,53 @@
   outline-offset: 2px;
 }
 
+/* The card at the top of the account menu: who, and what their account has. */
+.dk-account-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--dk-space-1) var(--dk-space-3);
+  align-items: center;
+}
+.dk-account-card__avatar {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: var(--dk-space-8);
+  height: var(--dk-space-8);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-sunk);
+  font-size: var(--dk-text-lg);
+  font-weight: 700;
+  letter-spacing: var(--dk-tracking-label);
+}
+.dk-account-card__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dk-account-card__detail {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+  overflow-wrap: anywhere;
+}
+.dk-account-card__credits {
+  grid-column: 1 / -1;
+  padding-top: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}
+
 /* --- Settings (SettingsShell.tsx, roadmap 08 §1.3) -------------------------- */
 
 .dk-settings {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   min-height: 360px;
+  height: 100%;
+}
+/* Full screen: the sections read as a page, not a narrow column. */
+.dk-drawer--full .dk-settings__panel {
+  width: 100%;
+  max-width: 760px;
+  padding: var(--dk-space-5) var(--dk-space-6);
 }
 .dk-settings__nav {
   display: flex;
@@ -4076,6 +4117,45 @@
 .dk-settings__list li {
   display: flex;
   gap: var(--dk-space-3);
+}
+.dk-settings__list--rows li {
+  justify-content: space-between;
+  padding: var(--dk-space-2) 0;
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-settings__lead {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-md);
+}
+.dk-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-2);
+}
+/* Technical facts, folded away (Unit 8: "technical state goes under Advanced"). */
+.dk-settings__advanced {
+  width: 100%;
+  margin-top: var(--dk-space-3);
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
+  padding-top: var(--dk-space-2);
+}
+.dk-settings__advanced > summary {
+  cursor: pointer;
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-settings__advanced > summary:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-settings__advanced[open] > summary {
+  margin-bottom: var(--dk-space-2);
+}
+.dk-settings__code {
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-sm);
+  overflow-wrap: anywhere;
 }
 .dk-settings__error {
   margin: 0;
@@ -4550,4 +4630,13 @@
   justify-content: space-between;
   gap: var(--dk-space-2);
   font-size: var(--dk-text-sm);
+}
+.dk-settings__wide {
+  align-self: stretch;
+}
+/* A choice in Settings sizes to its words: equal-width segments wrapped
+   "Match the system" onto three lines. */
+.dk-settings__choice .dk-segmented__item {
+  flex: none;
+  white-space: nowrap;
 }

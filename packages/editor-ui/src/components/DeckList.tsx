@@ -33,6 +33,7 @@ import { CreditsMeter } from "./CreditsMeter";
 import { TemplatesView } from "./TemplatesView";
 import { CommandPalette } from "./shell/CommandPalette";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
+import type { SettingsSectionId } from "./SettingsShell";
 
 /**
  * The deck list per project (Figma: "the deck list per project").
@@ -74,7 +75,8 @@ export interface DeckListProps {
    */
   startWith?: DeckListCommand | null;
   /** Open the host's Settings (signing in lives there on the desktop). */
-  onOpenSettings?: () => void;
+  /** Opens Settings, at a section when one is named (the credits card asks for Profile, where signing in is). */
+  onOpenSettings?: (section?: SettingsSectionId) => void;
   /** Open a `.mydeck` file through the host's own dialog. Absent: not offered. */
   onOpenFile?: () => void;
   /** Who is signed in, and signing out, for the bar's account menu. */
@@ -486,7 +488,7 @@ export function DeckList({
           {/* The plan card (concept 08-home.png): what AI help has left this
               month, at the foot of the projects. Absent without an account. */}
           <div className="dk-decks__plan">
-            <CreditsMeter variant="card" onOpenSettings={onOpenSettings} />
+            <CreditsMeter variant="card" onOpenSettings={onOpenSettings ? () => onOpenSettings("account") : undefined} />
           </div>
         </nav>
 
