@@ -4055,6 +4055,20 @@ easy to undo:
     switcher, a featured row, and a detail drawer with Use template, Start
     with my content (named slot text, the `content` map) and Ask your agent (a
     copied MCP prompt). File › New from template goes to Templates.
+  - **Template cards are the template, composed and drawn** (unit 2).
+    `POST /v1/presets/{id}/preview` (`template_compose.py`) composes exactly
+    what `from-template` stores (one shared `compose_template`) and stores
+    nothing: no project, quota or model, and `grants.py` rates it `read`. A
+    preview without content is cached in-process (LRU, keyed by template,
+    theme, language version, catalog revision and slides) and carries an ETag;
+    the HTTP client keeps the validator and the desktop proxy passes
+    `If-None-Match`/`ETag`. `client.presets.previewTemplate` is not
+    `client.presets.compose`, which stores a StoryPlan. Cards ask for a cover
+    only when on screen, abort when they leave, and compose at most four at
+    once (`TemplatePreview.tsx`); the detail drawer asks for every slide.
+    `packages/deck-presets/scripts/preview-sheet.py` renders every cover and
+    reports clipped text and near-duplicate covers (CI artifact
+    `template-covers`, report-only until unit 7).
   - **Leaving a deck through All decks lands on Projects**, whatever the home
     last showed: `all-decks` is a `DeckListCommand` carried out by the home,
     like New deck. The remembered destination applies when the home opens on

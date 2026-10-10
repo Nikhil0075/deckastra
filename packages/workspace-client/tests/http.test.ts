@@ -335,3 +335,73 @@ describe("the HTTP workspace client", () => {
     expect(client(async () => ok({})).clientId).toBe("test-client");
   });
 });
+
+describe("template previews (UI audit unit 2)", () => {
+  const preview = (title: string) => ({
+    template_id: "business-pitch",
+    catalog_revision: "rev1",
+    language_version: null,
+    slides: "cover",
+    document: { id: "doc_preview", metadata: { title } },
+  });
+  const withTag = (body: unknown, etag: string): Response =>
+    ({ ok: true, status: 200, json: async () => body, headers: new Headers({ etag }) }) as unknown as Response;
+  const unchanged = (): Response => ({ ok: false, status: 304, json: async () => ({}), headers: new Headers() }) as unknown as Response;
+  const header = (init: RequestInit | undefined, name: string) => (init?.headers as Record<string, string> | undefined)?.[name];
+
+  it("asks again with the ETag and answers an unchanged preview from what it holds", async () => {
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(withTag(preview("First"), '"tag-1"'))
+      .mockResolvedValueOnce(unchanged());
+    const api = client(fetchImpl);
+
+    const first = await api.presets.previewTemplate("business-pitch", { theme_key: "flat" });
+    expect(fetchImpl.mock.calls[0]![0]).toBe("http://api.test/v1/presets/business-pitch/preview");
+    expect(header(fetchImpl.mock.calls[0]![1], "If-None-Match")).toBeUndefined();
+
+    const second = await api.presets.previewTemplate("business-pitch", { theme_key: "flat" });
+    expect(header(fetchImpl.mock.calls[1]![1], "If-None-Match")).toBe('"tag-1"');
+    expect(second).toEqual(first);
+  });
+
+  it("keeps one validator per template, theme and slides", async () => {
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(withTag(preview("Flat"), '"flat"'))
+      .mockResolvedValueOnce(withTag(preview("Dark"), '"dark"'))
+      .mockResolvedValueOnce(withTag(preview("All"), '"all"'));
+    const api = client(fetchImpl);
+    await api.presets.previewTemplate("business-pitch", { theme_key: "flat" });
+    await api.presets.previewTemplate("business-pitch", { theme_key: "midnight" });
+    await api.presets.previewTemplate("business-pitch", { theme_key: "flat", slides: "all" });
+    expect(fetchImpl.mock.calls.map(([, init]) => header(init, "If-None-Match"))).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("never caches, nor sends a validator for, the person's own words", async () => {
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(withTag(preview("Plain"), '"plain"'))
+      .mockResolvedValue(ok(preview("Mine")));
+    const api = client(fetchImpl);
+    await api.presets.previewTemplate("business-pitch");
+    const mine = await api.presets.previewTemplate("business-pitch", { content: { opening: { headline: "Mine" } } });
+    expect(header(fetchImpl.mock.calls[1]![1], "If-None-Match")).toBeUndefined();
+    expect(mine.document.metadata.title).toBe("Mine");
+  });
+
+  it("treats a 304 it did not ask for as the failure it is", async () => {
+    const api = client(vi.fn<FetchLike>().mockResolvedValue(unchanged()));
+    await expect(api.presets.previewTemplate("business-pitch")).rejects.toBeInstanceOf(WorkspaceRequestError);
+  });
+
+  it("stops when the card that asked has left the screen", async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn<FetchLike>((_url, init) => {
+      expect(init?.signal).toBe(controller.signal);
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
+    });
+    controller.abort();
+    await expect(client(fetchImpl).presets.previewTemplate("business-pitch", {}, { signal: controller.signal })).rejects.toMatchObject({ name: "AbortError" });
+  });
+});

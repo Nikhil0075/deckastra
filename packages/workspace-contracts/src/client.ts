@@ -32,7 +32,16 @@ import type {
   TransitionRequest,
   TransitionResult,
 } from "./motion";
-import type { ComposedDeckResult, DeckComposeRequest, DeckFromTemplateRequest, InsertPatternRequest, InsertPatternResult, PresetCatalog } from "./presets";
+import type {
+  ComposedDeckResult,
+  DeckComposeRequest,
+  DeckFromTemplateRequest,
+  InsertPatternRequest,
+  InsertPatternResult,
+  PresetCatalog,
+  TemplatePreviewRequest,
+  TemplatePreviewResult,
+} from "./presets";
 import type { AccountContext, AccountProject, HealthReport, Session } from "./session";
 import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
@@ -231,6 +240,11 @@ export interface WorkspaceClient {
     list(options?: RequestOptions): Promise<PresetCatalog>;
     create(body: DeckFromTemplateRequest, options?: RequestOptions): Promise<ComposedDeckResult>;
     compose(body: DeckComposeRequest, options?: RequestOptions): Promise<ComposedDeckResult>;
+    /**
+     * A template as "Use template" would compose it, without storing anything.
+     * Not to be confused with `compose`, which stores an external StoryPlan.
+     */
+    previewTemplate(templateId: string, body?: TemplatePreviewRequest, options?: RequestOptions): Promise<TemplatePreviewResult>;
     insertPattern(
       presentationId: string,
       body: InsertPatternRequest,
