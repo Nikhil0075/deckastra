@@ -4640,3 +4640,66 @@
   flex: none;
   white-space: nowrap;
 }
+
+/* --- Task centre (shell/TaskCentre.tsx, UI audit Unit 9) ------------------- */
+
+.dk-tasks {
+  width: 340px;
+  padding: var(--dk-space-3);
+}
+.dk-tasks__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dk-space-2);
+}
+.dk-tasks__header .dk-label {
+  margin: 0;
+}
+.dk-tasks__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-tasks__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding-bottom: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-tasks__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.dk-tasks__top {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+}
+.dk-tasks__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dk-tasks__bar {
+  width: 100%;
+  height: var(--dk-space-1);
+  background: var(--dk-sunk);
+}
+.dk-tasks__fill {
+  display: block;
+  height: 100%;
+  background: var(--dk-blue);
+}
+.dk-tasks__detail {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}

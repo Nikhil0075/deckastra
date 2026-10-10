@@ -34,6 +34,7 @@ import { FinalFrameSlide } from "./FinalFrameSlide";
 import { CreditsMeter } from "./CreditsMeter";
 import { TemplatesView } from "./TemplatesView";
 import { CommandPalette } from "./shell/CommandPalette";
+import { TaskCentre } from "./shell/TaskCentre";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
 import type { SettingsSectionId } from "./SettingsShell";
 
@@ -391,6 +392,7 @@ export function DeckList({
         </span>
         <span className="dk-decks__bar-end">
           {barExtras}
+          <TaskCentre />
           <AccountMenu {...accountMenu} onOpenSettings={onOpenSettings} />
         </span>
       </header>
@@ -674,7 +676,7 @@ export function DeckList({
         modal
         width={420}
       >
-        {exporting ? <ExportPanel key={exporting.id} presentationId={exporting.id} /> : null}
+        {exporting ? <ExportPanel key={exporting.id} presentationId={exporting.id} deckTitle={exporting.title} /> : null}
       </Drawer>
     </div>
   );
