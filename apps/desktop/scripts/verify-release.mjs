@@ -49,6 +49,23 @@ const DESKTOP = dirname(HERE);
 export const NATIVE = new Set([".exe", ".dll", ".pyd", ".node", ".sys"]);
 const PAYLOADS = ["worker", "mcp", "sidecar"];
 
+/** The template-picture budget (apps/api/deckastra_api/preset_media.py), as a release ceiling. */
+const MEDIA_MAX_FILES = 30;
+const MEDIA_MAX_BYTES = 12 * 1024 * 1024;
+
+/** The `deck-presets/media` folder inside the frozen service, wherever PyInstaller laid it. */
+function findMediaFolder(folder, depth = 0) {
+  if (!existsSync(folder) || depth > 6) return null;
+  for (const entry of readdirSync(folder, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const child = join(folder, entry.name);
+    if (entry.name === "media" && folder.replace(/\\/g, "/").endsWith("deck-presets") && existsSync(join(child, "MANIFEST.json"))) return child;
+    const found = findMediaFolder(child, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
@@ -138,6 +155,31 @@ export function verifyRelease({ releaseDir, distManifest, current, probe, publis
   }
   if (installer && embedded.builtAt && statSync(installer).mtimeMs + 1000 < Date.parse(embedded.builtAt)) {
     problems.push("The installer is older than the build it claims to contain.");
+  }
+
+  // Template pictures (UI audit unit 7b): shipped, and within the ceiling the
+  // budget sets, so the installer cannot quietly grow by a photo library.
+  const media = findMediaFolder(join(resources, "sidecar"));
+  if (!media) {
+    problems.push("The release ships no template picture folder (packages/deck-presets/media).");
+  } else {
+    const files = readdirSync(media).filter((name) => name !== "MANIFEST.json");
+    const bytes = files.reduce((total, name) => total + statSync(join(media, name)).size, 0);
+    report.media = { files: files.length, bytes };
+    if (files.length > MEDIA_MAX_FILES) problems.push(`The release ships ${files.length} template pictures; the budget is ${MEDIA_MAX_FILES}.`);
+    if (bytes > MEDIA_MAX_BYTES) problems.push(`Template pictures take ${Math.round(bytes / 1024)} KB; the ceiling is ${MEDIA_MAX_BYTES / 1024} KB.`);
+    // A picture made for demo use (non-commercial, which any OpenArt plan allows)
+    // may be shown; it may not be sold. A release is for selling.
+    let manifest = { media: [] };
+    try {
+      manifest = JSON.parse(readFileSync(join(media, "MANIFEST.json"), "utf8"));
+    } catch {
+      problems.push("The template picture manifest cannot be read.");
+    }
+    const demo = (manifest.media ?? []).filter((entry) => entry?.license?.use !== "commercial").map((entry) => entry.file);
+    if (demo.length) {
+      problems.push(`${demo.length} template picture(s) were made for demo use and may not ship in a release (${demo.slice(0, 3).join(", ")}${demo.length > 3 ? ", …" : ""}). Regenerate them under a plan that allows commercial use.`);
+    }
   }
 
   // Notices: shipped, and the ones this build wrote (item 33).

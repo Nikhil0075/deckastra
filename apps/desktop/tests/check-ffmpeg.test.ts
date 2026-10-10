@@ -72,7 +72,7 @@ describe("the release gate and ffmpeg", () => {
     const files: Record<string, Record<string, string>> = {
       worker: { "cli.mjs": "export {}\n" },
       mcp: { "cli.mjs": "export const mcp = 1;\n" },
-      sidecar: { "deckastra-service.exe": "MZ service" },
+      sidecar: { "deckastra-service.exe": "MZ service", "_internal/packages/deck-presets/media/MANIFEST.json": "{\"media\":[]}" },
       ...(withFfmpeg ? { ffmpeg: { "ffmpeg.exe": "MZ ffmpeg" } } : {}),
     };
     const installed: Record<string, Record<string, string>> = {};

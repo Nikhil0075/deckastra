@@ -257,6 +257,10 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
  * bargain the two patch appliers make.
  */
 function blobPath(storageKey: string): string {
+  // A template's bundled picture (UI audit unit 7b): served from the build, not
+  // a workspace, and only ever seen by a template preview. Twin of the same
+  // branch in Python's `object_storage.blob_url`.
+  if (storageKey.startsWith("preset-media/")) return `/v1/presets/media/${encodeURIComponent(storageKey.slice("preset-media/".length))}`;
   // Segment by segment, keeping the separators. The route is `{key:path}` and a
   // storage key is `workspaces/<id>/assets/<id>` — `encodeURIComponent` on the
   // whole thing turns every slash into `%2F`, which is a different URL from the
