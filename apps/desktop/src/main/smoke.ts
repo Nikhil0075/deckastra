@@ -64,7 +64,8 @@ export type SmokeStep =
   | "handoff"
   | "languages"
   | "narration"
-  | "layout";
+  | "layout"
+  | "polish";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -280,6 +281,8 @@ export async function runSmoke(
       await runTimeline(window, record);
     } else if (current === "layout") {
       await runLayout(window, dir, record);
+    } else if (current === "polish") {
+      await runPolish(window, dir, record);
     } else if (current === "slides") {
       await runSlides(window, record);
     } else if (current === "presenter") {
@@ -1524,6 +1527,182 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
  * what the author sees, but the clip's stored startMs is what survives a reload,
  * and those are different claims.
  */
+/**
+ * UI audit Unit 9: the screens at the sizes people actually have.
+ *
+ * Three window sizes (1280×720, 1366×768, 1920×1080) and 200% zoom, on the
+ * editor and on the home. At each: nothing makes the page scroll sideways, the
+ * controls a person cannot do without are inside the window, and no two
+ * buttons in the bar sit on top of each other. Then the two words the bar
+ * shows that a person chose: a very long deck title, and an Arabic one, which
+ * must read right to left.
+ *
+ * Not a pseudo-locale for the interface itself: the chrome is in English only,
+ * so there is nothing to lengthen but what people write. That is said in the
+ * record rather than claimed.
+ */
+async function runPolish(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
+  const page = <T = unknown>(expression: string) => window.webContents.executeJavaScript(expression) as Promise<T>;
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  const need = async (what: string, expression: string, timeoutMs = 20_000) => {
+    if (!(await until(window, expression, timeoutMs))) throw new Error(`polish: ${what}`);
+  };
+  const failures: string[] = [];
+
+  /** What a size looks like: sideways scroll, controls outside, buttons on buttons. */
+  const measure = (essentials: string[], bar: string) =>
+    page<{ width: number; overflow: number; outside: string[]; overlaps: string[]; canvasShare: number | null }>(`(() => {
+      const width = window.innerWidth;
+      const overflow = Math.max(0, document.documentElement.scrollWidth - width);
+      const outside = ${JSON.stringify(essentials)}.filter((id) => {
+        const node = document.querySelector('[data-testid="' + id + '"]');
+        if (!node) return true;
+        const r = node.getBoundingClientRect();
+        return r.width === 0 || r.left < -1 || r.right > width + 1 || r.top < -1 || r.bottom > window.innerHeight + 1;
+      });
+      const buttons = [...document.querySelectorAll(${JSON.stringify(bar)} + " button")]
+        .filter((button) => button.offsetParent !== null)
+        .map((button) => ({ name: button.getAttribute("data-testid") || button.getAttribute("aria-label") || button.textContent.trim(), r: button.getBoundingClientRect() }))
+        .filter((entry) => entry.r.width > 0);
+      const overlaps = [];
+      for (let i = 0; i < buttons.length; i += 1) {
+        for (let j = i + 1; j < buttons.length; j += 1) {
+          const a = buttons[i].r, b = buttons[j].r;
+          const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+          const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          // Nested buttons (a trigger inside a group) share their box; that is not two things colliding.
+          const nested = buttons[i].name === buttons[j].name;
+          if (x > 2 && y > 2 && !nested) overlaps.push(buttons[i].name + " / " + buttons[j].name);
+        }
+      }
+      // A control its own column has cut off. A bounding box ignores clipping,
+      // so this is the only way a hidden Undo shows up at all.
+      const clipped = [];
+      for (const entry of buttons) {
+        const column = document.querySelector('[data-testid="' + entry.name + '"]')?.closest(".dk-appbar__start, .dk-appbar__center, .dk-appbar__end")
+          ?? [...document.querySelectorAll(${JSON.stringify(bar)} + " button")].find((b) => (b.getAttribute("data-testid") || b.getAttribute("aria-label") || b.textContent.trim()) === entry.name)?.closest(".dk-appbar__start, .dk-appbar__center, .dk-appbar__end");
+        if (!column) continue;
+        const c = column.getBoundingClientRect();
+        if (entry.r.right > c.right + 1 || entry.r.left < c.left - 1) clipped.push(entry.name);
+      }
+      for (const name of clipped) overlaps.push(name + " (cut off by its column)");
+      const canvas = document.querySelector("[data-editor-canvas]");
+      return { width, overflow, outside, overlaps, canvasShare: canvas ? Math.round((canvas.getBoundingClientRect().width / width) * 100) / 100 : null };
+    })()`);
+
+  const SIZES: Array<[number, number]> = [
+    [1280, 720],
+    [1366, 768],
+    [1920, 1080],
+  ];
+  const EDITOR = ["present", "account-menu", "open-share", "mode-design", "undo", "open-deck-list"];
+  const HOME = ["account-menu", "deck-search", "view-all"];
+
+  const sweep = async (where: "editor" | "home", essentials: string[], bar: string) => {
+    const results: Record<string, unknown> = {};
+    for (const [w, h] of SIZES) {
+      window.setContentSize(w, h);
+      await sleep(600);
+      const seen = await measure(essentials, bar);
+      results[`${w}x${h}`] = seen;
+      await capture(window, join(dir, `polish-${where}-${w}x${h}.png`));
+      if (seen.overflow > 1) failures.push(`${where} ${w}×${h}: the page scrolls sideways by ${seen.overflow}px`);
+      if (seen.outside.length) failures.push(`${where} ${w}×${h}: outside the window: ${seen.outside.join(", ")}`);
+      if (seen.overlaps.length) failures.push(`${where} ${w}×${h}: overlapping: ${seen.overlaps.join("; ")}`);
+    }
+    // 200%: a person who reads with the zoom up gets a 960×540 window.
+    window.setContentSize(1920, 1080);
+    window.webContents.setZoomFactor(2);
+    await sleep(800);
+    const zoomed = await measure(essentials, bar);
+    results["1920x1080@200%"] = zoomed;
+    await capture(window, join(dir, `polish-${where}-zoom200.png`));
+    window.webContents.setZoomFactor(1);
+    await sleep(400);
+    if (zoomed.overflow > 1) failures.push(`${where} at 200%: the page scrolls sideways by ${zoomed.overflow}px`);
+    if (zoomed.outside.length) failures.push(`${where} at 200%: outside the window: ${zoomed.outside.join(", ")}`);
+    if (zoomed.overlaps.length) failures.push(`${where} at 200%: overlapping: ${zoomed.overlaps.join("; ")}`);
+    return results;
+  };
+
+  await need("the editor never opened", `document.querySelector("[data-editor-canvas]")`, 30_000);
+  const originalSize = window.getContentSize();
+  Menu.getApplicationMenu()?.getMenuItemById("layout-reset")?.click();
+  await sleep(300);
+
+  try {
+    record.editor = await sweep("editor", EDITOR, ".dk-appbar");
+
+    // ---- What people write in the bar: a long title, then an Arabic one.
+    const { presentationId } = await page<{ presentationId: string }>(`window.deckastra.currentPresentation()`);
+    const retitle = (title: string) =>
+      page<number>(`(async () => {
+        const head = await (await fetch('/__api/v1/presentations/${presentationId}/head', { cache: 'no-store' })).json();
+        const reply = await fetch('/__api/v1/presentations/${presentationId}/transactions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            operations: [{ op: 'replace', path: '/metadata/title', value: ${JSON.stringify(title)} }],
+            intent: 'Polish check: retitle',
+            expected_version_id: head.version_id,
+            client_id: 'smoke-polish',
+          }),
+        });
+        return reply.status;
+      })()`);
+    const originalTitle = await page<string>(`document.querySelector(".dk-appbar__deck")?.textContent ?? ""`);
+    const LONG = "Quarterly business review for the northern and southern regional operations teams, with appendices";
+    const ARABIC = "مراجعة الأعمال الفصلية";
+    window.setContentSize(1366, 768);
+    await sleep(400);
+
+    const status = await retitle(LONG);
+    if (status >= 300) throw new Error(`polish: the long title could not be written (${status})`);
+    // The open editor watches the head and adopts the change (useEditor, watchHeadMs).
+    window.webContents.focus();
+    await need("the editor never showed the long title", `document.querySelector(".dk-appbar__deck")?.textContent === ${JSON.stringify(LONG)}`, 20_000);
+    const long = await measure(EDITOR, ".dk-appbar");
+    const clipped = await page<boolean>(`(() => { const n = document.querySelector(".dk-appbar__deck"); return n.scrollWidth > n.clientWidth; })()`);
+    record.longTitle = { ...long, clipped };
+    await capture(window, join(dir, "polish-long-title.png"));
+    if (long.overflow > 1 || long.outside.length || long.overlaps.length) {
+      failures.push(`a long deck title pushed the bar: ${JSON.stringify(long)}`);
+    }
+
+    const arabic = await retitle(ARABIC);
+    if (arabic >= 300) throw new Error(`polish: the Arabic title could not be written (${arabic})`);
+    await need("the editor never showed the Arabic title", `document.querySelector(".dk-appbar__deck")?.textContent === ${JSON.stringify(ARABIC)}`, 20_000);
+    const rtl = await page<boolean>(`document.querySelector(".dk-appbar__deck").matches(":dir(rtl)")`);
+    record.arabicTitle = { rtl };
+    await capture(window, join(dir, "polish-arabic-title.png"));
+    if (!rtl) failures.push("an Arabic deck title is laid out left to right");
+
+    const back = await retitle(originalTitle || "Animation Conformance Deck");
+    if (back >= 300) failures.push(`the original title could not be put back (${back})`);
+    await need("the editor never showed the original title again", `document.querySelector(".dk-appbar__deck")?.textContent === ${JSON.stringify(originalTitle || "Animation Conformance Deck")}`, 20_000);
+
+    // ---- The home, at the same sizes.
+    window.setContentSize(1600, 900);
+    await sleep(300);
+    await page(clickTestId("open-deck-list"));
+    await need("the deck list never opened", `document.querySelector('[data-testid="deck-search"]')`);
+    record.home = await sweep("home", HOME, ".dk-decks__bar");
+
+    // Back where the step found the app.
+    await page(clickTestId("view-all"));
+    await need("the original deck's card never appeared", `document.querySelector('[data-deck-id="${presentationId}"] .dk-card__thumb')`);
+    await page(`document.querySelector('[data-deck-id="${presentationId}"] .dk-card__thumb').click()`);
+    await need("the deck never reopened", `document.querySelector("[data-editor-canvas]")`);
+  } finally {
+    window.webContents.setZoomFactor(1);
+    window.setContentSize(originalSize[0]!, originalSize[1]!);
+  }
+
+  record.interfaceLanguage = "English only: there is no interface pseudo-locale to lengthen; people's own words were tested instead.";
+  record.failures = failures;
+  if (failures.length) throw new Error(`polish: ${failures.join(" | ")}`);
+}
+
 /**
  * The resizable workspace, driven by real input (UI audit 2026-10-10, unit 3).
  *

@@ -59,6 +59,7 @@ import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
 import { Inspector, type ReorderDirection } from "./inspector/Inspector";
 import { AppBar } from "./shell/AppBar";
+import { ExternalChangeBanner } from "./shell/SaveIndicator";
 import type { AccountIdentity } from "./shell/AccountMenu";
 import type { SettingsSectionId } from "./SettingsShell";
 import { CanvasStage } from "./shell/CanvasStage";
@@ -1129,6 +1130,7 @@ export function EditorShell(props: EditorShellProps) {
       />
 
       {props.notices}
+      <ExternalChangeBanner editor={editor} />
       {editor.locale ? (
         // Said while it is true: in a language, typing writes that language's
         // words, and everything else is shared by every language (plan 01 §3.2).

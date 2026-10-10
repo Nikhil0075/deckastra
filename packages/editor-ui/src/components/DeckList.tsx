@@ -731,7 +731,7 @@ function DeckCard({
         />
       </span>
       <div className="dk-card__meta">
-        <span className="dk-card__title" title={deck.title}>
+        <span className="dk-card__title" title={deck.title} dir="auto">
           {deck.title}
         </span>
         {pending > 0 ? (
@@ -758,7 +758,7 @@ function TrashCard({ deck, now, onRestore, disabled }: { deck: ListedDeck; now: 
         <Icon name="trash" size={20} />
       </div>
       <div className="dk-card__meta">
-        <span className="dk-card__title" title={deck.title}>
+        <span className="dk-card__title" title={deck.title} dir="auto">
           {deck.title}
         </span>
         <Button size="sm" variant="secondary" onClick={onRestore} disabled={disabled} data-testid="restore-deck">

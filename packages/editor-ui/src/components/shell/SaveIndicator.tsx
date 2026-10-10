@@ -15,11 +15,6 @@ import { Button } from "../../ui";
 export function SaveIndicator({ editor }: { editor: EditorApi }) {
   const { save } = editor;
   const onRetry = () => void editor.saveNow();
-  const undoExternal = editor.externalChange ? editor.undoExternalChange : undefined;
-  // Held here rather than threaded through the shell: the only thing that reads
-  // it is the sentence beside this button, and a refusal has to appear where the
-  // user pressed.
-  const [refusal, setRefusal] = useState<string | null>(null);
 
   const status = (() => {
     switch (save.status) {
@@ -39,34 +34,12 @@ export function SaveIndicator({ editor }: { editor: EditorApi }) {
           </span>
         );
       case "updated":
-        // Said once, plainly, *and* offered a way back. Announcing the change and
-        // clearing local history left the user with a deck that moved under them
-        // and nothing to press: the toolbar's undo only knows about edits made
-        // here, and this one was made somewhere else.
+        // Said here in two words; the way back is the banner under the bar
+        // (ExternalChangeBanner), which has room for it at every window size.
+        // In the bar, its Undo was cut off at 1366px beside a long title.
         return (
           <span className="dk-save dk-save--notice" role="status">
             Updated elsewhere
-            {undoExternal ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="dk-save__action"
-                title="Undo the change that arrived from elsewhere. Refused if your own later edits would be disturbed."
-                onClick={() => {
-                  setRefusal(null);
-                  void undoExternal().then((answer) => {
-                    if (!answer.ok) setRefusal(answer.message ?? "That change could not be undone.");
-                  });
-                }}
-              >
-                Undo that change
-              </Button>
-            ) : null}
-            {refusal ? (
-              <span className="dk-save dk-save--warning" role="status">
-                {refusal}
-              </span>
-            ) : null}
           </span>
         );
       case "conflict":
@@ -92,5 +65,41 @@ export function SaveIndicator({ editor }: { editor: EditorApi }) {
     <span className="dk-save-slot" data-testid="save-status" data-save-status={save.status}>
       {status}
     </span>
+  );
+}
+
+/**
+ * A change arrived from elsewhere (an agent, another window), and here is the
+ * way back. Said once, plainly, *and* offered an undo: announcing the change
+ * and clearing local history left the person with a deck that moved under
+ * them and nothing to press, because the toolbar's undo only knows edits made
+ * here. A banner rather than a button in the bar, so it is never the thing a
+ * narrow window cuts off (UI audit Unit 9).
+ */
+export function ExternalChangeBanner({ editor }: { editor: EditorApi }) {
+  // Held here: the only thing that reads it is the sentence beside this button,
+  // and a refusal has to appear where the person pressed.
+  const [refusal, setRefusal] = useState<string | null>(null);
+  if (editor.save.status !== "updated" || !editor.externalChange) return null;
+  return (
+    <div className="dk-banner dk-banner--notice dk-banner--actions" role="status" data-testid="external-change-banner">
+      <span>This deck was changed outside this window.</span>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="dk-save__action"
+        title="Refused if your own later edits would be disturbed."
+        onClick={() => {
+          setRefusal(null);
+          void editor.undoExternalChange().then((answer) => {
+            if (!answer.ok) setRefusal(answer.message ?? "That change could not be undone.");
+          });
+        }}
+        data-testid="undo-external-change"
+      >
+        Undo that change
+      </Button>
+      {refusal ? <span className="dk-save dk-save--warning">{refusal}</span> : null}
+    </div>
   );
 }

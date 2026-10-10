@@ -60,6 +60,16 @@
   gap: var(--dk-space-2);
   min-width: 0;
 }
+/* The start gives way first: the deck title is the one thing in the bar that
+   can be shortened without losing a control, so it ellipsizes, and anything
+   beyond that is clipped inside its own column rather than drawn across the
+   mode switch (UI audit Unit 9, found by the polish step with a long title). */
+.dk-appbar__start {
+  overflow: hidden;
+}
+.dk-appbar__title {
+  flex: 1 1 auto;
+}
 .dk-appbar__end {
   justify-content: flex-end;
 }
@@ -102,6 +112,7 @@
 .dk-appbar__group {
   display: flex;
   flex: none;
+  white-space: nowrap;
   margin-left: var(--dk-space-2);
   padding-left: var(--dk-space-2);
   border-left: var(--dk-line) solid var(--dk-rule-soft);
@@ -127,6 +138,7 @@
 }
 .dk-save {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--dk-space-1);
   font-size: var(--dk-text-sm);
@@ -3059,6 +3071,10 @@
   width: 68px;
   gap: 2px;
   overflow-y: auto;
+  /* A short window gives the rail a vertical scrollbar; without this, that
+     scrollbar's width then made it scroll sideways as well (UI audit Unit 9). */
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 .dk-rail__spacer {
   flex: 1;
@@ -3439,6 +3455,19 @@
    screen readers and in its tooltip (design review, 2026-09-26). Present keeps
    its label: it is the one action the bar exists for. */
 @media (max-width: 1500px) {
+  /* Below this the end group is sized to what it holds, and the start takes
+     what is left. Two equal outer columns let a wide end group spill left
+     under the mode switch at 1280px (UI audit Unit 9). */
+  .dk-appbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  /* "Deckastra /" says what the mark beside it already says; the room goes to
+     the deck's own title and to the save state, whose Undo must stay
+     pressable when a change arrives from elsewhere. */
+  .dk-appbar__product,
+  .dk-appbar__sep {
+    display: none;
+  }
   /* The language code stays: like the agent chip, its words are its status
      ("HI" is which language is on the canvas), and it is two letters. */
   .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) .dk-btn__label {
@@ -3450,6 +3479,28 @@
     white-space: nowrap;
   }
   .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) {
+    position: relative;
+  }
+}
+/* Narrower still (a 1280px window at 125%, or any window at 200%): the mode
+   switch gives up its minimum and the Assistant keeps only its icon and its
+   name for screen readers. Present keeps its word. */
+@media (max-width: 1100px) {
+  .dk-appbar__center {
+    min-width: 0;
+  }
+  .dk-appbar__center .dk-segmented__item {
+    padding: 0 var(--dk-space-2);
+  }
+  .dk-appbar__end .dk-appbar__assistant .dk-btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .dk-appbar__end .dk-appbar__assistant {
     position: relative;
   }
 }

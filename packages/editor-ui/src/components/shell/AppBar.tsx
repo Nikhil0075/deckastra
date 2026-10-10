@@ -70,7 +70,9 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
         <h1 className="dk-appbar__title" title={title}>
           <span className="dk-appbar__product">Deckastra</span>
           <span className="dk-appbar__sep" aria-hidden="true">/</span>
-          <span className="dk-appbar__deck">{title}</span>
+          <span className="dk-appbar__deck" dir="auto">
+            {title}
+          </span>
         </h1>
         <span className="dk-appbar__group">
           <IconButton
