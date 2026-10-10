@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import grants, languages, local_mode, presets, store, template_compose
+from . import grants, languages, local_mode, object_storage, preset_media, presets, quotas, store, template_compose
 from .auth import (
     Principal,
     current_principal,
@@ -229,6 +229,21 @@ def list_presets(_principal: Principal = Depends(current_principal)) -> dict[str
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.get("/v1/presets/media/{file_name}")
+def preset_media_file(file_name: str, principal: Principal = Depends(current_principal)) -> Response:
+    """A template's bundled picture, for previews (unit 7b).
+
+    By file name only, and only a name the manifest lists: nothing here can be
+    steered into reading a path. Signed in, like every other read; the bytes
+    ship with the build, so they are cacheable for as long as the build is.
+    """
+    try:
+        data = preset_media.read(file_name)
+    except (preset_media.PresetMediaError, OSError) as exc:
+        raise HTTPException(status_code=404, detail="No such template picture.") from exc
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
 @app.post("/v1/presets/{template_id}/preview", response_model=TemplatePreviewResponse)
 def preview_template(
     template_id: str,
@@ -285,13 +300,30 @@ def deck_from_template(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return _store_composed(
+    # The template's pictures become this workspace's own assets, so the deck
+    # exports, backs up and syncs like any deck with uploads in it (unit 7b).
+    # If they cannot be stored, the deck is made without them and says so: a
+    # deck is worth more than its photographs.
+    warnings: list[str] = []
+    try:
+        with session.begin_nested():
+            preset_media.adopt(session, document, workspace_id=project.workspace_id, created_by=principal.user_id)
+    except quotas.QuotaExceeded:
+        preset_media.drop(document)
+        warnings.append("The template's pictures were left out because this workspace's storage is full. The frames are there to fill.")
+    except (preset_media.PresetMediaError, object_storage.ObjectStorageError, OSError):
+        logger.warning("Template pictures could not be stored for %s", request.template_id)
+        preset_media.drop(document)
+        warnings.append("The template's pictures could not be stored, so they were left out. The frames are there to fill.")
+    stored = _store_composed(
         session,
         principal,
         document,
         project_id=project.id,
         template_id=request.template_id,
     )
+    stored.warnings = warnings
+    return stored
 
 
 @app.post("/v1/decks/compose", response_model=ComposedDeckResponse)

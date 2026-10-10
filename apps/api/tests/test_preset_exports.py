@@ -15,8 +15,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from deckastra_api import presets  # noqa: E402
-from deckastra_api.compose import compose_document  # noqa: E402
+import base64  # noqa: E402
+
+from deckastra_api import preset_media, presets, template_compose  # noqa: E402
 from deckastra_api.export_service import _invoke_worker  # noqa: E402
 from deckastra_api.schema import validate_document  # noqa: E402
 
@@ -34,19 +35,16 @@ REVIEWED = presets.public_catalog()["presets"]
 @pytest.mark.parametrize("preset_id", [preset["id"] for preset in REVIEWED])
 def test_each_reviewed_template_has_motion_and_readable_exports(preset_id: str, tmp_path: Path):
     preset = presets.find_preset(preset_id)
-    plan = presets.story_plan_from_preset(preset)
-    theme, theme_id = presets.resolve_theme(preset["themeKey"])
-    motion_plan = presets.motion_plan_from_preset(preset)
-    document = compose_document(
-        plan,
-        instruction=f"Preset acceptance: {preset_id}",
-        motion_plan=motion_plan,
-        theme_definition=theme,
-        theme_id=theme_id,
-    )
-    document["metadata"]["templateId"] = preset_id
-    document["metadata"]["motionStyle"] = preset["motionStyle"]
-    document["metadata"]["voiceStyle"] = preset["voiceStyle"]
+    # Exactly what "Use template" makes: the template's language, its theme and
+    # its pictures. This used to compose neutrally, so after unit 7a it was
+    # exporting a layout no template uses any more.
+    document = template_compose.compose_template(preset_id)
+    pictures = [asset for asset in document.get("assets") or [] if asset["storageKey"].startswith(preset_media.KEY_PREFIX)]
+    supplied = [
+        {"assetId": asset["id"], "storageKey": asset["storageKey"], "mimeType": "image/jpeg",
+         "data": base64.b64encode(preset_media.read(asset["fileName"])).decode()}
+        for asset in pictures
+    ]
 
     assert validate_document(document) == []
     assert len(document["slides"]) == len(preset["slides"])
@@ -67,16 +65,27 @@ def test_each_reviewed_template_has_motion_and_readable_exports(preset_id: str, 
         assert "wordCascade" in used_presets
 
     pdf_path = tmp_path / f"{preset_id}.pdf"
-    pdf_report = _invoke_worker("pdf", document, pdf_path, {})
+    pdf_report = _invoke_worker("pdf", document, pdf_path, {}, assets=supplied)
     pdf = pypdf.PdfReader(str(pdf_path))
     assert len(pdf.pages) == len(document["slides"]) == pdf_report["report"]["slideCount"]
     assert all((page.extract_text() or "").strip() for page in pdf.pages), preset_id
 
     pptx_path = tmp_path / f"{preset_id}.pptx"
-    pptx_report = _invoke_worker("pptx", document, pptx_path, {})
+    pptx_report = _invoke_worker("pptx", document, pptx_path, {}, assets=supplied)
     powerpoint = pptx.Presentation(str(pptx_path))
     assert len(powerpoint.slides) == len(document["slides"]) == pptx_report["report"]["slideCount"]
     assert all(
         any(shape.has_text_frame and shape.text_frame.text.strip() for shape in slide.shapes)
         for slide in powerpoint.slides
     ), preset_id
+
+    # A template's pictures arrive in both files: images in the PDF pages, and
+    # picture shapes in PowerPoint, one per frame the language drew.
+    framed = sum(1 for slide in document["slides"] for element in slide["elements"] if element["type"] == "image")
+    if framed:
+        pdf_images = sum(len(page.images) for page in pdf.pages)
+        assert pdf_images >= framed, (preset_id, pdf_images, framed)
+        pictures_in_pptx = sum(
+            1 for slide in powerpoint.slides for shape in slide.shapes if shape.shape_type == pptx.enum.shapes.MSO_SHAPE_TYPE.PICTURE
+        )
+        assert pictures_in_pptx >= framed, (preset_id, pictures_in_pptx, framed)

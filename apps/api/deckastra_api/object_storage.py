@@ -150,6 +150,10 @@ def blob_url(key: str) -> str:
     the renderer cannot resolve — and would leak the loopback port into a document
     if one were ever stored.
     """
+    if key.startswith("preset-media/"):
+        # A template's bundled picture (unit 7b), served from the build. Twin of
+        # the same branch in the client's `blobPath`.
+        return f"/v1/presets/media/{quote(key[len('preset-media/'):], safe='')}"
     return f"/v1/workspace/assets/blob/{quote(key)}"
 
 
