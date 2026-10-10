@@ -31,6 +31,13 @@ import type { HostCommand } from "@deckastra/workspace-contracts";
 export const IPC = {
   /** Build and environment facts, for diagnostics the user can read back to us. */
   info: "deckastra:info",
+  /**
+   * Settings asks main to run one of its own dialogs (UI audit Unit 8): back
+   * up, restore, export diagnostics, show the notices. A name from
+   * `HOST_ACTIONS`, never a path: main opens the dialog and the person picks
+   * where, exactly as the application menu does.
+   */
+  hostAction: "deckastra:host-action",
   /** Which deck this install opens, created on first launch. */
   currentPresentation: "deckastra:workspace:current",
   /**
@@ -176,6 +183,23 @@ export const MENU_COMMANDS = [
 
 export type MenuCommand = (typeof MENU_COMMANDS)[number];
 
+/**
+ * What Settings may ask main to do. Each is a menu item already (File and
+ * Help); Settings offers the same item where people look for it. Anything not
+ * listed is refused.
+ */
+export const HOST_ACTIONS = ["back-up", "restore-backup", "export-diagnostics", "third-party-notices"] as const;
+
+export type HostAction = (typeof HOST_ACTIONS)[number];
+
+export function isHostAction(value: unknown): value is HostAction {
+  return typeof value === "string" && (HOST_ACTIONS as readonly string[]).includes(value);
+}
+
+export interface HostActionRequest {
+  action: HostAction;
+}
+
 export function isMenuCommand(value: unknown): value is MenuCommand {
   return typeof value === "string" && (MENU_COMMANDS as readonly string[]).includes(value);
 }
@@ -318,6 +342,8 @@ export interface DesktopBridge {
   openPresentation(request: OpenPresentationRequest): Promise<CurrentPresentation>;
   /** Choose a `.mydeck` file in a native dialog and open it in a window of its own. */
   openDeckFile(): Promise<void>;
+  /** Run one of main's own dialogs from Settings. Resolves when the dialog is done. */
+  hostAction(action: HostAction): Promise<void>;
   saveFile(request: SaveFileRequest): Promise<SaveFileResult>;
   writeClipboardText(text: string): Promise<void>;
   openPresenter(request: OpenPresenterRequest): void;

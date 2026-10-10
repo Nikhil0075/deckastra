@@ -29,6 +29,9 @@ export function dataEntries(root) {
     [join(root, "packages", "presentation-schema", "generated"), "packages/presentation-schema/generated"],
     // Reviewed deck templates consumed by the deterministic composition routes.
     [join(root, "packages", "deck-presets", "generated"), "packages/deck-presets/generated"],
+    // Template pictures and their manifest (UI audit unit 7b); the manifest is
+    // there even when it lists nothing, so the folder is never empty.
+    [join(root, "packages", "deck-presets", "media"), "packages/deck-presets/media"],
     [join(root, "packages", "renderer", "font-packs"), "packages/renderer/font-packs"],
   ];
 }

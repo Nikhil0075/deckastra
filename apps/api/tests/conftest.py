@@ -146,6 +146,21 @@ _LIVE_PROVIDER_VARIABLES = (
 
 
 @pytest.fixture(autouse=True)
+def _assets_on_local_disk_by_default(tmp_path, monkeypatch):
+    """Store asset bytes in a temporary folder unless a test chooses otherwise.
+
+    Making a deck from a template stores its pictures (UI audit unit 7b). With
+    no folder and no object store, every store call waits out boto3's retries
+    against an endpoint nothing is listening on. A test about S3 clears this
+    variable itself, as the lifecycle test already does.
+    """
+    import os
+
+    if not os.environ.get("DECKASTRA_ASSET_DIR"):
+        monkeypatch.setenv("DECKASTRA_ASSET_DIR", str(tmp_path / "default-assets"))
+
+
+@pytest.fixture(autouse=True)
 def _no_live_speech_or_translation(monkeypatch):
     for name in _LIVE_PROVIDER_VARIABLES:
         monkeypatch.delenv(name, raising=False)

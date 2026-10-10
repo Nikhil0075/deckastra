@@ -344,6 +344,25 @@ body:has(.dk-root) {
 .dk-menu:focus {
   outline: none;
 }
+/* A menu with a card above its items (the account menu). The card is read,
+   never focused, so it sits outside the element with role="menu". */
+.dk-menu--carded {
+  min-width: 264px;
+  max-height: none;
+  padding: 0;
+}
+.dk-menu__header {
+  padding: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-menu__items {
+  display: flex;
+  flex-direction: column;
+  padding: var(--dk-space-1) 0;
+}
+.dk-menu__items:focus {
+  outline: none;
+}
 .dk-menu__item {
   display: flex;
   align-items: center;
@@ -667,6 +686,27 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
 }
 .dk-drawer:focus {
   outline: none;
+}
+/* Placements (Drawer `placement`). A wide dialog in the middle of the window,
+   and one that fills it. Both keep the drawer's header, body and footer. */
+.dk-drawer--center {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: 880px;
+  max-width: calc(100vw - 2 * var(--dk-space-5));
+  height: min(680px, calc(100vh - 2 * var(--dk-space-5)));
+  transform: translate(-50%, -50%);
+  border: var(--dk-line) solid var(--dk-rule);
+  box-shadow: 4px 4px 0 var(--dk-ink);
+}
+.dk-drawer--full {
+  top: 0;
+  left: 0;
+  width: auto;
+  max-width: none;
+  border-left: 0;
 }
 .dk-drawer__header {
   display: flex;

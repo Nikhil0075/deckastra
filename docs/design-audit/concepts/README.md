@@ -93,3 +93,18 @@ and these sheets are what it actually composes.
 all eight languages. The words are the same on every cover; the grammar
 differs. The closest pair is 71 of 256 bits apart, against a floor of 40. Each
 run is recorded in `../LANGUAGE_REVIEW.md`.
+
+## Unit 7b · Template pictures
+
+`unit7b-media/media-review-*.webp` shows the 22 OpenArt pictures, made for demo
+use on the Starter plan. `unit7b-media/<template>.webp` shows six templates with
+those pictures in their frames, rendered by the export worker. Licence, budget
+and review are in `../MEDIA.md`.
+
+## Unit 8 · Account and Settings
+
+`unit8-settings/` holds screenshots from the desktop `a11y` step on a fresh
+profile, in the real app: the account menu's identity card (light and dark),
+and full-screen Settings at Privacy & data, Workspaces, Appearance and About.
+No OpenArt concept was generated for this unit. Settings is a page of words
+and controls, laid out on the existing primitives.

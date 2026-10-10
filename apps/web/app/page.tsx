@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { DeckList, SETTINGS_SECTIONS, type DeckListCommand, type SettingsSectionId } from "@deckastra/editor-ui";
+import { DeckList, SETTINGS_SECTIONS, isSettingsSection, type DeckListCommand, type SettingsSectionId } from "@deckastra/editor-ui";
 
 import { useAccountMenu } from "../lib/use-account-menu";
 import { WebSettings } from "./WebSettings";
@@ -38,7 +38,8 @@ export default function Home() {
   }, []);
 
   const accountMenu = useAccountMenu();
-  const openSettings = () => setSettings((current) => ({ ...current, open: true }));
+  const openSettings = (section?: SettingsSectionId) =>
+    setSettings((current) => ({ open: true, section: isSettingsSection(section) ? section : current.section }));
 
   return (
     <>

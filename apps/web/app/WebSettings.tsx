@@ -5,8 +5,11 @@ import {
   AccountDeletionSettings,
   AccountSettings,
   AiTaskSettings,
+  AppearanceSettings,
   CreditsMeter,
+  LanguageVoiceSettings,
   SettingsShell,
+  WorkspaceSettings,
   type SettingsSectionId,
 } from "@deckastra/editor-ui";
 import { Button } from "@deckastra/editor-ui/ui";
@@ -17,11 +20,13 @@ import { webCloudAuth } from "../lib/client";
 import { rememberDeletion } from "../lib/deletion";
 
 /**
- * The web app's Settings: the shared shell, with what a browser can offer.
- * Account (who is signed in, signing out, deleting the account), Plans and
- * billing (the credits; never a purchase before track 3), and AI help. A build
- * using the development sign-in has no hosted account, so the sections that
- * need one are absent there rather than broken.
+ * The web app's Settings: the shared shell as a wide dialog over the page it
+ * was opened from, with what a browser can offer. Profile (who is signed in,
+ * signing out), Plan & credits (never a purchase before track 3), Workspaces,
+ * the AI services this account may use, Languages & voice, Appearance, and
+ * Privacy & data (deleting the account). A build using the development
+ * sign-in has no hosted account, so the sections that need one are absent
+ * there rather than broken.
  */
 export function WebSettings({
   open,
@@ -41,21 +46,12 @@ export function WebSettings({
       onClose={onClose}
       section={section}
       onSection={onSection}
+      placement="center"
       content={{
         account: (
           <>
             {auth ? <SignedIn /> : null}
             <AccountSettings online />
-            {auth ? (
-              <AccountDeletionSettings
-                onDeleted={async (receipt) => {
-                  // The service now refuses this account's token. Keep the
-                  // receipt so the signed-out page can say how it is going.
-                  rememberDeletion(receipt.id);
-                  await auth.signOut();
-                }}
-              />
-            ) : null}
           </>
         ),
         plans: auth ? (
@@ -65,7 +61,27 @@ export function WebSettings({
             <p className="dk-muted">Credits pay for AI help only. Editing, checks and exports never use them.</p>
           </div>
         ) : null,
-        ai: auth ? <AiTaskSettings /> : null,
+        workspaces: <WorkspaceSettings online />,
+        agents: auth ? <AiTaskSettings /> : null,
+        languages: <LanguageVoiceSettings />,
+        appearance: <AppearanceSettings />,
+        ai: auth ? (
+          <div className="dk-settings__section" data-testid="settings-ai">
+            <h3 className="dk-settings__heading">What is sent</h3>
+            <p className="dk-muted">
+              Your decks are kept in your Deckastra account. Pictures, translation and voices send only what each
+              request needs, and say what they will cost first.
+            </p>
+            <AccountDeletionSettings
+              onDeleted={async (receipt) => {
+                // The service now refuses this account's token. Keep the
+                // receipt so the signed-out page can say how it is going.
+                rememberDeletion(receipt.id);
+                await auth.signOut();
+              }}
+            />
+          </div>
+        ) : null,
       }}
     />
   );

@@ -5,7 +5,7 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { buildDocumentScene } from "@deckastra/renderer";
 
-import { EditorShell, PresentMode, useBrowserMeasurer, type SettingsSectionId } from "@deckastra/editor-ui";
+import { EditorShell, PresentMode, isSettingsSection, useBrowserMeasurer, type SettingsSectionId } from "@deckastra/editor-ui";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { isWorkspaceError } from "@deckastra/workspace-contracts";
 
@@ -117,7 +117,9 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
         }}
         // Settings opens over the deck rather than leaving it, so nothing waiting
         // to save is put at risk by a look at the account.
-        onOpenSettings={() => setSettings((current) => ({ ...current, open: true }))}
+        onOpenSettings={(section) =>
+          setSettings((current) => ({ open: true, section: isSettingsSection(section) ? section : current.section }))
+        }
         account={accountMenu}
       />
       <WebSettings

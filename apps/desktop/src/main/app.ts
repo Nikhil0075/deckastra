@@ -4,6 +4,7 @@ import { app, BrowserWindow, clipboard, dialog } from "electron";
 
 import {
   IPC,
+  isHostAction,
   type AgentAccess,
   type AgentAccessRequest,
   type AgentSetupLauncher,
@@ -29,6 +30,7 @@ import {
   asText,
   handleFromWindow,
   onFromWindow,
+  RefusedRequest,
 } from "./ipc-guard";
 import { logEvent } from "./logs";
 import { approveClose, settleClose } from "./close-guard";
@@ -191,6 +193,18 @@ function registerHandlers(): void {
   // The home's "Open .mydeck file": the same path as File › Open, dialog and
   // all. Nothing from the page is read; the person chooses the file.
   handleFromWindow(IPC.openDeckFile, () => openDeckFile());
+
+  // Settings › Privacy & data and About (UI audit Unit 8): the same dialogs the
+  // File and Help menus open. A name, never a path; main chooses the dialog and
+  // the person chooses where.
+  handleFromWindow(IPC.hostAction, async (_window, payload) => {
+    const action = asRecord(payload).action;
+    if (!isHostAction(action)) throw new RefusedRequest("That is not something Settings can ask for.");
+    if (action === "back-up") await backUpNow();
+    else if (action === "restore-backup") await restoreNow();
+    else if (action === "export-diagnostics") await exportDiagnostics();
+    else await showNotices();
+  });
 
   handleFromWindow(
     IPC.openPresentation,

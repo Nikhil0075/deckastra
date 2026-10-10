@@ -4082,9 +4082,27 @@ easy to undo:
 - **Settings replaced the Intelligence drawer** (`SettingsShell.tsx`, desktop
   `DesktopSettings.tsx`, host command `open-settings`, which replaced
   `open-intelligence`; View › Settings…, Ctrl+,). A section the host does not
-  pass is absent; Plans and billing appears with track 3. The own-key section
-  stays until track 2 replaces it. The agent chip is still in the bar, because
-  it shows a live grant at a glance and the `consent` smoke step drives it.
+  pass is absent. The agent chip is still in the bar, because it shows a live
+  grant at a glance and the `consent` smoke step drives it.
+  - **Eight sections, in this order** (UI audit Unit 8): Profile, Plan &
+    credits, Workspaces, Agents & services, Languages & voice, Appearance,
+    Privacy & data, About. The ids are older than the labels and are what the
+    harness and hosts address: `account`, `plans`, `workspaces`, `agents`,
+    `languages`, `appearance`, `ai` (Privacy & data) and `about`.
+  - **The desktop fills the window; the web is a wide dialog**
+    (`placement="full"` / `"center"`, through `Drawer`'s `placement`).
+  - **Technical facts go under Advanced** (`SettingsAdvanced`, a closed
+    `<details>`): workspace ids and raw access states, the build commit,
+    runtime versions and the data directory. The section reads in words first.
+  - **Languages & voice edits the same preferences the panels read**
+    (`translation`, `pronunciations`, `speech`), so there is one copy of each.
+  - **Settings runs main's own dialogs by name** (IPC `hostAction`,
+    `HOST_ACTIONS`: back up, restore, export diagnostics, third-party notices).
+    Each is a menu item already, a test holds the two lists together, and no
+    path crosses: main opens the dialog and the person picks where.
+  - **A host's `onOpenSettings` takes an optional section and checks it**
+    (`isSettingsSection`), because some callers wire it straight to a click
+    and a mouse event is not a section.
 - **Share and Export are one menu** (`open-share`, `export-popover`).
 - **One home for both shells** (`DeckList`). `apps/web/app/page.tsx` is only
   the route now; `AccountPicker` and `EmptyState` are deleted.
@@ -4158,12 +4176,17 @@ easy to undo:
     exactly its headers, complete, poll); the home shows a file input only when
     the host gives no `onOpenFile`. Locally, imports need the worker
     (`python -m deckastra_api.export_worker`); plain uvicorn leaves them queued.
-- **The bars end in an account menu** (`shell/AccountMenu.tsx`, `account-menu`):
-  initials, light/dark/system, Settings…, Sign out where the host has one.
-  It replaced the contrast and Panels buttons and the desktop's gear; panels
-  are in the View menu and the command palette. The desktop's agent chip shows
-  only while access is on; consent is given in Settings › Agents
-  (`settings-agent-toggle`), which is what the `consent` step drives.
+- **The bars end in an account menu** (`shell/AccountMenu.tsx`, `account-menu`).
+  It opens on an identity card (`account-card`: initials, name, email, and the
+  credits where the service keeps any), then Settings…, Appearance… and Sign
+  out where the host has one. The card is `Menu`'s `header`, outside the
+  `menu` role, so it is read and never focused. Light, dark and system moved
+  to Settings › Appearance (`appearance-theme-*`); the menu links there, and
+  the `a11y` step changes theme that way. It replaced the contrast and Panels
+  buttons and the desktop's gear; panels are in the View menu and the command
+  palette. The desktop's agent chip shows only while access is on; consent is
+  given in Settings › Agents & services (`settings-agent-toggle`), which is
+  what the `consent` step drives.
 - **The home has views** (`lib/deck-views.ts`): All decks, Recent (12) and
   Trash are one request per project, merged, and a project that cannot be read
   fails the view rather than vanishing from it. Trash cards have no thumbnail
@@ -4240,6 +4263,24 @@ to undo:
   language. It fails on covers within 40 bits of each other, title slides
   that share a grammar, or any W103 or W110; `scene-check.ts` now reports W110
   too. Each run is recorded in `docs/design-audit/LANGUAGE_REVIEW.md`.
+- **Template pictures** (unit 7b; `preset_media.py`, `docs/design-audit/MEDIA.md`).
+  The manifest at `packages/deck-presets/media/MANIFEST.json` is the only list.
+  It holds 22 OpenArt pictures made on the Starter plan **for demo use**:
+  OpenArt grants commercial use only from Plus up.
+  - `problems()` enforces the budget (30 JPEGs, 400 KB and 1920px each, 12 MB
+    in all) and requires full provenance and a named reviewer. JPEG because
+    PowerPoint will not open WebP.
+  - `problems(release=True)` and `verify-release.mjs` refuse any picture whose
+    `license.use` is not `commercial`, or whose `review.by` is not `person`. A
+    demo build works, and a release cannot ship them.
+  - `attach` puts pictures in a language's frames after composition, as
+    `preset-media/<file>` keys. Previews read them via `GET
+    /v1/presets/media/{file}`, mapped by both `blob_url` and the client's
+    `blobPath`.
+  - `adopt` copies them into the workspace when a deck is made, so the stored
+    deck holds ordinary assets.
+  - `verify-release.mjs` refuses a release with no picture folder or one over
+    the ceiling.
 - **The neutral golden hashes the composer, not the catalog.** Since no
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.

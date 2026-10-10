@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("electron", () => ({ Menu: {} }));
 
 import { menuTemplate } from "../src/main/menu";
-import { MENU_COMMANDS, isMenuCommand, type MenuCommand } from "../src/shared/ipc";
+import { HOST_ACTIONS, MENU_COMMANDS, isHostAction, isMenuCommand, type MenuCommand } from "../src/shared/ipc";
 
 const actions = () => ({ exportDiagnostics: async () => {}, backUp: async () => {}, restore: async () => {} });
 
@@ -92,5 +92,19 @@ describe("the application menu", () => {
     expect(isMenuCommand("undo")).toBe(true);
     expect(isMenuCommand("rm -rf")).toBe(false);
     expect(isMenuCommand({ command: "undo" })).toBe(false);
+  });
+});
+
+describe("what Settings may ask the main process to do", () => {
+  it("is exactly items the menu already has, so Settings offers nothing the menu does not", () => {
+    const ids = new Set(items(menuTemplate(() => {}, "win32", { ...actions(), showNotices: async () => {} })).map((item) => item.id));
+    for (const action of HOST_ACTIONS) expect(ids.has(action)).toBe(true);
+  });
+
+  it("refuses anything that is not on the list, including a path", () => {
+    expect(isHostAction("back-up")).toBe(true);
+    expect(isHostAction("open-settings")).toBe(false);
+    expect(isHostAction("C:/Users/someone/decks")).toBe(false);
+    expect(isHostAction(undefined)).toBe(false);
   });
 });

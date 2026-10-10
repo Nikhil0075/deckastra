@@ -15,6 +15,8 @@ import {
   type CloudKeyState,
   type ClipboardTextRequest,
   type MenuCommand,
+  type HostAction,
+  type HostActionRequest,
   type AgentAccess,
   type AgentAccessRequest,
   type AgentSetupLauncher,
@@ -54,6 +56,9 @@ const bridge: DesktopBridge = {
     ipcRenderer.invoke(IPC.openPresentation, request) as Promise<CurrentPresentation>,
 
   openDeckFile: () => ipcRenderer.invoke(IPC.openDeckFile) as Promise<void>,
+
+  hostAction: (action: HostAction) =>
+    ipcRenderer.invoke(IPC.hostAction, { action } satisfies HostActionRequest) as Promise<void>,
 
   saveFile: (request: SaveFileRequest) =>
     ipcRenderer.invoke(IPC.saveFile, request) as Promise<SaveFileResult>,

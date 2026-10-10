@@ -13,7 +13,7 @@ import {
   type SubscribeHostCommands,
 } from "@deckastra/editor-ui";
 import { Button } from "@deckastra/editor-ui/ui";
-import type { SettingsSectionId } from "@deckastra/editor-ui";
+import { isSettingsSection, type SettingsSectionId } from "@deckastra/editor-ui";
 import { AgentAccessControl } from "./AgentAccessControl";
 import { FirstRunNotice } from "./FirstRunNotice";
 import { DesktopSettings } from "./DesktopSettings";
@@ -90,7 +90,8 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
     };
   }, [settings.open]);
   const openSettings = useCallback((section?: SettingsSectionId) => {
-    setSettings((current) => ({ open: true, section: section ?? current.section }));
+    // Some callers wire this straight to a click; an event is not a section.
+    setSettings((current) => ({ open: true, section: isSettingsSection(section) ? section : current.section }));
   }, []);
   useEffect(() => bridge.onMenuCommand((command) => command === "open-settings" && openSettings()), [bridge, openSettings]);
   // Before this window closes, every open editor saves or journals what is on

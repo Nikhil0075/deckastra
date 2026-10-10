@@ -3,26 +3,30 @@ import { Button } from "@deckastra/editor-ui/ui";
 import {
   AccountSettings,
   AgentSetupGuide,
+  AppearanceSettings,
   CreditsMeter,
+  LanguageVoiceSettings,
+  SettingsAdvanced,
   SettingsShell,
+  WorkspaceSettings,
   type AgentLauncher,
   type SettingsSectionId,
 } from "@deckastra/editor-ui";
 
 import type { AccountState } from "../shared/account";
-import type { AgentAccess, DesktopBridge } from "../shared/ipc";
+import type { AgentAccess, DesktopBridge, DesktopInfo, HostAction } from "../shared/ipc";
 
 /**
- * The desktop's Settings (roadmap 08 §1.3): the shared shell, with the sections
- * this install can actually offer.
+ * The desktop's Settings (roadmap 08 §1.3, UI audit Unit 8): the shared shell,
+ * full screen, with the sections this install can actually offer.
  *
- * It replaces the Intelligence drawer, and keeps the drawer's one rule: an
+ * It replaced the Intelligence drawer, and keeps the drawer's one rule: an
  * installed app must not ask anyone to set an environment variable to find out
- * what happens to their words. Account signs in through the system browser;
- * Plans and billing shows the account's AI credits (never a purchase: none can
- * exist before track 3); AI and privacy says what leaves the machine; Agents
- * holds the switch that lets Claude Code or Codex in. Own API keys are retired
- * (track 2), and so is the field that took one.
+ * what happens to their words. Profile signs in through the system browser;
+ * Plan & credits shows the account's AI credits (never a purchase: none can
+ * exist before track 3); Agents & services holds the switch that lets Claude
+ * Code or Codex in; Privacy & data says what leaves the machine and offers the
+ * backup and the diagnostics report; About says which build this is.
  *
  * Read fresh each time it opens: the answer depends on the service's
  * configuration, which a restart can change underneath a cached account.
@@ -50,6 +54,7 @@ export function DesktopSettings({
       onClose={onClose}
       section={section}
       onSection={onSection}
+      placement="full"
       content={{
         account: (
           <>
@@ -58,26 +63,161 @@ export function DesktopSettings({
           </>
         ),
         plans: <Plans onSignIn={() => onSection("account")} />,
-        ai: <AiAndPrivacy />,
+        workspaces: <WorkspaceSettings />,
         agents: <Agents access={access} onChange={onAgentAccessChange} bridge={bridge} />,
+        languages: <LanguageVoiceSettings />,
+        appearance: <AppearanceSettings />,
+        ai: <PrivacyAndData bridge={bridge} />,
+        about: <About bridge={bridge} />,
       }}
     />
   );
 }
 
-function AiAndPrivacy() {
+/**
+ * One of main's own dialogs, run from Settings. Main owns the dialog and the
+ * path; the page names the action and says when it is done, because a backup
+ * someone pressed for and never heard back about reads as one that failed.
+ */
+function HostActionButton({
+  bridge,
+  action,
+  label,
+  busyLabel,
+  variant = "secondary",
+}: {
+  bridge: DesktopBridge;
+  action: HostAction;
+  label: string;
+  busyLabel: string;
+  variant?: "primary" | "secondary";
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <span>
+      <Button
+        size="sm"
+        variant={variant}
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setError(null);
+          bridge
+            .hostAction(action)
+            .catch(() => setError("That did not work. Try again from the menu bar."))
+            .finally(() => setBusy(false));
+        }}
+        data-testid={`settings-action-${action}`}
+      >
+        {busy ? busyLabel : label}
+      </Button>
+      {error ? (
+        <span className="dk-settings__error" role="alert">
+          {" "}
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * What leaves this computer, and the person's own copies of what stays. The id
+ * is `ai` for the acceptance harness, which reads the deck-creation sentence
+ * here.
+ */
+function PrivacyAndData({ bridge }: { bridge: DesktopBridge }) {
   return (
     <div className="dk-settings__section" data-testid="settings-ai">
-      <h3 className="dk-settings__heading">Creating decks</h3>
-      <p className="dk-muted">
-        Templates and StoryPlans are composed on this computer by deterministic layout code. Connect your own agent
-        in Agents when you want it to write the story; Deckastra does not run a hidden writing model.
-      </p>
       <h3 className="dk-settings__heading">What is sent</h3>
       <p className="dk-muted">
         Your decks stay on this computer. Only paid media, translation and voice requests send the content needed for
         that request to Deckastra&apos;s service. Editing, templates, design checks and exports do not.
       </p>
+      <h3 className="dk-settings__heading">Creating decks</h3>
+      <p className="dk-muted">
+        Templates are composed on this computer by fixed layout rules. Connect your own agent in Agents &amp; services
+        when you want it to write the story; Deckastra does not run a hidden writing model.
+      </p>
+      <h3 className="dk-settings__heading">Backups</h3>
+      <p className="dk-muted">
+        A backup is one file holding every deck, its history, its pictures and any unsaved work in open windows.
+      </p>
+      <div className="dk-settings__actions">
+        <HostActionButton bridge={bridge} action="back-up" label="Back up…" busyLabel="Backing up…" variant="primary" />
+        <HostActionButton bridge={bridge} action="restore-backup" label="Restore from a backup…" busyLabel="Restoring…" />
+      </div>
+      <h3 className="dk-settings__heading">If something goes wrong</h3>
+      <p className="dk-muted">
+        A diagnostics report says how this install is doing, for a bug report. It holds no slide text, no deck titles
+        and no keys.
+      </p>
+      <HostActionButton
+        bridge={bridge}
+        action="export-diagnostics"
+        label="Export diagnostics…"
+        busyLabel="Writing the report…"
+      />
+    </div>
+  );
+}
+
+/** Which build this is, in words first and in detail under Advanced. */
+function About({ bridge }: { bridge: DesktopBridge }) {
+  const [info, setInfo] = useState<DesktopInfo | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    bridge
+      .info()
+      .then((value) => live && setInfo(value))
+      .catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+    };
+  }, [bridge]);
+
+  const build = info?.build as
+    | { source?: { commit?: string | null; dirty?: boolean | null }; builtAt?: string }
+    | null
+    | undefined;
+  const commit = build?.source?.commit ?? null;
+  return (
+    <div className="dk-settings__section" data-testid="settings-about">
+      <h3 className="dk-settings__heading">Deckastra</h3>
+      {failed ? (
+        <p className="dk-settings__error" role="alert">
+          This build could not be described. Restart Deckastra and try again.
+        </p>
+      ) : info ? (
+        <p data-testid="settings-about-version">Version {info.appVersion}</p>
+      ) : (
+        <p className="dk-muted" role="status">
+          Reading this build…
+        </p>
+      )}
+      <p className="dk-muted">
+        Upgrades are installed by hand: install the newer version over this one. Your decks are kept.
+      </p>
+      <HostActionButton bridge={bridge} action="third-party-notices" label="Third-party notices" busyLabel="Opening…" />
+      {info ? (
+        <SettingsAdvanced testId="settings-about-advanced">
+          <dl className="dk-settings__facts">
+            <dt>Build</dt>
+            <dd className="dk-settings__code">
+              {commit ? `${commit.slice(0, 12)}${build?.source?.dirty ? " (changed)" : ""}` : "Not recorded"}
+              {build?.builtAt ? ` · ${build.builtAt}` : ""}
+            </dd>
+            <dt>Runtime</dt>
+            <dd className="dk-settings__code">
+              Electron {info.electronVersion} · Chromium {info.chromeVersion} · {info.platform}
+            </dd>
+            <dt>Data</dt>
+            <dd className="dk-settings__code">{info.dataDir}</dd>
+          </dl>
+        </SettingsAdvanced>
+      ) : null}
     </div>
   );
 }
@@ -233,6 +373,11 @@ function Agents({
       ) : (
         <p className="dk-muted" role="status">Preparing setup instructions…</p>
       )}
+      <h3 className="dk-settings__heading">Services</h3>
+      <p className="dk-muted">
+        Pictures, translation and voices are made by Deckastra&apos;s service when you ask for them, and use your
+        account&apos;s credits. Each one says what it will cost before it runs.
+      </p>
     </div>
   );
 }

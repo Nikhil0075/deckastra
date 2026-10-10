@@ -151,6 +151,12 @@ export interface DrawerProps {
    */
   modal?: boolean;
   width?: number;
+  /**
+   * Where it sits. `side` is the panel from the right edge. `center` is a wide
+   * modal dialog, and `full` fills the window (Settings on the desktop, where
+   * there is nothing behind it worth keeping in view).
+   */
+  placement?: "side" | "center" | "full";
   "data-testid"?: string;
 }
 
@@ -168,6 +174,7 @@ export function Drawer({
   children,
   modal = true,
   width,
+  placement = "side",
   "data-testid": testId,
 }: DrawerProps) {
   const titleId = useId();
@@ -225,8 +232,9 @@ export function Drawer({
         aria-modal={modal || undefined}
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="dk-drawer"
-        style={width ? { width } : undefined}
+        className={cx("dk-drawer", placement !== "side" && `dk-drawer--${placement}`)}
+        data-placement={placement}
+        style={width && placement !== "full" ? { width } : undefined}
         data-testid={testId}
         onKeyDown={trapTab}
       >

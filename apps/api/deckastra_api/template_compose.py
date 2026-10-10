@@ -22,7 +22,7 @@ import json
 import threading
 from typing import Any
 
-from . import motion, presets
+from . import motion, preset_media, presets
 from .compose import compose_document
 
 #: A content map is the person's words for a handful of slots; this is far more
@@ -71,7 +71,8 @@ def compose_template(
         if transition is not None:
             slide["transition"] = transition
         previous_slide = slide
-    return document
+    # The template's own pictures in the frames its language drew (unit 7b).
+    return preset_media.attach(document, template_id)
 
 
 @lru_cache(maxsize=1)
@@ -84,6 +85,10 @@ def catalog_revision() -> str:
     digest = hashlib.sha256()
     for path in (presets.PRESETS_PATH, presets.THEMES_PATH):
         digest.update(path.read_bytes())
+    # The pictures are part of what a preview shows.
+    manifest = preset_media.media_dir() / "MANIFEST.json"
+    if manifest.exists():
+        digest.update(manifest.read_bytes())
     return digest.hexdigest()[:16]
 
 

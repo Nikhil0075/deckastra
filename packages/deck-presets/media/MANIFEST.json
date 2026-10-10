@@ -1,0 +1,1006 @@
+{
+  "version": 1,
+  "budget": {
+    "maxFiles": 30,
+    "maxFileBytes": 409600,
+    "maxTotalBytes": 12582912,
+    "maxLongEdge": 1920,
+    "format": "image/jpeg"
+  },
+  "note": "Template pictures, with provenance. These 22 were made on OpenArt's Starter plan for demo (non-commercial) use: the build and tests accept them, and a release refuses them until each is regenerated under a plan that allows commercial use and reviewed by a person. See docs/design-audit/MEDIA.md.",
+  "media": [
+    {
+      "file": "earth-customer-case-study-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "ETMKIRHss0Q1alQaudLl",
+      "prompt": "a small team working together around a long wooden table inside a sunlit greenhouse office full of plants, laptops and paper sketches, warm natural light, earthy greens, terracotta and sand tones, documentary lifestyle photography, candid, people seen from a distance, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "0e20e7836749ba7aa83dd2e66a113ba8ee1db98c5e8d620edd380e26a6c52b60",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "13c0097281d03be8d2b1f833e9cb9649600e3bf3b8c75d88f8a5643ce8329709",
+      "bytes": 253212,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A team working together at a long wooden table in a sunlit greenhouse office.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
+        "note": "Shows generated, fictional people at a distance."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "customer-case-study",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "earth-customer-case-study-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "t3sOzVQzcq9DZK3BwFlO",
+      "prompt": "close-up of hands sketching a simple workflow diagram with a pencil on recycled paper, beside a cup of tea and a small potted fern on a wooden desk, warm morning light, earthy greens, terracotta and sand tones, natural documentary photography, shallow depth of field, no legible text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "763d5980eb5371ddc984916fe78e0d4f8f5ee67ef90bcf8ac1890c5af25280b4",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "eedca7c68b8d1ac42eb5c965eb20fdb596e655dc4ea62db8804f569dc46a4df2",
+      "bytes": 161597,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Hands sketching a simple workflow diagram beside a cup of tea and a fern.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
+        "note": "The sketch carries near-legible scribbled words; replace before release."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "customer-case-study",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "earth-lesson-plan-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "nHmkZRsvsA7FM7j0gYFm",
+      "prompt": "small hands planting green seedlings into dark soil in a school garden bed, warm golden morning light, earthy greens, terracotta pots and sand tones, natural documentary photography, shallow depth of field, hopeful and calm, no faces, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "373fdf944b4fafd55c152267afbcb6550dce5aafc47c87c27887f4dca60175e5",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "e68b7b0a2ab2674d63cf30d8fcd2a9b3c14534942493fe4820c6671bbff8d138",
+      "bytes": 178829,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Small hands planting seedlings in a school garden bed.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "lesson-plan",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "earth-lesson-plan-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "nmeQgizGxoF9VMxDz0rY",
+      "prompt": "an outdoor classroom under a large spreading oak tree, a teacher and a small group of students sitting on wooden benches with notebooks, dappled sunlight through leaves, earthy greens and warm sand tones, natural documentary photography, seen from a distance, no legible text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "8a51f9ac6da98d501825ef1ce48ee9a493716ed19510a017669fd4a975134ba7",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "aaade159264ce32151b230755c9e33fab0d30d26febe62186451354cc4d1f3d8",
+      "bytes": 337034,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "An outdoor class on benches under a large oak tree.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "lesson-plan",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "earth-training-module-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "L0qyKA2gRhVMy9UIQgqg",
+      "prompt": "a craftsperson's workshop bench with well-worn hand tools, a measuring tape and an open notebook, warm sunlight falling across oiled wood, earthy browns, olive greens and sand tones, natural documentary photography, craftsmanship and care, no faces, no legible text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "ebc952a420dcc02df78c5aa6611ef1fd6da597df991f9333138a2648c72b269e",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "a292bc39fe566541d7ac7aaf9885c022778e08c9dae09fa6c9bf9c16c9e023a5",
+      "bytes": 187211,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A workshop bench with a hand plane, a tape measure and an open notebook in sunlight.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "training-module",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "earth-training-module-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "KfTKxisOMzwcVMrC1h1m",
+      "prompt": "two colleagues reviewing a checklist on a clipboard in a bright, tidy warehouse with tall shelves of boxes and potted plants, warm natural light from skylights, earthy greens, terracotta and sand tones, natural documentary photography, seen from a distance, no legible text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "c63902eb2c0aef9e65b0ad35e1f435d61d22840c57b4f81d6e7a49c23bd2ac47",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "2308746dbd3fb9c7fdfcd48abad6af835dcbde103f9737ca4c968ab7e6f5a61e",
+      "bytes": 225752,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Two colleagues reviewing a checklist in a bright warehouse with plants.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
+        "note": "Shows generated, fictional people with visible faces."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "training-module",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "luxe-business-pitch-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "7h0cYeHYHHhGTLTMynLJ",
+      "prompt": "minimal architectural detail of a travertine stone wall and a curved plaster archway washed in soft late-afternoon sunlight, long gentle shadows, cream, beige and warm taupe palette, quiet luxury editorial photography, calm and spacious, shot on medium format film, no people, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "sourceSha256": "16d0ef8ee386dda8a9ce3038200cc216b7c7f0a6ce50c8e0e087939e401be975",
+      "sourceSize": [
+        1600,
+        2848
+      ],
+      "sha256": "e228f0f9f95202b1bfd1890f252f137bbfee63929d6b800fac5cbf8314929a8f",
+      "bytes": 153474,
+      "width": 899,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A travertine wall and a curved plaster archway in soft afternoon light.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "business-pitch",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "luxe-business-pitch-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "dE0fxpRcg5ZOq4cVedqM",
+      "prompt": "calm minimalist boardroom with a long pale oak table and linen upholstered chairs, soft diffused natural light from tall windows, a single ceramic vase with a dried branch, neutral beige and cream palette, quiet luxury interior editorial photography, medium format film look, no people, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "9e04ca33790fd6c46a2b49f39c88c82eae77b9761a29edeef6a0849c99bf583a",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "6d4afea9be4cc0be99af77480198dabb645a242488820833e1464b3b6717965e",
+      "bytes": 138644,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A calm boardroom with a pale oak table, linen chairs and a vase with a dried branch.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "business-pitch",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "luxe-personal-portfolio-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "2NQrZ2HzVgb090vT7LCm",
+      "prompt": "quiet artist's studio corner, a linen-covered chair beside a plaster wall with sketches and fabric swatches pinned to it, soft north window light, muted cream, sand and taupe palette, quiet luxury editorial photography, medium format film look, calm and minimal, no people, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "sourceSha256": "52aecad59a1e719ce64769059520408448cf9412691b0ca0f002893bbfacbdff",
+      "sourceSize": [
+        1600,
+        2848
+      ],
+      "sha256": "9d6b6a4005cc0cd009b8e15aded9200da5e29df20999d63a60876e215d26ee3d",
+      "bytes": 125511,
+      "width": 899,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A studio corner with a linen-covered chair and sketches pinned to a plaster wall.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "personal-portfolio",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "luxe-personal-portfolio-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "Cf09dco8B9ejimTg0JUA",
+      "prompt": "hands arranging handmade ceramic vases and a small book on a pale oak shelf, soft diffused window light, cream, sand and warm taupe palette, quiet luxury editorial still life photography, shallow depth of field, calm and refined, no faces, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "c57ab05b0001b1e90031f054267e75a6802b351e8c4c19b5dbee461ec75723d4",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "2badc0fbe675d4d61e46962705c4ca3910f4d6acd48d53fe790032eb7ae69c4c",
+      "bytes": 106339,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Hands arranging handmade ceramic vases on a pale oak shelf.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "personal-portfolio",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "luxe-wedding-story-hero.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "A4aKkCQrtRNY6KRfiMgj",
+      "prompt": "close-up of ivory silk wedding dress fabric draped softly with a strand of pearls resting on it, gentle window light, delicate folds and texture, cream and soft ivory palette, fine art editorial photography, shallow depth of field, elegant and calm, no people, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "9:16"
+      },
+      "sourceSha256": "49d108629bd3849b080041dcb5cf04370ddce90e5bccfa0ae90b488c21ffb2e7",
+      "sourceSize": [
+        1600,
+        2848
+      ],
+      "sha256": "b13b26c1f569173575868f72372c0e553a61118fc0c93e5e2bf69cef066d39d1",
+      "bytes": 88358,
+      "width": 899,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Ivory silk fabric with a strand of pearls in soft window light.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "wedding-story",
+          "role": "hero"
+        }
+      ]
+    },
+    {
+      "file": "luxe-wedding-story-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "ASJgxrmpXL4GbSXjeQnj",
+      "prompt": "elegant wedding reception table setting with white garden roses, eucalyptus, tall taper candles and linen napkins, soft golden-hour light through sheer curtains, cream, ivory and soft beige palette, quiet luxury editorial photography, shallow depth of field, no people, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "3:4"
+      },
+      "sourceSha256": "b318924d269765351d798896c857a064206ec470f0f9b67a86b9423142a69852",
+      "sourceSize": [
+        1728,
+        2304
+      ],
+      "sha256": "b83c62a700a1559127cfedeca02a629f283a27c5cb631f1acdf527cc4b21f0f6",
+      "bytes": 150439,
+      "width": 1200,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A wedding table set with white roses, eucalyptus and tall candles in golden light.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "wedding-story",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "noir-case-file-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "mUYJmJqLYqEhvp3jr5pN",
+      "prompt": "1940s private detective's office at night, venetian blind shadows striping across a wooden desk stacked with manila case files and a rotary telephone, a single desk lamp casting a pool of warm light, cigarette smoke curling in the beam, black and white film noir photograph, deep chiaroscuro shadows, high contrast, subtle 35mm film grain, cinematic composition, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "160d7feeb6006cf1a966b16472379a2597577591f73f008b2f3f7d87a7681220",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "f46047fbc64972ce1b6f2eb233945475864713e40e89b27c0abc0c0ecb7764f0",
+      "bytes": 203375,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A detective's desk at night, stacked case files and a telephone under a single lamp, striped by venetian-blind shadows.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "noir-case-file",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "noir-event-story-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "yfmoTqvMfzj1Ph21PS2T",
+      "prompt": "elegant 1940s evening gala seen through a tall doorway, silhouettes of guests in evening wear dancing beneath a glowing crystal chandelier, warm light spilling into a dark corridor, black and white film noir photograph, high contrast, soft haze, 35mm film grain, cinematic, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "5a0f6488d62907a0f7895c99199dbfe393ea6151dd2eefe2f48a6a5b26f055f4",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "dd64f35c86e5912170f25114b70e9f7b39f2390659719b35f2edae8becbc3c55",
+      "bytes": 139960,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Silhouetted couples dancing beneath a chandelier, seen through a dark doorway.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "event-story",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "noir-night-story-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "Q1j7EpdI7PJCyGAqbstA",
+      "prompt": "rain-slicked city street at night in the 1940s, a lone figure in a trench coat and fedora standing under a single streetlamp seen from behind, reflections shimmering on wet cobblestones, fog, black and white film noir photograph, deep shadows, high contrast, 35mm film grain, cinematic, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "164e313e045dcd15bd74a7d447eceff1cdd214b92ff846002669d0f8a3b16250",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "bb641983a3caa988283f5dea52428b7b74b181c9b455d00e2e84d3806a70cb94",
+      "bytes": 280513,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A lone figure in a trench coat under a streetlamp on a wet, foggy cobbled street at night.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "noir-night-story",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "noir-personal-narrative-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "CO5vIKAE2Tk8eLZ3W4pb",
+      "prompt": "silhouette of a person standing at a tall window at night looking out over distant city lights, venetian blind shadows falling across the room and the wall, contemplative mood, black and white film noir photograph, deep shadows, high contrast, 35mm film grain, cinematic, no visible face, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "efcda35cb5c354e27463a11291b1a464f83da68a6f32a5d80f98816e445f3de3",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "2ab7c487eb5ede5b77dd08a88a94db5e82f116e4a433e300201f42c3d3190752",
+      "bytes": 227642,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A silhouetted person at a tall window looking out at city lights, with blind shadows across the room.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "personal-narrative",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "noir-thesis-defence-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "kOSm8xKWKPSbyiK5ShR3",
+      "prompt": "old university library reading room at night, a single green banker's lamp glowing over open books and handwritten research notes on a long oak table, tall dark bookshelves fading into shadow, film noir lighting, black and white with deep chiaroscuro, quiet scholarly mood, 35mm film grain, no text, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "83cdfc3b2f2625ae88f6d7d44cf702ef4745d65eada84a2086d3470c8e69411d",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "6409ec31112e89eebbc3074bbf14c616c7fb3a84b875f1d69e25916b336d0f5e",
+      "bytes": 205839,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A library reading room at night: open books and handwritten notes under a green banker's lamp.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "thesis-defence",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "play-onboarding-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "XNFr9fTtV7AFwKw9oMyA",
+      "prompt": "cheerful 3D clay illustration of a cosy welcome desk with a potted plant, a coffee mug, a little name badge and a waving paper flag, soft pastel purple, pink and cream background, rounded friendly shapes, soft studio lighting, cute and welcoming, no text, no letters, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "16aac42900f93eb6a406e05f33a0eafffa7bfc8ff598f57df37938da7543df26",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "568f892e343500dc4facb0eb2f8f55ade87b826bf8c9910fa43b90be8fafcdec",
+      "bytes": 130594,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A clay welcome desk with a plant, a smiling coffee mug, a name badge and a little flag.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "onboarding",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "play-teaching-workshop-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "b9MJkQBGIKq4oiEYadQa",
+      "prompt": "playful 3D clay illustration of colourful stacked building blocks and a glowing lightbulb on a soft pastel lilac and peach background, rounded friendly shapes, soft studio lighting, cute and cheerful, clean composition, no text, no letters, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "d40f219ad92e388e639257151af60c56873cb2491721f8332533141d4bd16e36",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "f622db57b601f2b8b13777909f48de9ed89fb593beb016e7e53acf221f455a80",
+      "bytes": 99250,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Clay building blocks in pastel colours with a glowing lightbulb on top.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "teaching-workshop",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "play-team-kickoff-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "YQfLfn8uu2fFsjz765fM",
+      "prompt": "playful 3D clay illustration of a small rocket launching upward with a puff of cloud and colourful confetti, soft pastel lilac, pink and mint background, rounded friendly shapes, soft studio lighting, energetic and fun, no text, no letters, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "e20f41e3fc1d149dcd278f799da94bed723654c49b2272bee21638d6771cca8f",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "56ceb94746c20ad7cd0c23ac1ad670667edbdb0cd77d143901f96e787216b689",
+      "bytes": 106731,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A clay rocket lifting off from a puff of cloud with confetti.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "team-kickoff",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "space-product-launch-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "Ixu1JDaFGcaEuyYSrPFs",
+      "prompt": "floating translucent glass interface panels and soft glowing light trails hovering in a deep indigo and violet space, cyan and pink rim light, futuristic product reveal render, cinematic depth of field, clean and minimal, no text, no numbers, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "65cdc5feea090d487d6ed2b323bd96b9c2ef639049bcd5288f9e8f277aa2608b",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "b0e21957089386bce81ca7afe9dcdce22d0d5a1dcf9d96965cfaa79471ddce1a",
+      "bytes": 143678,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "Translucent glass interface panels floating in indigo light, circled by glowing light trails.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "product-launch",
+          "role": "scene"
+        }
+      ]
+    },
+    {
+      "file": "space-research-talk-scene.jpg",
+      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "mode": "text2image",
+      "generatedAt": "2026-10-10",
+      "openartHistoryId": "u7jxINPPrDbtnwVxVjo4",
+      "prompt": "abstract three-dimensional visualization of a glowing network graph of connected nodes floating in deep space, indigo, violet and cyan light, soft bokeh particles, futuristic scientific illustration, cinematic, clean, no text, no numbers, no logos, no watermark",
+      "settings": {
+        "resolution": "2K",
+        "aspectRatio": "1:1"
+      },
+      "sourceSha256": "52c0ca328d6cb2ae8c7085174ddcc6a98dc3f44208f3cd13831fb503f51a092e",
+      "sourceSize": [
+        2048,
+        2048
+      ],
+      "sha256": "6bea03e65dba8b2f9874d80292091c03b7259e040e63ca11bbb5a5d545d5d364",
+      "bytes": 163882,
+      "width": 1600,
+      "height": 1600,
+      "jpegQuality": 82,
+      "alt": "A glowing network of connected nodes floating in deep space.",
+      "review": {
+        "result": "approved",
+        "by": "agent",
+        "reviewer": "Claude (implementing agent)",
+        "date": "2026-10-10",
+        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+      },
+      "license": {
+        "use": "demo",
+        "plan": "Starter",
+        "commercialUse": false,
+        "termsUrl": "https://openart.ai/terms",
+        "termsRetrievedAt": "2026-10-10",
+        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
+        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+      },
+      "templates": [
+        {
+          "template": "research-talk",
+          "role": "scene"
+        }
+      ]
+    }
+  ]
+}
