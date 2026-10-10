@@ -6,7 +6,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { SavedTheme } from "@deckastra/workspace-contracts";
 import type { EditorApi } from "../lib/useEditor";
 import { applyThemeOperations } from "../lib/theme-apply";
-import { Button, Tabs } from "../ui";
+import { Button, Skeleton, Tabs } from "../ui";
 import { ThemeGallery } from "./ThemeGallery";
 import { ThemeCustomise } from "./ThemeCustomise";
 
@@ -281,7 +281,7 @@ function WorkspaceThemes({ editor, presentationId }: { editor: EditorApi; presen
         throw error;
       }
     })}>{listState === "failed" ? "Try again" : "Refresh themes"}</button>
-    {listState === "reading" ? <p role="status" className="dk-muted">Reading this workspace's themes…</p> : null}
+    {listState === "reading" ? <Skeleton label="Reading this workspace's themes" lines={2} /> : null}
     {listState === "read" && themes.length === 0 ? (
       <p className="dk-muted">No saved themes in this workspace yet. Save the current one below to reuse it.</p>
     ) : null}

@@ -3,7 +3,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { AccountCapabilities, AccountDeletion } from "@deckastra/workspace-contracts";
 
 import { serviceWords } from "../lib/assistant-words";
-import { Button, StatusChip, TextField } from "../ui";
+import { Button, InlineError, Skeleton, StatusChip, TextField } from "../ui";
 
 /**
  * Settings sections for an account kept online (FRONTEND_BACKEND_HANDOFF.md,
@@ -21,17 +21,19 @@ export function AiTaskSettings() {
   const read = client.session.capabilities;
   const [answer, setAnswer] = useState<AccountCapabilities | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!read) return;
     let live = true;
+    setFailed(false);
     read({ fresh: true })
       .then((value) => live && setAnswer(value))
       .catch(() => live && setFailed(true));
     return () => {
       live = false;
     };
-  }, [read]);
+  }, [read, attempt]);
 
   if (!read) return null;
   const tasks = answer ? Object.entries(answer.tasks) : [];
@@ -41,13 +43,11 @@ export function AiTaskSettings() {
     <div className="dk-settings__section" data-testid="settings-ai-tasks">
       <h3 className="dk-settings__heading">AI help</h3>
       {failed ? (
-        <p className="dk-settings__error" role="alert">
-          What AI help can do could not be read just now. Open Settings again in a moment.
-        </p>
+        <InlineError onRetry={() => setAttempt((count) => count + 1)} data-testid="ai-tasks-error">
+          What AI help can do could not be read just now.
+        </InlineError>
       ) : !answer ? (
-        <p className="dk-muted" role="status">
-          Reading what AI help can do…
-        </p>
+        <Skeleton label="Reading what AI help can do" lines={3} />
       ) : none ? (
         <p data-testid="ai-tasks-off">
           AI help is not switched on yet. Everything else, from editing to exporting, works as usual and uses no credits.

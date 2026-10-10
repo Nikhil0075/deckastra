@@ -25,6 +25,7 @@ export type { ChoiceItem, SegmentedProps, TabItem, TabsProps, SectionProps } fro
 export { StatusChip, StatusDot, TokenChip, Kbd, AccentRule } from "./chips";
 export type { StatusTone, StatusChipProps } from "./chips";
 export { Popover, Drawer, ScrollArea } from "./overlays";
+export { Skeleton, SkeletonCards, InlineError } from "./feedback";
 export type { PopoverProps, PopoverTriggerProps, DrawerProps, ScrollAreaProps } from "./overlays";
 export { Icon, ICON_NAMES } from "./icons";
 export type { IconName, IconProps } from "./icons";

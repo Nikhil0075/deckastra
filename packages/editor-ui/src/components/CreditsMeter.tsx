@@ -3,7 +3,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { CreditBalance } from "@deckastra/workspace-contracts";
 
 import { creditsLine, creditsUnavailable, planLabel, remainingShare, resetLine } from "../lib/credits";
-import { Button } from "../ui";
+import { Button, Skeleton } from "../ui";
 import { cx } from "../ui/cx";
 
 type State =
@@ -81,9 +81,7 @@ export function CreditsMeter({
   return (
     <section className={cx("dk-credits", "dk-credits--card")} aria-label="AI credits" data-testid="credits-card" data-credits-state={state.kind}>
       {state.kind === "reading" ? (
-        <p className="dk-muted" role="status">
-          Reading your credits…
-        </p>
+        <Skeleton label="Reading your credits" lines={2} />
       ) : state.kind === "unavailable" ? (
         <>
           <p className={state.signIn ? "dk-credits__line" : "dk-muted"}>{state.text}</p>

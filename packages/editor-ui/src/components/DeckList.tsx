@@ -20,8 +20,10 @@ import {
   Drawer,
   Icon,
   IconButton,
+  InlineError,
   Menu,
   ScrollArea,
+  SkeletonCards,
   Select,
   StatusChip,
   TextField,
@@ -150,7 +152,7 @@ export function DeckList({
     }
   }, [client]);
 
-  useEffect(() => {
+  const startAccount = useCallback(() => {
     void loadAccount().then((next) => {
       if (!next) return;
       const first = next.workspaces.flatMap((workspace) => workspace.projects)[0]?.id ?? null;
@@ -158,6 +160,7 @@ export function DeckList({
       setView((current) => current ?? (first ? { kind: "project", projectId: first } : null));
     });
   }, [loadAccount]);
+  useEffect(() => startAccount(), [startAccount]);
 
   const located = useMemo<Located | null>(() => {
     if (!account || !projectId) return null;
@@ -429,7 +432,11 @@ export function DeckList({
               </li>
             ))}
           </ul>
-          {accountError ? <p className="dk-decks__error">{accountError}</p> : null}
+          {accountError ? (
+            <InlineError onRetry={startAccount} data-testid="decks-account-error">
+              {accountError}
+            </InlineError>
+          ) : null}
           {account?.workspaces.map((workspace) => (
             <section key={workspace.id} className="dk-decks__workspace">
               <span className="dk-label">
@@ -525,7 +532,7 @@ export function DeckList({
               <h2 className="dk-decks__title">{view ? viewTitle(view, account) : "Decks"}</h2>
               <p className="dk-muted">
                 {!decks
-                  ? "Loading…"
+                  ? "\u00a0"
                   : view?.kind === "trash"
                     ? decks.length === 0
                       ? "Empty"
@@ -575,7 +582,11 @@ export function DeckList({
             </div>
           ) : null}
 
-          {listError ? <p className="dk-decks__error">{listError}</p> : null}
+          {listError ? (
+            <InlineError onRetry={() => void loadDecks()} data-testid="decks-list-error">
+              {listError}
+            </InlineError>
+          ) : null}
 
           <ScrollArea className="dk-decks__scroll">
             {decks && decks.length === 0 ? (
@@ -589,6 +600,9 @@ export function DeckList({
                       : "No decks yet. Start from a blank deck or a template."}
                 </p>
               </div>
+            ) : null}
+            {!decks && !listError ? (
+              <SkeletonCards label="Reading your decks" count={6} gridClassName="dk-decks__grid" data-testid="decks-loading" />
             ) : null}
             {decks && decks.length > 0 && shown.length === 0 ? (
               <p className="dk-muted dk-decks__empty">No decks match “{query}”.</p>
