@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
-import { Button, IconButton, Popover, Segmented } from "../../ui";
+import { Button, IconButton, Menu, Popover, Segmented, type MenuItem } from "../../ui";
 import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
@@ -35,6 +35,11 @@ export interface AppBarProps {
   /** Open or put away the assistant (roadmap 08 §1.2 rule 2). Absent: no button. */
   onAssistant?: () => void;
   assistantOpen?: boolean;
+  /**
+   * Focus on the slide, and the Layout menu of panels and their shortcuts (UI
+   * audit unit 3). Absent: neither is shown.
+   */
+  layout?: { focused: boolean; onFocus: () => void; items: readonly MenuItem[] };
 }
 
 /**
@@ -43,7 +48,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen, layout }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -117,6 +122,26 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
         ) : null}
         {extras}
         {onManageLanguages ? <LanguageMenu editor={editor} onManage={onManageLanguages} /> : null}
+        {layout ? (
+          <>
+            {/* Focus mode had only a shortcut, so nobody found it. */}
+            <IconButton
+              icon="fit"
+              label={layout.focused ? "Show the panels again (Ctrl+.)" : "Focus on the slide (Ctrl+.)"}
+              size="sm"
+              variant="secondary"
+              aria-pressed={layout.focused}
+              onClick={layout.onFocus}
+              data-testid="focus-toggle"
+            />
+            <Menu
+              label="Layout"
+              align="end"
+              items={layout.items}
+              trigger={(props) => <IconButton icon="grid" label="Layout" size="sm" variant="secondary" data-testid="layout-menu" {...props} />}
+            />
+          </>
+        ) : null}
         {onHistory ? (
           // An icon, named in its tooltip and accessible name: a labelled button
           // here pushed the bar's end group across the mode switch.

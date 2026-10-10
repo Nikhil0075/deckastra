@@ -12,6 +12,8 @@
 export { Button, IconButton } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize, IconButtonProps } from "./Button";
 export { Tooltip, TOOLTIP_DELAY_MS } from "./Tooltip";
+export { Splitter, SPLITTER_STEP, SPLITTER_BIG_STEP } from "./Splitter";
+export type { SplitterProps } from "./Splitter";
 export { Label, TextField, NumberField } from "./fields";
 export type { TextFieldProps, NumberFieldProps } from "./fields";
 export { Menu } from "./Menu";

@@ -128,6 +128,7 @@ export function menuTemplate(
             { type: "separator" },
             pageOwned("Focus on the slide", "panels-focus", "CmdOrCtrl+."),
             item("Show everything", "panels-all"),
+            item("Reset workspace", "layout-reset"),
           ],
         },
         { type: "separator" },

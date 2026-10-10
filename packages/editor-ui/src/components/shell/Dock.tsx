@@ -23,12 +23,19 @@ export function Dock({
   state,
   onChange,
   height,
+  resizer,
   panels,
 }: {
   state: DockState;
   onChange: (next: DockState) => void;
   /** Height of the open body, in px. */
   height: number;
+  /**
+   * The splitter that resizes the open body, drawn on its top edge. The body
+   * reads `--dk-dock-height` first, so a drag can be shown by setting that
+   * variable without re-rendering the editor every frame.
+   */
+  resizer?: ReactNode;
   /** What each tab shows. A tab with nothing to show (no slide) is still offered and draws `null`. */
   panels: Record<DockTab, ReactNode>;
 }) {
@@ -56,6 +63,7 @@ export function Dock({
       data-dock-open={state.open ? "true" : "false"}
       data-dock-tab={state.tab}
     >
+      {state.open ? resizer : null}
       <div className="dk-dockbar__head">
         <div role="tablist" aria-label="Dock" className="dk-dockbar__tabs">
           {DOCK_TABS.map((tab, index) => {
@@ -97,7 +105,7 @@ export function Dock({
           id={`${id}-panel`}
           aria-labelledby={`${id}-tab-${state.tab}`}
           className="dk-dockbar__body dk-scroll"
-          style={{ height }}
+          style={{ height: `var(--dk-dock-height, ${height}px)` }}
           data-dock-panel={state.tab}
         >
           {panels[state.tab]}

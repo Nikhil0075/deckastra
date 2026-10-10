@@ -87,7 +87,9 @@ export type HostCommand =
   | "panel-notes"
   | "panel-dock"
   | "panels-focus"
-  | "panels-all";
+  | "panels-all"
+  /** Every pane back, at its default size (UI audit unit 3). */
+  | "layout-reset";
 
 /** Subscribe to host commands; returns the unsubscribe function. */
 export type SubscribeHostCommands = (listener: (command: HostCommand) => void) => () => void;
