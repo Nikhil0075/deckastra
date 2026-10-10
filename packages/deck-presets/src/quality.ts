@@ -8,12 +8,13 @@ import {
   type SlotDefinition,
   type SlotValue,
 } from "./schema";
-import { isDesignLanguage } from "./languages";
+import { DESIGN_LANGUAGES, isDesignLanguage } from "./languages";
 
 export type PresetIssueCode =
   | "E_PRESET_ID_DUPLICATE"
   | "E_PRESET_PURPOSE"
   | "E_PRESET_LANGUAGE"
+  | "E_PRESET_HEADLINE_LONG"
   | "E_PRESET_THEME"
   | "E_PRESET_MOTION"
   | "E_PRESET_SLIDES"
@@ -67,6 +68,22 @@ export function validateDeckPresets(
     }
     if (!isDesignLanguage(preset.designLanguage)) {
       issues.push({ code: "E_PRESET_LANGUAGE", path: `${base}/designLanguage`, message: `Unknown design language ${JSON.stringify(preset.designLanguage)}.` });
+    } else {
+      // A language's headline limit is part of its grammar: Swiss Signal's
+      // five words set at 168px are a different slide from twelve words shrunk
+      // to fit. Checked for every template, not only the ones written for it.
+      const limit = DESIGN_LANGUAGES[preset.designLanguage].density.maxHeadlineWords;
+      for (const [slideIndex, slide] of preset.slides.entries()) {
+        const headline = slide.slots.headline;
+        const words = typeof headline === "string" ? headline.trim().split(/\s+/).filter(Boolean).length : 0;
+        if (words > limit) {
+          issues.push({
+            code: "E_PRESET_HEADLINE_LONG",
+            path: `${base}/slides/${slideIndex}/slots/headline`,
+            message: `${preset.id} slide ${slide.key} has a ${words}-word headline; ${preset.designLanguage} allows ${limit}.`,
+          });
+        }
+      }
     }
     if (!options.themeKeys.has(preset.themeKey)) {
       issues.push({ code: "E_PRESET_THEME", path: `${base}/themeKey`, message: `Unknown theme ${JSON.stringify(preset.themeKey)}.` });

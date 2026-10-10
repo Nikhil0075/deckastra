@@ -8573,6 +8573,386 @@
           "backdropFilters": []
         }
       }
+    },
+    {
+      "key": "system-terminal",
+      "name": "System Terminal",
+      "summary": "A dark terminal: monospace everywhere, phosphor-green output and an amber warning.",
+      "category": "Styles",
+      "theme": {
+        "id": "thm_01JB8Z9K2QW4RN7F3XP0000022",
+        "name": "System Terminal",
+        "description": "A dark terminal: monospace everywhere, phosphor-green output and an amber warning.",
+        "mode": "dark",
+        "colors": {
+          "background": "#0B0E0C",
+          "surface": "#141915",
+          "surfaceAlt": "#1C231E",
+          "overlay": "#000000B3",
+          "foreground": "#D7F2D3",
+          "foregroundMuted": "#A3C29E",
+          "foregroundSubtle": "#7E9A7A",
+          "accent": "#4ADE80",
+          "accentForeground": "#0B0E0C",
+          "accentMuted": "#1C231E",
+          "secondary": "#F5B33D",
+          "secondaryForeground": "#0B0E0C",
+          "border": "#26302A",
+          "borderStrong": "#4A5C4F",
+          "divider": "#26302A",
+          "success": "#3DDC97",
+          "warning": "#F2C14E",
+          "danger": "#FF6B6B",
+          "info": "#4ADE80",
+          "chartSeries": [
+            "#4ADE80",
+            "#F5B33D",
+            "#7DD3FC",
+            "#D7F2D3",
+            "#F87171",
+            "#A3C29E"
+          ],
+          "chartPositive": "#3DDC97",
+          "chartNegative": "#FF6B6B",
+          "chartNeutral": "#7E9A7A"
+        },
+        "typography": {
+          "display": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 96,
+            "fontWeight": 600,
+            "lineHeight": 1.05,
+            "letterSpacing": -2
+          },
+          "h1": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 64,
+            "fontWeight": 600,
+            "lineHeight": 1.1,
+            "letterSpacing": -1
+          },
+          "h2": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 44,
+            "fontWeight": 600,
+            "lineHeight": 1.15
+          },
+          "h3": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 32,
+            "fontWeight": 600,
+            "lineHeight": 1.2
+          },
+          "body": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 24,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "bodySmall": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "caption": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 16,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "quote": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 32,
+            "fontWeight": 400,
+            "fontStyle": "italic",
+            "lineHeight": 1.35
+          },
+          "code": {
+            "fontFamily": "JetBrains Mono",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.5
+          },
+          "metric": {
+            "fontFamily": "IBM Plex Mono",
+            "fontSize": 88,
+            "fontWeight": 600,
+            "lineHeight": 1,
+            "fontFeatures": [
+              "tnum"
+            ]
+          },
+          "scaleRatio": 1.25
+        },
+        "spacing": {
+          "base": 8,
+          "xs": 4,
+          "sm": 8,
+          "md": 16,
+          "lg": 32,
+          "xl": 64,
+          "xxl": 96,
+          "slideMargin": {
+            "top": 80,
+            "right": 120,
+            "bottom": 80,
+            "left": 120
+          }
+        },
+        "radii": {
+          "none": 0,
+          "sm": 0,
+          "md": 0,
+          "lg": 0,
+          "full": 9999
+        },
+        "shadows": {
+          "none": [],
+          "sm": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 1,
+              "blur": 3,
+              "color": "#00000059"
+            }
+          ],
+          "md": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 6,
+              "blur": 18,
+              "color": "#00000073"
+            }
+          ],
+          "lg": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 18,
+              "blur": 48,
+              "color": "#00000099"
+            }
+          ]
+        },
+        "grid": {
+          "columns": 12,
+          "gutter": 24,
+          "margin": 120,
+          "baseUnit": 8,
+          "baselineGrid": 8
+        },
+        "chart": {
+          "series": [
+            "#4ADE80",
+            "#F5B33D",
+            "#7DD3FC",
+            "#D7F2D3",
+            "#F87171",
+            "#A3C29E"
+          ],
+          "gridlineColor": "#26302A",
+          "axisColor": "#7E9A7A",
+          "showGridlines": true,
+          "barCornerRadius": 0,
+          "lineWidth": 3,
+          "pointSize": 6
+        },
+        "diagram": {
+          "nodeFill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "nodeStroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "nodeRadius": 0,
+          "nodePadding": {
+            "top": 16,
+            "right": 20,
+            "bottom": 16,
+            "left": 20
+          },
+          "roleStyles": {
+            "service": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              }
+            },
+            "datastore": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surfaceAlt"
+              }
+            },
+            "external": {
+              "fill": {
+                "type": "none"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 1,
+                "dash": [
+                  6,
+                  4
+                ]
+              }
+            }
+          }
+        },
+        "imagery": {
+          "treatment": "none",
+          "defaultCornerRadius": 0
+        },
+        "motion": {
+          "personality": "subtle",
+          "defaultEntrance": "fadeUp",
+          "defaultDurationMs": 400,
+          "defaultEasing": "emphasized",
+          "staggerMs": 70,
+          "reducedMotionFallback": "fade",
+          "maxSlideDurationMs": 2500
+        },
+        "contrastPairs": [
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.surface",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.accentForeground",
+            "background": "colors.accent",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.secondaryForeground",
+            "background": "colors.secondary",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundMuted",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundSubtle",
+            "background": "colors.background",
+            "minimumRatio": 3
+          }
+        ],
+        "brandRules": [
+          {
+            "id": "type-sizes",
+            "kind": "must-not",
+            "scope": "typography",
+            "statement": "Use no more than three type sizes on a single slide.",
+            "check": {
+              "type": "maxFontSizesPerSlide",
+              "value": 3
+            }
+          },
+          {
+            "id": "no-literals",
+            "kind": "should",
+            "scope": "color",
+            "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+            "check": {
+              "type": "forbiddenColorLiterals",
+              "value": true
+            }
+          },
+          {
+            "id": "whitespace",
+            "kind": "should",
+            "scope": "layout",
+            "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+          }
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 1
+              },
+              "cornerRadius": 0
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 0
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
+      },
+      "kit": {
+        "card": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.borderStrong"
+            },
+            "width": 1
+          },
+          "cornerRadius": 0,
+          "shadow": [],
+          "backdropFilters": []
+        }
+      }
     }
   ]
 }

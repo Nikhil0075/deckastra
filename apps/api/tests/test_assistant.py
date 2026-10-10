@@ -267,7 +267,9 @@ def test_export_retains_selected_slides_and_rejects_missing_translation(client, 
 def test_cleanup_uses_deterministic_fixes_without_model_calls(deck):
     from deckastra_agents.budgets import RunBudget
     document = copy.deepcopy(deck["document"])
-    document["slides"][0]["elements"][0]["transform"]["x"] = -25
+    # A text element pushed off the slide: a language's motifs may come first.
+    text = next(element for element in document["slides"][0]["elements"] if element["type"] == "text" and element.get("semanticRole") != "decoration")
+    text["transform"]["x"] = -25
     snapshot = {"document": document, "images": [], "assets": [], "sources": [], "vision": []}
     result = assistant_tasks.compute({**payload(deck), "instruction": "Fix layout findings"}, snapshot, None, RunBudget(), lambda event: None)
     assert result["operations"]

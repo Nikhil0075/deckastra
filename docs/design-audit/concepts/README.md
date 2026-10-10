@@ -77,3 +77,12 @@ which the preview shows at rest. It is not ink.
 
 No concept was generated for this unit. The tools sit in the bars present mode
 already has, rather than in a new surface.
+
+## Unit 7a · The six remaining languages
+
+`unit7a-languages/<language>--<template>.webp` shows every slide of one
+template per new language, composed by the real composer and rendered by the
+export worker: Play Lab, System Terminal, Quiet Luxe, Data Desk, Earth Story
+and Spatial Future. No OpenArt concepts were generated for this unit. Each
+language is drawn from its described grammar (`../research/2026-10-10-design-languages.md`),
+and these sheets are what it actually composes.

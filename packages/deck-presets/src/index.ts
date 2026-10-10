@@ -14,11 +14,12 @@ export * from "./languages";
 
 export * from "./pilots";
 import { PILOT_PRESETS } from "./pilots";
+import { DESIGN_LANGUAGES, type DesignLanguageId } from "./languages";
 
 /**
- * The founding reviewed template in each purpose group, retained verbatim. They
- * predate design languages and compose in the neutral one; their four style
- * fields stay as they were, so their decks are byte-for-byte what they were.
+ * The founding reviewed template in each purpose group. Their slides and slot
+ * copy are retained verbatim; since unit 7a each composes in a design language
+ * (`TEMPLATE_LANGUAGE`), which supplies its theme, motion and transition.
  */
 const FOUNDATION_PRESETS: readonly Omit<DeckPreset, "designLanguage">[] = [
   {
@@ -82,7 +83,7 @@ const FOUNDATION_PRESETS: readonly Omit<DeckPreset, "designLanguage">[] = [
     reviewed: true,
     slides: [
       { key: "opening", pattern: "title", purpose: "Set the learning goal", slots: { eyebrow: "WORKSHOP", headline: "Learn it by making it", subtitle: "A practical session with one useful outcome" } },
-      { key: "goal", pattern: "statement", purpose: "State the learning outcome", slots: { eyebrow: "BY THE END", headline: "You will be able to explain and apply the core idea", body: "We will build from a simple mental model into a repeatable practice." } },
+      { key: "goal", pattern: "statement", purpose: "State the learning outcome", slots: { eyebrow: "BY THE END", headline: "You will explain and apply the core idea", body: "We will build from a simple mental model into a repeatable practice." } },
       { key: "model", pattern: "bullets", purpose: "Teach the mental model", slots: { eyebrow: "THE MODEL", headline: "Three moves make the method work", bullets: ["Observe what is actually happening", "Choose the smallest useful intervention", "Check the result and adapt"] } },
       { key: "practice", pattern: "split", purpose: "Prompt practice", slots: { eyebrow: "TRY IT", headline: "Apply the model to a real situation", body: "Work in pairs. Pick one current challenge and make the next move concrete.", bullets: ["Name the evidence", "Choose one action", "Define a signal"] } },
       { key: "recap", pattern: "quote", purpose: "Leave a memorable principle", slots: { eyebrow: "REMEMBER", headline: "Practice beats recall", quote: "A useful idea becomes knowledge when you can use it.", attribution: "Workshop principle" } },
@@ -188,9 +189,8 @@ const PURPOSE_PATTERNS: Record<PurposeGroup, readonly SlidePattern[]> = {
   personal: ["title", "biography", "story-beat", "gallery", "case-study", "profile", "event-schedule", "quote", "reflection", "thank-you"],
 };
 
-const makePreset = (brief: PresetBrief): DeckPreset => ({
+const makePreset = (brief: PresetBrief): Omit<DeckPreset, "designLanguage"> => ({
   id: brief.id,
-  designLanguage: "neutral",
   name: brief.name,
   summary: brief.summary,
   purpose: brief.purpose,
@@ -214,10 +214,10 @@ const makePreset = (brief: PresetBrief): DeckPreset => ({
 
 const EXPANDED_PRESET_BRIEFS: readonly PresetBrief[] = [
   { id: "investor-update", name: "Investor update", summary: "A measured update from market signal to capital priorities.", purpose: "business", tags: ["investor", "fundraising", "update"], themeKey: "midnight", motionStyle: "editorial", voiceStyle: "assured", headlines: ["Momentum is becoming durable", "The quarter in one page", "Growth still hides one constraint", "A focused wedge expands the opportunity", "The market is moving toward us", "Efficiency is improving with scale", "The risks are visible and bounded", "Capital follows the proof points", "Stay focused on repeatable growth", "Build the next chapter with discipline"] },
-  { id: "quarterly-review", name: "Quarterly review", summary: "A crisp operating review with results, risks and next-quarter choices.", purpose: "business", tags: ["quarterly", "operations", "leadership"], themeKey: "civic", motionStyle: "restrained", voiceStyle: "direct", headlines: ["A quarter of sharper execution", "What leaders need to know", "The missed handoff slowed delivery", "Retention creates the next opening", "Demand is strongest in the core", "Margin improved without losing pace", "Two risks need active ownership", "The next quarter has three moves", "Protect focus and close the loop", "Leave with owners and dates"] },
-  { id: "board-briefing", name: "Board briefing", summary: "Decision-ready board material with context, evidence and an explicit ask.", purpose: "business", tags: ["board", "governance", "decision"], themeKey: "quiet-luxury", motionStyle: "cinematic", voiceStyle: "executive", headlines: ["One decision unlocks the next stage", "The board brief at a glance", "Our operating model has reached its limit", "The alternative is now credible", "The category is consolidating", "The investment fits the plan", "Downside is controlled by milestones", "Stage the commitment around evidence", "Approve the first tranche", "Decide with confidence"] },
+  { id: "quarterly-review", name: "Quarterly review", summary: "A crisp operating review with results, risks and next-quarter choices.", purpose: "business", tags: ["quarterly", "operations", "leadership"], themeKey: "civic", motionStyle: "restrained", voiceStyle: "direct", headlines: ["A quarter of sharper execution", "What leaders need to know", "The missed handoff slowed delivery", "Retention creates the next opening", "Core demand is strongest", "Margin improved without losing pace", "Two risks need active ownership", "Three moves next quarter", "Protect focus, close loops", "Leave with owners and dates"] },
+  { id: "board-briefing", name: "Board briefing", summary: "Decision-ready board material with context, evidence and an explicit ask.", purpose: "business", tags: ["board", "governance", "decision"], themeKey: "quiet-luxury", motionStyle: "cinematic", voiceStyle: "executive", headlines: ["One decision unlocks growth", "The brief at a glance", "Our model is at capacity", "The alternative is now credible", "The category is consolidating", "The investment fits the plan", "Downside is controlled by milestones", "Stage the commitment around evidence", "Approve the first tranche", "Decide with confidence"] },
   { id: "product-roadmap", name: "Product roadmap", summary: "A customer-led roadmap connecting problems, bets and releases.", purpose: "product", tags: ["roadmap", "product", "strategy"], themeKey: "oceanic", motionStyle: "dynamic", voiceStyle: "optimistic", headlines: ["The roadmap follows customer friction", "The story in ten moves", "Teams lose context at the handoff", "Three capabilities restore continuity", "The journey becomes one calm path", "The prototype proves the interaction", "Customers value visibility first", "Release in learning-sized increments", "Every release closes a loop", "Align on the first bet"] },
-  { id: "release-notes", name: "Release notes", summary: "Turn a product release into a clear story of change and value.", purpose: "product", tags: ["release", "launch", "changelog"], themeKey: "high-contrast", motionStyle: "energetic", voiceStyle: "bright", headlines: ["A faster way to finish the work", "What changed and why", "The old flow created repeat effort", "The release removes the busywork", "The shortest path is now obvious", "See the new flow in action", "Beta feedback shaped the details", "Rollout begins with the core teams", "Small fixes complete the experience", "Upgrade with confidence"] },
+  { id: "release-notes", name: "Release notes", summary: "Turn a product release into a clear story of change and value.", purpose: "product", tags: ["release", "launch", "changelog"], themeKey: "high-contrast", motionStyle: "energetic", voiceStyle: "bright", headlines: ["Finish the work faster", "What changed and why", "The old flow repeated effort", "The release removes the busywork", "The shortest path is obvious", "See the new flow", "Beta feedback shaped the details", "Rollout starts with core teams", "Small fixes complete the experience", "Upgrade with confidence"] },
   { id: "customer-case-study", name: "Customer case study", summary: "A proof-led customer story from tension to measurable outcome.", purpose: "product", tags: ["customer", "case study", "proof"], themeKey: "forest", motionStyle: "editorial", voiceStyle: "credible", headlines: ["Clarity changed the pace of work", "The customer story at a glance", "Fragmented ownership delayed every launch", "A shared workspace changed the system", "The team found one continuous path", "The new workflow made progress visible", "Adoption grew through weekly feedback", "Rollout followed confident champions", "Iteration turned friction into habit", "Make the next success repeatable"] },
   { id: "lesson-plan", name: "Lesson plan", summary: "A paced lesson from objectives through practice and reflection.", purpose: "teaching", tags: ["lesson", "classroom", "education"], themeKey: "paper-ink", motionStyle: "restrained", voiceStyle: "encouraging", headlines: ["Learn to turn evidence into a claim", "By the end, you can explain and apply", "A strong claim connects cause and proof", "Watch the reasoning take shape", "Use three steps to test the idea", "Now build the argument yourself", "Check the logic before moving on", "Name what changed in your thinking", "Keep these references close", "Carry the method into your next problem"] },
   { id: "training-module", name: "Training module", summary: "A practical workplace module built around demonstration and practice.", purpose: "teaching", tags: ["training", "enablement", "workshop"], themeKey: "bento", motionStyle: "dynamic", voiceStyle: "supportive", headlines: ["Make every handoff explicit", "Know the standard and practise it", "Good ownership is visible", "See a clean handoff in context", "Follow the same reliable sequence", "Practise with a real scenario", "Choose the strongest response", "Reflect on the moment of uncertainty", "Use the checklist on the job", "Make the behaviour routine"] },
@@ -233,9 +233,92 @@ const EXPANDED_PRESET_BRIEFS: readonly PresetBrief[] = [
   { id: "personal-narrative", name: "Personal narrative", summary: "A reflective life or career story told through decisive moments.", purpose: "personal", tags: ["biography", "career", "storytelling"], themeKey: "editorial-serif", motionStyle: "editorial", voiceStyle: "reflective", headlines: ["The work began with a question", "A few moments shaped the direction", "Curiosity became a way of moving", "The archive reveals a consistent thread", "One project changed the ambition", "Mentors made the possibility visible", "The next chapter has its own rhythm", "The clearest lesson is to stay open", "Reflection turns experience into choice", "Thank you for listening"] },
 ] as const;
 
+/**
+ * Which language each of the 24 original templates composes in (UI audit unit
+ * 7a): three per language, chosen for fit. Before this every template composed
+ * in the neutral grammar, so the gallery showed one layout in 24 colours.
+ */
+export const TEMPLATE_LANGUAGE: Record<string, DesignLanguageId> = {
+  "quarterly-review": "swiss-signal",
+  "board-briefing": "swiss-signal",
+  "release-notes": "swiss-signal",
+  "thesis-defence": "cinema-noir",
+  "event-story": "cinema-noir",
+  "personal-narrative": "cinema-noir",
+  "teaching-workshop": "play-lab",
+  onboarding: "play-lab",
+  "team-kickoff": "play-lab",
+  "technical-architecture": "system-terminal",
+  "incident-review": "system-terminal",
+  "system-design-review": "system-terminal",
+  "business-pitch": "quiet-luxe",
+  "wedding-story": "quiet-luxe",
+  "personal-portfolio": "quiet-luxe",
+  "investor-update": "data-desk",
+  "team-all-hands": "data-desk",
+  retrospective: "data-desk",
+  "customer-case-study": "earth-story",
+  "lesson-plan": "earth-story",
+  "training-module": "earth-story",
+  "product-launch": "spatial-future",
+  "product-roadmap": "spatial-future",
+  "research-talk": "spatial-future",
+};
+
+/**
+ * A language's rhythm: the patterns it tells a story with, replacing ones its
+ * grammar tells less well. Applied to the generated templates, whose sequences
+ * were one per purpose; the six founding templates were written slide by slide
+ * and keep theirs. A replaced slide keeps its key, because a key is the public
+ * address `deck_from_template` content is written against.
+ */
+export const LANGUAGE_RHYTHM: Partial<Record<DesignLanguageId, Partial<Record<SlidePattern, SlidePattern>>>> = {
+  "swiss-signal": { "executive-summary": "statement", market: "big-number", agenda: "section", changelog: "big-number" },
+  "cinema-noir": { "learning-objectives": "quote", exercise: "story-beat", quiz: "reflection", "event-schedule": "story-beat" },
+  "play-lab": { "team-update": "wins", blockers: "pros-cons", checklist: "shout-outs" },
+  "system-terminal": { decision: "demo", "root-cause": "system-flow", incident: "data-model" },
+  "quiet-luxe": { "event-schedule": "story-beat", "case-study": "gallery" },
+  "data-desk": { problem: "big-number", opportunity: "market", blockers: "big-number", "shout-outs": "wins" },
+  "earth-story": { "feature-grid": "story-beat", demo: "case-study", quiz: "reflection", "learning-objectives": "concept" },
+  "spatial-future": { problem: "big-number", "api-contract": "feature-grid", "data-model": "architecture", changelog: "feature-grid", appendix: "closing" },
+};
+
+/**
+ * One original template, in its language. The language's defaults are its
+ * theme, motion and transition; its voice stays the template's own, because a
+ * wedding and an incident review are not read in the same voice even when
+ * they share a grammar.
+ */
+function inLanguage(preset: Omit<DeckPreset, "designLanguage">, rhythm: boolean): DeckPreset {
+  const languageId = TEMPLATE_LANGUAGE[preset.id];
+  if (!languageId) throw new Error(`No design language is chosen for template ${preset.id}.`);
+  const defaults = DESIGN_LANGUAGES[languageId].defaults;
+  const swaps = rhythm ? (LANGUAGE_RHYTHM[languageId] ?? {}) : {};
+  return {
+    ...preset,
+    designLanguage: languageId,
+    themeKey: defaults.themeKey,
+    motionStyle: defaults.motionStyle,
+    transitionStyle: defaults.transitionStyle,
+    slides: preset.slides.map((slide) => {
+      const next = swaps[slide.pattern];
+      if (!next) return slide;
+      return {
+        ...slide,
+        pattern: next,
+        slots: {
+          ...PATTERN_DEFINITIONS[next].exampleSlots,
+          ...(slide.slots.eyebrow !== undefined ? { eyebrow: slide.slots.eyebrow } : {}),
+          ...(slide.slots.headline !== undefined ? { headline: slide.slots.headline } : {}),
+        },
+      };
+    }),
+  };
+}
+
 export const DECK_PRESETS: readonly DeckPreset[] = [
-  ...FOUNDATION_PRESETS.map((preset): DeckPreset => ({ ...preset, designLanguage: "neutral" })),
-  ...EXPANDED_PRESET_BRIEFS.map(makePreset),
+  ...FOUNDATION_PRESETS.map((preset) => inLanguage(preset, false)),
+  ...EXPANDED_PRESET_BRIEFS.map((brief) => inLanguage(makePreset(brief), true)),
   ...PILOT_PRESETS,
 ];
 
