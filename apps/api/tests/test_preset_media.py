@@ -46,7 +46,7 @@ def _entry(name: str, data: bytes, size: tuple[int, int], uses: list[dict], **ov
         "height": size[1],
         "alt": f"A flat colour standing in for {name}",
         "review": {"result": "approved", "reviewer": "test", "date": "2026-10-10"},
-        "license": {"plan": "Plus", "commercialUse": True, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64},
+        "license": {"use": "commercial", "plan": "Plus", "commercialUse": True, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64},
         "templates": uses,
     }
     entry.update(overrides)
@@ -108,14 +108,52 @@ def _pictures(document):
     ]
 
 
+SHIPPED = Path(__file__).resolve().parents[3] / "packages" / "deck-presets" / "media"
+
+
 def test_the_shipped_manifest_is_within_budget():
-    """Empty today, and the check that will hold every picture added to it."""
-    assert preset_media.problems(Path(__file__).resolve().parents[3] / "packages" / "deck-presets" / "media") == []
+    """The check that holds every picture in the build."""
+    preset_media._load.cache_clear()
+    assert preset_media.problems(SHIPPED) == []
 
 
-def test_with_no_pictures_a_frame_stays_a_frame():
+def test_demo_pictures_are_usable_and_never_releasable(tmp_path):
+    """Demo use is non-commercial, which every plan allows; a release is not a demo."""
+    folder = tmp_path / "demo"
+    folder.mkdir()
+    data = _jpeg(400, 300, (9, 9, 9))
+    (folder / "demo-shot.jpg").write_bytes(data)
+    licence = {"use": "demo", "plan": "Starter", "commercialUse": False, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64}
+    manifest = {"media": [_entry("demo-shot.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license=licence)]}
+    (folder / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+    preset_media._load.cache_clear()
+    assert preset_media.problems(folder) == []
+    assert preset_media.demo_only(folder) == ["demo-shot.jpg"]
+    assert "may not ship in a release" in " ".join(preset_media.problems(folder, release=True))
+    preset_media._load.cache_clear()
+
+
+def test_with_no_pictures_a_frame_stays_a_frame(tmp_path, monkeypatch):
+    monkeypatch.setenv("DECKASTRA_PRESET_MEDIA_DIR", str(tmp_path))
+    preset_media._load.cache_clear()
     document = template_compose.compose_template("business-pitch")
     assert _pictures(document) == []
+    preset_media._load.cache_clear()
+
+
+def test_every_shipped_template_with_a_frame_shows_a_picture_and_none_is_releasable():
+    """The 22 demo pictures fill every frame the catalog draws, and a release refuses all of them."""
+    from deckastra_api import presets
+
+    preset_media._load.cache_clear()
+    for preset in presets.public_catalog()["presets"]:
+        document = template_compose.compose_template(preset["id"])
+        frames = [e for s in document["slides"] for e in s["elements"] if e.get("name") in preset_media.FRAME_NAMES]
+        assert len(_pictures(document)) == len(frames), preset["id"]
+        assert validate_document(document) == [], preset["id"]
+    refused = preset_media.problems(SHIPPED, release=True)
+    assert len(preset_media.demo_only(SHIPPED)) == len(preset_media.entries()) == 22
+    assert all("demo use" in line or "reviewed by a person" in line for line in refused)
 
 
 def test_a_template_puts_its_pictures_in_its_frames(media):
@@ -173,7 +211,7 @@ def test_the_budget_refuses_what_may_not_ship(tmp_path):
     (folder / "unreviewed.jpg").write_bytes(data)
     big = _jpeg(1900, 1900, (0, 0, 0))
     manifest = {"media": [
-        _entry("starter.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license={"plan": "Starter", "commercialUse": False, "termsUrl": "u", "termsRetrievedAt": "d", "termsSha256": "s"}),
+        _entry("starter.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license={"use": "commercial", "plan": "Starter", "commercialUse": False, "termsUrl": "u", "termsRetrievedAt": "d", "termsSha256": "s"}),
         _entry("changed.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], sha256="0" * 64),
         _entry("unreviewed.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], review={}),
         _entry("missing.jpg", big, (1900, 1900), [{"template": "x", "role": "scene"}]),
@@ -182,9 +220,31 @@ def test_the_budget_refuses_what_may_not_ship(tmp_path):
     (folder / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
     preset_media._load.cache_clear()
     found = " | ".join(preset_media.problems(folder))
-    assert "starter.jpg was not made under terms that allow commercial use" in found
+    assert "starter.jpg is marked for commercial use but was not made under terms that allow it" in found
     assert "changed.jpg does not match its recorded sha256" in found
     assert "unreviewed.jpg has no recorded approval" in found
     assert "missing.jpg is in the manifest and not on disk" in found
     assert "Bad Name.png: file names are lower-case words and hyphens ending .jpg" in found
     preset_media._load.cache_clear()
+
+
+def test_a_deck_is_made_without_its_pictures_when_they_cannot_be_stored(tmp_path, monkeypatch, media):
+    """No object store: the deck still arrives, frames empty, and says why."""
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'nostore.db'}")
+    monkeypatch.setenv("DECKASTRA_DEV_SECRET", "test-secret")
+    monkeypatch.delenv("DECKASTRA_ASSET_DIR", raising=False)
+    monkeypatch.setattr(object_storage, "put", lambda *a, **k: (_ for _ in ()).throw(object_storage.ObjectStorageError("offline")))
+    db_session.reset_engine()
+    db_session.create_all()
+    from deckastra_api.main import app
+
+    with TestClient(app) as client:
+        token = client.post("/v1/dev/session", json={"email": "nostore@localhost"}).json()["token"]
+        made = client.post("/v1/decks/from-template", headers={"Authorization": f"Bearer {token}"}, json={"template_id": "business-pitch"})
+    assert made.status_code == 200, made.text
+    body = made.json()
+    assert _pictures(body["document"]) == []
+    assert not any(str(a.get("storageKey", "")).startswith("preset-media/") for a in body["document"].get("assets") or [])
+    assert "could not be stored" in body["warnings"][0]
+    frames = [e for s in body["document"]["slides"] for e in s["elements"] if e.get("name") in preset_media.FRAME_NAMES]
+    assert frames, "the frames stay"

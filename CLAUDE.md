@@ -4241,12 +4241,15 @@ to undo:
   that share a grammar, or any W103 or W110; `scene-check.ts` now reports W110
   too. Each run is recorded in `docs/design-audit/LANGUAGE_REVIEW.md`.
 - **Template pictures** (unit 7b; `preset_media.py`, `docs/design-audit/MEDIA.md`).
-  The manifest at `packages/deck-presets/media/MANIFEST.json` is the only list,
-  and **it is empty**: OpenArt's terms grant commercial use only from the Plus
-  plan up, and the account is on Starter. `problems()` refuses any entry
-  without full provenance, a named reviewer and commercial-use licence evidence,
-  and enforces the budget (30 JPEGs, 400 KB and 1920px each, 12 MB in all). JPEG
-  because PowerPoint will not open WebP.
+  The manifest at `packages/deck-presets/media/MANIFEST.json` is the only list.
+  It holds 22 OpenArt pictures made on the Starter plan **for demo use**:
+  OpenArt grants commercial use only from Plus up.
+  - `problems()` enforces the budget (30 JPEGs, 400 KB and 1920px each, 12 MB
+    in all) and requires full provenance and a named reviewer. JPEG because
+    PowerPoint will not open WebP.
+  - `problems(release=True)` and `verify-release.mjs` refuse any picture whose
+    `license.use` is not `commercial`, or whose `review.by` is not `person`. A
+    demo build works, and a release cannot ship them.
   - `attach` puts pictures in a language's frames after composition, as
     `preset-media/<file>` keys. Previews read them via `GET
     /v1/presets/media/{file}`, mapped by both `blob_url` and the client's

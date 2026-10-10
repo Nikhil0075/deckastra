@@ -195,6 +195,11 @@ describe("the release gate", () => {
     const over = verify(release);
     expect(over.problems.join(" ")).toContain("the ceiling is 12288 KB");
 
+    rmSync(join(media, "huge.jpg"));
+    writeFileSync(join(media, "MANIFEST.json"), JSON.stringify({ media: [{ file: "a.jpg", license: { use: "demo", plan: "Starter" } }] }));
+    const demo = verify(release);
+    expect(demo.problems.join(" ")).toContain("were made for demo use and may not ship in a release");
+
     rmSync(media, { recursive: true, force: true });
     const missing = verify(release);
     expect(missing.problems.join(" ")).toContain("ships no template picture folder");

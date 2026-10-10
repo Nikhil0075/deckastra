@@ -168,6 +168,18 @@ export function verifyRelease({ releaseDir, distManifest, current, probe, publis
     report.media = { files: files.length, bytes };
     if (files.length > MEDIA_MAX_FILES) problems.push(`The release ships ${files.length} template pictures; the budget is ${MEDIA_MAX_FILES}.`);
     if (bytes > MEDIA_MAX_BYTES) problems.push(`Template pictures take ${Math.round(bytes / 1024)} KB; the ceiling is ${MEDIA_MAX_BYTES / 1024} KB.`);
+    // A picture made for demo use (non-commercial, which any OpenArt plan allows)
+    // may be shown; it may not be sold. A release is for selling.
+    let manifest = { media: [] };
+    try {
+      manifest = JSON.parse(readFileSync(join(media, "MANIFEST.json"), "utf8"));
+    } catch {
+      problems.push("The template picture manifest cannot be read.");
+    }
+    const demo = (manifest.media ?? []).filter((entry) => entry?.license?.use !== "commercial").map((entry) => entry.file);
+    if (demo.length) {
+      problems.push(`${demo.length} template picture(s) were made for demo use and may not ship in a release (${demo.slice(0, 3).join(", ")}${demo.length > 3 ? ", …" : ""}). Regenerate them under a plan that allows commercial use.`);
+    }
   }
 
   // Notices: shipped, and the ones this build wrote (item 33).

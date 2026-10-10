@@ -5,31 +5,45 @@ frame, Quiet Luxe's portrait, Earth Story's arch, Spatial Future's hologram and
 Play Lab's picture blob. A template can ship the picture that goes in it. This
 page covers what may ship, how a picture is added, and where things stand.
 
-## Status, 2026-10-10: the pipeline is built and no pictures ship
+## Status, 2026-10-10: 22 demo pictures ship; none may be sold
 
-The plan was to generate the pictures with OpenArt. Before generating
-anything, the terms were read:
+The terms were read before anything was generated:
 
 > "For subscription levels at, and above, the 'Plus' level (as described on our
 > pricing page), you may also freely use Output you generate for commercial
 > purposes."
 
-The account is on **Starter**, which the pricing page lists below Plus.
-"Commercial use rights" appears on Plus and above. Pictures shipped inside a
-product's templates are commercial use, so none were generated. The person
-chose to build the pipeline now and add pictures later, either after upgrading
-to a plan that allows commercial use or from another source with a licence that
-permits it.
+The account is on **Starter**, which the pricing page lists below Plus. Every
+plan may use output for non-commercial purposes, and the person wants a demo
+first and a commercial plan later. So the 22 pictures were generated **for demo
+use**, and the pipeline enforces that distinction:
 
-Evidence, kept so the decision can be checked:
+- each entry records `license.use: "demo"`, the plan, and the terms it was
+  made under;
+- the build, the tests and demos accept demo pictures;
+- `problems(release=True)` and `apps/desktop/scripts/verify-release.mjs` refuse
+  a release that carries any demo picture, or any picture not reviewed by a
+  person (`review.by: "person"`).
+
+Before a commercial release, regenerate each picture under a plan that allows
+commercial use, have a person review it, and update its entry. The prompts are
+in the manifest, so the same picture can be asked for again.
 
 | | |
 | --- | --- |
 | Terms | <https://openart.ai/terms>, retrieved 2026-10-10, SHA-256 of the page `00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2` |
 | Pricing | <https://openart.ai/pricing>, retrieved 2026-10-10 |
-| Account | Starter plan, 2,430 credits |
+| Model | OpenArt Seedream 4.5, text-to-image, 2K, 15 credits each; 330 credits for all 22 |
+| Pictures | 22, 3.6 MB in all (largest 329 KB), 1600px on the long edge, JPEG quality 82 |
+| Review | by Claude, the implementing agent: no watermark, no logos, no legible text, fits its frame and language. Recorded as `by: "agent"`. |
 
-The page digest records what was read. It is not a copy of the page.
+Two review notes are recorded on their entries. The workflow sketch
+(`earth-customer-case-study-scene.jpg`) has near-legible scribbled words. The
+warehouse and greenhouse pictures show generated people with visible faces.
+Both are fine for a demo, and both are worth another look before release.
+
+Contact sheets, with every picture and six templates using them:
+`concepts/unit7b-media/`.
 
 ## What may ship
 

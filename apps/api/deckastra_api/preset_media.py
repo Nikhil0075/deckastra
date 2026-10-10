@@ -216,6 +216,29 @@ def adopt(session, document: dict[str, Any], *, workspace_id: str, created_by: s
     return Adopted(asset_ids=renamed)
 
 
+def drop(document: dict[str, Any]) -> int:
+    """Take a template's pictures back out, leaving its frames as frames.
+
+    For when they cannot be stored (no object store, a full quota): a deck
+    without its pictures is still the deck the person asked for, and refusing
+    the whole deck to save a photograph would lose it. Returns how many were
+    removed, so the caller can say so.
+    """
+    ids = {
+        asset["id"] for asset in document.get("assets") or []
+        if str(asset.get("storageKey") or "").startswith(KEY_PREFIX)
+    }
+    if not ids:
+        return 0
+    document["assets"] = [asset for asset in document.get("assets") or [] if asset["id"] not in ids]
+    removed = 0
+    for slide in document.get("slides") or []:
+        before = len(slide.get("elements") or [])
+        slide["elements"] = [element for element in slide.get("elements") or [] if element.get("assetId") not in ids]
+        removed += before - len(slide["elements"])
+    return removed
+
+
 def _rewrite(nodes: Any, renamed: dict[str, str]) -> None:
     if isinstance(nodes, list):
         for node in nodes:
@@ -232,10 +255,28 @@ def _rewrite(nodes: Any, renamed: dict[str, str]) -> None:
 
 
 COMMERCIAL_PLANS = {"Plus", "Pro", "Wonder", "Enterprise"}
+#: What a picture may be used for. `demo` is non-commercial use, which OpenArt's
+#: terms allow on every plan; `commercial` needs a plan that grants it.
+USES = ("demo", "commercial")
 
 
-def problems(directory: Path | None = None) -> list[str]:
-    """Everything wrong with the shipped pictures, as sentences. Empty is shippable."""
+def demo_only(directory: Path | None = None) -> list[str]:
+    """The pictures that may be shown in a demo and may not ship in a release."""
+    data = _load(str(directory or media_dir()))
+    return [
+        str(entry.get("file"))
+        for entry in data.get("media") or []
+        if (entry.get("license") or {}).get("use") != "commercial"
+    ]
+
+
+def problems(directory: Path | None = None, *, release: bool = False) -> list[str]:
+    """Everything wrong with the pictures, as sentences. Empty is usable.
+
+    `release=True` is the bar for a build that will be sold: every picture must
+    have been made under terms that allow commercial use. Without it, pictures
+    marked for demo use are accepted, because a demo is non-commercial use.
+    """
     directory = directory or media_dir()
     data = _load(str(directory))
     media = list(data.get("media") or [])
@@ -276,8 +317,17 @@ def problems(directory: Path | None = None) -> list[str]:
         if review.get("result") != "approved" or not review.get("reviewer") or not review.get("date"):
             out.append(f"{label} has no recorded approval by a named reviewer.")
         licence = entry.get("license") or {}
-        if licence.get("commercialUse") is not True or licence.get("plan") not in COMMERCIAL_PLANS:
-            out.append(f"{label} was not made under terms that allow commercial use (plan {licence.get('plan')!r}).")
+        use = licence.get("use")
+        if use not in USES:
+            out.append(f"{label} does not say whether it is for demo or commercial use.")
+        elif use == "commercial" and (licence.get("commercialUse") is not True or licence.get("plan") not in COMMERCIAL_PLANS):
+            out.append(f"{label} is marked for commercial use but was not made under terms that allow it (plan {licence.get('plan')!r}).")
+        elif release and use != "commercial":
+            out.append(f"{label} was made for demo use (plan {licence.get('plan')!r}) and may not ship in a release.")
+        if release and review.get("by") != "person":
+            # An agent's look is recorded honestly as one; selling a picture
+            # needs a person to have looked at it.
+            out.append(f"{label} has not been reviewed by a person, which a release needs.")
         if not licence.get("termsUrl") or not licence.get("termsRetrievedAt") or not licence.get("termsSha256"):
             out.append(f"{label} does not record the terms it was made under.")
         uses = entry.get("templates") or []

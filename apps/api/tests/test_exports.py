@@ -160,14 +160,21 @@ def test_the_report_is_available_before_the_download(client, auth, deck):
 
 
 @pytest.mark.slow
-def test_a_stub_deck_reports_what_powerpoint_cannot_carry(client, auth, deck):
+def test_a_stub_deck_reports_what_powerpoint_cannot_carry(client, auth):
+    # A template with a code slide. Since unit 7a templates compose in design
+    # languages, and the business pitch (Quiet Luxe) now exports to PowerPoint
+    # with nothing degraded, so it can no longer stand in for "a deck with code".
+    made = client.post(
+        "/v1/decks/from-template", headers=auth, json={"template_id": "technical-architecture"}
+    )
+    assert made.status_code == 200, made.text
     started = client.post(
-        f"/v1/presentations/{deck}/exports", headers=auth, json={"kind": "pptx"}
+        f"/v1/presentations/{made.json()['presentation_id']}/exports", headers=auth, json={"kind": "pptx"}
     )
     report = started.json()["report"]
 
-    # The stub deck has a code block and a metrics slide, so at minimum the code
-    # element is flattened into a text box and said so.
+    # The deck has a code block, so at minimum the code element is flattened
+    # into a text box and said so.
     assert report["unsupportedFeatures"], "a deck with charts and code degraded nothing"
 
 

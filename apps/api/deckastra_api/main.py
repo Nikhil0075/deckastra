@@ -302,19 +302,28 @@ def deck_from_template(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     # The template's pictures become this workspace's own assets, so the deck
     # exports, backs up and syncs like any deck with uploads in it (unit 7b).
+    # If they cannot be stored, the deck is made without them and says so: a
+    # deck is worth more than its photographs.
+    warnings: list[str] = []
     try:
-        preset_media.adopt(session, document, workspace_id=project.workspace_id, created_by=principal.user_id)
-    except quotas.QuotaExceeded as exc:
-        raise HTTPException(status_code=409, detail=f"The template's pictures do not fit this workspace's storage: {exc}") from exc
-    except (preset_media.PresetMediaError, object_storage.ObjectStorageError) as exc:
-        raise HTTPException(status_code=503, detail=f"The template's pictures could not be stored: {exc}") from exc
-    return _store_composed(
+        with session.begin_nested():
+            preset_media.adopt(session, document, workspace_id=project.workspace_id, created_by=principal.user_id)
+    except quotas.QuotaExceeded:
+        preset_media.drop(document)
+        warnings.append("The template's pictures were left out because this workspace's storage is full. The frames are there to fill.")
+    except (preset_media.PresetMediaError, object_storage.ObjectStorageError, OSError):
+        logger.warning("Template pictures could not be stored for %s", request.template_id)
+        preset_media.drop(document)
+        warnings.append("The template's pictures could not be stored, so they were left out. The frames are there to fill.")
+    stored = _store_composed(
         session,
         principal,
         document,
         project_id=project.id,
         template_id=request.template_id,
     )
+    stored.warnings = warnings
+    return stored
 
 
 @app.post("/v1/decks/compose", response_model=ComposedDeckResponse)
