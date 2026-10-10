@@ -4228,6 +4228,51 @@ to undo:
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.
 
+### Presenter ink (UI audit unit 6, 2026-10-10)
+
+Laser, pen, highlighter and eraser while presenting (`lib/ink.ts`,
+`components/InkLayer.tsx`). Rules that are easy to undo:
+
+- **Ink is session state, never the document's.** It reaches a deck only
+  through "Save annotated copy" (`lib/ink-annotations.ts`). That drains the
+  save queue, duplicates the deck, and adds one locked "Annotations" group of
+  locked custom-path shapes per slide to the copy, in one change. The deck that
+  was presented is never written. Strokes are matched to the copy's slides by
+  position, because a duplicate has fresh ids.
+- **The audience window is the authority, as it is for the slide.**
+  `InkSession` applies commands in arrival order and answers with a snapshot of
+  the slide on screen (`ink-state`). It also answers `hello`, so a late or
+  reloaded presenter window gets the strokes already drawn. A presenter window
+  never applies ink itself. `InkMirror` shows its own strokes until the
+  authority acknowledges their sequence numbers, and ignores a snapshot older
+  than the one it holds.
+- **Commands are idempotent.** A stroke id minted by its author makes a
+  repeated `add` nothing. An `erase` of a stroke that has gone is nothing. A
+  sequence number already seen from a sender is nothing.
+- **Undo, redo and clear are per slide and decided by the authority.** Two
+  windows replaying their own undo would undo two different things. Clear-all
+  is not undoable.
+- **Coordinates are 0–1 of the slide, mapped against the slide's own box.** The
+  layer is `SlideTransition`'s `overlay` and sits inside the presenter
+  preview's slide, so the letterbox is outside it. The SVG clips, and points
+  are clamped.
+- **A press with a tool in hand is never navigation.** The layer stops the
+  click that would advance the stage. With no tool it takes no pointer events.
+- **Keys:** K laser, E pen, H highlighter, X eraser, C clear slide, Ctrl+Z and
+  Ctrl+Y for the ink. The editor's handler is off while presenting. Escape puts
+  the tool down first. In full screen the browser takes Escape, so
+  `fullscreenchange` with a tool in hand puts the tool down instead of leaving.
+- **Everything from the channel is checked** (`sanitizeStroke` and friends):
+  a colour allowlist, width 1–48, at most 2,000 points, ids by pattern, unknown
+  operations ignored. The laser is best effort and never stored.
+- The `presenter` smoke step draws with real input in the laptop window and
+  checks that the projector's count changes. On 2026-10-10 that took 3ms after
+  the pen lifted, measured by the projector's clock. It also checks that the
+  talk did not move, that undo clears both windows, and that Escape leaves the
+  presenter window presenting. Last, it resizes the projector to 4:3 and checks
+  that a stroke from the slide's corner starts at (1.6, 2.4) in slide pixels,
+  with a 113px letterbox above.
+
 ### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
 
 The active agent-first plan is
