@@ -66,6 +66,18 @@ covers are 24 bits apart, so they are a near-duplicate pair. That is expected fo
 title cards in one language, and unit 7's gate will compare across languages
 rather than within one.
 
+## Unit 6 · Presenter ink
+
+`unit6-ink/presenter-ink.webp` is the presenter window with the pen in hand and
+a stroke drawn on the current slide. `unit6-ink/presenter-ink-audience.webp` is
+the projector a moment later, showing the same stroke and the ink tools at the
+right of the control bar. Both were captured by the desktop `presenter` step on a fresh profile. The
+blue line in the presenter's preview is the slide's own drawn-path element,
+which the preview shows at rest. It is not ink.
+
+No concept was generated for this unit. The tools sit in the bars present mode
+already has, rather than in a new surface.
+
 ## Unit 7a · The six remaining languages
 
 `unit7a-languages/<language>--<template>.webp` shows every slide of one
