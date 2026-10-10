@@ -15,8 +15,13 @@ import { Icon, IconButton, Menu, ScrollArea } from "../../ui";
 import { cx } from "../../ui/cx";
 import { FinalFrameSlide } from "../FinalFrameSlide";
 
-/** Thumbnail width in px; the strip is `--dk-strip-width` wide. */
-const THUMB_WIDTH = 120;
+/**
+ * What the strip spends beside a thumbnail: the step number and drag handle on
+ * the left, padding on the right. A 176px strip draws 120px thumbnails, and a
+ * wider one draws wider ones, which is the point of letting it be dragged wider.
+ */
+const STRIP_CHROME = 56;
+const DEFAULT_STRIP_WIDTH = 176;
 
 /** The drag payload type, so a drop of something else (a file, text) is ignored. */
 const DRAG_TYPE = "application/x-deckastra-slide";
@@ -34,6 +39,8 @@ export interface SlideStripProps {
    * Motion mode has a panel for it.
    */
   onTransition?: (index: number) => void;
+  /** The strip's width in px (`lib/layout-sizes.ts`); thumbnails follow it. */
+  width?: number;
 }
 
 /**
@@ -48,7 +55,8 @@ export interface SlideStripProps {
  * Reordering works three ways, because a drag is not available to everyone:
  * drag the handle, Alt+↑/↓ on a focused thumbnail, or Move up/down in the menu.
  */
-export function SlideStrip({ editor, scene, resolveAssetUrl, onAdd, onNotice, onTransition }: SlideStripProps) {
+export function SlideStrip({ editor, scene, resolveAssetUrl, onAdd, onNotice, onTransition, width = DEFAULT_STRIP_WIDTH }: SlideStripProps) {
+  const thumbWidth = Math.max(64, width - STRIP_CHROME);
   const { document: doc } = editor;
   const issues = doc.extensions?.["deckastra.unresolvedIssues"] as Record<string, unknown[] | undefined> | undefined;
   const active = useRef<HTMLButtonElement | null>(null);
@@ -177,7 +185,7 @@ export function SlideStrip({ editor, scene, resolveAssetUrl, onAdd, onNotice, on
                     onKeyDown={(event) => onThumbKey(event, i)}
                     data-testid="slide-thumb"
                   >
-                    <FinalFrameSlide scene={slideScene} width={THUMB_WIDTH} resolveAssetUrl={resolveAssetUrl} />
+                    <FinalFrameSlide scene={slideScene} width={thumbWidth} resolveAssetUrl={resolveAssetUrl} />
                     {flagged ? <span className="dk-strip__flag" aria-hidden="true" /> : null}
                   </button>
                   <span className="dk-strip__menu">

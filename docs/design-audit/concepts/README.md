@@ -15,3 +15,17 @@ with a cream ground, square corners, Inter and Jost, blue only for actions and
 the current selection, purpose chips and design-language chips, featured and
 all-template grids of real and visibly different covers, and a detail drawer
 offering Use template, Start with my content and Ask your agent.
+
+## Unit 3 · Resizable workspace
+
+`unit3-layout/editor-1366x768.webp` is the editor at 1366×768 with every pane
+at its default, captured by the desktop `layout` smoke step. The panes leave
+the canvas 61% of the width and the slide is 772px (56% of the window). No
+concept was generated for this unit: it adds controls to the existing layout
+rather than changing it.
+
+The plan's target of a 60% *slide* share at 1366px was tested and dropped. Even
+with both panes at their minimums the slide reaches 59%, so meeting it would
+mean putting a pane away. Trimming unsized panes toward it shrank the strip at
+the desktop's own 1440px window for nothing. The step asserts the canvas share
+instead.

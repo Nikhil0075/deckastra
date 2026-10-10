@@ -171,6 +171,7 @@ export const MENU_COMMANDS = [
   "panel-dock",
   "panels-focus",
   "panels-all",
+  "layout-reset",
 ] as const satisfies readonly HostCommand[];
 
 export type MenuCommand = (typeof MENU_COMMANDS)[number];

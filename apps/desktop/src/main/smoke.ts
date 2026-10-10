@@ -63,7 +63,8 @@ export type SmokeStep =
   | "design"
   | "handoff"
   | "languages"
-  | "narration";
+  | "narration"
+  | "layout";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -277,6 +278,8 @@ export async function runSmoke(
       await runResilience(window, dir, record, controls);
     } else if (current === "timeline") {
       await runTimeline(window, record);
+    } else if (current === "layout") {
+      await runLayout(window, dir, record);
     } else if (current === "slides") {
       await runSlides(window, record);
     } else if (current === "presenter") {
@@ -1376,6 +1379,128 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
  * what the author sees, but the clip's stored startMs is what survives a reload,
  * and those are different claims.
  */
+/**
+ * The resizable workspace, driven by real input (UI audit 2026-10-10, unit 3).
+ *
+ * Drags the strip's splitter with mouse events the browser treats as a
+ * person's, checks the strip and its thumbnails grew, reloads the window and
+ * checks the width was remembered, then resizes the window to a 1366×768 laptop
+ * and measures how much of it the slide gets. It starts and ends with Reset
+ * workspace from the application menu, so it leaves the layout as a first run
+ * has it.
+ */
+async function runLayout(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
+  const page = <T = unknown>(expression: string) => window.webContents.executeJavaScript(expression) as Promise<T>;
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  const need = async (what: string, expression: string, timeoutMs = 15_000) => {
+    if (!(await until(window, expression, timeoutMs))) throw new Error(`layout: ${what}`);
+  };
+  const reset = () => {
+    const item = Menu.getApplicationMenu()?.getMenuItemById("layout-reset");
+    if (!item) throw new Error("layout: the application menu has no Reset workspace");
+    item.click();
+  };
+  const box = (selector: string) =>
+    page<{ x: number; y: number; width: number; height: number } | null>(`(() => {
+      const node = document.querySelector(${JSON.stringify(selector)});
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    })()`);
+  // A move while the button is held says so (`leftButtonDown`). Without it
+  // Chromium reads the moves as hovering with the button up, reports
+  // `buttons: 0`, and no drag a person could make looks like that.
+  const mouse = (type: "mouseDown" | "mouseUp" | "mouseMove", x: number, y: number, held = false) =>
+    window.webContents.sendInputEvent({
+      type,
+      x: Math.round(x),
+      y: Math.round(y),
+      button: "left",
+      clickCount: 1,
+      ...(held ? { modifiers: ["leftButtonDown"] } : {}),
+    } as Electron.MouseInputEvent);
+
+  await need("the editor never opened", `document.querySelector("[data-editor-canvas]")`, 30_000);
+  const originalSize = window.getSize();
+  // The content area, not the frame, and wide enough that no pane yields
+  // (lib/layout-sizes.ts): the defaults are measured as they are.
+  window.setContentSize(1600, 900);
+  await sleep(300);
+  reset();
+  await need("Reset workspace did not bring the strip back at its default width", `Math.round(document.querySelector('[data-region="slides"]')?.getBoundingClientRect().width ?? 0) === 176`);
+  const thumbBefore = (await box('[data-testid="slide-thumb"] [data-final-frame]'))?.width ?? 0;
+
+  // ---- 1. A real drag on the strip's splitter.
+  const line = await box('[data-testid="splitter-strip"]');
+  if (!line) throw new Error("layout: there is no splitter beside the strip");
+  const from = { x: line.x + line.width / 2, y: line.y + line.height / 2 };
+  window.focus();
+  window.webContents.focus();
+  mouse("mouseMove", from.x, from.y);
+  mouse("mouseDown", from.x, from.y);
+  for (let i = 1; i <= 12; i += 1) {
+    mouse("mouseMove", from.x + (80 * i) / 12, from.y, true);
+    await sleep(20);
+  }
+  mouse("mouseUp", from.x + 80, from.y);
+  await need("dragging the splitter did not widen the strip", `Math.round(document.querySelector('[data-region="slides"]')?.getBoundingClientRect().width ?? 0) >= 250`);
+  const stripAfter = (await box('[data-region="slides"]'))!.width;
+  const thumbAfter = (await box('[data-testid="slide-thumb"] [data-final-frame]'))?.width ?? 0;
+  record.strip = { before: 176, after: Math.round(stripAfter), thumbBefore: Math.round(thumbBefore), thumbAfter: Math.round(thumbAfter) };
+  if (thumbAfter <= thumbBefore) throw new Error("layout: the strip grew and its thumbnails did not");
+  const stored = await page<{ strip?: number } | null>(`JSON.parse(localStorage.getItem("deckastra.layout") ?? "null")`);
+  record.stored = stored;
+  if (!stored || Math.abs((stored.strip ?? 0) - stripAfter) > 1) throw new Error("layout: the dragged width was not remembered");
+
+  // ---- 2. Remembered across a reload.
+  window.webContents.reload();
+  await need("the editor did not come back after a reload", `document.querySelector("[data-editor-canvas]")`, 30_000);
+  await need("the strip came back at another width", `Math.abs(document.querySelector('[data-region="slides"]').getBoundingClientRect().width - ${stripAfter}) <= 1`);
+  record.afterReload = Math.round((await box('[data-region="slides"]'))!.width);
+
+  // ---- 3. A 1366×768 laptop, at the default sizes.
+  reset();
+  await need("Reset workspace did not put the strip back", `Math.round(document.querySelector('[data-region="slides"]')?.getBoundingClientRect().width ?? 0) === 176`);
+  window.setContentSize(1366, 768);
+  await sleep(600);
+  const laptop = await page<{ window: number; canvas: number; slide: number; slideHeight: number; stageHeight: number; strip: boolean; panel: boolean }>(`(() => {
+    const slide = document.querySelector(".dk-stage__slide").getBoundingClientRect();
+    const stage = document.querySelector(".dk-stage").getBoundingClientRect();
+    return {
+      window: window.innerWidth,
+      canvas: Math.round(stage.width),
+      slide: Math.round(slide.width),
+      slideHeight: Math.round(slide.height),
+      stageHeight: Math.round(stage.height),
+      strip: Boolean(document.querySelector('[data-region="slides"]')),
+      panel: Boolean(document.querySelector('[data-region="panel"]')),
+    };
+  })()`);
+  record.laptop = { ...laptop, canvasShare: Math.round((laptop.canvas / laptop.window) * 100) / 100 };
+  await capture(window, join(dir, "layout-1366.png"));
+  if (!laptop.strip || !laptop.panel) throw new Error("layout: a 1366px window put a pane away at the default sizes");
+  // Every pane kept at its default, and the panes take under 40% of the width.
+  // The slide is then 56% of the window (recorded); 60% is not reachable at
+  // 1366px without putting a pane away, even at both minimums (59%).
+  if (laptop.canvas < 0.6 * laptop.window) {
+    throw new Error(`layout: at 1366×768 the canvas is ${laptop.canvas}px of ${laptop.window}px, under 60%`);
+  }
+
+  // ---- 4. The keyboard does what the mouse does.
+  const panelBefore = Math.round((await box('[data-region="panel"]'))!.width);
+  await page(`document.querySelector('[data-testid="splitter-panel"]').focus()`);
+  window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Left" } as Electron.KeyboardInputEvent);
+  window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Left" } as Electron.KeyboardInputEvent);
+  await need("the arrow key did not widen the side panel", `Math.round(document.querySelector('[data-region="panel"]').getBoundingClientRect().width) === ${panelBefore + 16}`);
+  record.keyboard = { panelBefore, panelAfter: panelBefore + 16 };
+
+  window.setContentSize(1600, 900);
+  await sleep(300);
+  reset();
+  await need("the final Reset workspace did not restore the defaults", `Math.round(document.querySelector('[data-region="panel"]').getBoundingClientRect().width) === 288`);
+  window.setSize(originalSize[0]!, originalSize[1]!);
+}
+
 async function runTimeline(window: BrowserWindow, record: Record<string, unknown>): Promise<void> {
   await until(window, 'document.querySelector("[data-editor-canvas]")');
 

@@ -44,6 +44,7 @@ export const PALETTE_COMMANDS: readonly PaletteCommand[] = [
   { command: "panel-inspector", label: "Side panel", group: "Panels", shortcut: "Ctrl+Alt+3", keywords: "inspector" },
   { command: "panels-focus", label: "Focus on the slide", group: "Panels", shortcut: "Ctrl+.", keywords: "hide everything" },
   { command: "panels-all", label: "Show everything", group: "Panels" },
+  { command: "layout-reset", label: "Reset workspace", group: "Panels", keywords: "layout sizes widths default panes" },
   { command: "theme-system", label: "Match the system", group: "Theme", keywords: "appearance light dark", home: true },
   { command: "theme-light", label: "Light", group: "Theme", keywords: "appearance", home: true },
   { command: "theme-dark", label: "Dark", group: "Theme", keywords: "appearance night", home: true },

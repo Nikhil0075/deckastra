@@ -4024,6 +4024,25 @@ easy to undo:
   - The dock is one F6 region (`dock`), whichever tab is showing.
   - A smoke step that types a note or drags a clip in Design calls
     `needDockTab` first.
+- **The panes are resizable and remembered** (UI audit 2026-10-10, unit 3;
+  `ui/Splitter.tsx`, `lib/layout-sizes.ts`, `deckastra.layout`).
+  - Splitters sit beside the strip (144–320px) and the side panel (280–520px)
+    and on the dock's top edge (160px to 55% of the window, per mode and tab).
+    They are WAI-ARIA window splitters: arrows step 16px (Shift 64px), Home
+    and End go to the limits, and Enter or a double-click resets.
+  - A drag sets the shell's CSS variables directly every frame and commits
+    once on release, so the editor does not re-render while dragging. The
+    release is also heard on the window: one let go off the line still ends it.
+  - The strip's thumbnails follow its width (`SlideStrip` `width`).
+  - Below a 480px canvas the strip and then the side panel yield toward their
+    minimums, then the strip is put away for now (`fitLayout`). Nothing is
+    saved by that, and a chosen width is never trimmed above the floor.
+  - The top bar has Focus (`focus-toggle`) and a Layout menu (`layout-menu`)
+    of the panel toggles with their shortcuts and Reset workspace, which is
+    also the `layout-reset` host command in the View menu and the palette.
+  - The `layout` smoke step drags with real input. Desktop mouse moves sent
+    with `sendInputEvent` must carry `modifiers: ["leftButtonDown"]`, or
+    Chromium reads them as hovering with `buttons: 0` and no capture starts.
 - **One small services hub, beside any mode** (`AssistantPanel.tsx`). AI mode,
   `AskPanel`, the prompt box and the task form are gone.
   - It opens from the bar's Assistant button, View › Assistant and the

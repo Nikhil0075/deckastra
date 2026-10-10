@@ -67,7 +67,19 @@ import { NarrationPanel } from "./NarrationPanel";
 import { SlideStrip } from "./shell/SlideStrip";
 import { SpeakerNotes } from "./shell/SpeakerNotes";
 import { ToolRail } from "./shell/ToolRail";
-import { loadPanels, panelsForCommand, panelsForKey, savePanels, type Chrome, type PanelVisibility } from "../lib/panels";
+import { ALL_VISIBLE, DOCK_PANELS, PANELS, dockPanelShown, isFocused, loadPanels, panelsForCommand, panelsForKey, savePanels, type Chrome, type PanelVisibility } from "../lib/panels";
+import {
+  DEFAULT_SIZES,
+  INSPECTOR,
+  STRIP,
+  dockHeight,
+  dockLimits,
+  fitLayout,
+  loadLayout,
+  saveLayout,
+  withDock,
+  type LayoutSizes,
+} from "../lib/layout-sizes";
 import { Dock } from "./shell/Dock";
 import { CommandPalette } from "./shell/CommandPalette";
 
@@ -83,7 +95,7 @@ import { LayersList } from "./inspector/LayersList";
 import { DesignCheckPanel } from "./DesignCheckPanel";
 import { designCheck } from "../lib/design-check";
 import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
-import { Button, IconButton } from "../ui";
+import { Button, IconButton, Splitter, type MenuItem } from "../ui";
 import { languageLabel } from "../lib/languages";
 
 // CodeMirror is the heaviest mode-only dependency. Keep it out of the normal
@@ -307,6 +319,29 @@ export function EditorShell(props: EditorShellProps) {
   const chromeRef = useRef(chrome);
   chromeRef.current = chrome;
 
+  // How wide the strip and the side panel are, and how tall the dock is
+  // (lib/layout-sizes.ts, UI audit unit 3): chosen by dragging a splitter,
+  // remembered per browser profile, never written to the deck.
+  const [sizes, setSizesState] = useState<LayoutSizes>(() => loadLayout());
+  const setSizes = useCallback((next: LayoutSizes) => {
+    setSizesState(next);
+    saveLayout(next);
+  }, []);
+  const [windowSize, setWindowSize] = useState(() =>
+    typeof window === "undefined" ? { width: 1440, height: 900 } : { width: window.innerWidth, height: window.innerHeight },
+  );
+  useEffect(() => {
+    const onResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  // A drag shows itself by setting the shell's variables directly, so the
+  // editor is not re-rendered every frame; the release commits through state.
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const previewSize = useCallback((variable: string, value: number) => {
+    shellRef.current?.style.setProperty(variable, `${value}px`);
+  }, []);
+
   const onCommand = useRef<(command: HostCommand) => void>(() => {});
   onCommand.current = (command) => {
     const theme = themeForCommand(command);
@@ -335,6 +370,12 @@ export function EditorShell(props: EditorShellProps) {
         break;
       case "command-palette":
         setPaletteOpen(true);
+        break;
+      case "layout-reset":
+        // Every pane back, at its default size: the way out of a layout that
+        // has got into a state someone cannot make sense of.
+        setSizes({ ...DEFAULT_SIZES, dock: {} });
+        setPanels({ ...ALL_VISIBLE });
         break;
       case "open-settings":
         props.onOpenSettings?.();
@@ -964,9 +1005,55 @@ export function EditorShell(props: EditorShellProps) {
     },
   };
 
+  // What the window can hold of the chosen sizes (lib/layout-sizes.ts): a
+  // narrow window takes the panes toward their minimums and then puts the strip
+  // away for now, without forgetting what was chosen.
+  const sidePanelShown = panels.inspector || assistantOpen;
+  const fitted = fitLayout(sizes, windowSize.width, {
+    tools: panels.tools,
+    library: Boolean(side.panel),
+    slides: panels.slides,
+    inspector: sidePanelShown,
+  });
+  const dockBody = dockHeight(sizes, mode, dock.tab, windowSize.height);
+  const shellStyle = {
+    "--dk-strip-width": `${fitted.strip}px`,
+    "--dk-inspector-width": `${fitted.inspector}px`,
+    "--dk-dock-height": `${dockBody}px`,
+  } as React.CSSProperties;
+  const layoutItems: MenuItem[] = [
+    ...PANELS.map(({ name, label, shortcut }) => ({
+      id: `layout-${name}`,
+      label,
+      kind: "checkbox" as const,
+      checked: panels[name],
+      shortcut,
+      onSelect: () => onCommand.current(`panel-${name}` as HostCommand),
+    })),
+    ...DOCK_PANELS.map(({ tab, label, shortcut }) => ({
+      id: `layout-${tab}`,
+      label,
+      kind: "checkbox" as const,
+      checked: dockPanelShown(chrome, tab),
+      shortcut,
+      onSelect: () => onCommand.current(tab === "notes" ? "panel-notes" : "panel-dock"),
+    })),
+    { id: "layout-focus", label: "Focus on the slide", kind: "checkbox", checked: isFocused(chrome), shortcut: "Ctrl+.", onSelect: () => onCommand.current("panels-focus") },
+    { id: "layout-all", label: "Show everything", onSelect: () => onCommand.current("panels-all") },
+    { id: "layout-reset", label: "Reset workspace", icon: "undo", onSelect: () => onCommand.current("layout-reset") },
+  ];
+
   return (
     <ColorStudioProvider value={colorStudio}>
-    <div className="dk-root dk-shell" data-editor-mode={mode} data-presentation-id={props.presentationId} data-document-version={editor.currentVersionId()}>
+    <div
+      ref={shellRef}
+      className="dk-root dk-shell"
+      style={shellStyle}
+      data-editor-mode={mode}
+      data-presentation-id={props.presentationId}
+      data-document-version={editor.currentVersionId()}
+      data-strip-collapsed={fitted.stripCollapsed ? "true" : undefined}
+    >
       <AppBar
         editor={editor}
         presentationId={props.presentationId}
@@ -977,6 +1064,7 @@ export function EditorShell(props: EditorShellProps) {
         extras={props.barExtras}
         account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}
+        layout={{ focused: isFocused(chrome), onFocus: () => onCommand.current("panels-focus"), items: layoutItems }}
         assistantOpen={assistantOpen}
         onAssistant={() => (assistantOpen ? setAssistantOpen(false) : openAssistant())}
         onManageLanguages={() => {
@@ -1125,18 +1213,33 @@ export function EditorShell(props: EditorShellProps) {
             />
           </aside>
         ) : null}
-        {panels.slides ? (
-        <SlideStrip
-          editor={editor}
-          scene={scene}
-          resolveAssetUrl={resolveAssetUrl}
-          onAdd={() => apply(createSlide(doc).operations, { label: "Add slide" })}
-          onNotice={flash}
-          onTransition={(target) => {
-            editor.setSlideIndex(target);
-            setMode("motion");
-          }}
-        />
+        {panels.slides && !fitted.stripCollapsed ? (
+          <>
+            <SlideStrip
+              editor={editor}
+              scene={scene}
+              resolveAssetUrl={resolveAssetUrl}
+              width={fitted.strip}
+              onAdd={() => apply(createSlide(doc).operations, { label: "Add slide" })}
+              onNotice={flash}
+              onTransition={(target) => {
+                editor.setSlideIndex(target);
+                setMode("motion");
+              }}
+            />
+            <Splitter
+              label="Slides width"
+              orientation="vertical"
+              value={fitted.strip}
+              min={STRIP.min}
+              max={STRIP.max}
+              defaultValue={STRIP.default}
+              grows={1}
+              onPreview={(value) => previewSize("--dk-strip-width", value)}
+              onChange={(value) => setSizes({ ...sizes, strip: value })}
+              data-testid="splitter-strip"
+            />
+          </>
         ) : null}
 
         <main className="dk-shell__center" aria-label="Slide editor">
@@ -1186,7 +1289,20 @@ export function EditorShell(props: EditorShellProps) {
           <Dock
             state={dock}
             onChange={setDock}
-            height={dockBodyHeight(mode, dock.tab)}
+            height={dockBody}
+            resizer={
+              <Splitter
+                label="Dock height"
+                orientation="horizontal"
+                value={dockBody}
+                {...dockLimits(windowSize.height)}
+                defaultValue={dockBodyHeight(mode, dock.tab)}
+                grows={-1}
+                onPreview={(value) => previewSize("--dk-dock-height", value)}
+                onChange={(value) => setSizes(withDock(sizes, mode, dock.tab, value, windowSize.height))}
+                data-testid="splitter-dock"
+              />
+            }
             panels={{
               notes: <SpeakerNotes editor={editor} />,
               timeline: slideScene ? (
@@ -1226,7 +1342,21 @@ export function EditorShell(props: EditorShellProps) {
 
         {/* The assistant shows even with the side panel put away: asking for it
             is asking for this region back. */}
-        {panels.inspector || assistantOpen ? (
+        {sidePanelShown ? (
+          <Splitter
+            label="Side panel width"
+            orientation="vertical"
+            value={fitted.inspector}
+            min={INSPECTOR.min}
+            max={INSPECTOR.max}
+            defaultValue={INSPECTOR.default}
+            grows={-1}
+            onPreview={(value) => previewSize("--dk-inspector-width", value)}
+            onChange={(value) => setSizes({ ...sizes, inspector: value })}
+            data-testid="splitter-panel"
+          />
+        ) : null}
+        {sidePanelShown ? (
           <aside className="dk-panel" data-region="panel" aria-label={assistantOpen ? "Assistant" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
             {rightPanel}
           </aside>
