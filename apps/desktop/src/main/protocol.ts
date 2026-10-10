@@ -191,6 +191,10 @@ async function proxyToService(
   if (contentType) headers.set("content-type", contentType);
   const accept = request.headers.get("accept");
   if (accept) headers.set("accept", accept);
+  // A cache validator, so an unchanged template preview can answer 304 (UI audit
+  // unit 2). It names a hash the service minted and carries no credential.
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch) headers.set("if-none-match", ifNoneMatch);
 
   const init: RequestInit = { method: request.method, headers, redirect: "manual" };
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -202,7 +206,7 @@ async function proxyToService(
     const out = new Headers();
     // Only what the client needs to read the body. Copying the service's headers
     // wholesale would hand the page whatever it sets next.
-    for (const name of ["content-type", "content-disposition", "cache-control"]) {
+    for (const name of ["content-type", "content-disposition", "cache-control", "etag"]) {
       const value = response.headers.get(name);
       if (value) out.set(name, value);
     }

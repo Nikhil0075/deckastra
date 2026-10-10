@@ -274,6 +274,23 @@ jobs:
       - name: Every deck preset exports and reopens
         run: npm run presets:exports --workspace @deckastra/deck-presets
 
+      # The template gallery draws each template as itself (UI audit unit 2).
+      # This composes and renders every cover, and reports clipped text and
+      # near-duplicate covers. A report for now: today's catalog composes most
+      # covers alike, which is what the design-language units exist to fix.
+      - name: Template cover report
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+        run: python packages/deck-presets/scripts/preview-sheet.py --out template-covers
+
+      - name: Upload the template cover report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: template-covers
+          path: template-covers/
+          if-no-files-found: ignore
+
   # Recovery is a release control, not a paragraph in an operations document.
   # This job restores a complete PostgreSQL dump into a second database and
   # follows a known presentation through its historical version and S3 object.
