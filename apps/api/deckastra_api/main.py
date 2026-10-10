@@ -12,12 +12,12 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Body, Depends, FastAPI, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import grants, local_mode, motion, presets, store
+from . import grants, local_mode, presets, store, template_compose
 from .auth import (
     Principal,
     current_principal,
@@ -30,6 +30,8 @@ from .compose import compose_document
 from .db.session import database_url, get_session, session_middleware
 from .models import (
     ComposedDeckResponse,
+    TemplatePreviewRequest,
+    TemplatePreviewResponse,
     DeckComposeRequest,
     DeckFromTemplateRequest,
 )
@@ -227,6 +229,42 @@ def list_presets(_principal: Principal = Depends(current_principal)) -> dict[str
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.post("/v1/presets/{template_id}/preview", response_model=TemplatePreviewResponse)
+def preview_template(
+    template_id: str,
+    request: TemplatePreviewRequest,
+    if_none_match: str | None = Header(default=None),
+    _principal: Principal = Depends(current_principal),
+) -> Any:
+    """A template composed exactly as "Use template" would, returned and not stored.
+
+    No project, no quota and no model: it is a read of the catalog, drawn by the
+    real composer (UI audit 2026-10-10, unit 2). A preview without the person's
+    own words is cached and carries an ETag, because a gallery asks for the same
+    two dozen covers every time it opens.
+    """
+    if template_compose.content_size(request.content) > template_compose.MAX_CONTENT_BYTES:
+        raise HTTPException(status_code=413, detail="That is more text than a template preview takes.")
+    try:
+        body, etag = template_compose.preview(
+            template_id,
+            theme_key=request.theme_key,
+            content=request.content,
+            slides=request.slides,
+        )
+    except presets.PresetError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if etag is None:
+        return JSONResponse(content=body, headers={"Cache-Control": "no-store"})
+    quoted = f'"{etag}"'
+    headers = {"ETag": quoted, "Cache-Control": "private, max-age=3600"}
+    if if_none_match and quoted in [tag.strip() for tag in if_none_match.split(",")]:
+        return Response(status_code=304, headers=headers)
+    return JSONResponse(content=body, headers=headers)
+
+
 @app.post("/v1/decks/from-template", response_model=ComposedDeckResponse)
 def deck_from_template(
     request: DeckFromTemplateRequest,
@@ -235,44 +273,18 @@ def deck_from_template(
 ) -> ComposedDeckResponse:
     project = resolve_creation_project(session, user_id=principal.user_id, project_id=request.project_id)
     try:
-        preset = presets.find_preset(request.template_id)
-        plan = presets.story_plan_from_preset(
-            preset,
+        # The same composition a preview shows (template_compose): a gallery that
+        # previews one deck and creates another is worse than no preview.
+        document = template_compose.compose_template(
+            request.template_id,
+            theme_key=request.theme_key,
             title=request.title,
             content=request.content,
         )
-        theme, theme_id = presets.resolve_theme(request.theme_key or str(preset["themeKey"]))
-        motion_plan = presets.motion_plan_from_preset(preset)
     except presets.PresetError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    document = compose_document(
-        plan,
-        instruction=f"Deck template: {request.template_id}",
-        motion_plan=motion_plan,
-        theme_definition=theme,
-        theme_id=theme_id,
-    )
-    document.setdefault("metadata", {})["templateId"] = request.template_id
-    document["metadata"]["motionStyle"] = str(preset["motionStyle"])
-    # A template's delivery direction is part of the resulting deck, not just
-    # gallery copy. Narration resolves the default provider voice from this
-    # style while an explicitly selected cue or request voice still wins.
-    document["metadata"]["voiceStyle"] = str(preset.get("voiceStyle") or "")
-    previous_slide = None
-    pacing = str((motion_plan.get("slides") or [{}])[0].get("pacing") or "measured")
-    for slide in document.get("slides") or []:
-        transition, _warnings = motion.plan_transition(
-            previous_slide,
-            slide,
-            str(preset.get("transitionStyle") or "fade"),
-            pacing,
-        )
-        if transition is not None:
-            slide["transition"] = transition
-        previous_slide = slide
     return _store_composed(
         session,
         principal,

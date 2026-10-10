@@ -94,6 +94,29 @@ class DeckFromTemplateRequest(BaseModel):
     content: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
+class TemplatePreviewRequest(BaseModel):
+    """A dry run of `DeckFromTemplateRequest`: composed, returned, never stored."""
+
+    theme_key: str | None = Field(default=None, min_length=1, max_length=120)
+    #: Stable slide key -> named slot -> content, as for creating. Bounded in the
+    #: route by its serialised size (`template_compose.MAX_CONTENT_BYTES`).
+    content: dict[str, dict[str, object]] = Field(default_factory=dict)
+    #: "cover" for a gallery card, "all" for the detail drawer's contact sheet.
+    slides: Literal["cover", "all"] = "cover"
+
+
+class TemplatePreviewResponse(BaseModel):
+    template_id: str
+    #: Which catalog composed this, so a client cache can never serve an old one.
+    catalog_revision: str
+    #: The template's design-language version; none until languages exist.
+    language_version: int | None = None
+    slides: Literal["cover", "all"]
+    #: A document for drawing. It has no presentation or version id because it is
+    #: not stored anywhere.
+    document: dict
+
+
 class DeckComposeRequest(BaseModel):
     story_plan: StoryPlan
     theme_key: str = Field(default="neo-technical", min_length=1, max_length=120)

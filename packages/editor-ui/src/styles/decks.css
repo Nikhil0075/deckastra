@@ -447,6 +447,45 @@
   gap: var(--dk-space-2);
 }
 
+/* A real composed cover, or its drawn stand-in while it comes (unit 2). */
+.dk-template-cover {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  line-height: 0;
+}
+.dk-template-cover > .dk-template-card__preview {
+  height: 100%;
+  line-height: normal;
+}
+
+/* The detail drawer's contact sheet: every slide, two across. */
+.dk-template-sheet {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dk-template-sheet__slide {
+  position: relative;
+  margin: 0;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  line-height: 0;
+}
+.dk-template-sheet__slide figcaption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  background: var(--dk-surface);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
+.dk-template-sheet__pending {
+  aspect-ratio: 16 / 9;
+  background: var(--dk-sunk);
+}
+
 /* The detail drawer: look at a template before using it. */
 .dk-template-detail {
   display: grid;

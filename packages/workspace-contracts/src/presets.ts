@@ -124,6 +124,27 @@ export interface DeckFromTemplateRequest {
   content?: Record<string, Record<string, PresetSlotValue>>;
 }
 
+/**
+ * A template composed exactly as creating it would, returned and never stored
+ * (UI audit 2026-10-10, unit 2). "cover" is the first slide, for a gallery card;
+ * "all" is every slide, for the detail drawer.
+ */
+export interface TemplatePreviewRequest {
+  theme_key?: string;
+  content?: Record<string, Record<string, PresetSlotValue>>;
+  slides?: "cover" | "all";
+}
+
+export interface TemplatePreviewResult {
+  template_id: string;
+  /** Which catalog composed it; part of every cache key that holds one. */
+  catalog_revision: string;
+  language_version: number | null;
+  slides: "cover" | "all";
+  /** For drawing only: no presentation or version id, because nothing is stored. */
+  document: PresentationDocument;
+}
+
 export interface DeckComposeRequest {
   story_plan: StoryPlanInput;
   theme_key?: string;
