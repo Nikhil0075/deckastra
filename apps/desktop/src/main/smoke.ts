@@ -526,12 +526,157 @@ async function runPresenter(window: BrowserWindow, dir: string, record: Record<s
   }
   record.blackoutRoundTrip = true;
 
+  // 3. Ink (UI audit unit 6), drawn with input the browser treats as a person's.
+  record.ink = await runPresenterInk(window, presenter, attr, dir);
+
   // Wake the audience controls for the capture: they fade after 2.5s of a
   // still pointer, which is right for a room and useless for a record.
   await audience(`window.dispatchEvent(new MouseEvent("mousemove"))`);
   await new Promise((resolve) => setTimeout(resolve, 300));
   await capture(window, join(dir, "presenter-audience.png"));
   await capture(presenter, join(dir, "presenter.png"));
+}
+
+/**
+ * Presenter ink across two real windows (UI audit 2026-10-10, unit 6).
+ *
+ * A stroke drawn on the laptop must reach the projector within a couple of
+ * frames and must not move the talk on; undo on the laptop must take it off
+ * both; Escape must put the pen down without leaving; and on a projector of
+ * another shape, a stroke at the slide's corner must land at the slide's
+ * corner, not the letterbox's.
+ */
+async function runPresenterInk(
+  audience: BrowserWindow,
+  presenter: BrowserWindow,
+  attr: (name: string) => string,
+  dir: string,
+): Promise<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
+  const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+  const run = <T = unknown>(win: BrowserWindow, expression: string) => win.webContents.executeJavaScript(expression) as Promise<T>;
+  const box = (win: BrowserWindow, selector: string) =>
+    run<{ x: number; y: number; width: number; height: number } | null>(win, `(() => {
+      const node = document.querySelector(${JSON.stringify(selector)});
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    })()`);
+  const mouse = (win: BrowserWindow, type: "mouseDown" | "mouseUp" | "mouseMove", x: number, y: number, held = false) =>
+    win.webContents.sendInputEvent({
+      type,
+      x: Math.round(x),
+      y: Math.round(y),
+      button: "left",
+      clickCount: 1,
+      ...(held ? { modifiers: ["leftButtonDown"] } : {}),
+    } as Electron.MouseInputEvent);
+  const stroke = async (win: BrowserWindow, from: { x: number; y: number }, to: { x: number; y: number }) => {
+    win.focus();
+    win.webContents.focus();
+    mouse(win, "mouseMove", from.x, from.y);
+    mouse(win, "mouseDown", from.x, from.y);
+    for (let i = 1; i <= 10; i += 1) {
+      mouse(win, "mouseMove", from.x + ((to.x - from.x) * i) / 10, from.y + ((to.y - from.y) * i) / 10, true);
+      await sleep(16);
+    }
+    mouse(win, "mouseUp", to.x, to.y);
+    return Date.now();
+  };
+  const audienceCount = () => run<string | null>(audience, attr("data-present-ink-count"));
+  const presenterCount = () => run<string | null>(presenter, `document.querySelector('[data-testid="presenter-view"]')?.getAttribute("data-presenter-ink-count")`);
+  const indexBefore = await run<string>(audience, attr("data-present-slide-index"));
+  const stepBefore = await run<string>(audience, attr("data-present-step"));
+
+  // 1. The pen on the laptop, a stroke across the preview.
+  await run(presenter, `document.querySelector('[data-testid="ink-tool-pen"]').click()`);
+  if (!(await until(presenter, `document.querySelector('[data-testid="presenter-ink"]')?.getAttribute("data-ink-tool") === "pen"`, 5_000))) {
+    throw new Error("ink: the presenter's Pen did not pick up the pen.");
+  }
+  const preview = await box(presenter, '[data-testid="presenter-ink"]');
+  if (!preview || preview.width < 50) throw new Error("ink: the presenter window has no slide preview to draw on.");
+  // When the projector's count changes, by the projector's own clock. Both
+  // windows and this process read one system clock, so the difference from the
+  // moment the pen lifts is the sync time, not this harness's polling.
+  await run(audience, `(() => {
+    const root = document.querySelector("[data-present-slide-index]");
+    window.__inkSeenAt = null;
+    new MutationObserver(() => {
+      if (window.__inkSeenAt === null && root.getAttribute("data-present-ink-count") === "1") window.__inkSeenAt = Date.now();
+    }).observe(root, { attributes: true, attributeFilter: ["data-present-ink-count"] });
+  })()`);
+  const liftedAt = await stroke(presenter, { x: preview.x + preview.width * 0.2, y: preview.y + preview.height * 0.3 }, { x: preview.x + preview.width * 0.7, y: preview.y + preview.height * 0.6 });
+  if (!(await until(audience, `${attr("data-present-ink-count")} === "1"`, 5_000))) {
+    throw new Error(`ink: a stroke drawn on the laptop did not reach the projector (it shows ${await audienceCount()}).`);
+  }
+  result.syncMs = (await run<number>(audience, "window.__inkSeenAt")) - liftedAt;
+  // Generous against the two-frame aim: the point is a stroke that arrives with
+  // the pen, not one a polling harness happened to notice.
+  if (!(Number(result.syncMs) < 250)) throw new Error(`ink: the stroke took ${result.syncMs}ms to reach the projector.`);
+  if (!(await until(presenter, `document.querySelector('[data-testid="presenter-view"]')?.getAttribute("data-presenter-ink-count") === "1"`, 5_000))) {
+    throw new Error("ink: the laptop does not show its own stroke.");
+  }
+  const indexAfter = await run<string>(audience, attr("data-present-slide-index"));
+  const stepAfter = await run<string>(audience, attr("data-present-step"));
+  if (indexAfter !== indexBefore || stepAfter !== stepBefore) {
+    throw new Error(`ink: drawing moved the talk from ${indexBefore}/${stepBefore} to ${indexAfter}/${stepAfter}.`);
+  }
+  result.talkUnmoved = true;
+  await run(audience, `window.dispatchEvent(new MouseEvent("mousemove"))`);
+  await sleep(200);
+  await capture(audience, join(dir, "presenter-ink-audience.png"));
+  await capture(presenter, join(dir, "presenter-ink.png"));
+
+  // 2. Undo on the laptop takes it off both.
+  await run(presenter, `document.querySelector('[data-testid="ink-undo"]').click()`);
+  if (!(await until(audience, `${attr("data-present-ink-count")} === "0"`, 5_000))) {
+    throw new Error("ink: undo on the laptop did not take the stroke off the projector.");
+  }
+  if (!(await until(presenter, `document.querySelector('[data-testid="presenter-view"]')?.getAttribute("data-presenter-ink-count") === "0"`, 5_000))) {
+    throw new Error(`ink: undo did not take the stroke off the laptop (it shows ${await presenterCount()}).`);
+  }
+  result.undoBoth = true;
+
+  // 3. Escape puts the pen down and leaves the presenter window presenting.
+  presenter.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+  presenter.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+  if (!(await until(presenter, `document.querySelector('[data-testid="presenter-ink"]')?.getAttribute("data-ink-tool") === ""`, 5_000))) {
+    throw new Error("ink: Escape did not put the pen down.");
+  }
+  await sleep(300);
+  if (presenter.isDestroyed() || !(await run<boolean>(presenter, `Boolean(document.querySelector('[data-testid="presenter-view"]'))`))) {
+    throw new Error("ink: Escape with the pen in hand ended the presentation.");
+  }
+  result.escapePutsPenDown = true;
+
+  // 4. A projector of another shape: 4:3, so the 16:9 slide is letterboxed.
+  //    A stroke started at the slide's top-left corner lands at the slide's
+  //    corner in the other window.
+  const audienceSize = audience.getContentSize();
+  audience.setContentSize(1200, 900);
+  await sleep(500);
+  await run(audience, `window.dispatchEvent(new MouseEvent("mousemove")); document.querySelector('[data-testid="ink-tool-pen"]').click()`);
+  const slide = await box(audience, '[data-testid="present-ink"]');
+  if (!slide) throw new Error("ink: the projector has no ink layer.");
+  result.letterbox = { top: Math.round(slide.y), height: Math.round(slide.height), window: 900 };
+  if (slide.y < 20) throw new Error(`ink: the 4:3 window is not letterboxed (the slide starts at ${slide.y}px).`);
+  await stroke(audience, { x: slide.x + 1, y: slide.y + 1 }, { x: slide.x + slide.width * 0.25, y: slide.y + slide.height * 0.25 });
+  if (!(await until(presenter, `document.querySelector('[data-testid="presenter-ink"] path[data-ink-stroke]')`, 5_000))) {
+    throw new Error("ink: a stroke drawn on the projector did not reach the laptop.");
+  }
+  const first = await run<string>(presenter, `document.querySelector('[data-testid="presenter-ink"] path[data-ink-stroke]').getAttribute("d")`);
+  const [, x, y] = /^M([\d.]+) ([\d.]+)/.exec(first) ?? [];
+  result.cornerStrokeStartsAt = [Number(x), Number(y)];
+  // Slide pixels. One CSS pixel in from the corner is a few slide pixels at
+  // this size; a stroke mapped against the window would start ~170px down.
+  if (!(Number(x) < 12 && Number(y) < 12)) {
+    throw new Error(`ink: a stroke at the slide's corner landed at (${x}, ${y}) in slide pixels.`);
+  }
+  await run(audience, `document.querySelector('[data-testid="ink-clear"]').click()`);
+  await run(audience, `document.querySelector('[data-testid="ink-tool-pen"]').click()`);
+  audience.setContentSize(audienceSize[0]!, audienceSize[1]!);
+  await sleep(300);
+  return result;
 }
 
 /**

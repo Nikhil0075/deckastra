@@ -42,6 +42,15 @@ const PATHS = {
   // A square root over x: reads as maths at 16px where a sigma reads as a letter.
   equation: <path d="M1.5 9 3.5 8l2 5 3-10.5h6M9.5 6.5l3.5 4M13 6.5l-3.5 4" />,
   undo: <path d="M5 3.5 2.5 6 5 8.5M2.5 6H10a3.5 3.5 0 0 1 0 7H6" />,
+  pen: <path d="M3 13l.8-3.2 7-7 2.4 2.4-7 7ZM9.5 4l2.5 2.5" />,
+  highlighter: <path d="M4.5 10.5 11 4l2 2-6.5 6.5H4.5ZM2.5 14.5h11" />,
+  eraser: <path d="M5.5 13.5h8M3 10.3 9.3 4a1 1 0 0 1 1.4 0l2.3 2.3a1 1 0 0 1 0 1.4l-5 5H5.8L3 11.7a1 1 0 0 1 0-1.4ZM6 7.3l3.7 3.7" />,
+  laser: (
+    <>
+      <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="8" r="5.5" />
+    </>
+  ),
   redo: <path d="m11 3.5 2.5 2.5L11 8.5M13.5 6H6a3.5 3.5 0 0 0 0 7h4" />,
   plus: <path d="M8 3v10M3 8h10" />,
   minus: <path d="M3 8h10" />,
