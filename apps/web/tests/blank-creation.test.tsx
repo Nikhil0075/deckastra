@@ -71,6 +71,8 @@ function route(url: string) {
 }
 
 afterEach(() => {
+  // The home remembers its destination; the next test starts on Projects.
+  localStorage.removeItem("deckastra.home");
   cleanup();
   vi.unstubAllGlobals();
   push.mockClear();
@@ -107,9 +109,12 @@ it("shows a template failure, and a blank deck still opens", async () => {
     }),
   );
   render(<Home />, { wrapper: withWorkspaceClient(client()) });
+  // Templates are a destination of their own (UI audit unit 1).
+  fireEvent.click(await screen.findByTestId("view-templates"));
   fireEvent.click(await screen.findByTestId("use-template-business-pitch"));
   expect((await screen.findByRole("alert")).textContent).toMatch(/Template failed/);
-  fireEvent.click(screen.getByTestId("new-deck"));
+  fireEvent.click(screen.getByTestId("view-all"));
+  fireEvent.click(await screen.findByTestId("new-deck"));
   await waitFor(() => expect(push).toHaveBeenCalledWith("/edit/doc_after_failure"));
 });
 

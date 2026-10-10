@@ -67,11 +67,26 @@ describe("deck-list rules", () => {
   });
 });
 
+const CATALOG = {
+  description: "reviewed",
+  purposeGroups: ["business"],
+  slidePatterns: ["title"],
+  patternDefinitions: {},
+  themes: [{ key: "flat", name: "Flat", summary: "", preview: { background: "#fff", foreground: "#111", accent: "#00f", surface: "#eee" } }],
+  presets: [
+    { id: "business-pitch", name: "Sharp pitch", summary: "Pitch", purpose: "business", tags: [], themeKey: "flat", motionStyle: "restrained", transitionStyle: "fade", voiceStyle: "clear", reviewed: true, slides: [{ key: "opening", pattern: "title", purpose: "Open", slots: { headline: "Hello" } }] },
+    { id: "security-brief", name: "Security brief", summary: "Risks", purpose: "business", tags: [], themeKey: "flat", motionStyle: "restrained", transitionStyle: "fade", voiceStyle: "clear", reviewed: true, slides: [{ key: "opening", pattern: "title", purpose: "Open", slots: { headline: "Risk" } }] },
+  ],
+};
+
 describe("DeckList", () => {
   let decks: PresentationSummary[];
   let fetcher: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    // The remembered home destination outlives a test in one jsdom; start
+    // every test where a first launch starts, on Projects.
+    localStorage.removeItem("deckastra.home");
     decks = [
       { id: "doc_a", title: "Migration Control Tower", version_id: "ver_a", updated_at: ago(2 * HOUR), slide_count: 12, pending_proposals: 2 },
       { id: "doc_b", title: "Security Review", version_id: "ver_b", updated_at: ago(DAY + HOUR), slide_count: 9, pending_proposals: 0 },
@@ -102,6 +117,7 @@ describe("DeckList", () => {
           capabilities: { sharing: false },
         });
       }
+      if (path.endsWith("/v1/presets")) return reply(CATALOG);
       if (path.includes("/projects/prj_1/presentations")) {
         return reply({ presentations: decks.filter((deck) => !deleted.has(deck.id)) });
       }
@@ -249,5 +265,80 @@ describe("DeckList", () => {
     fireEvent.change(screen.getByLabelText("Search decks"), { target: { value: "security" } });
     expect(screen.getAllByTestId("deck-card")).toHaveLength(1);
     expect(fetcher.mock.calls.length).toBe(before);
+  });
+
+  // ------------------------------------------- Projects | Templates (unit 1)
+
+  it("opens on Projects with no template card in it, and starts a deck from the strip", async () => {
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    expect(document.querySelector('[data-home-destination="projects"]')).toBeTruthy();
+    expect(screen.queryByTestId("template-start")).toBeNull();
+    expect(document.querySelector("[data-template-id]")).toBeNull();
+    expect(screen.getByTestId("new-deck")).toBeTruthy();
+  });
+
+  it("shows the catalog on Templates with no deck card in it, and remembers going there", async () => {
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByTestId("view-templates"));
+    expect(await screen.findByTestId("use-template-business-pitch")).toBeTruthy();
+    expect(screen.queryAllByTestId("deck-card")).toHaveLength(0);
+    expect(screen.getByTestId("view-templates").getAttribute("aria-current")).toBe("page");
+    expect(localStorage.getItem("deckastra.home")).toBe("templates");
+
+    // A relaunch comes back to the same place.
+    cleanup();
+    renderList();
+    expect(await screen.findByTestId("use-template-business-pitch")).toBeTruthy();
+    expect(screen.queryAllByTestId("deck-card")).toHaveLength(0);
+  });
+
+  it("scopes the one search box to the destination on screen", async () => {
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.change(screen.getByLabelText("Search decks"), { target: { value: "security" } });
+    expect(screen.getAllByTestId("deck-card")).toHaveLength(1);
+
+    fireEvent.click(screen.getByTestId("view-templates"));
+    // Templates has its own text: the deck search does not follow it there.
+    const search = await screen.findByLabelText("Search templates");
+    expect((search as HTMLInputElement).value).toBe("");
+    expect(screen.queryByLabelText("Search decks")).toBeNull();
+    await screen.findByTestId("use-template-business-pitch");
+    fireEvent.change(search, { target: { value: "security" } });
+    expect(screen.queryByTestId("use-template-business-pitch")).toBeNull();
+    expect(screen.getByTestId("use-template-security-brief")).toBeTruthy();
+
+    // And back: the deck search kept its own words.
+    fireEvent.click(screen.getByTestId("view-all"));
+    expect((screen.getByLabelText("Search decks") as HTMLInputElement).value).toBe("security");
+    expect(localStorage.getItem("deckastra.home")).toBe("projects");
+  });
+
+  it("goes to Templates from the strip and from the menu's New from template", async () => {
+    let send: ((command: "generate-deck") => void) | undefined;
+    render(
+      <DeckList onOpen={vi.fn()} commands={(handler) => ((send = handler as typeof send), () => {})} />,
+      { wrapper: withWorkspaceClient() },
+    );
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByTestId("browse-templates"));
+    expect(await screen.findByTestId("template-start")).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("view-all"));
+    await waitFor(() => expect(screen.queryByTestId("template-start")).toBeNull());
+    send?.("generate-deck");
+    expect(await screen.findByTestId("template-start")).toBeTruthy();
+  });
+
+  it("lands on the decks when a deck is left through All decks, whatever the home last showed", async () => {
+    withSecondProjectAndTrash();
+    localStorage.setItem("deckastra.home", "templates");
+    render(<DeckList onOpen={vi.fn()} startWith="all-decks" />, { wrapper: withWorkspaceClient() });
+    await waitFor(() => expect(screen.getAllByTestId("deck-card").length).toBeGreaterThan(0));
+    expect(screen.getByRole("heading", { name: "All decks" })).toBeTruthy();
+    expect(screen.queryByTestId("template-start")).toBeNull();
+    expect(localStorage.getItem("deckastra.home")).toBe("projects");
   });
 });

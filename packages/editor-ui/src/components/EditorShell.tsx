@@ -339,9 +339,6 @@ export function EditorShell(props: EditorShellProps) {
       case "open-settings":
         props.onOpenSettings?.();
         break;
-      case "all-decks":
-        exit?.();
-        break;
       case "undo":
         editor.undo();
         break;
@@ -976,7 +973,7 @@ export function EditorShell(props: EditorShellProps) {
         mode={mode}
         onMode={setMode}
         onPresent={() => setPresenting(true)}
-        onExit={exit ? () => exit() : undefined}
+        onExit={exit ? () => exit("all-decks") : undefined}
         extras={props.barExtras}
         account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}

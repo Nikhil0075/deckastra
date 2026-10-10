@@ -3199,8 +3199,8 @@ and the edit's version is still listed. It then undoes the restore, and finally
 restores again, which leaves the deck as it found it. A screenshot is taken with
 the drawer open (`history-drawer.png`).
 
-**Phase 6 is now agent proposals plus template-first creation.** The home uses
-`NewDeckStart.tsx`: `GET /v1/presets` lists reviewed presets and built-in theme
+**Phase 6 is now agent proposals plus template-first creation.** The home's
+Templates destination (`TemplatesView.tsx`): `GET /v1/presets` lists reviewed presets and built-in theme
 previews; `POST /v1/decks/from-template` turns named slot content into a fixed
 `StoryPlan`; and `POST /v1/decks/compose` accepts a `StoryPlan` whose layouts are
 names, never geometry. Both pass through `compose.py`, validate the resulting
@@ -4047,10 +4047,20 @@ easy to undo:
 - **Share and Export are one menu** (`open-share`, `export-popover`).
 - **One home for both shells** (`DeckList`). `apps/web/app/page.tsx` is only
   the route now; `AccountPicker` and `EmptyState` are deleted.
-  - Its creation surface is `NewDeckStart`: purpose filters, a built-in theme
-    switcher, reviewed template cards, Blank deck, Open `.mydeck`, and expandable
-    **Build with your agent** setup steps. File › New from template focuses it.
-  - The web editor's exit carries New deck and New from template as `/?start=…`.
+  - **Projects and Templates are two destinations** (UI audit 2026-10-10, unit 1;
+    `lib/home-destination.ts`, `deckastra.home`). Each has its own scroll and
+    the bar's one search box is scoped to whichever is showing, never both.
+    Projects carries a start strip (Blank deck, From a template, Open
+    `.mydeck`). Templates (`TemplatesView`) has purpose filters, a preview-theme
+    switcher, a featured row, and a detail drawer with Use template, Start
+    with my content (named slot text, the `content` map) and Ask your agent (a
+    copied MCP prompt). File › New from template goes to Templates.
+  - **Leaving a deck through All decks lands on Projects**, whatever the home
+    last showed: `all-decks` is a `DeckListCommand` carried out by the home,
+    like New deck. The remembered destination applies when the home opens on
+    its own. The smoke harness relies on this.
+  - The web editor's exit carries New deck, New from template and All decks as
+    `/?start=…`.
 - **Credits are read, never computed** (`CreditsMeter`, `lib/credits.ts`).
   On the desktop `GET /v1/account/credits` on the local service answers from
   the cloud account through the gateway (`gateway_routes.balance`, local mode
