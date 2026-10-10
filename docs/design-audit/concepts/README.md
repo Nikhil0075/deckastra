@@ -87,7 +87,13 @@ and Spatial Future. No OpenArt concepts were generated for this unit. Each
 language is drawn from its described grammar (`../research/2026-10-10-design-languages.md`),
 and these sheets are what it actually composes.
 
-<<<<<<< HEAD
+## Unit 7b · The language gate
+
+`unit7b-gate/language-covers.webp` shows the gate's fixed outline composed in
+all eight languages. The words are the same on every cover; the grammar
+differs. The closest pair is 71 of 256 bits apart, against a floor of 40. Each
+run is recorded in `../LANGUAGE_REVIEW.md`.
+
 ## Unit 8 · Account and Settings
 
 `unit8-settings/` holds screenshots from the desktop `a11y` step on a fresh
@@ -95,11 +101,3 @@ profile, in the real app: the account menu's identity card (light and dark),
 and full-screen Settings at Privacy & data, Workspaces, Appearance and About.
 No OpenArt concept was generated for this unit. Settings is a page of words
 and controls, laid out on the existing primitives.
-=======
-## Unit 7b · The language gate
-
-`unit7b-gate/language-covers.webp` shows the gate's fixed outline composed in
-all eight languages. The words are the same on every cover; the grammar
-differs. The closest pair is 71 of 256 bits apart, against a floor of 40. Each
-run is recorded in `../LANGUAGE_REVIEW.md`.
->>>>>>> origin/main
