@@ -2290,6 +2290,25 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
   if (!(await until(window, `document.querySelector('[data-testid="use-template-technical-architecture"]') && !document.querySelector('[data-testid="use-template-technical-architecture"]').disabled`, 20_000))) {
     throw new Error("The home never loaded the reviewed template catalog.");
   }
+  // Unit 2: the cards are the templates, composed and drawn, not a CSS mock.
+  if (!(await until(window, `document.querySelectorAll('[data-template-preview="rendered"]').length >= 3`, 30_000))) {
+    throw new Error("The template gallery never drew a real composed cover.");
+  }
+  record.renderedCovers = await page(`document.querySelectorAll('[data-template-preview="rendered"]').length`);
+  // And an unchanged preview answers 304 through the main process's proxy,
+  // which rebuilds every request from an allowlist.
+  record.previewRevalidation = await page(`(async () => {
+    const url = "/__api/v1/presets/business-pitch/preview";
+    const init = { method: "POST", headers: { "content-type": "application/json" }, body: "{}" };
+    const first = await fetch(url, init);
+    const etag = first.headers.get("etag");
+    const again = await fetch(url, { ...init, headers: { ...init.headers, "if-none-match": etag ?? "" } });
+    return { first: first.status, etag, again: again.status };
+  })()`);
+  const revalidation = record.previewRevalidation as { first: number; etag: string | null; again: number };
+  if (revalidation.first !== 200 || !revalidation.etag || revalidation.again !== 304) {
+    throw new Error(`An unchanged template preview did not revalidate through the proxy: ${JSON.stringify(revalidation)}.`);
+  }
   record.templateButton = await page(`(() => {
     const button = document.querySelector('[data-testid="use-template-technical-architecture"]');
     return { disabled: button?.disabled ?? null, text: button?.textContent ?? null };

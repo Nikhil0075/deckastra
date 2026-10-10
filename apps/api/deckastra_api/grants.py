@@ -81,6 +81,10 @@ RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
     (re.compile(r"^/v1/shares(/|$)"), CHANGING, "share"),
     (re.compile(r"^/v1/presentations/[^/]+/exports$"), frozenset({"POST"}), "export"),
     (re.compile(r"^/v1/exports/[^/]+/(cancel|retry)$"), frozenset({"POST"}), "export"),
+    # A template preview composes a deck and returns it without storing anything
+    # (UI audit 2026-10-10, unit 2). It is a POST only because a content map is a
+    # body; what it needs is what reading the catalog needs.
+    (re.compile(r"^/v1/presets/[^/]+/preview$"), frozenset({"POST"}), "read"),
 )
 
 

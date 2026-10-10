@@ -6,6 +6,7 @@ import type { DeckPreset, PresetCatalog, PresetSlotValue, PresetTheme, PurposeGr
 
 import { Button, Drawer, Select, StatusChip } from "../ui";
 import { cx } from "../ui/cx";
+import { TemplateContactSheet, TemplateCoverPreview } from "./TemplatePreview";
 
 /**
  * The template catalog as a destination of its own (UI audit 2026-10-10, unit 1).
@@ -126,6 +127,7 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
       key={preset.id}
       preset={preset}
       theme={themeFor(preset)}
+      themeKey={themeKey || preset.themeKey}
       motionName={catalog?.motionStyles?.[preset.motionStyle]?.name ?? preset.motionStyle}
       featured={featuredCard}
       creating={creating === preset.id}
@@ -226,6 +228,7 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
         preset={detail}
         catalog={catalog}
         theme={detail ? themeFor(detail) : undefined}
+        themeKey={detail ? themeKey || detail.themeKey : ""}
         creating={detail !== null && creating === detail.id}
         disabled={unavailable}
         onClose={() => setDetail(null)}
@@ -236,9 +239,9 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
 }
 
 /**
- * The cover drawn from the first slide's words in the template's colours.
- * A stand-in until real rendered previews arrive (unit 2), kept in one place so
- * that change replaces one component.
+ * The cover drawn from the first slide's words in the template's colours. Shown
+ * while the real composed cover (`TemplateCoverPreview`) is on its way, and in
+ * its place if the service cannot compose one.
  */
 function TemplateCover({ preset, theme, large = false }: { preset: DeckPreset; theme?: PresetTheme; large?: boolean }) {
   const background = theme?.preview.background ?? "#ffffff";
@@ -267,6 +270,7 @@ function TemplateCover({ preset, theme, large = false }: { preset: DeckPreset; t
 function TemplateCard({
   preset,
   theme,
+  themeKey,
   motionName,
   featured,
   creating,
@@ -276,6 +280,7 @@ function TemplateCard({
 }: {
   preset: DeckPreset;
   theme?: PresetTheme;
+  themeKey: string;
   motionName: string;
   featured: boolean;
   creating: boolean;
@@ -286,7 +291,7 @@ function TemplateCard({
   return (
     <article className={cx("dk-template-card", featured && "dk-template-card--featured")} data-template-id={preset.id}>
       <button type="button" className="dk-template-card__open" onClick={onOpen} aria-label={`Look at ${preset.name}`} data-testid={`template-card-${preset.id}`}>
-        <TemplateCover preset={preset} theme={theme} />
+        <TemplateCoverPreview templateId={preset.id} themeKey={themeKey} fallback={<TemplateCover preset={preset} theme={theme} />} />
       </button>
       <div className="dk-template-card__body">
         <div>
@@ -324,6 +329,7 @@ function TemplateDetail({
   preset,
   catalog,
   theme,
+  themeKey,
   creating,
   disabled,
   onClose,
@@ -332,6 +338,7 @@ function TemplateDetail({
   preset: DeckPreset | null;
   catalog: PresetCatalog | null;
   theme?: PresetTheme;
+  themeKey: string;
   creating: boolean;
   disabled: boolean;
   onClose: () => void;
@@ -384,7 +391,7 @@ function TemplateDetail({
   return (
     <Drawer open onClose={onClose} title={preset.name} meta={`${PURPOSE_LABELS[preset.purpose]} · ${preset.slides.length} slides`} width={560} data-testid="template-detail">
       <div className="dk-template-detail">
-        <TemplateCover preset={preset} theme={theme} large />
+        <TemplateCoverPreview templateId={preset.id} themeKey={themeKey} fallback={<TemplateCover preset={preset} theme={theme} large />} />
         <p>{preset.summary}</p>
 
         <div className="dk-template-detail__actions">
@@ -466,6 +473,9 @@ function TemplateDetail({
             </Button>
           </form>
         ) : (
+          <>
+          {/* Every slide, composed for real: the deck before it exists. */}
+          <TemplateContactSheet templateId={preset.id} themeKey={themeKey} />
           <ol className="dk-template-detail__slides" aria-label="Slides in this template">
             {preset.slides.map((slide) => (
               <li key={slide.key}>
@@ -474,6 +484,7 @@ function TemplateDetail({
               </li>
             ))}
           </ol>
+          </>
         )}
       </div>
     </Drawer>

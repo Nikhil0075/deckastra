@@ -15,3 +15,14 @@ with a cream ground, square corners, Inter and Jost, blue only for actions and
 the current selection, purpose chips and design-language chips, featured and
 all-template grids of real and visibly different covers, and a detail drawer
 offering Use template, Start with my content and Ask your agent.
+
+## Unit 2 · Real previews: the baseline
+
+`unit2-previews/baseline-covers-2026-10-10.webp` shows all 24 reviewed
+templates' first slides, composed by the real composer and rendered through the
+export worker (`packages/deck-presets/scripts/preview-sheet.py`). They are one
+title layout in different colours and type: 9 cover pairs fall within 24 of 256
+difference-hash bits of each other, and no text is clipped. This is the catalog
+as it is, shown honestly; units 5 and 7 (design languages) have to beat it, and
+unit 7 turns the report into a CI gate.
+

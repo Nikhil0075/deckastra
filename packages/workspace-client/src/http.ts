@@ -22,6 +22,8 @@ import type {
   ExportJob,
   ExportRequest,
   DeckComposeRequest,
+  TemplatePreviewRequest,
+  TemplatePreviewResult,
   DeckFromTemplateRequest,
   HealthReport,
   MotionCapabilities,
@@ -118,6 +120,9 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
   const bootstrap = options.bootstrapSession ?? devSessionBootstrap;
 
   let inflight: Promise<Session> | undefined;
+  // Template previews this client has already been answered, by template, theme
+  // and slides, with the ETag that lets the service say "unchanged" (unit 2).
+  const previews = new Map<string, { etag: string; result: TemplatePreviewResult }>();
 
   async function ensureSession(request?: RequestOptions, refresh = false): Promise<Session> {
     const cached = store.read();
@@ -160,10 +165,14 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
     cache?: RequestCache;
     /** Message when the server gives no usable `detail`. */
     fallback?: string;
+    /** Extra request headers. Only a cache validator uses this today. */
+    headers?: Record<string, string>;
+    /** Hand a 304 back rather than treating it as a failure. */
+    acceptNotModified?: boolean;
   }
 
   async function send(path: string, init: SendInit = {}, retried = false): Promise<Response> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...init.headers };
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
     if (init.raw !== undefined) headers["Content-Type"] = init.raw.type || "application/octet-stream";
     if (init.auth !== false) {
@@ -219,6 +228,8 @@ export function createHttpClient(options: HttpClientOptions): WorkspaceClient {
       }
       if (renewed) return send(path, init, true);
     }
+
+    if (response.status === 304 && init.acceptNotModified) return response;
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}) as { detail?: unknown });
@@ -430,6 +441,30 @@ const q = encodeURIComponent;
         json<ComposedDeckResult>("/v1/decks/from-template", { body, ...request }),
       compose: (body: DeckComposeRequest, request) =>
         json<ComposedDeckResult>("/v1/decks/compose", { body, ...request }),
+      previewTemplate: async (templateId: string, body: TemplatePreviewRequest = {}, request) => {
+        // A preview without the person's words is cached by the service with an
+        // ETag; a POST is never cached by the browser, so the validator is kept
+        // here and an unchanged preview comes back as a 304 with no body.
+        const cacheable = !body.content || Object.keys(body.content).length === 0;
+        const key = `${templateId}|${body.theme_key ?? ""}|${body.slides ?? "cover"}`;
+        const known = cacheable ? previews.get(key) : undefined;
+        const response = await send(`/v1/presets/${q(templateId)}/preview`, {
+          body,
+          fallback: "That template could not be previewed.",
+          headers: known ? { "If-None-Match": known.etag } : undefined,
+          acceptNotModified: Boolean(known),
+          ...request,
+        });
+        if (response.status === 304 && known) return known.result;
+        const result = (await response.json()) as TemplatePreviewResult;
+        const etag = cacheable ? response.headers.get("etag") : null;
+        if (etag) {
+          previews.set(key, { etag, result });
+          // Bounded: a gallery is a few dozen covers, and each is a document.
+          if (previews.size > 120) previews.delete(previews.keys().next().value as string);
+        }
+        return result;
+      },
       insertPattern: (presentationId, body: InsertPatternRequest, request) =>
         json<InsertPatternResult>(`/v1/presentations/${q(presentationId)}/patterns/insert`, {
           body,
