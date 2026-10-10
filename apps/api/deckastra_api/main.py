@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import grants, local_mode, presets, store, template_compose
+from . import grants, languages, local_mode, presets, store, template_compose
 from .auth import (
     Principal,
     current_principal,
@@ -302,16 +302,24 @@ def deck_compose(
 ) -> ComposedDeckResponse:
     """Compose a StoryPlan whose layouts are names, never caller geometry."""
     project = resolve_creation_project(session, user_id=principal.user_id, project_id=request.project_id)
+    language = request.design_language or "neutral"
     try:
-        theme, theme_id = presets.resolve_theme(request.theme_key)
+        version = presets.language_version(language)
+        defaults = (presets.catalog().get("designLanguages") or {})[language].get("defaults") or {}
+        theme, theme_id = presets.resolve_theme(request.theme_key or str(defaults.get("themeKey") or "neo-technical"))
     except presets.PresetError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    plan, warnings = languages.apply_density(request.story_plan, language)
     document = compose_document(
-        request.story_plan,
+        plan,
         instruction="Composed from an external StoryPlan",
         theme_definition=theme,
         theme_id=theme_id,
+        language=language,
+        language_version=version,
     )
-    return _store_composed(session, principal, document, project_id=project.id)
+    stored = _store_composed(session, principal, document, project_id=project.id)
+    stored.warnings = warnings
+    return stored

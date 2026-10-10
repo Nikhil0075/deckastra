@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from . import assets as asset_service
 from . import backup, deck_copy, object_storage, provenance, quotas, sync, version_restore
-from . import export_service, local_mode, motion, presets, proposals, store, themes
+from . import export_service, languages, local_mode, motion, presets, proposals, store, themes
 from .auth import (
     Principal,
     Role,
@@ -33,6 +33,7 @@ from .auth import (
     resolve_project_access,
 )
 from .compose import blank_document, compose_slide
+from .models import StoryPlan
 from .db.models import Asset, Presentation, PresentationVersion, TransactionRow, Workspace
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
@@ -554,11 +555,24 @@ def insert_pattern(
         plan = presets.slide_plan_from_pattern(request.pattern, request.slots, purpose=request.intent)
     except presets.PresetError as error:
         raise HTTPException(422, str(error)) from error
-    slide = compose_slide(plan, index)
+    # A slide added to a deck composes in that deck's language (UI audit unit
+    # 7b): a neutral slide in a Swiss deck is a slide from another deck. A
+    # language this build does not draw composes neutral, and says so.
+    language = str(((head.document.get("metadata") or {}).get("designLanguage") or {}).get("id") or "neutral")
+    warnings: list[str] = []
+    if language not in languages.LANGUAGE_LAYOUTS:
+        warnings.append(f'This deck is in "{language}", which this build does not draw, so the slide uses the neutral layout.')
+        language = "neutral"
+    else:
+        story = StoryPlan(title="", audience="", objective="", narrative_arc="", slides=[plan])
+        story, density = languages.apply_density(story, language)
+        plan = story.slides[0]
+        warnings += [note.replace("Slide 1: ", "") for note in density]
+    slide = compose_slide(plan, index, language)
     operations = [{"op": "add", "path": f"/slides/{index}" if index < len(slides) else "/slides/-", "value": slide}]
     if request.dry_run:
         return {"outcome": "planned", "operations": operations, "version_id": head.version_id,
-                "slide_id": slide["id"], "pattern": request.pattern, "warnings": []}
+                "slide_id": slide["id"], "pattern": request.pattern, "warnings": warnings}
     try:
         outcome = proposals.create_proposal(
             session, presentation_id=presentation_id, operations=operations, intent=request.intent,
@@ -570,7 +584,7 @@ def insert_pattern(
     return {"outcome": outcome["status"], "risk_tier": outcome["risk_tier"],
             "reasons": outcome.get("reasons") or [], "transaction_id": outcome["transaction_id"],
             "version_id": outcome.get("version_id"), "expires_at": outcome.get("expires_at"),
-            "slide_id": slide["id"], "pattern": request.pattern, "warnings": []}
+            "slide_id": slide["id"], "pattern": request.pattern, "warnings": warnings}
 
 
 class MotionStyleRequest(BaseModel):

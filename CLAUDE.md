@@ -4224,6 +4224,22 @@ to undo:
     in `language_kit.py`. Only System Terminal has a theme of its own.
 - **Headline limits are checked for every template** (`E_PRESET_HEADLINE_LONG`),
   not only those written for a language.
+- **Agents reach languages** (unit 7b). `preset_list` filters by `language`,
+  and `design_language_get` returns a language's rules, forbid list, density
+  limits, defaults and the layouts it draws. That `layouts` list is held to
+  `LANGUAGE_LAYOUTS` by `test_language_routes.py`.
+  - `deck_compose` takes `design_language`. The language supplies the default
+    theme, and `apply_density` drops bullets past the limit and keeps an
+    over-long headline as written. Both are reported back as `warnings`.
+  - An inserted pattern composes in the deck's own language
+    (`metadata.designLanguage`).
+- **The gallery filters by language and by look**, one chip per axis pole.
+  Choosing both poles of an axis means either.
+- **The languages must look unlike each other, and CI fails if they do not.**
+  `preview-sheet.py --languages --strict` runs one fixed outline in every
+  language. It fails on covers within 40 bits of each other, title slides
+  that share a grammar, or any W103 or W110; `scene-check.ts` now reports W110
+  too. Each run is recorded in `docs/design-audit/LANGUAGE_REVIEW.md`.
 - **The neutral golden hashes the composer, not the catalog.** Since no
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.

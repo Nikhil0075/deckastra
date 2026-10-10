@@ -283,6 +283,15 @@ jobs:
           DATABASE_URL: "sqlite:///:memory:"
         run: python packages/deck-presets/scripts/preview-sheet.py --out template-covers
 
+      # The design-language gate (UI audit unit 7b), and unlike the report
+      # above it fails the build: one fixed outline composed in every language
+      # must give covers that differ by more than 40 of 256 bits, title slides
+      # that share no grammar, and nothing clipped or overlapping.
+      - name: Design languages look unlike each other
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+        run: python packages/deck-presets/scripts/preview-sheet.py --languages --strict --out template-covers
+
       - name: Upload the template cover report
         if: always()
         uses: actions/upload-artifact@v4

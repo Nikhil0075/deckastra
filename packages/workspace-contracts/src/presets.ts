@@ -102,6 +102,10 @@ export interface PresetDesignLanguage {
   };
   rules: string[];
   forbid: string[];
+  /** The layouts this language draws itself; any other composes neutral. */
+  layouts?: string[];
+  density?: { maxBullets: number; maxHeadlineWords: number };
+  defaults?: { themeKey: string; motionStyle: string; transitionStyle: string; voiceStyle: string };
 }
 
 export interface StoryMetric {
@@ -167,7 +171,10 @@ export interface TemplatePreviewResult {
 
 export interface DeckComposeRequest {
   story_plan: StoryPlanInput;
+  /** Absent means the language's own theme, or the neutral default. */
   theme_key?: string;
+  /** The grammar to compose in (UI audit unit 7b). Absent is neutral. */
+  design_language?: string;
   project_id?: string | null;
 }
 
@@ -176,6 +183,8 @@ export interface ComposedDeckResult {
   version_id: string;
   document: PresentationDocument;
   template_id?: string | null;
+  /** What composing changed or noticed, such as bullets past a language's limit. */
+  warnings?: string[];
 }
 
 /** Add one reviewed pattern without exposing layout geometry to the caller. */

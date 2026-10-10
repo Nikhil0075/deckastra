@@ -40,7 +40,7 @@ from .compose import (
     _text,
 )
 from .language_kit import _shape, _solid
-from .models import SlideLayout, SlidePlan
+from .models import SlideLayout, SlidePlan, StoryPlan
 
 Layout = Callable[[SlidePlan], list[dict[str, Any]]]
 
@@ -681,6 +681,33 @@ LANGUAGE_LAYOUTS.update(MORE_LANGUAGE_LAYOUTS)
 
 class UnknownLanguage(ValueError):
     """A language the composer has no geometry for."""
+
+
+def apply_density(plan: StoryPlan, language: str) -> tuple[StoryPlan, list[str]]:
+    """Hold a caller's plan to the language's density, and say what was done.
+
+    A language's `forbid` list is prose for an agent to follow; the parts of it
+    a composer can check are counts. More bullets than the language allows are
+    dropped, because drawing them would break the grammar the person chose;
+    a headline over the language's limit is kept and named, because shortening
+    someone's words is theirs to do. Either way the caller is told.
+    """
+    from . import presets
+
+    density = ((presets.catalog().get("designLanguages") or {}).get(language) or {}).get("density") or {}
+    max_bullets = int(density.get("maxBullets") or 0)
+    max_words = int(density.get("maxHeadlineWords") or 0)
+    warnings: list[str] = []
+    slides = []
+    for index, slide in enumerate(plan.slides, start=1):
+        if max_bullets and len(slide.bullets) > max_bullets:
+            warnings.append(f"Slide {index}: {language} shows at most {max_bullets} bullets, so the last {len(slide.bullets) - max_bullets} were left out.")
+            slide = slide.model_copy(update={"bullets": slide.bullets[:max_bullets]})
+        words = len(slide.headline.split())
+        if max_words and words > max_words:
+            warnings.append(f"Slide {index}: the headline has {words} words; {language} reads best at {max_words} or fewer.")
+        slides.append(slide)
+    return plan.model_copy(update={"slides": slides}), warnings
 
 
 def layout_for(language: str, layout: SlideLayout) -> Layout | None:

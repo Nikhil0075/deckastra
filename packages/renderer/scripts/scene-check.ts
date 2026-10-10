@@ -19,6 +19,7 @@ import { join } from "node:path";
 
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 
+import { checkLayout } from "../src/layout-check";
 import { buildDocumentScene } from "../src/scene";
 import { validateScene } from "../src/semantic";
 
@@ -31,8 +32,12 @@ if (!dir) {
 const report: Record<string, Array<{ code: string; slideId?: string; elementId?: string; message: string }>> = {};
 for (const name of readdirSync(dir).filter((file) => file.endsWith(".json")).sort()) {
   const document = JSON.parse(readFileSync(join(dir, name), "utf8")) as PresentationDocument;
-  const issues = validateScene(buildDocumentScene(document));
-  report[name.replace(/\.json$/, "")] = issues
+  const scene = buildDocumentScene(document);
+  const issues = validateScene(scene);
+  // Collisions (W110) from Design Check's layout pass, which validateScene does
+  // not run: the design-language gate (unit 7b) refuses words on words.
+  const collisions = scene.slides.flatMap((slide) => checkLayout(slide).filter((issue) => issue.code === "W110"));
+  report[name.replace(/\.json$/, "")] = [...issues, ...collisions]
     .filter((issue) => issue.severity !== "info")
     .map((issue) => ({ code: issue.code, slideId: issue.slideId, elementId: issue.elementId, message: issue.message }));
 }
