@@ -196,6 +196,53 @@ describe("the tool surface", () => {
     });
   });
 
+  it("tells an agent what a design language is and composes in one (UI audit unit 7b)", async () => {
+    const swiss = {
+      id: "swiss-signal", name: "Swiss Signal", version: 1, summary: "Grid and one red signal.",
+      axes: { expression: "expressive", density: "spacious", imagery: "graphic", motion: "calm", tone: "formal" },
+      rules: ["Headlines are five words or fewer."], forbid: ["centred text"],
+      layouts: ["title", "statement"], density: { maxBullets: 4, maxHeadlineWords: 5 },
+      defaults: { themeKey: "swiss-signal", motionStyle: "restrained", transitionStyle: "cut", voiceStyle: "direct" },
+    };
+    const client = await connect({
+      "/v1/presets": {
+        description: "reviewed", purposeGroups: ["business"], slidePatterns: [], patternDefinitions: {}, motionStyles: {},
+        themes: [{ key: "swiss-signal", name: "Swiss", summary: "", preview: {} }, { key: "civic", name: "Civic", summary: "", preview: {} }],
+        designLanguages: { "swiss-signal": swiss, "data-desk": { ...swiss, id: "data-desk", name: "Data Desk" } },
+        presets: [
+          { id: "quarterly-review", purpose: "business", name: "Quarterly", themeKey: "swiss-signal", designLanguage: "swiss-signal", slides: [] },
+          { id: "investor-update", purpose: "business", name: "Investor", themeKey: "civic", designLanguage: "data-desk", slides: [] },
+        ],
+      },
+      "/v1/decks/compose": {
+        presentation_id: "pres_new", version_id: "ver_new", warnings: ["Slide 1: the headline has 7 words; swiss-signal reads best at 5 or fewer."],
+        document: { metadata: { title: "Plan" }, slides: [{ id: "sld_one", name: "One", layout: { templateId: "statement" }, elements: [] }] },
+      },
+    });
+
+    const listed = JSON.parse(text(await client.callTool({ name: "preset_list", arguments: { language: "swiss-signal" } })));
+    expect(listed.presets.map((preset: { id: string }) => preset.id)).toEqual(["quarterly-review"]);
+    expect(listed.designLanguages.map((one: { id: string }) => one.id)).toEqual(["swiss-signal"]);
+
+    const got = JSON.parse(text(await client.callTool({ name: "design_language_get", arguments: { language: "swiss-signal" } })));
+    expect(got.rules).toEqual(["Headlines are five words or fewer."]);
+    expect(got.layouts).toEqual(["title", "statement"]);
+    expect(got.templates).toEqual(["quarterly-review"]);
+    const missing = await client.callTool({ name: "design_language_get", arguments: { language: "vaporwave" } });
+    expect((missing as { isError?: boolean }).isError).toBe(true);
+    expect(text(missing)).toContain("Known: swiss-signal, data-desk");
+
+    const composed = JSON.parse(text(await client.callTool({
+      name: "deck_compose",
+      arguments: {
+        design_language: "swiss-signal",
+        story_plan: { title: "Plan", audience: "", objective: "", narrative_arc: "", slides: [{ layout: "statement", purpose: "Say it", key_message: "x", headline: "A headline far longer than Swiss allows" }] },
+      },
+    })));
+    expect(composed.warnings[0]).toContain("reads best at 5");
+    expect(sent.at(-1)).toMatchObject({ method: "POST", body: { design_language: "swiss-signal" } });
+  });
+
   it("offers the three coarse authoring tools through proposal-backed endpoints", async () => {
     const client = await connect({
       "/v1/presentations/pres_open/patterns/insert": {

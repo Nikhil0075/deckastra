@@ -51,6 +51,10 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
   const [catalog, setCatalog] = useState<PresetCatalog | null>(null);
   const [purpose, setPurpose] = useState<PurposeGroup | "all">("all");
   const [themeKey, setThemeKey] = useState("");
+  // Design-language filters (UI audit unit 7b): one language, or the look
+  // described by its axes. Both filter the catalog; nothing generates from them.
+  const [language, setLanguage] = useState("");
+  const [poles, setPoles] = useState<ReadonlySet<string>>(() => new Set());
   const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<DeckPreset | null>(null);
@@ -81,20 +85,25 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
     () =>
       catalog?.presets.filter((preset) => {
         if (purpose !== "all" && preset.purpose !== purpose) return false;
+        if (language && preset.designLanguage !== language) return false;
+        if (poles.size && !matchesLook(catalog.designLanguages?.[preset.designLanguage ?? ""]?.axes, poles)) return false;
         if (!needle) return true;
-        return [preset.name, preset.summary, preset.purpose, ...preset.tags].some((value) => value.toLocaleLowerCase().includes(needle));
+        const languageName = catalog.designLanguages?.[preset.designLanguage ?? ""]?.name ?? "";
+        return [preset.name, preset.summary, preset.purpose, languageName, ...preset.tags].some((value) => value.toLocaleLowerCase().includes(needle));
       }) ?? [],
-    [catalog, purpose, needle],
+    [catalog, purpose, language, poles, needle],
   );
+  const filtered = purpose !== "all" || Boolean(language) || poles.size > 0;
+  const languages = Object.values(catalog?.designLanguages ?? {}).filter((one) => catalog?.presets.some((preset) => preset.designLanguage === one.id));
 
   // The featured row: the first template of each purpose, which is the
   // hand-written foundation one. Only on the unfiltered catalog — a featured row
   // above a search result would show things the search did not ask for.
   const featured = useMemo(() => {
-    if (!catalog || purpose !== "all" || needle) return [];
+    if (!catalog || filtered || needle) return [];
     const seen = new Set<string>();
     return catalog.presets.filter((preset) => (seen.has(preset.purpose) ? false : (seen.add(preset.purpose), true))).slice(0, 3);
-  }, [catalog, purpose, needle]);
+  }, [catalog, filtered, needle]);
   const featuredIds = new Set(featured.map((preset) => preset.id));
   const rest = shown.filter((preset) => !featuredIds.has(preset.id));
 
@@ -157,6 +166,15 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
             data-testid="template-theme"
           />
         ) : null}
+        {languages.length ? (
+          <Select
+            label="Design language"
+            value={language}
+            onChange={setLanguage}
+            options={[{ value: "", label: "Any language" }, ...languages.map((one) => ({ value: one.id, label: one.name }))]}
+            data-testid="template-language"
+          />
+        ) : null}
       </div>
 
       <div className="dk-templates__purposes" role="group" aria-label="Filter templates by purpose">
@@ -172,6 +190,47 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
           </button>
         ))}
       </div>
+
+      {languages.length ? (
+        <div className="dk-templates__looks" role="group" aria-label="Filter templates by look">
+          {LOOK_POLES.map(([axis, value, label]) => {
+            const key = `${axis}:${value}`;
+            const on = poles.has(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                className={cx("dk-templates__look", on && "dk-templates__look--current")}
+                aria-pressed={on}
+                data-testid={`template-look-${value}`}
+                onClick={() =>
+                  setPoles((current) => {
+                    const next = new Set(current);
+                    if (on) next.delete(key);
+                    else next.add(key);
+                    return next;
+                  })
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+          {filtered ? (
+            <button
+              type="button"
+              className="dk-templates__look dk-templates__look--clear"
+              onClick={() => {
+                setPurpose("all");
+                setLanguage("");
+                setPoles(new Set());
+              }}
+            >
+              Clear filters
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? (
         <p className="dk-decks__error" role="alert">
@@ -494,4 +553,38 @@ function TemplateDetail({
       </div>
     </Drawer>
   );
+}
+
+type LanguageAxes = NonNullable<NonNullable<PresetCatalog["designLanguages"]>[string]>["axes"];
+
+/** The ten poles of the five axes, in the order a person reads them. */
+const LOOK_POLES: ReadonlyArray<[keyof LanguageAxes, string, string]> = [
+  ["expression", "editorial", "Editorial"],
+  ["expression", "expressive", "Expressive"],
+  ["density", "dense", "Dense"],
+  ["density", "spacious", "Spacious"],
+  ["imagery", "photographic", "Photographic"],
+  ["imagery", "graphic", "Graphic"],
+  ["motion", "calm", "Calm"],
+  ["motion", "kinetic", "Kinetic"],
+  ["tone", "formal", "Formal"],
+  ["tone", "playful", "Playful"],
+];
+
+/**
+ * Whether a language has the chosen look. Within one axis, choosing both poles
+ * means either; across axes, every axis chosen must match.
+ */
+export function matchesLook(axes: LanguageAxes | undefined, poles: ReadonlySet<string>): boolean {
+  if (!axes) return false;
+  const byAxis = new Map<string, Set<string>>();
+  for (const pole of poles) {
+    const [axis, value] = pole.split(":") as [string, string];
+    if (!byAxis.has(axis)) byAxis.set(axis, new Set());
+    byAxis.get(axis)!.add(value);
+  }
+  for (const [axis, values] of byAxis) {
+    if (!values.has(String(axes[axis as keyof LanguageAxes]))) return false;
+  }
+  return true;
 }

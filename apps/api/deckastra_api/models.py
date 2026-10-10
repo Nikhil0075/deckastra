@@ -119,7 +119,10 @@ class TemplatePreviewResponse(BaseModel):
 
 class DeckComposeRequest(BaseModel):
     story_plan: StoryPlan
-    theme_key: str = Field(default="neo-technical", min_length=1, max_length=120)
+    #: Absent means the language's own theme, or the neutral default.
+    theme_key: str | None = Field(default=None, min_length=1, max_length=120)
+    #: The grammar to compose in (UI audit unit 7b). Absent is neutral.
+    design_language: str | None = Field(default=None, min_length=1, max_length=64)
     project_id: str | None = None
 
 
@@ -128,3 +131,5 @@ class ComposedDeckResponse(BaseModel):
     version_id: str
     document: dict
     template_id: str | None = None
+    #: What composing changed or noticed: bullets past a language's limit, long headlines.
+    warnings: list[str] = Field(default_factory=list)

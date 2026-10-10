@@ -335,6 +335,38 @@
   background: var(--dk-blue);
   color: var(--dk-on-blue);
 }
+.dk-templates__looks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dk-space-1);
+}
+.dk-templates__look {
+  padding: 4px 10px;
+  border: var(--dk-line) solid var(--dk-rule);
+  background: transparent;
+  color: var(--dk-ink-muted);
+  font: inherit;
+  font-size: var(--dk-text-xs);
+  cursor: pointer;
+}
+.dk-templates__look:hover {
+  border-color: var(--dk-ink);
+  color: var(--dk-ink);
+}
+/* A chosen look is a current selection, so it takes the action blue. */
+.dk-templates__look--current {
+  border-color: var(--dk-blue);
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-templates__look--clear {
+  border-color: transparent;
+  text-decoration: underline;
+}
+.dk-templates__look:focus-visible {
+  outline: 2px solid var(--dk-blue);
+  outline-offset: 2px;
+}
 .dk-templates__section {
   margin: 0;
   font-size: var(--dk-text-md);

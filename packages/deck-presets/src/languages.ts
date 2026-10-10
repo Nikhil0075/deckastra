@@ -1,5 +1,9 @@
 import type { MotionStyleId } from "./schema";
 
+/** The composer's seven base layouts, which every slide pattern composes as. */
+export type ComposerLayout = "title" | "statement" | "bullets" | "metrics" | "quote" | "code" | "split";
+const SIX = ["title", "statement", "bullets", "metrics", "quote", "split"] as const;
+
 /**
  * Design languages: what makes one template family look unlike another (UI
  * audit 2026-10-10, unit 5).
@@ -68,6 +72,13 @@ export interface DesignLanguage {
   };
   data: { emphasis: "one-accent" | "all-equal"; gridlines: boolean };
   shapes: { radius: number; motifs: readonly string[] };
+  /**
+   * The composer layouts this language draws itself; any other falls back to
+   * the neutral one. Held to the composer's registry
+   * (`languages.LANGUAGE_LAYOUTS`) by a Python test, so an agent reading this
+   * is told what will actually happen.
+   */
+  layouts: readonly ComposerLayout[];
   /** Combinations a deck in this language must not contain, in words an agent can check. */
   forbid: readonly string[];
   /** The language's own rules, as prose an agent follows before it writes slot text. */
@@ -88,6 +99,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "none", frame: "none" },
     data: { emphasis: "all-equal", gridlines: true },
     shapes: { radius: 12, motifs: [] },
+    layouts: [],
     forbid: [],
     rules: ["Write one idea per slide.", "Keep headlines under twelve words."],
     defaults: { themeKey: "neo-technical", motionStyle: "restrained", transitionStyle: "fade", voiceStyle: "confident" },
@@ -104,6 +116,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "graphic", frame: "none" },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 0, motifs: ["red-rule", "signal-disc", "index-number"] },
+    layouts: SIX,
     forbid: [
       "centred text",
       "more than one accent colour",
@@ -132,6 +145,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "photographic", frame: "full-bleed" },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 0, motifs: ["letterbox", "spotlight", "hairline"] },
+    layouts: SIX,
     forbid: [
       "light backgrounds",
       "bright saturated colour",
@@ -160,6 +174,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "graphic", frame: "framed" },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 36, motifs: ["bubble", "sticker", "idea-card", "speech-bubble"] },
+    layouts: SIX,
     forbid: ["square corners", "hairline rules", "more than four ideas on a slide", "small print as the main text", "grey-on-grey colour"],
     rules: [
       "One idea per card, written as a short sentence someone would say out loud.",
@@ -182,6 +197,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "none", frame: "none" },
     data: { emphasis: "one-accent", gridlines: true },
     shapes: { radius: 0, motifs: ["window-bar", "prompt", "line-numbers", "cursor", "block-comment"] },
+    layouts: [...SIX, "code"],
     forbid: ["proportional display type", "rounded corners", "photography", "decorative gradients", "centred text"],
     rules: [
       "Write labels as commands: lower case, a verb first.",
@@ -204,6 +220,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "photographic", frame: "framed" },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 0, motifs: ["hairline", "portrait-frame", "tracked-capitals"] },
+    layouts: SIX,
     forbid: ["bold display type", "filled cards", "more than one accent colour", "busy charts", "exclamation marks"],
     rules: [
       "Say less than you could; the space around the words is the luxury.",
@@ -226,6 +243,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "graphic", frame: "none" },
     data: { emphasis: "all-equal", gridlines: true },
     shapes: { radius: 12, motifs: ["header-strip", "status-dot", "kpi-tile", "spark-bars", "trend-bar"] },
+    layouts: SIX,
     forbid: ["decorative photography", "centred headlines", "more than four figures on a slide", "figures without a label", "script or display serif type"],
     rules: [
       "Headlines state the finding, not the topic: say what the numbers mean.",
@@ -248,6 +266,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "photographic", frame: "framed" },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 0, motifs: ["earth-block", "arch-frame", "hill", "stepping-stones", "leaf"] },
+    layouts: SIX,
     forbid: ["neon or electric colour", "hard grid tables", "monospace type", "more than four steps on a slide", "dense jargon"],
     rules: [
       "Tell it as a journey: where it began, what changed, where it leads.",
@@ -270,6 +289,7 @@ export const DESIGN_LANGUAGES = {
     imagery: { kind: "graphic", frame: "framed" },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 32, motifs: ["glow", "orbit-ring", "glass-panel", "hologram-frame"] },
+    layouts: SIX,
     forbid: ["light backgrounds", "serif type", "heavy borders", "more than four cards on a slide", "flat clip-art"],
     rules: [
       "Headlines name a future state, in eight words or fewer.",
