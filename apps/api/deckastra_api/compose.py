@@ -595,8 +595,13 @@ _LAYOUTS = {
 }
 
 
-def compose_slide(plan: SlidePlan, index: int) -> dict[str, Any]:
-    builder = _LAYOUTS[plan.layout]
+def compose_slide(plan: SlidePlan, index: int, language: str = "neutral") -> dict[str, Any]:
+    # A design language (UI audit unit 5) may lay a layout out its own way;
+    # anything it does not supply is the composer's own, below. Imported here
+    # because the languages build on this module's helpers.
+    from .languages import layout_for
+
+    builder = layout_for(language, plan.layout) or _LAYOUTS[plan.layout]
     elements = builder(plan)
 
     slide: dict[str, Any] = {
@@ -629,6 +634,8 @@ def compose_document(
     motion_plan: dict[str, Any] | None = None,
     theme_definition: dict[str, Any] | None = None,
     theme_id: str | None = None,
+    language: str = "neutral",
+    language_version: int | None = None,
 ) -> dict[str, Any]:
     """Compose a document, and animate it if the Motion Agent had an opinion.
 
@@ -646,7 +653,7 @@ def compose_document(
     slides: list[dict[str, Any]] = []
     motion_warnings: list[str] = []
     for index, slide_plan in enumerate(plan.slides):
-        slide = compose_slide(slide_plan, index)
+        slide = compose_slide(slide_plan, index, language)
         motion_warnings.extend(animate_slide(slide, intents.get(index)))
         slides.append(slide)
     theme = deepcopy(theme_definition) if theme_definition is not None else neo_technical_theme()
@@ -667,6 +674,14 @@ def compose_document(
             "audience": plan.audience,
             "objective": plan.objective,
             "estimatedDurationSeconds": max(60, len(plan.slides) * 60),
+            # The language and its version, so a later slide can stay in it. Not
+            # written for the neutral composer: those decks are exactly what they
+            # were before languages existed.
+            **(
+                {"designLanguage": {"id": language, "version": language_version or 1}}
+                if language != "neutral"
+                else {}
+            ),
         },
         "viewport": {
             "width": VIEWPORT_W,

@@ -3626,6 +3626,184 @@
       "clickReveals": 1
     }
   },
+  "designLanguages": {
+    "neutral": {
+      "id": "neutral",
+      "name": "Neutral",
+      "version": 1,
+      "summary": "The composer's own grammar: a clear headline, a measured column, nothing that competes with the content.",
+      "axes": {
+        "expression": "editorial",
+        "density": "dense",
+        "imagery": "graphic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.25,
+        "displayCase": "as-written",
+        "displayTracking": "normal",
+        "alignment": "mixed"
+      },
+      "grid": {
+        "columns": 1,
+        "asymmetry": "none"
+      },
+      "density": {
+        "maxBullets": 6,
+        "maxHeadlineWords": 12
+      },
+      "imagery": {
+        "kind": "none",
+        "frame": "none"
+      },
+      "data": {
+        "emphasis": "all-equal",
+        "gridlines": true
+      },
+      "shapes": {
+        "radius": 12,
+        "motifs": []
+      },
+      "forbid": [],
+      "rules": [
+        "Write one idea per slide.",
+        "Keep headlines under twelve words."
+      ],
+      "defaults": {
+        "themeKey": "neo-technical",
+        "motionStyle": "restrained",
+        "transitionStyle": "fade",
+        "voiceStyle": "confident"
+      }
+    },
+    "swiss-signal": {
+      "id": "swiss-signal",
+      "name": "Swiss Signal",
+      "version": 1,
+      "summary": "International Typographic Style: an asymmetric grid, oversized grotesque type set flush left, black and white with one red signal.",
+      "axes": {
+        "expression": "expressive",
+        "density": "spacious",
+        "imagery": "graphic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.618,
+        "displayCase": "uppercase",
+        "displayTracking": "tight",
+        "alignment": "flush-left"
+      },
+      "grid": {
+        "columns": 12,
+        "asymmetry": "strong"
+      },
+      "density": {
+        "maxBullets": 4,
+        "maxHeadlineWords": 5
+      },
+      "imagery": {
+        "kind": "graphic",
+        "frame": "none"
+      },
+      "data": {
+        "emphasis": "one-accent",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 0,
+        "motifs": [
+          "red-rule",
+          "signal-disc",
+          "index-number"
+        ]
+      },
+      "forbid": [
+        "centred text",
+        "more than one accent colour",
+        "rounded corners",
+        "decorative photography",
+        "more than four bullets on a slide"
+      ],
+      "rules": [
+        "Headlines are short statements of five words or fewer; the type is the image.",
+        "Everything is flush left on the grid; never centre a line.",
+        "Red marks the one thing that matters on a slide: one number, one rule, one disc.",
+        "Number the sections: the index is part of the layout.",
+        "Prefer a single large figure to a row of small ones."
+      ],
+      "defaults": {
+        "themeKey": "swiss-signal",
+        "motionStyle": "restrained",
+        "transitionStyle": "cut",
+        "voiceStyle": "direct"
+      }
+    },
+    "cinema-noir": {
+      "id": "cinema-noir",
+      "name": "Cinema Noir",
+      "version": 1,
+      "summary": "Film-noir title cards: near-black frames with letterbox bars, a high-contrast serif in cream, one warm light, and slow fades.",
+      "axes": {
+        "expression": "expressive",
+        "density": "spacious",
+        "imagery": "photographic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.5,
+        "displayCase": "as-written",
+        "displayTracking": "wide",
+        "alignment": "centred"
+      },
+      "grid": {
+        "columns": 1,
+        "asymmetry": "none"
+      },
+      "density": {
+        "maxBullets": 3,
+        "maxHeadlineWords": 8
+      },
+      "imagery": {
+        "kind": "photographic",
+        "frame": "full-bleed"
+      },
+      "data": {
+        "emphasis": "one-accent",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 0,
+        "motifs": [
+          "letterbox",
+          "spotlight",
+          "hairline"
+        ]
+      },
+      "forbid": [
+        "light backgrounds",
+        "bright saturated colour",
+        "more than three bullets on a slide",
+        "dense tables",
+        "playful or rounded type"
+      ],
+      "rules": [
+        "Every slide is a scene: one line of dialogue, one figure, one quotation.",
+        "Write headlines as a film title or a line said aloud, not a label.",
+        "Light comes from one place: the warm accent is a lamp, used once per slide.",
+        "Let silence work: few words, slow fades, nothing that hurries.",
+        "A number is evidence in a case file: state it, then say what it means."
+      ],
+      "defaults": {
+        "themeKey": "cinema-noir",
+        "motionStyle": "cinematic",
+        "transitionStyle": "fade",
+        "voiceStyle": "measured"
+      }
+    }
+  },
   "presets": [
     {
       "id": "business-pitch",
@@ -3777,7 +3955,8 @@
             "subtitle": "We can begin discovery this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "product-launch",
@@ -3931,7 +4110,8 @@
             "subtitle": "The fastest way to understand the change is to use it"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "teaching-workshop",
@@ -4077,7 +4257,8 @@
             "subtitle": "Choose the situation before you leave"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "technical-architecture",
@@ -4232,7 +4413,8 @@
             "subtitle": "Begin with the adapter and measured comparison"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "team-all-hands",
@@ -4381,7 +4563,8 @@
             "subtitle": "Keep the priority clear and the collaboration generous"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "personal-portfolio",
@@ -4523,10 +4706,12 @@
             "subtitle": "Bring the problem that still resists an easy answer"
           }
         }
-      ]
+      ],
+      "designLanguage": "neutral"
     },
     {
       "id": "investor-update",
+      "designLanguage": "neutral",
       "name": "Investor update",
       "summary": "A measured update from market signal to capital priorities.",
       "purpose": "business",
@@ -4683,6 +4868,7 @@
     },
     {
       "id": "quarterly-review",
+      "designLanguage": "neutral",
       "name": "Quarterly review",
       "summary": "A crisp operating review with results, risks and next-quarter choices.",
       "purpose": "business",
@@ -4839,6 +5025,7 @@
     },
     {
       "id": "board-briefing",
+      "designLanguage": "neutral",
       "name": "Board briefing",
       "summary": "Decision-ready board material with context, evidence and an explicit ask.",
       "purpose": "business",
@@ -4995,6 +5182,7 @@
     },
     {
       "id": "product-roadmap",
+      "designLanguage": "neutral",
       "name": "Product roadmap",
       "summary": "A customer-led roadmap connecting problems, bets and releases.",
       "purpose": "product",
@@ -5136,6 +5324,7 @@
     },
     {
       "id": "release-notes",
+      "designLanguage": "neutral",
       "name": "Release notes",
       "summary": "Turn a product release into a clear story of change and value.",
       "purpose": "product",
@@ -5277,6 +5466,7 @@
     },
     {
       "id": "customer-case-study",
+      "designLanguage": "neutral",
       "name": "Customer case study",
       "summary": "A proof-led customer story from tension to measurable outcome.",
       "purpose": "product",
@@ -5418,6 +5608,7 @@
     },
     {
       "id": "lesson-plan",
+      "designLanguage": "neutral",
       "name": "Lesson plan",
       "summary": "A paced lesson from objectives through practice and reflection.",
       "purpose": "teaching",
@@ -5562,6 +5753,7 @@
     },
     {
       "id": "training-module",
+      "designLanguage": "neutral",
       "name": "Training module",
       "summary": "A practical workplace module built around demonstration and practice.",
       "purpose": "teaching",
@@ -5706,6 +5898,7 @@
     },
     {
       "id": "thesis-defence",
+      "designLanguage": "neutral",
       "name": "Thesis defence",
       "summary": "A rigorous academic argument with method, evidence and implications.",
       "purpose": "teaching",
@@ -5850,6 +6043,7 @@
     },
     {
       "id": "incident-review",
+      "designLanguage": "neutral",
       "name": "Incident review",
       "summary": "A blameless technical review from architecture to corrective action.",
       "purpose": "technical",
@@ -6009,6 +6203,7 @@
     },
     {
       "id": "research-talk",
+      "designLanguage": "neutral",
       "name": "Research talk",
       "summary": "A technical research narrative linking model, experiment and result.",
       "purpose": "technical",
@@ -6168,6 +6363,7 @@
     },
     {
       "id": "system-design-review",
+      "designLanguage": "neutral",
       "name": "System design review",
       "summary": "A decision-oriented architecture review with contracts and trade-offs.",
       "purpose": "technical",
@@ -6327,6 +6523,7 @@
     },
     {
       "id": "onboarding",
+      "designLanguage": "neutral",
       "name": "Team onboarding",
       "summary": "A welcoming introduction to purpose, people and ways of working.",
       "purpose": "team",
@@ -6485,6 +6682,7 @@
     },
     {
       "id": "retrospective",
+      "designLanguage": "neutral",
       "name": "Team retrospective",
       "summary": "A candid review of wins, friction and concrete improvements.",
       "purpose": "team",
@@ -6643,6 +6841,7 @@
     },
     {
       "id": "team-kickoff",
+      "designLanguage": "neutral",
       "name": "Team kickoff",
       "summary": "An energising kickoff aligning mission, roles and first milestones.",
       "purpose": "team",
@@ -6801,6 +7000,7 @@
     },
     {
       "id": "event-story",
+      "designLanguage": "neutral",
       "name": "Event story",
       "summary": "A cinematic event narrative with people, moments and a clear arc.",
       "purpose": "personal",
@@ -6937,6 +7137,7 @@
     },
     {
       "id": "wedding-story",
+      "designLanguage": "neutral",
       "name": "Wedding story",
       "summary": "An elegant personal story for ceremonies, dinners and keepsakes.",
       "purpose": "personal",
@@ -7073,6 +7274,7 @@
     },
     {
       "id": "personal-narrative",
+      "designLanguage": "neutral",
       "name": "Personal narrative",
       "summary": "A reflective life or career story told through decisive moments.",
       "purpose": "personal",
@@ -7203,6 +7405,580 @@
             "eyebrow": "PERSONAL NARRATIVE · 10",
             "headline": "Thank you for listening",
             "subtitle": "The next chapter starts together"
+          }
+        }
+      ]
+    },
+    {
+      "id": "swiss-strategy-brief",
+      "name": "Strategy brief",
+      "summary": "A strategy told in short, numbered statements on an asymmetric grid, with one red signal per slide.",
+      "purpose": "business",
+      "tags": [
+        "strategy",
+        "swiss",
+        "board",
+        "brief"
+      ],
+      "designLanguage": "swiss-signal",
+      "themeKey": "swiss-signal",
+      "motionStyle": "restrained",
+      "transitionStyle": "cut",
+      "voiceStyle": "direct",
+      "reviewed": true,
+      "slides": [
+        {
+          "key": "title-1",
+          "pattern": "title",
+          "purpose": "Name the strategy",
+          "slots": {
+            "eyebrow": "01",
+            "headline": "Focus wins",
+            "subtitle": "Strategy brief for the next eighteen months"
+          }
+        },
+        {
+          "key": "executive-summary-2",
+          "pattern": "executive-summary",
+          "purpose": "State the plan in three lines",
+          "slots": {
+            "eyebrow": "02",
+            "headline": "Three moves",
+            "bullets": [
+              "The opportunity is clear",
+              "The evidence is credible",
+              "The next move is bounded"
+            ]
+          }
+        },
+        {
+          "key": "big-number-3",
+          "pattern": "big-number",
+          "purpose": "Show the one number that matters",
+          "slots": {
+            "eyebrow": "03",
+            "headline": "Retention decides it",
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
+          }
+        },
+        {
+          "key": "problem-4",
+          "pattern": "problem",
+          "purpose": "Name the constraint",
+          "slots": {
+            "eyebrow": "04",
+            "headline": "Breadth is the cost",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "comparison-5",
+          "pattern": "comparison",
+          "purpose": "Compare the paths",
+          "slots": {
+            "eyebrow": "05",
+            "headline": "Two paths, one choice",
+            "body": "Today: context is scattered and handoffs are implicit.",
+            "bullets": [
+              "Tomorrow: one source",
+              "Visible ownership",
+              "Reviewable decisions"
+            ]
+          }
+        },
+        {
+          "key": "process-6",
+          "pattern": "process",
+          "purpose": "Lay out the sequence",
+          "slots": {
+            "eyebrow": "06",
+            "headline": "Sequence the work",
+            "bullets": [
+              "Frame the outcome",
+              "Compose from constraints",
+              "Review before export"
+            ]
+          }
+        },
+        {
+          "key": "market-7",
+          "pattern": "market",
+          "purpose": "Size the opportunity",
+          "slots": {
+            "eyebrow": "07",
+            "headline": "Where demand moves",
+            "metrics": [
+              {
+                "value": "$4.2B",
+                "label": "addressable market"
+              },
+              {
+                "value": "18%",
+                "label": "annual growth"
+              },
+              {
+                "value": "3",
+                "label": "priority segments"
+              }
+            ]
+          }
+        },
+        {
+          "key": "quote-8",
+          "pattern": "quote",
+          "purpose": "Let a customer say it",
+          "slots": {
+            "eyebrow": "08",
+            "headline": "In their words",
+            "quote": "Clarity begins with choosing what deserves attention.",
+            "attribution": "Design principle"
+          }
+        },
+        {
+          "key": "recommendation-9",
+          "pattern": "recommendation",
+          "purpose": "Make the recommendation",
+          "slots": {
+            "eyebrow": "09",
+            "headline": "Commit to the core",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "closing-10",
+          "pattern": "closing",
+          "purpose": "Close on the decision",
+          "slots": {
+            "eyebrow": "10",
+            "headline": "Decide today",
+            "subtitle": "One owner, one date, one measure"
+          }
+        }
+      ]
+    },
+    {
+      "id": "swiss-launch-signal",
+      "name": "Launch signal",
+      "summary": "A product launch as a typographic poster series: numbered sections, oversized words, one red mark.",
+      "purpose": "product",
+      "tags": [
+        "launch",
+        "product",
+        "swiss",
+        "release"
+      ],
+      "designLanguage": "swiss-signal",
+      "themeKey": "swiss-signal",
+      "motionStyle": "technical",
+      "transitionStyle": "cut",
+      "voiceStyle": "direct",
+      "reviewed": true,
+      "slides": [
+        {
+          "key": "title-1",
+          "pattern": "title",
+          "purpose": "Announce the product",
+          "slots": {
+            "eyebrow": "01",
+            "headline": "Introducing Signal",
+            "subtitle": "The fastest route from idea to review"
+          }
+        },
+        {
+          "key": "agenda-2",
+          "pattern": "agenda",
+          "purpose": "Index the launch",
+          "slots": {
+            "eyebrow": "02",
+            "headline": "Index",
+            "bullets": [
+              "What changed?",
+              "What did we learn?",
+              "What happens next?"
+            ]
+          }
+        },
+        {
+          "key": "problem-3",
+          "pattern": "problem",
+          "purpose": "Name the friction",
+          "slots": {
+            "eyebrow": "03",
+            "headline": "Waiting is the work",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "feature-grid-4",
+          "pattern": "feature-grid",
+          "purpose": "Show what it does",
+          "slots": {
+            "eyebrow": "04",
+            "headline": "Three capabilities",
+            "bullets": [
+              "Capture intent in context",
+              "Compose from reviewed patterns",
+              "Export without rebuilding"
+            ]
+          }
+        },
+        {
+          "key": "big-number-5",
+          "pattern": "big-number",
+          "purpose": "Prove the speed",
+          "slots": {
+            "eyebrow": "05",
+            "headline": "Four times faster",
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
+          }
+        },
+        {
+          "key": "comparison-6",
+          "pattern": "comparison",
+          "purpose": "Before and after",
+          "slots": {
+            "eyebrow": "06",
+            "headline": "Before, after",
+            "body": "Today: context is scattered and handoffs are implicit.",
+            "bullets": [
+              "Tomorrow: one source",
+              "Visible ownership",
+              "Reviewable decisions"
+            ]
+          }
+        },
+        {
+          "key": "feedback-7",
+          "pattern": "feedback",
+          "purpose": "Early users",
+          "slots": {
+            "eyebrow": "07",
+            "headline": "Heard in beta",
+            "quote": "We stopped rebuilding the same story in three different tools.",
+            "attribution": "Pilot customer"
+          }
+        },
+        {
+          "key": "release-plan-8",
+          "pattern": "release-plan",
+          "purpose": "Rollout",
+          "slots": {
+            "eyebrow": "08",
+            "headline": "Rollout in three stages",
+            "bullets": [
+              "Pilot — prove the core",
+              "Beta — widen the cohort",
+              "Launch — scale support"
+            ]
+          }
+        },
+        {
+          "key": "decision-9",
+          "pattern": "decision",
+          "purpose": "What we ask",
+          "slots": {
+            "eyebrow": "09",
+            "headline": "Ship on Monday",
+            "subtitle": "Owner: Platform · Start: this month",
+            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
+          }
+        },
+        {
+          "key": "closing-10",
+          "pattern": "closing",
+          "purpose": "Sign off",
+          "slots": {
+            "eyebrow": "10",
+            "headline": "Signal is live",
+            "subtitle": "Start today"
+          }
+        }
+      ]
+    },
+    {
+      "id": "noir-case-file",
+      "name": "Case file",
+      "summary": "A business problem told as an investigation: dark frames, letterbox bars, a serif title card for every scene.",
+      "purpose": "business",
+      "tags": [
+        "investigation",
+        "post-mortem",
+        "noir",
+        "story"
+      ],
+      "designLanguage": "cinema-noir",
+      "themeKey": "cinema-noir",
+      "motionStyle": "cinematic",
+      "transitionStyle": "fade",
+      "voiceStyle": "measured",
+      "reviewed": true,
+      "slides": [
+        {
+          "key": "title-1",
+          "pattern": "title",
+          "purpose": "Open the case",
+          "slots": {
+            "eyebrow": "CASE FILE",
+            "headline": "The quarter we lost",
+            "subtitle": "An investigation in eight scenes"
+          }
+        },
+        {
+          "key": "story-beat-2",
+          "pattern": "story-beat",
+          "purpose": "Set the scene",
+          "slots": {
+            "eyebrow": "SCENE ONE",
+            "headline": "Nobody saw it coming",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "big-number-3",
+          "pattern": "big-number",
+          "purpose": "The evidence",
+          "slots": {
+            "eyebrow": "EXHIBIT A",
+            "headline": "One number told the story",
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
+          }
+        },
+        {
+          "key": "quote-4",
+          "pattern": "quote",
+          "purpose": "A witness speaks",
+          "slots": {
+            "eyebrow": "WITNESS",
+            "headline": "Someone said it out loud",
+            "quote": "Clarity begins with choosing what deserves attention.",
+            "attribution": "Design principle"
+          }
+        },
+        {
+          "key": "timeline-5",
+          "pattern": "timeline",
+          "purpose": "Reconstruct the night",
+          "slots": {
+            "eyebrow": "THE NIGHT",
+            "headline": "How it unfolded",
+            "bullets": [
+              "Now — align the boundary",
+              "Next — prove the workflow",
+              "Then — scale what works"
+            ]
+          }
+        },
+        {
+          "key": "root-cause-6",
+          "pattern": "root-cause",
+          "purpose": "Find the cause",
+          "slots": {
+            "eyebrow": "THE CAUSE",
+            "headline": "It was never the tooling",
+            "body": "Trigger: one dependency slowed unexpectedly.",
+            "bullets": [
+              "No retry budget",
+              "No admission control",
+              "Alert followed symptoms"
+            ]
+          }
+        },
+        {
+          "key": "statement-7",
+          "pattern": "statement",
+          "purpose": "The turn",
+          "slots": {
+            "eyebrow": "THE TURN",
+            "headline": "We stopped guessing",
+            "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
+          }
+        },
+        {
+          "key": "reflection-8",
+          "pattern": "reflection",
+          "purpose": "What it taught us",
+          "slots": {
+            "eyebrow": "AFTERMATH",
+            "headline": "What the quiet taught us",
+            "quote": "What would you change in your next real decision?",
+            "attribution": "Reflection prompt"
+          }
+        },
+        {
+          "key": "decision-9",
+          "pattern": "decision",
+          "purpose": "Close the case",
+          "slots": {
+            "eyebrow": "VERDICT",
+            "headline": "Close the gap this week",
+            "subtitle": "Owner: Platform · Start: this month",
+            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
+          }
+        },
+        {
+          "key": "closing-10",
+          "pattern": "closing",
+          "purpose": "Fade out",
+          "slots": {
+            "eyebrow": "END",
+            "headline": "Case closed",
+            "subtitle": "Questions from the floor"
+          }
+        }
+      ]
+    },
+    {
+      "id": "noir-night-story",
+      "name": "Night story",
+      "summary": "A personal story lit like a film: one warm light in the dark, slow fades, a title card for each chapter.",
+      "purpose": "personal",
+      "tags": [
+        "story",
+        "biography",
+        "noir",
+        "film"
+      ],
+      "designLanguage": "cinema-noir",
+      "themeKey": "cinema-noir",
+      "motionStyle": "cinematic",
+      "transitionStyle": "fade",
+      "voiceStyle": "warm",
+      "reviewed": true,
+      "slides": [
+        {
+          "key": "title-1",
+          "pattern": "title",
+          "purpose": "Open the film",
+          "slots": {
+            "eyebrow": "A STORY IN SIX REELS",
+            "headline": "The long way home",
+            "subtitle": "Told in the order it happened"
+          }
+        },
+        {
+          "key": "story-beat-2",
+          "pattern": "story-beat",
+          "purpose": "Where it started",
+          "slots": {
+            "eyebrow": "REEL ONE",
+            "headline": "It began at night",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "biography-3",
+          "pattern": "biography",
+          "purpose": "Who they were",
+          "slots": {
+            "eyebrow": "THE LEAD",
+            "headline": "A stranger to the city",
+            "quote": "I turn complicated workflows into experiences people can trust.",
+            "attribution": "Independent product designer"
+          }
+        },
+        {
+          "key": "timeline-4",
+          "pattern": "timeline",
+          "purpose": "The years",
+          "slots": {
+            "eyebrow": "REEL TWO",
+            "headline": "Ten years, four cities",
+            "bullets": [
+              "Now — align the boundary",
+              "Next — prove the workflow",
+              "Then — scale what works"
+            ]
+          }
+        },
+        {
+          "key": "gallery-5",
+          "pattern": "gallery",
+          "purpose": "The places",
+          "slots": {
+            "eyebrow": "LOCATIONS",
+            "headline": "Rooms we remember",
+            "body": "A collection of interfaces built around calm decisions.",
+            "bullets": [
+              "Product systems",
+              "Data stories",
+              "Identity and motion"
+            ]
+          }
+        },
+        {
+          "key": "big-number-6",
+          "pattern": "big-number",
+          "purpose": "The measure of it",
+          "slots": {
+            "eyebrow": "REEL THREE",
+            "headline": "A life in numbers",
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
+          }
+        },
+        {
+          "key": "quote-7",
+          "pattern": "quote",
+          "purpose": "The line everyone remembers",
+          "slots": {
+            "eyebrow": "THE LINE",
+            "headline": "What she always said",
+            "quote": "Clarity begins with choosing what deserves attention.",
+            "attribution": "Design principle"
+          }
+        },
+        {
+          "key": "reflection-8",
+          "pattern": "reflection",
+          "purpose": "Looking back",
+          "slots": {
+            "eyebrow": "REEL FOUR",
+            "headline": "What the light showed",
+            "quote": "What would you change in your next real decision?",
+            "attribution": "Reflection prompt"
+          }
+        },
+        {
+          "key": "story-beat-9",
+          "pattern": "story-beat",
+          "purpose": "The turn home",
+          "slots": {
+            "eyebrow": "REEL FIVE",
+            "headline": "Then the door opened",
+            "body": "A concise explanation keeps the claim grounded and actionable."
+          }
+        },
+        {
+          "key": "thank-you-10",
+          "pattern": "thank-you",
+          "purpose": "Roll credits",
+          "slots": {
+            "eyebrow": "FIN",
+            "headline": "Thank you for watching",
+            "subtitle": "Stay for the credits"
           }
         }
       ]

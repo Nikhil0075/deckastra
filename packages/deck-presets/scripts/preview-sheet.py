@@ -11,6 +11,10 @@ has a baseline to beat and a gate to turn on:
 - **Near-duplicate covers**: covers whose difference hash differs by at most
   `--duplicate-bits` bits. A gallery of near-identical covers is a catalogue,
   not a choice.
+- **Language distances** (unit 5): each named language's covers against the
+  nearest neutral cover and the nearest other language, by hash and by
+  grammar (headline size, alignment and position, and the shapes drawn). A
+  language cover with a neutral cover's grammar is a recolour, and a finding.
 
 It renders through the export worker (`export_service.render_slide_png`), the
 same path a preview and an export take, and writes `report.json`, the cover PNGs
@@ -72,6 +76,60 @@ def scene_findings(directory: Path) -> dict[str, list[dict]]:
     return json.loads(completed.stdout)
 
 
+def cover_signature(document: dict) -> dict:
+    """The cover's grammar rather than its colour: headline size and alignment, and its shapes."""
+    def walk(elements):
+        for element in elements:
+            yield element
+            yield from walk(element.get("children") or [])
+
+    elements = list(walk((document.get("slides") or [{}])[0].get("elements") or []))
+    headline = next((one for one in elements if one.get("semanticRole") == "headline"), None) or {}
+    return {
+        "headline_size": round((headline.get("typography") or {}).get("fontSize") or 0),
+        "headline_align": (headline.get("paragraph") or {}).get("align") or "left",
+        "headline_x": round((headline.get("transform") or {}).get("x") or 0),
+        "shapes": sorted(one.get("name", "") for one in elements if one.get("type") == "shape"),
+    }
+
+
+def language_distances(rendered: dict[str, dict]) -> list[dict]:
+    """How far each named language's covers sit from neutral's, and from each other's (UI audit unit 5).
+
+    The nearest neutral cover is the honest comparison: a language that is a
+    recolour of one neutral template would hide in an average.
+    """
+    by_language: dict[str, list[tuple[str, dict]]] = {}
+    for name, one in rendered.items():
+        by_language.setdefault(one["language"], []).append((name, one))
+    neutral = by_language.get("neutral", [])
+    rows = []
+    for language, members in sorted(by_language.items()):
+        if language == "neutral":
+            continue
+        for name, one in sorted(members):
+            nearest = min(
+                ((bin(one["hash"] ^ other["hash"]).count("1"), other_name, other) for other_name, other in neutral),
+                default=None,
+                key=lambda row: row[0],
+            )
+            rows.append({
+                "template": name,
+                "language": language,
+                "signature": one["signature"],
+                "nearest_neutral": nearest[1] if nearest else None,
+                "nearest_neutral_bits": nearest[0] if nearest else None,
+                "same_grammar_as_a_neutral_cover": any(other["signature"] == one["signature"] for _, other in neutral),
+                "nearest_other_language_bits": min(
+                    (bin(one["hash"] ^ other["hash"]).count("1")
+                     for other_language, others in by_language.items() if other_language not in (language, "neutral")
+                     for _, other in others),
+                    default=None,
+                ),
+            })
+    return rows
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=ROOT / ".artifacts" / "preview-sheet")
@@ -101,6 +159,8 @@ def main() -> int:
         (covers / f"{template_id}.png").write_bytes(picture["bytes"])
         rendered[template_id] = {
             "theme": preset["themeKey"],
+            "language": preset.get("designLanguage") or "neutral",
+            "signature": cover_signature(document),
             "hash": difference_hash(picture["bytes"]),
             "warnings": picture["warnings"],
         }
@@ -113,6 +173,8 @@ def main() -> int:
             duplicates.append({"templates": [left, right], "distance": distance})
     duplicates.sort(key=lambda pair: pair["distance"])
 
+    languages = language_distances(rendered)
+
     findings = scene_findings(documents)
     clipped = {name: [one for one in issues if one["code"] == "W103"] for name, issues in findings.items()}
     clipped = {name: issues for name, issues in clipped.items() if issues}
@@ -123,6 +185,7 @@ def main() -> int:
         "rendered": len(rendered),
         "missing_covers": missing,
         "near_duplicate_covers": duplicates,
+        "language_distances": languages,
         "duplicate_threshold_bits": args.duplicate_bits,
         "clipped_text": clipped,
         "render_warnings": {name: one["warnings"] for name, one in rendered.items() if one["warnings"]},
@@ -145,10 +208,11 @@ def main() -> int:
     print(
         f"{report['rendered']}/{report['templates']} covers rendered; "
         f"{len(missing)} missing; {len(duplicates)} near-duplicate pairs (<= {args.duplicate_bits} bits); "
-        f"{sum(len(issues) for issues in clipped.values())} clipped text boxes in {len(clipped)} templates. "
+        f"{sum(len(issues) for issues in clipped.values())} clipped text boxes in {len(clipped)} templates; "
+        f"{sum(1 for row in languages if row['same_grammar_as_a_neutral_cover'])} language covers share a neutral cover's grammar. "
         f"Report: {out / 'report.json'}"
     )
-    failing = missing or duplicates or clipped
+    failing = missing or duplicates or clipped or any(row["same_grammar_as_a_neutral_cover"] for row in languages)
     return 1 if args.strict and failing else 0
 
 

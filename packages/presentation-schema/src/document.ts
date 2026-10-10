@@ -102,6 +102,18 @@ export const PresentationMetadataSchema = z.looseObject({
   /** Story Agent slide count; Motion Agent timing budget. */
   estimatedDurationSeconds: FiniteNumber.positive().optional(),
   sourceProjectId: z.string().optional(),
+  /**
+   * The design language a deck was composed in, and which version of it (UI
+   * audit unit 5). Recorded so that regenerating or inserting a slide can stay
+   * in the deck's language, and so a change to a language can name the decks
+   * composed before it. Absent: composed before languages, or in the neutral one.
+   */
+  designLanguage: z
+    .object({
+      id: z.string().min(1).max(64),
+      version: z.number().int().positive(),
+    })
+    .optional(),
 });
 export type PresentationMetadata = z.infer<typeof PresentationMetadataSchema>;
 

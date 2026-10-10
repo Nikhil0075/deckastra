@@ -437,6 +437,12 @@
   color: var(--dk-ink-muted);
   font-size: var(--dk-text-xs);
 }
+.dk-template-card__language {
+  color: var(--dk-ink);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .dk-template-card__meta,
 .dk-template-card__actions {
   display: flex;

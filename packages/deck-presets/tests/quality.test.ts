@@ -18,10 +18,12 @@ describe("preset quality gate", () => {
     expect(SLIDE_PATTERNS).toHaveLength(60);
     expect(Object.keys(MOTION_STYLES)).toHaveLength(7);
     expect(MOTION_STYLES.playful.entrance).toBe("wordCascade");
-    expect(DECK_PRESETS).toHaveLength(24);
+    // 24 neutral templates and four in the pilot design languages (unit 5).
+    expect(DECK_PRESETS).toHaveLength(28);
     expect(DECK_PRESETS.every((preset) => preset.reviewed)).toBe(true);
+    // Four neutral templates per purpose; the pilot languages add to some.
     for (const purpose of PURPOSE_GROUPS) {
-      expect(DECK_PRESETS.filter((preset) => preset.purpose === purpose), purpose).toHaveLength(4);
+      expect(DECK_PRESETS.filter((preset) => preset.purpose === purpose && preset.designLanguage === "neutral"), purpose).toHaveLength(4);
     }
   });
 
