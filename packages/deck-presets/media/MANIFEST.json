@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "budget": {
+    "maxFiles": 30,
+    "maxFileBytes": 409600,
+    "maxTotalBytes": 12582912,
+    "maxLongEdge": 1920,
+    "format": "image/jpeg"
+  },
+  "note": "Template pictures, with provenance. Empty until pictures made under terms that allow commercial use are reviewed and added; see docs/design-audit/MEDIA.md. Checked by apps/api/deckastra_api/preset_media.py problems().",
+  "media": []
+}

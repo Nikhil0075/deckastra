@@ -27,7 +27,11 @@ function build(overrides: { extraInstaller?: boolean } = {}) {
   const files: Record<string, Record<string, string>> = {
     worker: { "cli.mjs": "export {}\n" },
     mcp: { "cli.mjs": "export const mcp = 1;\n" },
-    sidecar: { "deckastra-service.exe": "MZ service", "_internal/python313.dll": "MZ python" },
+    sidecar: {
+      "deckastra-service.exe": "MZ service",
+      "_internal/python313.dll": "MZ python",
+      "_internal/packages/deck-presets/media/MANIFEST.json": '{"media":[]}',
+    },
   };
   const installed: Record<string, Record<string, string>> = {};
   for (const [payload, entries] of Object.entries(files)) {
@@ -183,5 +187,16 @@ describe("the release gate", () => {
     const result = verify(release);
     expect(result.ok).toBe(false);
     expect(result.problems[0]).toMatch(/No installer/);
+  });
+  it("refuses a release whose template pictures are missing or over the ceiling (UI audit unit 7b)", () => {
+    const release = build();
+    const media = join(release.resources, "sidecar", "_internal", "packages", "deck-presets", "media");
+    writeFileSync(join(media, "huge.jpg"), Buffer.alloc(13 * 1024 * 1024));
+    const over = verify(release);
+    expect(over.problems.join(" ")).toContain("the ceiling is 12288 KB");
+
+    rmSync(media, { recursive: true, force: true });
+    const missing = verify(release);
+    expect(missing.problems.join(" ")).toContain("ships no template picture folder");
   });
 });

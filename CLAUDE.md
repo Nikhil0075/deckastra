@@ -4240,6 +4240,21 @@ to undo:
   language. It fails on covers within 40 bits of each other, title slides
   that share a grammar, or any W103 or W110; `scene-check.ts` now reports W110
   too. Each run is recorded in `docs/design-audit/LANGUAGE_REVIEW.md`.
+- **Template pictures** (unit 7b; `preset_media.py`, `docs/design-audit/MEDIA.md`).
+  The manifest at `packages/deck-presets/media/MANIFEST.json` is the only list,
+  and **it is empty**: OpenArt's terms grant commercial use only from the Plus
+  plan up, and the account is on Starter. `problems()` refuses any entry
+  without full provenance, a named reviewer and commercial-use licence evidence,
+  and enforces the budget (30 JPEGs, 400 KB and 1920px each, 12 MB in all). JPEG
+  because PowerPoint will not open WebP.
+  - `attach` puts pictures in a language's frames after composition, as
+    `preset-media/<file>` keys. Previews read them via `GET
+    /v1/presets/media/{file}`, mapped by both `blob_url` and the client's
+    `blobPath`.
+  - `adopt` copies them into the workspace when a deck is made, so the stored
+    deck holds ordinary assets.
+  - `verify-release.mjs` refuses a release with no picture folder or one over
+    the ceiling.
 - **The neutral golden hashes the composer, not the catalog.** Since no
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.
