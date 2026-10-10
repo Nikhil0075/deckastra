@@ -136,6 +136,14 @@ export interface EditorApi {
    */
   undoExternalChange: () => Promise<{ ok: boolean; message?: string }>;
   /**
+   * Revert one committed change through the server, by its transaction: how an
+   * approved proposal is undone from the Review view (UI audit unit 4). The
+   * inverse was computed where the change was applied, against a pre-state this
+   * editor may never have had, and the server refuses if a later edit would be
+   * disturbed (`disturbs()`).
+   */
+  revertChange: (transactionId: string) => Promise<{ ok: boolean; message?: string }>;
+  /**
    * Put the deck back to an earlier version (editor Phase 5).
    *
    * Drains the save queue first and stops if it cannot: a queued edit is
@@ -858,33 +866,42 @@ export function useEditor(input: UseEditorInput): EditorApi {
     };
   }, [adoptDocument, client, history, input.presentationId, input.watchHeadMs]);
 
+  const revertChange = useCallback(
+    async (transactionId: string): Promise<{ ok: boolean; message?: string }> => {
+      // The same rule every path that lets the server replace the document
+      // obeys: an operation still queued here was authored against a version
+      // about to be superseded, and could never be sent afterwards.
+      if (!(await flush())) {
+        return { ok: false, message: "Save your own edits first; they are not saved yet." };
+      }
+      try {
+        const reverted = await client.agent.revert(input.presentationId, transactionId);
+        if (!adoptDocument(reverted.document, reverted.version_id)) {
+          return { ok: false, message: "Your local work is unsaved; reconcile it first." };
+        }
+        // Local undo described the document before the revert.
+        history.clear();
+        setSave({ status: "saved", at: Date.now() });
+        return { ok: true };
+      } catch (error) {
+        // The server refuses when a later edit disturbed what this would touch.
+        // Said plainly: the alternative is a revert that lands on the wrong element.
+        return {
+          ok: false,
+          message: error instanceof Error ? error.message : "That change could not be undone.",
+        };
+      }
+    },
+    [adoptDocument, client, flush, history, input.presentationId],
+  );
+
   const undoExternalChange = useCallback(async (): Promise<{ ok: boolean; message?: string }> => {
     const change = externalChange;
     if (!change) return { ok: false, message: "There is no outside change to undo." };
-    // The same rule every path that lets the server replace the document obeys:
-    // an operation still queued here was authored against a version about to be
-    // superseded, and could never be sent afterwards.
-    if (!(await flush())) {
-      return { ok: false, message: "Save your own edits first; they are not saved yet." };
-    }
-    try {
-      const reverted = await client.agent.revert(input.presentationId, change.transactionId);
-      if (!adoptDocument(reverted.document, reverted.version_id)) {
-        return { ok: false, message: "Your local work is unsaved; reconcile it first." };
-      }
-      history.clear();
-      setExternalChange(null);
-      setSave({ status: "saved", at: Date.now() });
-      return { ok: true };
-    } catch (error) {
-      // The server refuses when a later edit disturbed what this would touch.
-      // Said plainly: the alternative is a revert that lands on the wrong element.
-      return {
-        ok: false,
-        message: error instanceof Error ? error.message : "That change could not be undone.",
-      };
-    }
-  }, [adoptDocument, client, externalChange, flush, history, input.presentationId]);
+    const result = await revertChange(change.transactionId);
+    if (result.ok) setExternalChange(null);
+    return result;
+  }, [externalChange, revertChange]);
 
   const restoreVersion = useCallback(
     async (target: string): Promise<{ ok: boolean; message?: string }> => {
@@ -993,6 +1010,7 @@ export function useEditor(input: UseEditorInput): EditorApi {
     currentVersionId: () => versionId.current,
     externalChange,
     undoExternalChange,
+    revertChange,
     restoreVersion,
     restoredVersion,
     undoRestore,

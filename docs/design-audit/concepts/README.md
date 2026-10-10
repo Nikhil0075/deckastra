@@ -39,3 +39,12 @@ with both panes at their minimums the slide reaches 59%, so meeting it would
 mean putting a pane away. Trimming unsized panes toward it shrank the strip at
 the desktop's own 1440px window for nothing. The step asserts the canvas share
 instead.
+
+## Unit 4 · Review
+
+`unit4-review/review-concept.webp` is the selected OpenArt concept (`gpt-image-2`,
+2026-10-10): changed slides on the left, Before and After side by side in the
+centre, the queue with Approve, Reject and Undo for what was applied this
+session. The built view follows it. In the desktop `ai` step at a 1426px window,
+the Review picture was 407px wide against the Assistant column's 150px.
+

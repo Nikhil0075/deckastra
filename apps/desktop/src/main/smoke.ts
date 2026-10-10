@@ -2406,6 +2406,96 @@ async function runAi(window: BrowserWindow, dir: string, record: Record<string, 
   if (after.pending !== 0) throw new Error("The store still has a pending proposal after Reject.");
   if (after.version !== proposal.version) throw new Error("Rejecting changed the deck.");
 
+  // ---- 1b. The Review view (UI audit unit 4), with real decisions in the store.
+  // At this window size the Assistant takes the side panel's place, and gives
+  // it back when it closes.
+  record.assistantColumn = await page(`({
+    assistant: Boolean(document.querySelector('[data-region="assistant"]')),
+    panel: Boolean(document.querySelector('[data-region="panel"]')),
+    width: window.innerWidth,
+  })`);
+  const column = record.assistantColumn as { assistant: boolean; panel: boolean; width: number };
+  if (!column.assistant) throw new Error("The Assistant did not open in a column of its own.");
+  if (column.width < 1600 && column.panel) throw new Error("In a narrow window the side panel stayed beside the open Assistant.");
+  await page(clickTestId("close-assistant"));
+  if (!(await until(window, `!document.querySelector('[data-region="assistant"]') && document.querySelector('[data-region="panel"]')`, 10_000))) {
+    throw new Error("Closing the Assistant did not bring the side panel back.");
+  }
+
+  const elementCount = (slideId: string) => `(async () => {
+    const read = await (await fetch("/__api/v1/presentations/" + ${JSON.stringify("__ID__")})).json();
+    const slide = read.document.slides.find((one) => one.id === ${JSON.stringify("__SLIDE__")});
+    return { version: read.version_id, elements: slide ? slide.elements.length : -1 };
+  })()`.replace("__ID__", original).replace("__SLIDE__", slideId);
+  const second = (await page(`(async () => {
+    const id = ${JSON.stringify(original)};
+    const read = await (await fetch("/__api/v1/presentations/" + id)).json();
+    const slide = read.document.slides[Math.min(1, read.document.slides.length - 1)];
+    const targets = slide.elements.slice(0, 2).map((element) => element.id);
+    const answer = await fetch("/__api/v1/presentations/" + id + "/proposals", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        operations: targets.map((target) => ({ op: "remove", path: "/slides/id:" + slide.id + "/elements/id:" + target })),
+        intent: "Smoke: review two removals",
+        expected_version_id: read.version_id,
+      }),
+    });
+    const body = await answer.json();
+    return { outcome: body.outcome, id: body.transaction_id, version: read.version_id, slideId: slide.id, elements: slide.elements.length };
+  })()`)) as { outcome: string; id: string; version: string; slideId: string; elements: number };
+  record.reviewProposal = second;
+  if (second.outcome !== "pending") throw new Error(`The second proposal was ${second.outcome}, not pending.`);
+
+  if (!(await until(window, `document.querySelector('[data-testid="open-review"]')`, 30_000))) {
+    throw new Error("The bar never offered Review while a change was waiting.");
+  }
+  await page(clickTestId("open-review"));
+  const reviewAfter = `document.querySelector('[data-testid="review-after"] [data-final-frame]')`;
+  if (!(await until(window, `${reviewAfter} && !document.querySelector("[data-editor-canvas]")`, 30_000))) {
+    throw new Error("Review did not open in place of the canvas with an After picture.");
+  }
+  const reviewWidth = (await page(`Math.round(${reviewAfter}.getBoundingClientRect().width)`)) as number;
+  const drawerWidth = ((record.pictures as { after: [number, number] | null }).after ?? [0])[0];
+  record.reviewPicture = { review: reviewWidth, drawer: drawerWidth };
+  if (reviewWidth < 2 * drawerWidth) {
+    throw new Error(`The Review picture is ${reviewWidth}px, not at least twice the drawer's ${drawerWidth}px.`);
+  }
+  await capture(window, join(dir, "review.png"));
+
+  await page(clickTestId("review-approve"));
+  if (!(await until(window, `document.querySelector('[data-testid="review-applied"][data-proposal-id="${second.id}"]')`, 30_000))) {
+    throw new Error("Approving in Review did not list the change as applied.");
+  }
+  const approved = (await page(elementCount(second.slideId))) as { version: string; elements: number };
+  record.reviewApproved = approved;
+  if (approved.version === second.version || approved.elements !== second.elements - 2) {
+    throw new Error("Approving in Review did not apply the change in the store.");
+  }
+
+  await page(clickTestId("review-undo"));
+  if (!(await until(window, `document.querySelector('[data-testid="review-applied"][data-proposal-id="${second.id}"]')?.textContent.includes("Undone")`, 30_000))) {
+    record.reviewUndoState = await page(`({
+      row: document.querySelector('[data-testid="review-applied"]')?.textContent ?? null,
+      status: [...document.querySelectorAll('.dk-review__queue [role="status"], .dk-review__queue [role="alert"]')].map((node) => node.textContent),
+    })`);
+    record.reviewVersions = await page(`(async () => {
+      const list = await (await fetch("/__api/v1/presentations/${original}/versions")).json();
+      return (list.versions ?? list).slice(0, 5).map((one) => ({ id: one.id ?? one.version_id, intent: one.intent, source: one.change_source, agent: one.agent_id, txn: one.transaction_id }));
+    })()`);
+    throw new Error("Undo in Review did not finish.");
+  }
+  const undone = (await page(elementCount(second.slideId))) as { version: string; elements: number };
+  record.reviewUndone = undone;
+  if (undone.elements !== second.elements || undone.version === approved.version) {
+    throw new Error("Undo in Review did not put the slide back in the store.");
+  }
+
+  await page(clickTestId("close-review"));
+  if (!(await until(window, `document.querySelector("[data-editor-canvas]") && !document.querySelector('[data-testid="review-workspace"]')`, 10_000))) {
+    throw new Error("Back to editing did not return to the canvas.");
+  }
+
   // ---- 2. Create through a reviewed template.
   await page(clickTestId("open-deck-list"));
   await until(window, `document.querySelector('[data-testid="view-templates"]')`, 20_000);
@@ -3864,7 +3954,8 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     window.__smokeRequests = [];
     const original = window.fetch.bind(window);
     window.fetch = (input, init) => {
-      window.__smokeRequests.push(typeof input === "string" ? input : input.url);
+      const method = (init && init.method) || (typeof input === "string" ? "GET" : input.method) || "GET";
+      window.__smokeRequests.push(method.toUpperCase() + " " + (typeof input === "string" ? input : input.url));
       return original(input, init);
     };
   })()`);
@@ -4042,7 +4133,11 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     await capture(window, join(dir, "authoring.png"));
 
     const requests = (await page<string[]>(`window.__smokeRequests || []`)) ?? [];
-    const model = requests.filter((url) => /\/(runs|agent|proposals)(\/|\?|$)/.test(url));
+    // Reading what waits for review (the bar's Review count, unit 4) calls no
+    // model; anything that writes to these routes would.
+    const model = requests.filter(
+      (request) => /\/(runs|agent|proposals)(\/|\?|$)/.test(request) && !/^GET .*\/proposals(\?|$)/.test(request),
+    );
     record.requestCount = requests.length;
     record.modelRequests = model;
     if (model.length > 0) throw new Error(`authoring: the journey reached a model route: ${model[0]}`);

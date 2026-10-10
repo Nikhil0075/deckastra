@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ASSISTANT,
+  ASSISTANT_BESIDE,
   DEFAULT_SIZES,
   DOCK_MIN,
   INSPECTOR,
@@ -13,6 +15,7 @@ import {
   fitLayout,
   loadLayout,
   saveLayout,
+  sidePanelShows,
   withDock,
 } from "../src/lib/layout-sizes";
 
@@ -33,11 +36,15 @@ describe("pane sizes", () => {
   it("round-trips what was chosen, and brings anything out of range back inside", () => {
     const store = new Map<string, string>();
     const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => void store.set(key, value) };
-    saveLayout({ strip: 240, inspector: 400, dock: { "motion:timeline": 420 } }, storage);
-    expect(loadLayout(storage)).toEqual({ strip: 240, inspector: 400, dock: { "motion:timeline": 420 } });
+    saveLayout({ strip: 240, inspector: 400, assistant: 480, dock: { "motion:timeline": 420 } }, storage);
+    expect(loadLayout(storage)).toEqual({ strip: 240, inspector: 400, assistant: 480, dock: { "motion:timeline": 420 } });
 
-    store.set("deckastra.layout", JSON.stringify({ strip: 5000, inspector: -3, dock: { "motion:timeline": 20, "nonsense:key": 300, "code:notes": "tall" } }));
-    expect(loadLayout(storage)).toEqual({ strip: STRIP.max, inspector: INSPECTOR.min, dock: { "motion:timeline": DOCK_MIN } });
+    store.set("deckastra.layout", JSON.stringify({ strip: 5000, inspector: -3, assistant: 9000, dock: { "motion:timeline": 20, "nonsense:key": 300, "code:notes": "tall" } }));
+    expect(loadLayout(storage)).toEqual({ strip: STRIP.max, inspector: INSPECTOR.min, assistant: ASSISTANT.max, dock: { "motion:timeline": DOCK_MIN } });
+
+    // A layout saved before the Assistant had a width keeps the default.
+    store.set("deckastra.layout", JSON.stringify({ strip: 200, inspector: 300, dock: {} }));
+    expect(loadLayout(storage).assistant).toBe(ASSISTANT.default);
   });
 
   it("starts from the defaults when storage is missing, broken or refuses", () => {
@@ -110,3 +117,25 @@ describe("fitting the window", () => {
     expect(fitLayout(DEFAULT_SIZES, 900, { ...all, slides: false }).stripCollapsed).toBe(false);
   });
 });
+
+describe("the Assistant's column", () => {
+  it("sits beside the side panel in a wide window and takes its place in a narrow one", () => {
+    expect(sidePanelShows(true, true, ASSISTANT_BESIDE)).toBe(true);
+    expect(sidePanelShows(true, true, ASSISTANT_BESIDE - 1)).toBe(false);
+    // Closing the Assistant brings the side panel back: nothing about it changed.
+    expect(sidePanelShows(true, false, 1024)).toBe(true);
+    // A side panel the person put away stays away.
+    expect(sidePanelShows(false, false, 2560)).toBe(false);
+  });
+
+  it("is counted when fitting the window, and never trimmed", () => {
+    const visible = { tools: true, library: false, slides: true, inspector: true, assistant: true };
+    expect(fitLayout(DEFAULT_SIZES, 1920, visible)).toEqual({ strip: 176, inspector: 288, stripCollapsed: false });
+    // 1100 - 48 - 360 = 692 for the strip, the side panel and the canvas: the
+    // strip and side panel yield, the Assistant keeps its width.
+    const fitted = fitLayout(DEFAULT_SIZES, 1100, visible);
+    expect(fitted.strip).toBe(STRIP.min);
+    expect(fitted.inspector).toBe(INSPECTOR.min);
+  });
+});
+
