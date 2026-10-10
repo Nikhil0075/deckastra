@@ -10,9 +10,17 @@ import {
 
 export * from "./schema";
 export * from "./quality";
+export * from "./languages";
 
-/** The founding reviewed template in each purpose group, retained verbatim. */
-const FOUNDATION_PRESETS: readonly DeckPreset[] = [
+export * from "./pilots";
+import { PILOT_PRESETS } from "./pilots";
+
+/**
+ * The founding reviewed template in each purpose group, retained verbatim. They
+ * predate design languages and compose in the neutral one; their four style
+ * fields stay as they were, so their decks are byte-for-byte what they were.
+ */
+const FOUNDATION_PRESETS: readonly Omit<DeckPreset, "designLanguage">[] = [
   {
     id: "business-pitch",
     name: "Sharp pitch",
@@ -182,6 +190,7 @@ const PURPOSE_PATTERNS: Record<PurposeGroup, readonly SlidePattern[]> = {
 
 const makePreset = (brief: PresetBrief): DeckPreset => ({
   id: brief.id,
+  designLanguage: "neutral",
   name: brief.name,
   summary: brief.summary,
   purpose: brief.purpose,
@@ -225,8 +234,9 @@ const EXPANDED_PRESET_BRIEFS: readonly PresetBrief[] = [
 ] as const;
 
 export const DECK_PRESETS: readonly DeckPreset[] = [
-  ...FOUNDATION_PRESETS,
+  ...FOUNDATION_PRESETS.map((preset): DeckPreset => ({ ...preset, designLanguage: "neutral" })),
   ...EXPANDED_PRESET_BRIEFS.map(makePreset),
+  ...PILOT_PRESETS,
 ];
 
 export function findDeckPreset(id: string): DeckPreset | undefined {

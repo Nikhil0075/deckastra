@@ -54,6 +54,14 @@ def public_catalog() -> dict[str, Any]:
     return value
 
 
+def language_version(language_id: str) -> int:
+    """The version of a design language in this catalog (UI audit unit 5)."""
+    language = (catalog().get("designLanguages") or {}).get(language_id)
+    if not language:
+        raise PresetError(f'"{language_id}" is not a design language in this catalog.')
+    return int(language.get("version") or 1)
+
+
 def find_preset(preset_id: str) -> dict[str, Any]:
     found = next(
         (one for one in public_catalog().get("presets") or [] if one.get("id") == preset_id),

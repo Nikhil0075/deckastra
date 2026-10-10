@@ -47,6 +47,8 @@ export interface DeckPreset {
   summary: string;
   purpose: PurposeGroup;
   tags: string[];
+  /** The design language it composes in (UI audit unit 5). Absent from an older server. */
+  designLanguage?: string;
   themeKey: string;
   motionStyle: MotionStyleId;
   transitionStyle: string;
@@ -82,6 +84,24 @@ export interface PresetCatalog {
   }>;
   presets: DeckPreset[];
   themes: PresetTheme[];
+  /** What each design language is, for the gallery and for agents. Absent from an older server. */
+  designLanguages?: Record<string, PresetDesignLanguage>;
+}
+
+export interface PresetDesignLanguage {
+  id: string;
+  name: string;
+  version: number;
+  summary: string;
+  axes: {
+    expression: "editorial" | "expressive";
+    density: "dense" | "spacious";
+    imagery: "photographic" | "graphic";
+    motion: "calm" | "kinetic";
+    tone: "formal" | "playful";
+  };
+  rules: string[];
+  forbid: string[];
 }
 
 export interface StoryMetric {

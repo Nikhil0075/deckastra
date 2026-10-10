@@ -8,10 +8,12 @@ import {
   type SlotDefinition,
   type SlotValue,
 } from "./schema";
+import { isDesignLanguage } from "./languages";
 
 export type PresetIssueCode =
   | "E_PRESET_ID_DUPLICATE"
   | "E_PRESET_PURPOSE"
+  | "E_PRESET_LANGUAGE"
   | "E_PRESET_THEME"
   | "E_PRESET_MOTION"
   | "E_PRESET_SLIDES"
@@ -62,6 +64,9 @@ export function validateDeckPresets(
     presetIds.add(preset.id);
     if (!(PURPOSE_GROUPS as readonly string[]).includes(preset.purpose)) {
       issues.push({ code: "E_PRESET_PURPOSE", path: `${base}/purpose`, message: `Unknown purpose ${JSON.stringify(preset.purpose)}.` });
+    }
+    if (!isDesignLanguage(preset.designLanguage)) {
+      issues.push({ code: "E_PRESET_LANGUAGE", path: `${base}/designLanguage`, message: `Unknown design language ${JSON.stringify(preset.designLanguage)}.` });
     }
     if (!options.themeKeys.has(preset.themeKey)) {
       issues.push({ code: "E_PRESET_THEME", path: `${base}/themeKey`, message: `Unknown theme ${JSON.stringify(preset.themeKey)}.` });
