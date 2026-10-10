@@ -4043,6 +4043,28 @@ easy to undo:
   - The `layout` smoke step drags with real input. Desktop mouse moves sent
     with `sendInputEvent` must carry `modifiers: ["leftButtonDown"]`, or
     Chromium reads them as hovering with `buttons: 0` and no capture starts.
+- **Review is where agents' changes are read and decided** (UI audit unit 4;
+  `ReviewWorkspace.tsx`, `lib/use-proposals.ts`).
+  - It opens from the bar's Review button (`open-review`, shown with the
+    count while anything waits) or a drawer card's "Open in Review", and
+    replaces the canvas until closed (Esc or `close-review`). A view, not a
+    fourth editing mode: it edits nothing, so `EDITOR_MODES`, Ctrl+1–3 and the
+    per-mode dock are unchanged.
+  - Changed slides on the left, Before/After side by side or as a wipe in the
+    centre at the stage's size, the queue on the right. No chat: agents bring
+    their own intelligence. Approval stays whole-proposal.
+  - The drawer and Review share `useProposals`: drain saves first, send the
+    version on screen, adopt what the server built.
+  - **Undo reverts the transaction the approval committed** (`approve`'s
+    `transaction_id`), never the proposal's own id. Approving records a new
+    change; reverting the pending record finds that change "later" and the
+    server refuses. Only the real-app `ai` step caught this, because the unit
+    test's fake approval returned the proposal id. `useEditor.revertChange` is
+    the general server revert; `undoExternalChange` uses it.
+- **The Assistant has a column of its own** (`data-region="assistant"`,
+  360–560px, `splitter-assistant`). From 1600px it sits beside the side panel;
+  below, the side panel is put away while it is open and comes back as it was
+  (`sidePanelShows`). Nothing about the side panel is saved by that.
 - **One small services hub, beside any mode** (`AssistantPanel.tsx`). AI mode,
   `AskPanel`, the prompt box and the task form are gone.
   - It opens from the bar's Assistant button, View › Assistant and the

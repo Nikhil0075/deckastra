@@ -69,6 +69,7 @@ import { SpeakerNotes } from "./shell/SpeakerNotes";
 import { ToolRail } from "./shell/ToolRail";
 import { ALL_VISIBLE, DOCK_PANELS, PANELS, dockPanelShown, isFocused, loadPanels, panelsForCommand, panelsForKey, savePanels, type Chrome, type PanelVisibility } from "../lib/panels";
 import {
+  ASSISTANT,
   DEFAULT_SIZES,
   INSPECTOR,
   STRIP,
@@ -77,9 +78,12 @@ import {
   fitLayout,
   loadLayout,
   saveLayout,
+  sidePanelShows,
   withDock,
   type LayoutSizes,
 } from "../lib/layout-sizes";
+import { useProposals } from "../lib/use-proposals";
+import { ReviewWorkspace } from "./ReviewWorkspace";
 import { Dock } from "./shell/Dock";
 import { CommandPalette } from "./shell/CommandPalette";
 
@@ -201,6 +205,19 @@ export function EditorShell(props: EditorShellProps) {
   const [mode, setMode] = useState<EditorMode>("design");
   // Proposals and paid language/media services sit beside any mode.
   const [assistantOpen, setAssistantOpen] = useState(false);
+  // The Review view (UI audit unit 4): agents' pending changes, compared at a
+  // size that can be read, in place of the canvas until closed.
+  const [review, setReview] = useState<{ open: boolean; proposalId?: string }>({ open: false });
+  // How many changes wait, for the bar's Review button: one read of the list,
+  // polled like the Assistant's own. Up here with the other hooks, above any
+  // early return.
+  const pending = useProposals({
+    presentationId: props.presentationId,
+    currentVersionId: editor.currentVersionId,
+    onApplied: editor.adoptDocument,
+    saveNow: editor.saveNow,
+  });
+  const pendingCount = pending.proposals?.length ?? 0;
   const openAssistant = useCallback(() => {
     setColors({ open: false });
     setAssistantOpen(true);
@@ -926,7 +943,10 @@ export function EditorShell(props: EditorShellProps) {
 
   const selected = selection.primaryId ? resolveElementById(doc, selection.primaryId) : undefined;
 
-  const rightPanel = assistantOpen ? (
+  // The Assistant has a column of its own (UI audit unit 4) rather than taking
+  // over the side panel: a wide window shows both, a narrow one puts the side
+  // panel away while the Assistant is open (`sidePanelShows`).
+  const assistantPanel = assistantOpen ? (
     <AssistantPanel
       editor={editor}
       presentationId={props.presentationId}
@@ -934,6 +954,7 @@ export function EditorShell(props: EditorShellProps) {
       languagesOpen={languagesOpen}
       onLanguagesOpen={setLanguagesOpen}
       onClose={() => setAssistantOpen(false)}
+      onReview={(proposalId) => setReview({ open: true, proposalId })}
       onVoiceOpen={() => {
         setAssistantOpen(false);
         setMode("motion");
@@ -945,7 +966,9 @@ export function EditorShell(props: EditorShellProps) {
         setPanels({ ...panels, tools: true });
       }}
     />
-  ) : colors.open && mode === "design" ? (
+  ) : null;
+
+  const rightPanel = colors.open && mode === "design" ? (
     // Docked in the panel rather than floating over it (design review,
     // 2026-09-26): the slide stays in view and nothing is covered.
     <ColorStudioPanel editor={editor} open focus={colors.focus} onClose={() => setColors({ open: false })} />
@@ -1008,18 +1031,20 @@ export function EditorShell(props: EditorShellProps) {
   // What the window can hold of the chosen sizes (lib/layout-sizes.ts): a
   // narrow window takes the panes toward their minimums and then puts the strip
   // away for now, without forgetting what was chosen.
-  const sidePanelShown = panels.inspector || assistantOpen;
+  const sidePanelShown = sidePanelShows(panels.inspector, assistantOpen, windowSize.width);
   const fitted = fitLayout(sizes, windowSize.width, {
     tools: panels.tools,
     library: Boolean(side.panel),
     slides: panels.slides,
     inspector: sidePanelShown,
+    assistant: assistantOpen,
   });
   const dockBody = dockHeight(sizes, mode, dock.tab, windowSize.height);
   const shellStyle = {
     "--dk-strip-width": `${fitted.strip}px`,
     "--dk-inspector-width": `${fitted.inspector}px`,
     "--dk-dock-height": `${dockBody}px`,
+    "--dk-assistant-width": `${Math.round(Math.min(ASSISTANT.max, Math.max(ASSISTANT.min, sizes.assistant)))}px`,
   } as React.CSSProperties;
   const layoutItems: MenuItem[] = [
     ...PANELS.map(({ name, label, shortcut }) => ({
@@ -1065,6 +1090,11 @@ export function EditorShell(props: EditorShellProps) {
         account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}
         layout={{ focused: isFocused(chrome), onFocus: () => onCommand.current("panels-focus"), items: layoutItems }}
+        review={{
+          count: pendingCount,
+          open: review.open,
+          onToggle: () => setReview((current) => ({ open: !current.open })),
+        }}
         assistantOpen={assistantOpen}
         onAssistant={() => (assistantOpen ? setAssistantOpen(false) : openAssistant())}
         onManageLanguages={() => {
@@ -1149,6 +1179,17 @@ export function EditorShell(props: EditorShellProps) {
         />
       ) : null}
 
+      {review.open ? (
+        <div className="dk-shell__body">
+          <ReviewWorkspace
+            editor={editor}
+            presentationId={props.presentationId}
+            initialProposalId={review.proposalId}
+            onClose={() => setReview({ open: false })}
+            onCount={() => void pending.refresh()}
+          />
+        </div>
+      ) : (
       <div className="dk-shell__body">
         {panels.tools ? (
           <ToolRail
@@ -1357,11 +1398,31 @@ export function EditorShell(props: EditorShellProps) {
           />
         ) : null}
         {sidePanelShown ? (
-          <aside className="dk-panel" data-region="panel" aria-label={assistantOpen ? "Assistant" : mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
+          <aside className="dk-panel" data-region="panel" aria-label={mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
             {rightPanel}
           </aside>
         ) : null}
+        {assistantPanel ? (
+          <>
+            <Splitter
+              label="Assistant width"
+              orientation="vertical"
+              value={Math.round(Math.min(ASSISTANT.max, Math.max(ASSISTANT.min, sizes.assistant)))}
+              min={ASSISTANT.min}
+              max={ASSISTANT.max}
+              defaultValue={ASSISTANT.default}
+              grows={-1}
+              onPreview={(value) => previewSize("--dk-assistant-width", value)}
+              onChange={(value) => setSizes({ ...sizes, assistant: value })}
+              data-testid="splitter-assistant"
+            />
+            <aside className="dk-panel dk-panel--assistant" data-region="assistant" aria-label="Assistant">
+              {assistantPanel}
+            </aside>
+          </>
+        ) : null}
       </div>
+      )}
     </div>
     </ColorStudioProvider>
   );

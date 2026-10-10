@@ -136,4 +136,58 @@ describe("the resizable workspace", () => {
     await waitFor(() => expect(region("slides")).toBeTruthy());
     expect(shell.style.getPropertyValue("--dk-strip-width")).toBe("192px");
   });
+
+  it("puts the side panel away while the Assistant is open in a narrow window, and brings it back", async () => {
+    await mountShell();
+    expect(region("panel")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("open-assistant"));
+    await waitFor(() => expect(region("assistant")).toBeTruthy());
+    expect(region("panel")).toBeNull();
+    fireEvent.click(screen.getByTestId("close-assistant"));
+    await waitFor(() => expect(region("assistant")).toBeNull());
+    expect(region("panel")).toBeTruthy();
+    // Nothing about the side panel was changed or saved by that.
+    expect(JSON.parse(localStorage.getItem("deckastra.panels") ?? "{}").inspector ?? true).toBe(true);
+  });
+
+  it("shows the Assistant beside the side panel in a wide window, with its own splitter", async () => {
+    setWindowWidth(1920);
+    await mountShell();
+    fireEvent.click(screen.getByTestId("open-assistant"));
+    await waitFor(() => expect(region("assistant")).toBeTruthy());
+    expect(region("panel")).toBeTruthy();
+    expect(screen.getByRole("separator", { name: "Assistant width" }).getAttribute("aria-valuenow")).toBe("360");
+  });
 });
+
+describe("the Review button", () => {
+  const waiting = [
+    { id: "txn_a", status: "pending", intent: "Rename", reason: null, risk_tier: "high", agent_id: "mcp:codex", run_id: null, created_at: "2026-10-10T00:00:00Z", expires_at: null, operation_count: 1 },
+  ];
+
+  it("is absent while nothing waits", async () => {
+    await mountShell();
+    expect(screen.queryByTestId("open-review")).toBeNull();
+  });
+
+  it("shows what waits, opens Review in place of the canvas, and closes on Escape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const path = new URL(String(url), "http://x").pathname;
+        if (path.endsWith("/proposals")) return { ok: true, status: 200, json: async () => waiting };
+        return { ok: true, status: 200, json: async () => ({ version_id: "v1" }) };
+      }),
+    );
+    await mountShell();
+    const button = await screen.findByTestId("open-review");
+    expect(button.getAttribute("aria-label")).toBe("Review, 1 waiting");
+    fireEvent.click(button);
+    expect(await screen.findByTestId("review-workspace")).toBeTruthy();
+    expect(document.querySelector("[data-editor-canvas]")).toBeNull();
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(document.querySelector("[data-editor-canvas]")).toBeTruthy());
+    expect(screen.queryByTestId("review-workspace")).toBeNull();
+  });
+});
+
