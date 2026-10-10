@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
-import { Button, IconButton, Menu, Popover, Segmented, type MenuItem } from "../../ui";
+import { Button, IconButton, Menu, Popover, Segmented, StatusChip, type MenuItem } from "../../ui";
 import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
@@ -40,6 +40,11 @@ export interface AppBarProps {
    * audit unit 3). Absent: neither is shown.
    */
   layout?: { focused: boolean; onFocus: () => void; items: readonly MenuItem[] };
+  /**
+   * The Review view of agents' pending changes (UI audit unit 4): shown with
+   * its count while anything waits, and while it is open.
+   */
+  review?: { count: number; open: boolean; onToggle: () => void };
 }
 
 /**
@@ -48,7 +53,7 @@ export interface AppBarProps {
  * present. Present is the one blue button on the bar, because it is the one
  * action the whole editor exists to prepare for.
  */
-export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen, layout }: AppBarProps) {
+export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen, layout, review }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
 
   return (
@@ -104,6 +109,30 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
       </div>
 
       <div className="dk-appbar__end">
+        {review && (review.count > 0 || review.open) ? (
+          // Yellow is "waiting on a human": the count is the decision owed, so
+          // it sits beside the button and stays when a narrow bar drops the
+          // button's word (the word crowded the mode switch at 1440px).
+          <span className="dk-appbar__review">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon="eye"
+              aria-pressed={review.open}
+              aria-label={review.count > 0 ? `Review, ${review.count} waiting` : "Review"}
+              title={review.open ? "Back to editing (Esc)" : "Review the changes waiting for you"}
+              onClick={review.onToggle}
+              data-testid="open-review"
+            >
+              Review
+            </Button>
+            {review.count > 0 ? (
+              <StatusChip tone="waiting" aria-hidden="true">
+                {review.count}
+              </StatusChip>
+            ) : null}
+          </span>
+        ) : null}
         {onAssistant ? (
           // The one way to the assistant from the bar, beside any mode. Its
           // words stay at every width: it is the product's AI entry point.

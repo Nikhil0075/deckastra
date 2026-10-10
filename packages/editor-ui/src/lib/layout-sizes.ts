@@ -28,6 +28,15 @@ export interface PaneLimits {
 export const STRIP: PaneLimits = { min: 144, max: 320, default: 176 };
 /** The side panel (inspector, Motion, Code, the assistant), right of the canvas. */
 export const INSPECTOR: PaneLimits = { min: 280, max: 520, default: 288 };
+/** The Assistant's column, beside the side panel (UI audit unit 4). */
+export const ASSISTANT: PaneLimits = { min: 360, max: 560, default: 360 };
+/**
+ * The window width from which the Assistant sits beside the side panel. Below
+ * it, opening the Assistant puts the side panel away for as long as it is open:
+ * both at once leave a 1440px window's slide a postage stamp. Nothing about the
+ * side panel changes, so closing the Assistant brings it back as it was.
+ */
+export const ASSISTANT_BESIDE = 1600;
 /** The dock under the canvas. Its ceiling is a share of the window, not a number. */
 export const DOCK_MIN = 160;
 export const DOCK_MAX_SHARE = 0.55;
@@ -47,11 +56,12 @@ export const LIBRARY_WIDTH = 300;
 export interface LayoutSizes {
   strip: number;
   inspector: number;
+  assistant: number;
   /** Dock body heights chosen by dragging, by mode and tab. Absent: the default. */
   dock: Partial<Record<`${EditorMode}:${DockTab}`, number>>;
 }
 
-export const DEFAULT_SIZES: LayoutSizes = { strip: STRIP.default, inspector: INSPECTOR.default, dock: {} };
+export const DEFAULT_SIZES: LayoutSizes = { strip: STRIP.default, inspector: INSPECTOR.default, assistant: ASSISTANT.default, dock: {} };
 
 const STORAGE_KEY = "deckastra.layout";
 
@@ -84,6 +94,7 @@ export function loadLayout(storage: Pick<Storage, "getItem"> | undefined = safeS
     // older build may have allowed something this one does not.
     if (typeof parsed.strip === "number") out.strip = clamp(parsed.strip, STRIP);
     if (typeof parsed.inspector === "number") out.inspector = clamp(parsed.inspector, INSPECTOR);
+    if (typeof parsed.assistant === "number") out.assistant = clamp(parsed.assistant, ASSISTANT);
     if (parsed.dock && typeof parsed.dock === "object") {
       for (const [key, value] of Object.entries(parsed.dock as Record<string, unknown>)) {
         if (/^(design|motion|code):(notes|timeline)$/.test(key) && typeof value === "number" && Number.isFinite(value)) {
@@ -110,6 +121,8 @@ export interface Visible {
   library: boolean;
   slides: boolean;
   inspector: boolean;
+  /** The Assistant's column is open. It is never trimmed: it was just asked for. */
+  assistant?: boolean;
 }
 
 export interface FittedLayout {
@@ -135,7 +148,10 @@ export interface FittedLayout {
 export function fitLayout(sizes: LayoutSizes, windowWidth: number, visible: Visible): FittedLayout {
   let strip = clamp(sizes.strip, STRIP);
   let inspector = clamp(sizes.inspector, INSPECTOR);
-  const fixed = (visible.tools ? RAIL_WIDTH : 0) + (visible.library ? LIBRARY_WIDTH : 0);
+  const fixed =
+    (visible.tools ? RAIL_WIDTH : 0) +
+    (visible.library ? LIBRARY_WIDTH : 0) +
+    (visible.assistant ? clamp(sizes.assistant, ASSISTANT) : 0);
   const canvas = (stripShown: boolean) =>
     windowWidth - fixed - (stripShown && visible.slides ? strip : 0) - (visible.inspector ? inspector : 0);
 
@@ -154,6 +170,11 @@ export function fitLayout(sizes: LayoutSizes, windowWidth: number, visible: Visi
   }
   if (canvas(true) >= MIN_CANVAS) return { strip, inspector, stripCollapsed: false };
   return { strip, inspector, stripCollapsed: visible.slides };
+}
+
+/** Whether the side panel shows: it gives way to an open Assistant in a narrow window. */
+export function sidePanelShows(inspectorWanted: boolean, assistantOpen: boolean, windowWidth: number): boolean {
+  return inspectorWanted && !(assistantOpen && windowWidth < ASSISTANT_BESIDE);
 }
 
 function cloneDefault(): LayoutSizes {

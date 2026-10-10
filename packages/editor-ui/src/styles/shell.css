@@ -4314,3 +4314,240 @@
 .dk-assistant__head .dk-credits--inline {
   margin-left: auto;
 }
+
+/* --- The Assistant's column (UI audit 2026-10-10, unit 4) ------------------ */
+
+.dk-panel--assistant {
+  width: var(--dk-assistant-width, 360px);
+  border-left: var(--dk-line) solid var(--dk-rule);
+}
+
+/* --- Review: agents' pending changes, the slide largest on screen ----------
+ * Three columns: the slides a change touches, the comparison, the queue. */
+
+.dk-review {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr) 360px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--dk-ground);
+}
+.dk-review__empty {
+  grid-column: 1 / 3;
+  display: grid;
+  align-content: start;
+  gap: var(--dk-space-4);
+  padding: var(--dk-space-5);
+}
+.dk-review__empty p {
+  margin: 0;
+  font-size: var(--dk-text-lg);
+}
+.dk-review__title {
+  margin: 0;
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-md);
+  font-weight: 600;
+}
+.dk-review__strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--dk-space-4) var(--dk-space-3);
+  border-right: var(--dk-line) solid var(--dk-rule);
+}
+.dk-review__slides,
+.dk-review__list {
+  display: grid;
+  gap: var(--dk-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-review__slide {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-backdrop);
+  line-height: 0;
+  cursor: pointer;
+}
+.dk-review__slide--current {
+  border-color: var(--dk-blue);
+  outline: var(--dk-line) solid var(--dk-blue);
+}
+.dk-review__slide-kind {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
+.dk-review__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--dk-space-4) var(--dk-space-5);
+}
+.dk-review__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+}
+.dk-appbar__review {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+}
+.dk-review__toolbar button {
+  white-space: nowrap;
+}
+.dk-review__where {
+  flex: 1;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-review__intent-line,
+.dk-review__note {
+  margin: 0;
+}
+.dk-review__note {
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-review__stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.dk-review__pair {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.dk-review__figure,
+.dk-review__wipe {
+  display: grid;
+  gap: var(--dk-space-1);
+  margin: 0;
+}
+.dk-review__figure figcaption,
+.dk-review__wipe figcaption {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dk-review__figure > [data-final-frame],
+.dk-review__wipe-frame {
+  border: var(--dk-line) solid var(--dk-rule);
+}
+.dk-review__gap {
+  display: grid;
+  place-items: center;
+  border: var(--dk-line) dashed var(--dk-rule);
+  color: var(--dk-ink-muted);
+}
+.dk-review__wipe-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  line-height: 0;
+}
+.dk-review__wipe-after {
+  position: absolute;
+  inset: 0;
+}
+.dk-review__wipe-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--dk-blue);
+}
+.dk-review__wipe-range {
+  width: 100%;
+  accent-color: var(--dk-blue);
+}
+.dk-review__queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--dk-space-4);
+  border-left: var(--dk-line) solid var(--dk-rule);
+}
+.dk-review__item {
+  display: grid;
+  gap: var(--dk-space-1);
+  width: 100%;
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dk-review__item--current {
+  border-color: var(--dk-blue);
+  box-shadow: inset 3px 0 0 var(--dk-blue);
+}
+.dk-review__item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-xs);
+}
+.dk-review__intent {
+  font-weight: 600;
+}
+.dk-review__decide {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-blue);
+  border-top: 0;
+}
+.dk-review__reason {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+.dk-review__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dk-space-2);
+}
+.dk-review__applied {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding-top: var(--dk-space-3);
+  border-top: var(--dk-line) solid var(--dk-rule);
+}
+.dk-review__applied h3 {
+  margin: 0;
+}
+.dk-review__applied-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+  font-size: var(--dk-text-sm);
+}

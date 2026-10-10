@@ -16,6 +16,8 @@ export interface AssistantPanelProps {
   onVoiceOpen?: () => void;
   onMediaOpen?: () => void;
   onClose?: () => void;
+  /** Open the Review view on a proposal (UI audit unit 4). */
+  onReview?: (proposalId: string) => void;
 }
 
 /**
@@ -35,6 +37,7 @@ export function AssistantPanel({
   onVoiceOpen,
   onMediaOpen,
   onClose,
+  onReview,
 }: AssistantPanelProps) {
   const [pending, setPending] = useState(0);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -68,6 +71,7 @@ export function AssistantPanel({
           saveNow={editor.saveNow}
           currentVersionId={editor.currentVersionId}
           onCount={setPending}
+          onReview={onReview}
         />
       </Section>
 

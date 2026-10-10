@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
 
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { PendingProposal, ProposalDetail } from "@deckastra/workspace-contracts";
+
+import { useProposals } from "../lib/use-proposals";
 
 import { useAssetUrls } from "../lib/asset-urls";
 import { useBrowserMeasurer } from "../lib/measurer";
@@ -51,13 +53,13 @@ export interface ProposalsPanelProps {
   locale?: string | null;
   /** Bumped by a caller that just made a proposal, so the list looks now rather than at the next tick. */
   refreshToken?: number;
+  /**
+   * Open the Review view on a proposal (UI audit unit 4). A change across
+   * several slides, or a risky one, is offered there first: a column this
+   * narrow is no place to read it.
+   */
+  onReview?: (proposalId: string) => void;
 }
-
-type Status =
-  | { kind: "idle" }
-  | { kind: "working"; id: string }
-  | { kind: "done"; message: string }
-  | { kind: "error"; message: string };
 
 export function ProposalsPanel({
   presentationId,
@@ -69,91 +71,20 @@ export function ProposalsPanel({
   onCount,
   locale = null,
   refreshToken = 0,
+  onReview,
 }: ProposalsPanelProps) {
-  const client = useWorkspaceClient();
-  const [proposals, setProposals] = useState<PendingProposal[] | null>(null);
-  // The last read failed. Kept apart from `proposals`, so a list already on
-  // screen stays while a later poll fails, and a first read that failed says
-  // so rather than "looking" for ever (roadmap 08 rule 5).
-  const [readFailed, setReadFailed] = useState(false);
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const mounted = useRef(true);
-
-  const refresh = useCallback(async () => {
-    try {
-      const list = await client.agent.proposals(presentationId);
-      if (mounted.current) {
-        setProposals(list.filter((proposal) => proposal.status === "pending"));
-        setReadFailed(false);
-      }
-    } catch {
-      // Retried on the next tick and on focus; the list stays as it was.
-      if (mounted.current) setReadFailed(true);
-    }
-  }, [client, presentationId]);
+  const { proposals, readFailed, status, approve, reject } = useProposals({
+    presentationId,
+    currentVersionId,
+    onApplied,
+    saveNow,
+    pollMs,
+    refreshToken,
+  });
 
   useEffect(() => {
     onCount?.(proposals?.length ?? 0);
   }, [proposals, onCount]);
-
-  useEffect(() => {
-    if (refreshToken) void refresh();
-  }, [refreshToken, refresh]);
-
-  useEffect(() => {
-    mounted.current = true;
-    void refresh();
-    // Asked again on focus: coming back from the terminal where an agent was told
-    // what to change is exactly when its proposal is expected to be here.
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-    const timer = pollMs > 0
-      ? window.setInterval(() => {
-          if (globalThis.document?.visibilityState !== "hidden") void refresh();
-        }, pollMs)
-      : undefined;
-    return () => {
-      mounted.current = false;
-      window.removeEventListener("focus", onFocus);
-      if (timer !== undefined) window.clearInterval(timer);
-    };
-  }, [refresh, pollMs]);
-
-  async function approve(proposal: PendingProposal) {
-    setStatus({ kind: "working", id: proposal.id });
-    if (!(await saveNow())) {
-      setStatus({ kind: "error", message: "Your latest edits are not saved yet. Save them, then try again." });
-      return;
-    }
-    try {
-      // The version this panel is showing beside the proposal. The authority
-      // refuses an approval against a deck that has moved since the proposal was
-      // made, because that is a change nobody reviewed; saying what was on screen
-      // is how a surface earns the yes.
-      const applied = await client.agent.approve(presentationId, proposal.id, currentVersionId());
-      if (!onApplied(applied.document as PresentationDocument, applied.version_id)) {
-        throw new Error("The server applied the change, but newer local edits need reconciliation. Your local work has been retained.");
-      }
-      setProposals((list) => (list ?? []).filter((item) => item.id !== proposal.id));
-      setStatus({ kind: "done", message: `Applied: ${proposal.intent}` });
-    } catch (error) {
-      // Usually the proposal expired or no longer fits the deck; the server says
-      // which. Re-read the list so a proposal that is gone stops being offered.
-      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Could not apply the change." });
-      void refresh();
-    }
-  }
-
-  async function reject(proposal: PendingProposal) {
-    setStatus({ kind: "working", id: proposal.id });
-    try {
-      await client.agent.reject(presentationId, proposal.id, "Declined in the editor");
-      setProposals((list) => (list ?? []).filter((item) => item.id !== proposal.id));
-      setStatus({ kind: "idle" });
-    } catch (error) {
-      setStatus({ kind: "error", message: error instanceof Error ? error.message : "Could not decline the change." });
-    }
-  }
 
   return (
     <div className="dk-proposals" aria-label="Pending changes">
@@ -178,6 +109,7 @@ export function ProposalsPanel({
           applying={status.kind === "working" && status.id === proposal.id}
           onApply={() => void approve(proposal)}
           onReject={() => void reject(proposal)}
+          onReview={onReview ? () => onReview(proposal.id) : undefined}
         />
       ))}
       {status.kind === "error" ? (
@@ -230,6 +162,7 @@ function ProposalCard({
   applying,
   onApply,
   onReject,
+  onReview,
 }: {
   proposal: PendingProposal;
   presentationId: string;
@@ -240,6 +173,7 @@ function ProposalCard({
   applying: boolean;
   onApply: () => void;
   onReject: () => void;
+  onReview?: () => void;
 }) {
   const client = useWorkspaceClient();
   const measurer = useBrowserMeasurer();
@@ -382,6 +316,12 @@ function ProposalCard({
       ) : null}
 
       <div className="dk-proposal__actions">
+        {/* Several slides, or high risk: looked at properly first (unit 4). */}
+        {onReview && (shown.length > 1 || proposal.risk_tier === "high") ? (
+          <Button size="sm" variant="ghost" onClick={onReview} data-testid="proposal-open-review">
+            Open in Review
+          </Button>
+        ) : null}
         <Button size="sm" variant="secondary" disabled={busy} onClick={onReject} data-testid="proposal-reject">
           Reject
         </Button>
