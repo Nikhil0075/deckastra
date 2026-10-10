@@ -63,6 +63,12 @@ export interface SlideTransitionProps {
    * either way; only where `t` comes from differs.
    */
   timeMs?: number;
+  /**
+   * Drawn last, over both slides and inside the slide's own box: the presenter's
+   * ink (UI audit unit 6). Inside, so it is clipped to the slide and maps its
+   * pointer against the slide rather than the letterboxed window.
+   */
+  overlay?: React.ReactNode;
 }
 
 export function SlideTransition({
@@ -76,6 +82,7 @@ export function SlideTransition({
   onDone,
   resolveAssetUrl,
   timeMs,
+  overlay,
 }: SlideTransitionProps) {
   const controlled = timeMs !== undefined;
   const uid = useId();
@@ -305,6 +312,7 @@ export function SlideTransition({
           ) : null}
         </>
       ) : null}
+      {overlay}
     </div>
   );
 }

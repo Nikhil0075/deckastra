@@ -10,6 +10,9 @@ import { fitToDisplay } from "../lib/display-fit";
 import { clockOf, formatTimer, remaining, stepLabel } from "../lib/presenter";
 import { Button, NumberField } from "../ui";
 import { RichNotes } from "./RichNotes";
+import { InkLayer, InkToolbar } from "./InkLayer";
+import type { InkStroke, InkTool } from "../lib/ink";
+import type { LaserPoint } from "../lib/presentSync";
 import { cx } from "../ui/cx";
 
 /**
@@ -52,6 +55,31 @@ export interface PresenterViewProps {
   /** Whether the deck has any narration or sound, so the control is offered at all. */
   hasAudio?: boolean;
   onMute?: () => void;
+  /** Drawing on the slide (UI audit unit 6). Absent, the preview takes no ink. */
+  ink?: PresenterInk;
+}
+
+/** What the presenter view needs to draw, from `PresentMode`, which owns the ink. */
+export interface PresenterInk {
+  viewport: { width: number; height: number };
+  slideId: string;
+  strokes: InkStroke[];
+  tool: InkTool | null;
+  onTool: (tool: InkTool | null) => void;
+  color: string;
+  onColor: (color: string) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onClear: () => void;
+  onStroke: (stroke: InkStroke) => void;
+  onErase: (strokeId: string) => void;
+  onLaser: (point: LaserPoint | null) => void;
+  remoteLaser?: LaserPoint | null;
+  onSave?: () => void;
+  saving?: boolean;
+  notice?: string | null;
 }
 
 function useTick(intervalMs: number): number {
@@ -97,6 +125,7 @@ export function PresenterView({
   speaking = null,
   hasAudio = false,
   onMute,
+  ink,
 }: PresenterViewProps) {
   const now = useTick(1000);
   // The presenter view is often its own window, with its own copy of the store;
@@ -122,7 +151,11 @@ export function PresenterView({
   const atEnd = index === scene.slides.length - 1 && step >= steps;
 
   return (
-    <div className={cx("dk-root dk-presenter", detached && "dk-presenter--detached")} data-testid="presenter-view">
+    <div
+      className={cx("dk-root dk-presenter", detached && "dk-presenter--detached")}
+      data-testid="presenter-view"
+      data-presenter-ink-count={ink?.strokes.length ?? 0}
+    >
       <header className="dk-presenter__bar">
         <span className="dk-presenter__role">Presenter</span>
         <span className="dk-presenter__title">{scene.title}</span>
@@ -149,6 +182,20 @@ export function PresenterView({
                   mode="present"
                   resolveAssetUrl={resolveAssetUrl}
                 />
+                {ink && ink.slideId === slide.slideId ? (
+                  <InkLayer
+                    slideId={ink.slideId}
+                    viewport={ink.viewport}
+                    strokes={ink.strokes}
+                    tool={ink.tool}
+                    color={ink.color}
+                    onStroke={ink.onStroke}
+                    onErase={ink.onErase}
+                    onLaser={ink.onLaser}
+                    remoteLaser={ink.remoteLaser ?? null}
+                    testId="presenter-ink"
+                  />
+                ) : null}
               </span>
             ) : null}
             {/* Outside the size gate: whether the room is looking at a black
@@ -179,6 +226,27 @@ export function PresenterView({
               </Button>
             </span>
           </div>
+
+          {ink ? (
+            <div className="dk-presenter__ink">
+              <InkToolbar
+                tone="light"
+                tool={ink.tool}
+                onTool={ink.onTool}
+                color={ink.color}
+                onColor={ink.onColor}
+                canUndo={ink.canUndo}
+                canRedo={ink.canRedo}
+                onUndo={ink.onUndo}
+                onRedo={ink.onRedo}
+                onClear={ink.onClear}
+                hasInk={ink.strokes.length > 0}
+                {...(ink.onSave ? { onSave: ink.onSave } : {})}
+                saving={ink.saving ?? false}
+              />
+              {ink.notice ? <span className="dk-presenter__ink-notice" role="status">{ink.notice}</span> : null}
+            </div>
+          ) : null}
 
           <nav className="dk-presenter__jump" aria-label="Go to slide">
             {scene.slides.map((one, i) => (

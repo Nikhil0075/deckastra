@@ -16,8 +16,10 @@
  * are testable inside a `useEffect`.
  */
 
+import { sanitizeInkCommand, sanitizeInkSnapshot, type InkCommand, type InkSnapshot } from "./ink";
+
 export interface SyncMessage {
-  type: "index" | "hello" | "bye" | "state" | "command";
+  type: "index" | "hello" | "bye" | "state" | "command" | "ink-command" | "ink-state" | "laser";
   index?: number;
   /**
    * `state` (audience → presenter): where the talk is *within* the slide, and
@@ -38,6 +40,19 @@ export interface SyncMessage {
    */
   action?: "advance" | "black" | "motion" | "mute";
   delta?: 1 | -1;
+  /** `ink-command` (presenter → audience): one numbered ink operation (`lib/ink.ts`). */
+  ink?: InkCommand;
+  /** `ink-state` (audience → presenter): the authority's ink on the slide on screen. */
+  inkState?: InkSnapshot;
+  /** `laser` (either way): where the pointer is, 0–1 of the slide, or null when it has left. Never stored. */
+  laser?: LaserPoint | null;
+}
+
+/** A laser pointer position. Best effort: a lost one is replaced by the next. */
+export interface LaserPoint {
+  slideId: string;
+  x: number;
+  y: number;
 }
 
 /** What the audience window reports after every change. */
@@ -81,6 +96,18 @@ export interface PresentChannelHandlers {
   onCommand?: (command: PresentCommand) => void;
   /** This window's full state, for answering a late joiner (audience side). */
   currentState?: () => PresentState;
+  /** An ink command arrived from a presenter window (audience side), already checked. */
+  onInkCommand?: (command: InkCommand) => void;
+  /** The authority's ink arrived (presenter side), already checked. */
+  onInkState?: (snapshot: InkSnapshot) => void;
+  /** The other window's laser moved, or left. */
+  onLaser?: (point: LaserPoint | null) => void;
+  /**
+   * The ink on the slide on screen, for answering a late joiner (audience
+   * side). A presenter window that opens mid-talk, or reloads, gets the strokes
+   * already drawn rather than a blank slide that disagrees with the projector.
+   */
+  currentInk?: () => InkSnapshot | undefined;
 }
 
 /**
@@ -158,6 +185,30 @@ export class PresentChannel {
       return;
     }
 
+    if (message.type === "ink-command") {
+      const command = sanitizeInkCommand(message.ink);
+      if (command) this.handlers.onInkCommand?.(command);
+      return;
+    }
+
+    if (message.type === "ink-state") {
+      const snapshot = sanitizeInkSnapshot(message.inkState);
+      if (snapshot) this.handlers.onInkState?.(snapshot);
+      return;
+    }
+
+    if (message.type === "laser") {
+      const point = message.laser;
+      if (point === null) this.handlers.onLaser?.(null);
+      else if (
+        point && typeof point.slideId === "string" && point.slideId.length <= 128 &&
+        Number.isFinite(point.x) && Number.isFinite(point.y)
+      ) {
+        this.handlers.onLaser?.({ slideId: point.slideId, x: Math.min(1, Math.max(0, point.x)), y: Math.min(1, Math.max(0, point.y)) });
+      }
+      return;
+    }
+
     if (message.type === "hello") {
       this.channel?.postMessage({
         type: "index",
@@ -165,7 +216,24 @@ export class PresentChannel {
       } satisfies SyncMessage);
       const state = this.handlers.currentState?.();
       if (state) this.postState(state);
+      const ink = this.handlers.currentInk?.();
+      if (ink) this.postInk(ink);
     }
+  }
+
+  /** Ask the authority to apply an ink operation (presenter side). */
+  inkCommand(command: InkCommand): void {
+    this.channel?.postMessage({ type: "ink-command", ink: command } satisfies SyncMessage);
+  }
+
+  /** Announce the authority's ink on the slide on screen (audience side). */
+  postInk(snapshot: InkSnapshot): void {
+    this.channel?.postMessage({ type: "ink-state", inkState: snapshot } satisfies SyncMessage);
+  }
+
+  /** Move, or hide, the laser in the other window. */
+  laser(point: LaserPoint | null): void {
+    this.channel?.postMessage({ type: "laser", laser: point } satisfies SyncMessage);
   }
 
   /** Announce this window's full state (audience side). */

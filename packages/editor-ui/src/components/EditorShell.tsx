@@ -91,6 +91,7 @@ import type { OpenPresenterWindow } from "@deckastra/workspace-contracts";
 
 import { useEditor, type UseEditorInput } from "../lib/useEditor";
 import { PresentMode } from "./PresentMode";
+import { saveAnnotatedCopy } from "../lib/ink-annotations";
 import { VersionHistory } from "./VersionHistory";
 import { ColorStudioPanel } from "./ColorStudioPanel";
 import { AddLibrary, type LibraryTab } from "./shell/AddLibrary";
@@ -921,6 +922,17 @@ export function EditorShell(props: EditorShellProps) {
         // other's second screen.
         channelName={`deckastra-present-${props.presentationId}`}
         {...(props.openPresenter ? { openPresenter: props.openPresenter } : {})}
+        // The talk's ink as a new deck: never this one, which stays as presented.
+        onSaveInk={async (strokes) => {
+          if (strokes.size === 0) return "There is no ink to save yet.";
+          const saved = await saveAnnotatedCopy(client, {
+            presentationId: props.presentationId,
+            presentedSlideIds: scene.slides.map((one) => one.slideId),
+            strokes,
+            saveNow: editor.saveNow,
+          });
+          return `Saved a copy with the annotations: “${saved.title}”, in this deck's project.`;
+        }}
       />
     );
   }

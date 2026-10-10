@@ -161,9 +161,9 @@ def test_the_report_is_available_before_the_download(client, auth, deck):
 
 @pytest.mark.slow
 def test_a_stub_deck_reports_what_powerpoint_cannot_carry(client, auth):
-    # A template with a code slide. Since unit 7a templates compose in design
-    # languages, and the business pitch (Quiet Luxe) now exports to PowerPoint
-    # with nothing degraded, so it can no longer stand in for "a deck with code".
+    # A template with a code slide. Since unit 7a, templates compose in design
+    # languages and the business pitch (Quiet Luxe) exports to PowerPoint with
+    # nothing degraded, so it can no longer stand in for "a deck with code".
     made = client.post(
         "/v1/decks/from-template", headers=auth, json={"template_id": "technical-architecture"}
     )
