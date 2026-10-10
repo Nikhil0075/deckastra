@@ -176,19 +176,61 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       title: "List reviewed deck templates",
       description:
         "Reviewed templates grouped by purpose, including their stable slide keys, named content slots, " +
-        "default theme and motion style. Read this before deck_from_template; no geometry is exposed.",
+        "design language, default theme and motion style. Filter by purpose, design language, or both. " +
+        "Read this before deck_from_template; no geometry is exposed.",
       annotations: { readOnlyHint: true },
-      inputSchema: { purpose: z.enum(["business", "product", "teaching", "technical", "team", "personal"]).optional() },
+      inputSchema: {
+        purpose: z.enum(["business", "product", "teaching", "technical", "team", "personal"]).optional(),
+        language: z.string().min(1).max(64).optional(),
+      },
     },
-    async ({ purpose }) =>
+    async ({ purpose, language }) =>
       guard(async () => {
         const catalog = await client.presets.list({ fresh: true });
-        const presets = purpose ? catalog.presets.filter((preset) => preset.purpose === purpose) : catalog.presets;
-        const relevantThemeKeys = purpose ? new Set(presets.map((preset) => preset.themeKey)) : null;
+        const presets = catalog.presets.filter(
+          (preset) => (!purpose || preset.purpose === purpose) && (!language || preset.designLanguage === language),
+        );
+        const narrowed = Boolean(purpose || language);
+        const relevantThemeKeys = narrowed ? new Set(presets.map((preset) => preset.themeKey)) : null;
+        const relevantLanguages = narrowed ? new Set(presets.map((preset) => preset.designLanguage)) : null;
         return json({
           ...catalog,
           presets,
           themes: relevantThemeKeys ? catalog.themes.filter((theme) => relevantThemeKeys.has(theme.key)) : catalog.themes,
+          // The languages as a short list; design_language_get has each one in full.
+          designLanguages: Object.values(catalog.designLanguages ?? {})
+            .filter((one) => !relevantLanguages || relevantLanguages.has(one.id))
+            .map((one) => ({ id: one.id, name: one.name, summary: one.summary, axes: one.axes })),
+        });
+      }),
+  );
+
+  server.registerTool(
+    "design_language_get",
+    {
+      title: "Read one design language's rules",
+      description:
+        "What a design language is, in words an agent can follow before writing slot text: its rules, " +
+        "what it forbids, its density limits (bullets per slide, words per headline), its default theme " +
+        "and motion, and which layouts it draws itself. Any other layout composes in the neutral grammar. " +
+        "Pass the same id as design_language to deck_compose. No geometry is exposed.",
+      annotations: { readOnlyHint: true },
+      inputSchema: { language: z.string().min(1).max(64) },
+    },
+    async ({ language }) =>
+      guard(async () => {
+        const catalog = await client.presets.list({ fresh: true });
+        const found = catalog.designLanguages?.[language];
+        if (!found) {
+          const known = Object.keys(catalog.designLanguages ?? {}).join(", ");
+          throw new Error(`No design language named "${language}". Known: ${known || "none on this server"}.`);
+        }
+        return json({
+          ...found,
+          templates: catalog.presets.filter((preset) => preset.designLanguage === language).map((preset) => preset.id),
+          how_to_use:
+            "Follow the rules when writing slot text. Stay within density.maxBullets and density.maxHeadlineWords: " +
+            "extra bullets are dropped and long headlines are reported back as warnings.",
         });
       }),
   );
@@ -239,10 +281,13 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       title: "Compose a deck from a StoryPlan",
       description:
         "Create a deck from narrative intent, words and fixed layout names. Do not send coordinates, " +
-        "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry.",
+        "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry. " +
+        "Name a design_language (see design_language_get) to compose in its grammar and theme; " +
+        "its density limits apply, and anything trimmed or too long comes back as warnings.",
       inputSchema: {
         project_id: z.string().min(1).optional(),
         theme_key: z.string().min(1).optional(),
+        design_language: z.string().min(1).max(64).optional(),
         story_plan: z.object({
           title: z.string().min(1),
           audience: z.string(),
@@ -252,8 +297,11 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         }),
       },
     },
-    async ({ project_id, theme_key, story_plan }) =>
-      guard(async () => json(createdDeck(await client.presets.compose({ project_id, theme_key, story_plan })))),
+    async ({ project_id, theme_key, design_language, story_plan }) =>
+      guard(async () => {
+        const result = await client.presets.compose({ project_id, theme_key, design_language, story_plan });
+        return json({ ...createdDeck(result), ...(result.warnings?.length ? { warnings: result.warnings } : {}) });
+      }),
   );
 
   const slotValue = z.union([

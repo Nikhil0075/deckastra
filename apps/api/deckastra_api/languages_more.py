@@ -273,9 +273,9 @@ def term_metrics(plan: SlidePlan) -> Elements:
 def term_quote(plan: SlidePlan) -> Elements:
     elements = _term_window(lines=12)
     quote = plan.quote or plan.headline
-    elements.append(_text(role="decoration", x=TERM_X, y=CONTENT_TOP + 120, width=200, height=50, content=_rich_text("/*"), token="code", size=40, color="token:colors.foregroundSubtle", align="left"))
+    elements.append(_text(role="decoration", x=TERM_X, y=CONTENT_TOP + 120, width=200, height=64, content=_rich_text("/*"), token="code", size=40, color="token:colors.foregroundSubtle", align="left"))
     elements.append(_text(role="quote", x=TERM_X + 48, y=CONTENT_TOP + 200, width=CONTENT_W - TERM_GUTTER - 96, height=420, content=_rich_text(quote), token="code", size=52, weight=500, fit="shrinkToFit", min_font_size=30, line_height=1.4, align="left"))
-    elements.append(_text(role="decoration", x=TERM_X, y=CONTENT_TOP + 650, width=200, height=50, content=_rich_text("*/"), token="code", size=40, color="token:colors.foregroundSubtle", align="left"))
+    elements.append(_text(role="decoration", x=TERM_X, y=CONTENT_TOP + 650, width=200, height=64, content=_rich_text("*/"), token="code", size=40, color="token:colors.foregroundSubtle", align="left"))
     if plan.attribution:
         elements.append(_text(role="caption", x=TERM_X, y=CONTENT_TOP + 740, width=1200, height=44, content=_rich_text(f"-- {plan.attribution}"), token="code", size=26, color="token:colors.accent", align="left"))
     return elements

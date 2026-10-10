@@ -130,12 +130,101 @@ def language_distances(rendered: dict[str, dict]) -> list[dict]:
     return rows
 
 
+#: One outline, composed in every language for the gate. Fixed, so a run's
+#: answer changes only when a language does.
+GATE_OUTLINE = [
+    {"layout": "title", "headline": "Focus wins the quarter", "eyebrow": "Quarterly review", "subtitle": "What changed, and what we do next"},
+    {"layout": "statement", "headline": "One handoff slowed everything", "eyebrow": "The problem", "body": "Work waited on a review nobody owned."},
+    {"layout": "bullets", "headline": "Three moves for next quarter", "eyebrow": "The plan", "bullets": ["Name an owner", "Measure the handoff", "Review weekly"]},
+    {"layout": "metrics", "headline": "The change is already visible", "eyebrow": "Evidence", "metrics": [{"value": "42%", "label": "less rework"}, {"value": "3x", "label": "faster review"}, {"value": "2 wks", "label": "to value"}]},
+    {"layout": "quote", "headline": "In their words", "eyebrow": "Customer", "quote": "We stopped rebuilding the same story.", "attribution": "Pilot customer"},
+    {"layout": "split", "headline": "Focus beats breadth", "eyebrow": "Trade-off", "body": "A narrow first scope teaches faster.", "bullets": ["Faster learning", "Clear ownership"]},
+]
+
+
+def language_gate(out: Path, min_bits: int) -> dict:
+    """Compose the fixed outline in every language with templates, and judge it (UI audit unit 7b).
+
+    The languages must look unlike each other, on three counts: every pair of
+    covers differs by more than `min_bits` of the 256-bit difference hash; no
+    two title slides share a grammar (headline size, alignment, position and the
+    shapes drawn); and nothing in any language's outline clips (W103) or puts
+    one object on another (W110).
+    """
+    from deckastra_api import languages as language_geometry
+    from deckastra_api.compose import compose_document
+    from deckastra_api.models import SlidePlan, StoryPlan
+
+    catalog = presets.catalog()
+    used = sorted({preset["designLanguage"] for preset in presets.public_catalog()["presets"]})
+    documents = out / "language-documents"
+    covers = out / "language-covers"
+    documents.mkdir(parents=True, exist_ok=True)
+    covers.mkdir(parents=True, exist_ok=True)
+    plan = StoryPlan(
+        title="Language gate", audience="", objective="", narrative_arc="",
+        slides=[SlidePlan(purpose=slide["eyebrow"], key_message=slide["headline"], **slide) for slide in GATE_OUTLINE],
+    )
+    rendered: dict[str, dict] = {}
+    for language in used:
+        theme, theme_id = presets.resolve_theme(catalog["designLanguages"][language]["defaults"]["themeKey"])
+        story, _ = language_geometry.apply_density(plan, language)
+        document = compose_document(story, instruction=f"Language gate: {language}", theme_definition=theme, theme_id=theme_id,
+                                    language=language, language_version=presets.language_version(language))
+        (documents / f"{language}.json").write_text(json.dumps(document), encoding="utf-8")
+        picture = export_service.render_slide_png(document, document["slides"][0]["id"])
+        (covers / f"{language}.png").write_bytes(picture["bytes"])
+        rendered[language] = {"hash": difference_hash(picture["bytes"]), "signature": cover_signature(document)}
+        print(f"gate {language}", file=sys.stderr)
+
+    close = []
+    for (left, a), (right, b) in combinations(sorted(rendered.items()), 2):
+        distance = bin(a["hash"] ^ b["hash"]).count("1")
+        if distance <= min_bits:
+            close.append({"languages": [left, right], "distance": distance})
+    shared = [
+        {"languages": [left, right]}
+        for (left, a), (right, b) in combinations(sorted(rendered.items()), 2)
+        if a["signature"] == b["signature"]
+    ]
+    findings = scene_findings(documents)
+    broken = {name: [one for one in issues if one["code"] in {"W103", "W110"}] for name, issues in findings.items()}
+    broken = {name: issues for name, issues in broken.items() if issues}
+    distances = {
+        f"{left}|{right}": bin(a["hash"] ^ b["hash"]).count("1")
+        for (left, a), (right, b) in combinations(sorted(rendered.items()), 2)
+    }
+    return {
+        "languages": used,
+        "min_bits": min_bits,
+        "closest_pair": min(distances.items(), key=lambda item: item[1]) if distances else None,
+        "too_close": close,
+        "shared_grammar": shared,
+        "clipped_or_overlapping": broken,
+        "passed": not (close or shared or broken),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=ROOT / ".artifacts" / "preview-sheet")
     parser.add_argument("--duplicate-bits", type=int, default=24, help="covers this close (of 256 bits) are near-duplicates")
     parser.add_argument("--strict", action="store_true", help="exit 1 on any finding")
+    parser.add_argument("--languages", action="store_true", help="run only the design-language gate (unit 7b)")
+    parser.add_argument("--language-bits", type=int, default=40, help="language covers must differ by more than this")
     args = parser.parse_args()
+
+    if args.languages:
+        args.out.mkdir(parents=True, exist_ok=True)
+        gate = language_gate(args.out, args.language_bits)
+        (args.out / "language-gate.json").write_text(json.dumps(gate, indent=2), encoding="utf-8")
+        print(
+            f"{len(gate['languages'])} languages; closest pair {gate['closest_pair']}; "
+            f"{len(gate['too_close'])} pairs within {args.language_bits} bits; {len(gate['shared_grammar'])} shared grammars; "
+            f"{sum(len(v) for v in gate['clipped_or_overlapping'].values())} clipped or overlapping objects. "
+            f"{'PASSED' if gate['passed'] else 'FAILED'}"
+        )
+        return 0 if gate["passed"] or not args.strict else 1
 
     out: Path = args.out
     documents = out / "documents"

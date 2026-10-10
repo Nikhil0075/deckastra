@@ -3665,6 +3665,7 @@
         "radius": 12,
         "motifs": []
       },
+      "layouts": [],
       "forbid": [],
       "rules": [
         "Write one idea per slide.",
@@ -3719,6 +3720,14 @@
           "index-number"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "centred text",
         "more than one accent colour",
@@ -3782,6 +3791,14 @@
           "hairline"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "light backgrounds",
         "bright saturated colour",
@@ -3846,6 +3863,14 @@
           "speech-bubble"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "square corners",
         "hairline rules",
@@ -3911,6 +3936,15 @@
           "block-comment"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split",
+        "code"
+      ],
       "forbid": [
         "proportional display type",
         "rounded corners",
@@ -3974,6 +4008,14 @@
           "tracked-capitals"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "bold display type",
         "filled cards",
@@ -4039,6 +4081,14 @@
           "trend-bar"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "decorative photography",
         "centred headlines",
@@ -4104,6 +4154,14 @@
           "leaf"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "neon or electric colour",
         "hard grid tables",
@@ -4168,6 +4226,14 @@
           "hologram-frame"
         ]
       },
+      "layouts": [
+        "title",
+        "statement",
+        "bullets",
+        "metrics",
+        "quote",
+        "split"
+      ],
       "forbid": [
         "light backgrounds",
         "serif type",

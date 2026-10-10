@@ -14,9 +14,10 @@ Deckastra is the deterministic presentation engine; you provide narrative intent
 ## Create
 
 1. Call \`workspace_list\` to find the target project.
-2. Call \`preset_list\` with the deck purpose.
-3. Prefer \`deck_from_template\`: fill named slots under stable slide keys in one call.
-4. Use \`deck_compose\` only when the template sequence does not fit. StoryPlan layouts are limited to \`title\`, \`statement\`, \`bullets\`, \`metrics\`, \`quote\`, \`code\`, and \`split\`.
+2. Call \`preset_list\` with the deck purpose. Every template composes in a design language; filter by \`language\` if the person named a look.
+3. Call \`design_language_get\` for the chosen template's language and follow its rules and density limits when you write slot text.
+4. Prefer \`deck_from_template\`: fill named slots under stable slide keys in one call.
+5. Use \`deck_compose\` only when the template sequence does not fit, and pass the same \`design_language\`. StoryPlan layouts are limited to \`title\`, \`statement\`, \`bullets\`, \`metrics\`, \`quote\`, \`code\`, and \`split\`.
 
 Never send coordinates, font sizes, colours, timing in milliseconds, or raw document JSON to the creation tools. Deckastra owns geometry, theme tokens, motion timing, schema validity, and export mapping.
 
