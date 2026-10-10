@@ -941,6 +941,28 @@ export const THEME_PRESETS: readonly ThemePreset[] = [
     motion: "subtle",
     kit: { card: { fill: solid("token:colors.surfaceAlt"), stroke: line("token:colors.border", 1), cornerRadius: 0, shadow: [], backdropFilters: [] } },
   }),
+  // System Terminal's theme (UI audit unit 7a). The other five later languages
+  // follow existing presets (playful-pastel, quiet-luxury, civic, forest,
+  // glassmorphism); a terminal needs monospace everywhere, which none of them is.
+  build(22, {
+    key: "system-terminal",
+    name: "System Terminal",
+    summary: "A dark terminal: monospace everywhere, phosphor-green output and an amber warning.",
+    category: "Styles",
+    mode: "dark",
+    heading: "IBM Plex Mono",
+    body: "IBM Plex Mono",
+    headingWeight: 600,
+    palette: {
+      background: "#0B0E0C", surface: "#141915", surfaceAlt: "#1C231E",
+      foreground: "#D7F2D3", foregroundMuted: "#A3C29E", foregroundSubtle: "#7E9A7A",
+      accent: "#4ADE80", accentForeground: "#0B0E0C", secondary: "#F5B33D", secondaryForeground: "#0B0E0C",
+      border: "#26302A", borderStrong: "#4A5C4F",
+      chartSeries: ["#4ADE80", "#F5B33D", "#7DD3FC", "#D7F2D3", "#F87171", "#A3C29E"],
+    },
+    radii: { sm: 0, md: 0, lg: 0 },
+    kit: { card: { fill: solid("token:colors.surface"), stroke: line("token:colors.borderStrong", 1), cornerRadius: 0, shadow: [], backdropFilters: [] } },
+  }),
 ];
 
 export function findPreset(key: string): ThemePreset | undefined {

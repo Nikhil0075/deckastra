@@ -65,3 +65,12 @@ cover's grammar (headline size, alignment, position and shapes). The two Noir
 covers are 24 bits apart, so they are a near-duplicate pair. That is expected for two
 title cards in one language, and unit 7's gate will compare across languages
 rather than within one.
+
+## Unit 7a · The six remaining languages
+
+`unit7a-languages/<language>--<template>.webp` shows every slide of one
+template per new language, composed by the real composer and rendered by the
+export worker: Play Lab, System Terminal, Quiet Luxe, Data Desk, Earth Story
+and Spatial Future. No OpenArt concepts were generated for this unit. Each
+language is drawn from its described grammar (`../research/2026-10-10-design-languages.md`),
+and these sheets are what it actually composes.

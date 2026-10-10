@@ -132,3 +132,52 @@ Known weaknesses, carried to unit 7:
 - Noir's split layout shows an empty frame until media ships.
 - Some secondary text is small at thumbnail size.
 - Neither pilot has its own chart or diagram treatment yet.
+
+## Unit 7a: the six after the pilots
+
+The two pilots showed that per-layout geometry scales, so the other six follow
+the same model. Each has a contract in `languages.ts` and geometry in
+`apps/api/deckastra_api/languages_more.py`, built from shared helpers in
+`language_kit.py`. Five use existing theme presets; System Terminal needed a
+monospace theme of its own.
+
+| Language | Theme | What it is made of |
+| --- | --- | --- |
+| Play Lab | playful-pastel | Soft bubbles, a tilted sticker label, one rounded card per idea, coloured figure tiles, a speech bubble for quotes |
+| System Terminal | system-terminal (new) | A window bar, monospace throughout, a `$` prompt label, line numbers, a block cursor, figures in table cells, quotes as block comments |
+| Quiet Luxe | quiet-luxury | Wide margins, a light serif, tracked capitals, hairlines between list items, a tall portrait frame |
+| Data Desk | civic | A header strip with a status dot, bordered tiles, the largest figures on the slide, spark bars, trend bars |
+| Earth Story | forest | A block of earth colour, arched frames, a low hill, lists as stepping stones, figures in seeds |
+| Spatial Future | glassmorphism | Glowing orbs, an orbit ring, glass panels, a light geometric display set centred |
+
+**Every original template now has a language**, three per language
+(`TEMPLATE_LANGUAGE`). Its theme, motion and transition come from the
+language. Its voice stays its own, because a wedding and an incident review
+are not read alike.
+
+**Each language has a rhythm** (`LANGUAGE_RHYTHM`): a few patterns replaced by
+ones its grammar tells better. Data Desk turns a problem slide into one large
+figure, for example, and Cinema Noir turns a quiz into a reflection. A
+replaced slide keeps its key, which is the public address that
+`deck_from_template` content is written against. The six founding templates
+keep the sequences they were written with.
+
+**Headline limits now apply to every template.** The quality gate checks
+each template's headlines against its language's `maxHeadlineWords`, so
+twelve generated headlines were shortened to fit (eleven for Swiss Signal's
+five words, one for Play Lab's nine).
+
+**The neutral guard moved to the composer itself.** No template composes in
+neutral any more, so the golden now hashes all 60 patterns' example slides in
+neutral. Its first recording was made on a clean checkout of `main` and
+matched this branch byte for byte.
+
+**Known gaps, carried to unit 7b:**
+
+- Templates in one language have near-identical covers, because a language
+  has one title layout. Earth Story's three covers are 8 to 15 bits apart. The
+  7b gate compares languages, not templates, but a second title variant per
+  language would help.
+- The photographic languages (Quiet Luxe, Earth Story, Cinema Noir, Spatial
+  Future) still show empty frames until media ships.
+- None of the languages has its own chart or diagram treatment yet.

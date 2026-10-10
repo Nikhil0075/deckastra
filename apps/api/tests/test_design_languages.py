@@ -44,7 +44,10 @@ def test_the_neutral_composer_has_not_moved_a_byte():
 
 def test_the_catalog_carries_the_languages_and_every_template_names_one():
     catalog = presets.catalog()
-    assert set(catalog["designLanguages"]) == {"neutral", "swiss-signal", "cinema-noir"}
+    assert set(catalog["designLanguages"]) == {
+        "neutral", "swiss-signal", "cinema-noir",
+        "play-lab", "system-terminal", "quiet-luxe", "data-desk", "earth-story", "spatial-future",
+    }
     for preset in catalog["presets"]:
         assert preset["designLanguage"] in catalog["designLanguages"], preset["id"]
 
@@ -60,11 +63,50 @@ def test_a_pilot_composes_a_valid_deck_that_records_its_language(template_id, la
 
 
 def test_a_neutral_deck_records_no_language():
-    document = template_compose.compose_template("business-pitch")
+    from deckastra_api.compose import compose_document
+    from deckastra_api.models import StoryPlan
+
+    plan = StoryPlan(title="Plain", audience="", objective="", narrative_arc="", slides=[SlidePlan(layout=SlideLayout.TITLE, purpose="Open", key_message="Plain", headline="Plain")])
+    document = compose_document(plan, instruction="neutral")
     assert "designLanguage" not in document["metadata"]
 
 
-@pytest.mark.parametrize("template_id", sorted(PILOTS))
+ALL_TEMPLATES = sorted(preset["id"] for preset in presets.catalog()["presets"])
+
+
+@pytest.mark.parametrize("template_id", ALL_TEMPLATES)
+def test_every_template_composes_a_valid_deck_in_its_language(template_id):
+    """Unit 7a moved all 24 original templates onto languages; each must still be a deck."""
+    document = template_compose.compose_template(template_id)
+    assert validate_document(document) == []
+    language = presets.find_preset(template_id)["designLanguage"]
+    assert language != "neutral"
+    assert document["metadata"]["designLanguage"]["id"] == language
+
+
+def _box(element):
+    t = element["transform"]
+    return t["x"], t["y"], t["x"] + t["width"], t["y"] + t["height"]
+
+
+@pytest.mark.parametrize("template_id", ALL_TEMPLATES)
+def test_no_language_puts_text_over_text(template_id):
+    """Motifs sit under words on purpose; words never sit on words."""
+    document = template_compose.compose_template(template_id)
+    for slide in document["slides"]:
+        texts = [
+            element for element in _walk(slide["elements"])
+            if element["type"] == "text" and element.get("semanticRole") != "decoration"
+        ]
+        for i, a in enumerate(texts):
+            ax0, ay0, ax1, ay1 = _box(a)
+            for b in texts[i + 1:]:
+                bx0, by0, bx1, by1 = _box(b)
+                overlap = min(ax1, bx1) - max(ax0, bx0) > 1 and min(ay1, by1) - max(ay0, by0) > 1
+                assert not overlap, (template_id, slide.get("name"), a.get("semanticRole"), b.get("semanticRole"), _box(a), _box(b))
+
+
+@pytest.mark.parametrize("template_id", ALL_TEMPLATES)
 def test_nothing_a_language_draws_leaves_the_slide(template_id):
     document = template_compose.compose_template(template_id)
     for slide in document["slides"]:
@@ -85,12 +127,25 @@ def _signature(slide):
 
 def test_each_language_composes_the_same_plan_differently():
     plan = SlidePlan(layout=SlideLayout.TITLE, purpose="Open", key_message="Focus wins", headline="Focus wins", eyebrow="01", subtitle="A brief")
-    signatures = {language: _signature(compose_slide(plan, 0, language)) for language in ("neutral", "swiss-signal", "cinema-noir")}
-    assert len(set(map(repr, signatures.values()))) == 3, signatures
+    signatures = {language: _signature(compose_slide(plan, 0, language)) for language in languages.LANGUAGE_LAYOUTS}
+    # Nine languages, nine grammars: no two compose the title the same way.
+    assert len(set(map(repr, signatures.values()))) == len(signatures), signatures
     assert "Signal disc" in signatures["swiss-signal"][0]
     assert "Letterbox top" in signatures["cinema-noir"][0]
     assert signatures["cinema-noir"][1] == "center"
     assert signatures["swiss-signal"][1] == "left"
+
+
+@pytest.mark.parametrize("layout", [SlideLayout.BULLETS, SlideLayout.METRICS, SlideLayout.QUOTE, SlideLayout.SPLIT])
+def test_each_language_composes_every_layout_differently(layout):
+    plan = SlidePlan(
+        layout=layout, purpose="Check", key_message="Three moves", headline="Three moves", eyebrow="02",
+        body="A body paragraph.", bullets=["One", "Two", "Three"], quote="A quotation.", attribution="Someone",
+        metrics=[{"value": "62%", "label": "faster"}, {"value": "3", "label": "teams"}],
+    )
+    shapes = {language: tuple(sorted(e.get("name", "") for e in _walk(compose_slide(plan, 0, language)["elements"]) if e["type"] == "shape")) for language in languages.LANGUAGE_LAYOUTS}
+    named = {language: names for language, names in shapes.items() if language != "neutral"}
+    assert len(set(named.values())) == len(named), named
 
 
 @pytest.mark.parametrize("layout", list(SlideLayout))

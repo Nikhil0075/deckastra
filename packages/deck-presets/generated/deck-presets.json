@@ -3802,6 +3802,392 @@
         "transitionStyle": "fade",
         "voiceStyle": "measured"
       }
+    },
+    "play-lab": {
+      "id": "play-lab",
+      "name": "Play Lab",
+      "version": 1,
+      "summary": "A playground: soft bubbles, a tilted sticker for the label, rounded cards that each hold one idea, and a heavy friendly display.",
+      "axes": {
+        "expression": "expressive",
+        "density": "spacious",
+        "imagery": "graphic",
+        "motion": "kinetic",
+        "tone": "playful"
+      },
+      "typography": {
+        "scaleRatio": 1.414,
+        "displayCase": "as-written",
+        "displayTracking": "tight",
+        "alignment": "flush-left"
+      },
+      "grid": {
+        "columns": 2,
+        "asymmetry": "none"
+      },
+      "density": {
+        "maxBullets": 4,
+        "maxHeadlineWords": 9
+      },
+      "imagery": {
+        "kind": "graphic",
+        "frame": "framed"
+      },
+      "data": {
+        "emphasis": "all-equal",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 36,
+        "motifs": [
+          "bubble",
+          "sticker",
+          "idea-card",
+          "speech-bubble"
+        ]
+      },
+      "forbid": [
+        "square corners",
+        "hairline rules",
+        "more than four ideas on a slide",
+        "small print as the main text",
+        "grey-on-grey colour"
+      ],
+      "rules": [
+        "One idea per card, written as a short sentence someone would say out loud.",
+        "The label is a sticker: two or three words, never a sentence.",
+        "Use both theme colours; a slide that uses only one feels unfinished here.",
+        "Numbers are big and celebrated, each on its own coloured tile.",
+        "Keep headlines warm and direct: address the audience as you."
+      ],
+      "defaults": {
+        "themeKey": "playful-pastel",
+        "motionStyle": "playful",
+        "transitionStyle": "push",
+        "voiceStyle": "bright"
+      }
+    },
+    "system-terminal": {
+      "id": "system-terminal",
+      "name": "System Terminal",
+      "version": 1,
+      "summary": "A terminal session: a window bar, monospace everything, a prompt before each label, line numbers, a block cursor, and one green.",
+      "axes": {
+        "expression": "editorial",
+        "density": "dense",
+        "imagery": "graphic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.25,
+        "displayCase": "as-written",
+        "displayTracking": "tight",
+        "alignment": "flush-left"
+      },
+      "grid": {
+        "columns": 1,
+        "asymmetry": "strong"
+      },
+      "density": {
+        "maxBullets": 6,
+        "maxHeadlineWords": 10
+      },
+      "imagery": {
+        "kind": "none",
+        "frame": "none"
+      },
+      "data": {
+        "emphasis": "one-accent",
+        "gridlines": true
+      },
+      "shapes": {
+        "radius": 0,
+        "motifs": [
+          "window-bar",
+          "prompt",
+          "line-numbers",
+          "cursor",
+          "block-comment"
+        ]
+      },
+      "forbid": [
+        "proportional display type",
+        "rounded corners",
+        "photography",
+        "decorative gradients",
+        "centred text"
+      ],
+      "rules": [
+        "Write labels as commands: lower case, a verb first.",
+        "Every list item is a numbered line, short enough to fit on one.",
+        "A figure sits in a table cell with its label above it, like output.",
+        "Supporting lines are comments: they explain, they do not sell.",
+        "Green marks what succeeded or what matters; nothing else is coloured."
+      ],
+      "defaults": {
+        "themeKey": "system-terminal",
+        "motionStyle": "technical",
+        "transitionStyle": "cut",
+        "voiceStyle": "precise"
+      }
+    },
+    "quiet-luxe": {
+      "id": "quiet-luxe",
+      "name": "Quiet Luxe",
+      "version": 1,
+      "summary": "A lookbook: wide margins, a light serif display, small tracked capitals, hairlines instead of boxes, and a tall portrait frame.",
+      "axes": {
+        "expression": "editorial",
+        "density": "spacious",
+        "imagery": "photographic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.5,
+        "displayCase": "as-written",
+        "displayTracking": "normal",
+        "alignment": "mixed"
+      },
+      "grid": {
+        "columns": 2,
+        "asymmetry": "strong"
+      },
+      "density": {
+        "maxBullets": 4,
+        "maxHeadlineWords": 9
+      },
+      "imagery": {
+        "kind": "photographic",
+        "frame": "framed"
+      },
+      "data": {
+        "emphasis": "all-equal",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 0,
+        "motifs": [
+          "hairline",
+          "portrait-frame",
+          "tracked-capitals"
+        ]
+      },
+      "forbid": [
+        "bold display type",
+        "filled cards",
+        "more than one accent colour",
+        "busy charts",
+        "exclamation marks"
+      ],
+      "rules": [
+        "Say less than you could; the space around the words is the luxury.",
+        "Labels are two or three words in tracked capitals.",
+        "A list is a short set of considered lines, divided by hairlines.",
+        "Figures are set large and light, never bold.",
+        "Every slide leaves at least a third of its area empty."
+      ],
+      "defaults": {
+        "themeKey": "quiet-luxury",
+        "motionStyle": "editorial",
+        "transitionStyle": "fade",
+        "voiceStyle": "assured"
+      }
+    },
+    "data-desk": {
+      "id": "data-desk",
+      "name": "Data Desk",
+      "version": 1,
+      "summary": "An operations dashboard: a header strip with a status dot, bordered tiles, figures larger than anything else, and spark bars.",
+      "axes": {
+        "expression": "editorial",
+        "density": "dense",
+        "imagery": "graphic",
+        "motion": "calm",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.333,
+        "displayCase": "as-written",
+        "displayTracking": "tight",
+        "alignment": "flush-left"
+      },
+      "grid": {
+        "columns": 4,
+        "asymmetry": "none"
+      },
+      "density": {
+        "maxBullets": 5,
+        "maxHeadlineWords": 10
+      },
+      "imagery": {
+        "kind": "graphic",
+        "frame": "none"
+      },
+      "data": {
+        "emphasis": "all-equal",
+        "gridlines": true
+      },
+      "shapes": {
+        "radius": 12,
+        "motifs": [
+          "header-strip",
+          "status-dot",
+          "kpi-tile",
+          "spark-bars",
+          "trend-bar"
+        ]
+      },
+      "forbid": [
+        "decorative photography",
+        "centred headlines",
+        "more than four figures on a slide",
+        "figures without a label",
+        "script or display serif type"
+      ],
+      "rules": [
+        "Headlines state the finding, not the topic: say what the numbers mean.",
+        "Every figure has a label that names its unit and period.",
+        "Lists are rows in a table, each one line, ranked by importance.",
+        "The section label sits in the header strip, in capitals.",
+        "Put the most important figure first, on the left."
+      ],
+      "defaults": {
+        "themeKey": "civic",
+        "motionStyle": "restrained",
+        "transitionStyle": "fade",
+        "voiceStyle": "analytical"
+      }
+    },
+    "earth-story": {
+      "id": "earth-story",
+      "name": "Earth Story",
+      "version": 1,
+      "summary": "A field journal: a block of earth colour, arched frames for photographs, a low hill along the foot, a serif voice, lists walked as stepping stones.",
+      "axes": {
+        "expression": "expressive",
+        "density": "spacious",
+        "imagery": "photographic",
+        "motion": "calm",
+        "tone": "playful"
+      },
+      "typography": {
+        "scaleRatio": 1.414,
+        "displayCase": "as-written",
+        "displayTracking": "normal",
+        "alignment": "flush-left"
+      },
+      "grid": {
+        "columns": 2,
+        "asymmetry": "strong"
+      },
+      "density": {
+        "maxBullets": 4,
+        "maxHeadlineWords": 10
+      },
+      "imagery": {
+        "kind": "photographic",
+        "frame": "framed"
+      },
+      "data": {
+        "emphasis": "all-equal",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 0,
+        "motifs": [
+          "earth-block",
+          "arch-frame",
+          "hill",
+          "stepping-stones",
+          "leaf"
+        ]
+      },
+      "forbid": [
+        "neon or electric colour",
+        "hard grid tables",
+        "monospace type",
+        "more than four steps on a slide",
+        "dense jargon"
+      ],
+      "rules": [
+        "Tell it as a journey: where it began, what changed, where it leads.",
+        "Lists are steps along a path, in the order they happened.",
+        "Figures are grown things: one number in each seed, with what it means beneath.",
+        "Write as a person to a person; avoid acronyms in headlines.",
+        "Each section opens on the earth block or an arch, never a bare heading."
+      ],
+      "defaults": {
+        "themeKey": "forest",
+        "motionStyle": "editorial",
+        "transitionStyle": "fade",
+        "voiceStyle": "warm"
+      }
+    },
+    "spatial-future": {
+      "id": "spatial-future",
+      "name": "Spatial Future",
+      "version": 1,
+      "summary": "A view into a space: glowing orbs, an orbit ring, glass panels the light passes through, and a light geometric display set centred.",
+      "axes": {
+        "expression": "expressive",
+        "density": "spacious",
+        "imagery": "graphic",
+        "motion": "kinetic",
+        "tone": "formal"
+      },
+      "typography": {
+        "scaleRatio": 1.5,
+        "displayCase": "as-written",
+        "displayTracking": "tight",
+        "alignment": "centred"
+      },
+      "grid": {
+        "columns": 4,
+        "asymmetry": "none"
+      },
+      "density": {
+        "maxBullets": 4,
+        "maxHeadlineWords": 8
+      },
+      "imagery": {
+        "kind": "graphic",
+        "frame": "framed"
+      },
+      "data": {
+        "emphasis": "one-accent",
+        "gridlines": false
+      },
+      "shapes": {
+        "radius": 32,
+        "motifs": [
+          "glow",
+          "orbit-ring",
+          "glass-panel",
+          "hologram-frame"
+        ]
+      },
+      "forbid": [
+        "light backgrounds",
+        "serif type",
+        "heavy borders",
+        "more than four cards on a slide",
+        "flat clip-art"
+      ],
+      "rules": [
+        "Headlines name a future state, in eight words or fewer.",
+        "Labels are spaced capitals in the accent colour.",
+        "Each card is one capability, numbered, with one sentence.",
+        "Glow is light, not decoration: one or two sources per slide.",
+        "Figures glow in the accent; their labels stay quiet."
+      ],
+      "defaults": {
+        "themeKey": "glassmorphism",
+        "motionStyle": "dynamic",
+        "transitionStyle": "zoom",
+        "voiceStyle": "optimistic"
+      }
     }
   },
   "presets": [
@@ -3816,7 +4202,7 @@
         "investor"
       ],
       "themeKey": "quiet-luxury",
-      "motionStyle": "restrained",
+      "motionStyle": "editorial",
       "transitionStyle": "fade",
       "voiceStyle": "confident",
       "reviewed": true,
@@ -3956,7 +4342,7 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "quiet-luxe"
     },
     {
       "id": "product-launch",
@@ -3968,9 +4354,9 @@
         "roadmap",
         "release"
       ],
-      "themeKey": "bento",
+      "themeKey": "glassmorphism",
       "motionStyle": "dynamic",
-      "transitionStyle": "push",
+      "transitionStyle": "zoom",
       "voiceStyle": "bright",
       "reviewed": true,
       "slides": [
@@ -4111,7 +4497,7 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "spatial-future"
     },
     {
       "id": "teaching-workshop",
@@ -4125,7 +4511,7 @@
       ],
       "themeKey": "playful-pastel",
       "motionStyle": "playful",
-      "transitionStyle": "fade",
+      "transitionStyle": "push",
       "voiceStyle": "warm",
       "reviewed": true,
       "slides": [
@@ -4145,7 +4531,7 @@
           "purpose": "State the learning outcome",
           "slots": {
             "eyebrow": "BY THE END",
-            "headline": "You will be able to explain and apply the core idea",
+            "headline": "You will explain and apply the core idea",
             "body": "We will build from a simple mental model into a repeatable practice."
           }
         },
@@ -4258,7 +4644,7 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "play-lab"
     },
     {
       "id": "technical-architecture",
@@ -4270,8 +4656,8 @@
         "incident",
         "research"
       ],
-      "themeKey": "neo-technical",
-      "motionStyle": "restrained",
+      "themeKey": "system-terminal",
+      "motionStyle": "technical",
       "transitionStyle": "cut",
       "voiceStyle": "direct",
       "reviewed": true,
@@ -4414,7 +4800,7 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "system-terminal"
     },
     {
       "id": "team-all-hands",
@@ -4426,8 +4812,8 @@
         "onboarding",
         "retrospective"
       ],
-      "themeKey": "flat",
-      "motionStyle": "dynamic",
+      "themeKey": "civic",
+      "motionStyle": "restrained",
       "transitionStyle": "fade",
       "voiceStyle": "inclusive",
       "reviewed": true,
@@ -4564,7 +4950,7 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "data-desk"
     },
     {
       "id": "personal-portfolio",
@@ -4576,8 +4962,8 @@
         "event",
         "story"
       ],
-      "themeKey": "editorial-serif",
-      "motionStyle": "cinematic",
+      "themeKey": "quiet-luxury",
+      "motionStyle": "editorial",
       "transitionStyle": "fade",
       "voiceStyle": "reflective",
       "reviewed": true,
@@ -4707,11 +5093,10 @@
           }
         }
       ],
-      "designLanguage": "neutral"
+      "designLanguage": "quiet-luxe"
     },
     {
       "id": "investor-update",
-      "designLanguage": "neutral",
       "name": "Investor update",
       "summary": "A measured update from market signal to capital priorities.",
       "purpose": "business",
@@ -4720,8 +5105,8 @@
         "fundraising",
         "update"
       ],
-      "themeKey": "midnight",
-      "motionStyle": "editorial",
+      "themeKey": "civic",
+      "motionStyle": "restrained",
       "transitionStyle": "fade",
       "voiceStyle": "assured",
       "reviewed": true,
@@ -4752,22 +5137,41 @@
         },
         {
           "key": "problem-3",
-          "pattern": "problem",
+          "pattern": "big-number",
           "purpose": "Growth still hides one constraint",
           "slots": {
             "eyebrow": "INVESTOR UPDATE · 03",
             "headline": "Growth still hides one constraint",
-            "body": "A concise explanation keeps the claim grounded and actionable."
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
           "key": "opportunity-4",
-          "pattern": "opportunity",
+          "pattern": "market",
           "purpose": "A focused wedge expands the opportunity",
           "slots": {
             "eyebrow": "INVESTOR UPDATE · 04",
             "headline": "A focused wedge expands the opportunity",
-            "body": "A concise explanation keeps the claim grounded and actionable."
+            "metrics": [
+              {
+                "value": "$4.2B",
+                "label": "addressable market"
+              },
+              {
+                "value": "18%",
+                "label": "annual growth"
+              },
+              {
+                "value": "3",
+                "label": "priority segments"
+              }
+            ]
           }
         },
         {
@@ -4864,11 +5268,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "data-desk"
     },
     {
       "id": "quarterly-review",
-      "designLanguage": "neutral",
       "name": "Quarterly review",
       "summary": "A crisp operating review with results, risks and next-quarter choices.",
       "purpose": "business",
@@ -4877,9 +5281,9 @@
         "operations",
         "leadership"
       ],
-      "themeKey": "civic",
+      "themeKey": "swiss-signal",
       "motionStyle": "restrained",
-      "transitionStyle": "fade",
+      "transitionStyle": "cut",
       "voiceStyle": "direct",
       "reviewed": true,
       "slides": [
@@ -4895,16 +5299,12 @@
         },
         {
           "key": "executive-summary-2",
-          "pattern": "executive-summary",
+          "pattern": "statement",
           "purpose": "What leaders need to know",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 02",
             "headline": "What leaders need to know",
-            "bullets": [
-              "The opportunity is clear",
-              "The evidence is credible",
-              "The next move is bounded"
-            ]
+            "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
           }
         },
         {
@@ -4929,25 +5329,18 @@
         },
         {
           "key": "market-5",
-          "pattern": "market",
-          "purpose": "Demand is strongest in the core",
+          "pattern": "big-number",
+          "purpose": "Core demand is strongest",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 05",
-            "headline": "Demand is strongest in the core",
+            "headline": "Core demand is strongest",
             "metrics": [
               {
-                "value": "$4.2B",
-                "label": "addressable market"
-              },
-              {
-                "value": "18%",
-                "label": "annual growth"
-              },
-              {
-                "value": "3",
-                "label": "priority segments"
+                "value": "62%",
+                "label": "faster cycle time"
               }
-            ]
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
@@ -4990,10 +5383,10 @@
         {
           "key": "roadmap-8",
           "pattern": "roadmap",
-          "purpose": "The next quarter has three moves",
+          "purpose": "Three moves next quarter",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 08",
-            "headline": "The next quarter has three moves",
+            "headline": "Three moves next quarter",
             "bullets": [
               "Foundation — reliable creation",
               "Expansion — richer motion",
@@ -5004,10 +5397,10 @@
         {
           "key": "recommendation-9",
           "pattern": "recommendation",
-          "purpose": "Protect focus and close the loop",
+          "purpose": "Protect focus, close loops",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 09",
-            "headline": "Protect focus and close the loop",
+            "headline": "Protect focus, close loops",
             "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
@@ -5021,11 +5414,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "swiss-signal"
     },
     {
       "id": "board-briefing",
-      "designLanguage": "neutral",
       "name": "Board briefing",
       "summary": "Decision-ready board material with context, evidence and an explicit ask.",
       "purpose": "business",
@@ -5034,43 +5427,39 @@
         "governance",
         "decision"
       ],
-      "themeKey": "quiet-luxury",
-      "motionStyle": "cinematic",
-      "transitionStyle": "fade",
+      "themeKey": "swiss-signal",
+      "motionStyle": "restrained",
+      "transitionStyle": "cut",
       "voiceStyle": "executive",
       "reviewed": true,
       "slides": [
         {
           "key": "title-1",
           "pattern": "title",
-          "purpose": "One decision unlocks the next stage",
+          "purpose": "One decision unlocks growth",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 01",
-            "headline": "One decision unlocks the next stage",
+            "headline": "One decision unlocks growth",
             "subtitle": "A practical path from intent to outcome"
           }
         },
         {
           "key": "executive-summary-2",
-          "pattern": "executive-summary",
-          "purpose": "The board brief at a glance",
+          "pattern": "statement",
+          "purpose": "The brief at a glance",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 02",
-            "headline": "The board brief at a glance",
-            "bullets": [
-              "The opportunity is clear",
-              "The evidence is credible",
-              "The next move is bounded"
-            ]
+            "headline": "The brief at a glance",
+            "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
           }
         },
         {
           "key": "problem-3",
           "pattern": "problem",
-          "purpose": "Our operating model has reached its limit",
+          "purpose": "Our model is at capacity",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 03",
-            "headline": "Our operating model has reached its limit",
+            "headline": "Our model is at capacity",
             "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
@@ -5086,25 +5475,18 @@
         },
         {
           "key": "market-5",
-          "pattern": "market",
+          "pattern": "big-number",
           "purpose": "The category is consolidating",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 05",
             "headline": "The category is consolidating",
             "metrics": [
               {
-                "value": "$4.2B",
-                "label": "addressable market"
-              },
-              {
-                "value": "18%",
-                "label": "annual growth"
-              },
-              {
-                "value": "3",
-                "label": "priority segments"
+                "value": "62%",
+                "label": "faster cycle time"
               }
-            ]
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
@@ -5178,11 +5560,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "swiss-signal"
     },
     {
       "id": "product-roadmap",
-      "designLanguage": "neutral",
       "name": "Product roadmap",
       "summary": "A customer-led roadmap connecting problems, bets and releases.",
       "purpose": "product",
@@ -5191,9 +5573,9 @@
         "product",
         "strategy"
       ],
-      "themeKey": "oceanic",
+      "themeKey": "glassmorphism",
       "motionStyle": "dynamic",
-      "transitionStyle": "fade",
+      "transitionStyle": "zoom",
       "voiceStyle": "optimistic",
       "reviewed": true,
       "slides": [
@@ -5223,12 +5605,18 @@
         },
         {
           "key": "problem-3",
-          "pattern": "problem",
+          "pattern": "big-number",
           "purpose": "Teams lose context at the handoff",
           "slots": {
             "eyebrow": "PRODUCT ROADMAP · 03",
             "headline": "Teams lose context at the handoff",
-            "body": "A concise explanation keeps the claim grounded and actionable."
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
@@ -5298,15 +5686,15 @@
         },
         {
           "key": "changelog-9",
-          "pattern": "changelog",
+          "pattern": "feature-grid",
           "purpose": "Every release closes a loop",
           "slots": {
             "eyebrow": "PRODUCT ROADMAP · 09",
             "headline": "Every release closes a loop",
             "bullets": [
-              "Faster first draft",
-              "Clearer review states",
-              "More reliable exports"
+              "Capture intent in context",
+              "Compose from reviewed patterns",
+              "Export without rebuilding"
             ]
           }
         },
@@ -5320,11 +5708,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "spatial-future"
     },
     {
       "id": "release-notes",
-      "designLanguage": "neutral",
       "name": "Release notes",
       "summary": "Turn a product release into a clear story of change and value.",
       "purpose": "product",
@@ -5333,43 +5721,39 @@
         "launch",
         "changelog"
       ],
-      "themeKey": "high-contrast",
-      "motionStyle": "energetic",
-      "transitionStyle": "fade",
+      "themeKey": "swiss-signal",
+      "motionStyle": "restrained",
+      "transitionStyle": "cut",
       "voiceStyle": "bright",
       "reviewed": true,
       "slides": [
         {
           "key": "title-1",
           "pattern": "title",
-          "purpose": "A faster way to finish the work",
+          "purpose": "Finish the work faster",
           "slots": {
             "eyebrow": "RELEASE NOTES · 01",
-            "headline": "A faster way to finish the work",
+            "headline": "Finish the work faster",
             "subtitle": "A practical path from intent to outcome"
           }
         },
         {
           "key": "agenda-2",
-          "pattern": "agenda",
+          "pattern": "section",
           "purpose": "What changed and why",
           "slots": {
             "eyebrow": "RELEASE NOTES · 02",
             "headline": "What changed and why",
-            "bullets": [
-              "What changed?",
-              "What did we learn?",
-              "What happens next?"
-            ]
+            "subtitle": "Turn what we learned into one committed move"
           }
         },
         {
           "key": "problem-3",
           "pattern": "problem",
-          "purpose": "The old flow created repeat effort",
+          "purpose": "The old flow repeated effort",
           "slots": {
             "eyebrow": "RELEASE NOTES · 03",
-            "headline": "The old flow created repeat effort",
+            "headline": "The old flow repeated effort",
             "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
@@ -5390,10 +5774,10 @@
         {
           "key": "user-journey-5",
           "pattern": "user-journey",
-          "purpose": "The shortest path is now obvious",
+          "purpose": "The shortest path is obvious",
           "slots": {
             "eyebrow": "RELEASE NOTES · 05",
-            "headline": "The shortest path is now obvious",
+            "headline": "The shortest path is obvious",
             "bullets": [
               "Arrive with a goal",
               "Build with guidance",
@@ -5404,10 +5788,10 @@
         {
           "key": "demo-6",
           "pattern": "demo",
-          "purpose": "See the new flow in action",
+          "purpose": "See the new flow",
           "slots": {
             "eyebrow": "RELEASE NOTES · 06",
-            "headline": "See the new flow in action",
+            "headline": "See the new flow",
             "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
@@ -5427,10 +5811,10 @@
         {
           "key": "release-plan-8",
           "pattern": "release-plan",
-          "purpose": "Rollout begins with the core teams",
+          "purpose": "Rollout starts with core teams",
           "slots": {
             "eyebrow": "RELEASE NOTES · 08",
-            "headline": "Rollout begins with the core teams",
+            "headline": "Rollout starts with core teams",
             "bullets": [
               "Pilot — prove the core",
               "Beta — widen the cohort",
@@ -5440,16 +5824,18 @@
         },
         {
           "key": "changelog-9",
-          "pattern": "changelog",
+          "pattern": "big-number",
           "purpose": "Small fixes complete the experience",
           "slots": {
             "eyebrow": "RELEASE NOTES · 09",
             "headline": "Small fixes complete the experience",
-            "bullets": [
-              "Faster first draft",
-              "Clearer review states",
-              "More reliable exports"
-            ]
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
@@ -5462,11 +5848,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "swiss-signal"
     },
     {
       "id": "customer-case-study",
-      "designLanguage": "neutral",
       "name": "Customer case study",
       "summary": "A proof-led customer story from tension to measurable outcome.",
       "purpose": "product",
@@ -5517,16 +5903,12 @@
         },
         {
           "key": "feature-grid-4",
-          "pattern": "feature-grid",
+          "pattern": "story-beat",
           "purpose": "A shared workspace changed the system",
           "slots": {
             "eyebrow": "CUSTOMER CASE STUDY · 04",
             "headline": "A shared workspace changed the system",
-            "bullets": [
-              "Capture intent in context",
-              "Compose from reviewed patterns",
-              "Export without rebuilding"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -5545,14 +5927,17 @@
         },
         {
           "key": "demo-6",
-          "pattern": "demo",
+          "pattern": "case-study",
           "purpose": "The new workflow made progress visible",
           "slots": {
             "eyebrow": "CUSTOMER CASE STUDY · 06",
             "headline": "The new workflow made progress visible",
-            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "body": "The team lost context whenever work moved between tools.",
+            "bullets": [
+              "Mapped the failure point",
+              "Designed one shared state",
+              "Cut rework by 42%"
+            ]
           }
         },
         {
@@ -5604,11 +5989,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "earth-story"
     },
     {
       "id": "lesson-plan",
-      "designLanguage": "neutral",
       "name": "Lesson plan",
       "summary": "A paced lesson from objectives through practice and reflection.",
       "purpose": "teaching",
@@ -5617,8 +6002,8 @@
         "classroom",
         "education"
       ],
-      "themeKey": "paper-ink",
-      "motionStyle": "restrained",
+      "themeKey": "forest",
+      "motionStyle": "editorial",
       "transitionStyle": "fade",
       "voiceStyle": "encouraging",
       "reviewed": true,
@@ -5635,16 +6020,12 @@
         },
         {
           "key": "learning-objectives-2",
-          "pattern": "learning-objectives",
+          "pattern": "concept",
           "purpose": "By the end, you can explain and apply",
           "slots": {
             "eyebrow": "LESSON PLAN · 02",
             "headline": "By the end, you can explain and apply",
-            "bullets": [
-              "Explain the core model",
-              "Apply it to a real case",
-              "Evaluate the result"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -5702,16 +6083,13 @@
         },
         {
           "key": "quiz-7",
-          "pattern": "quiz",
+          "pattern": "reflection",
           "purpose": "Check the logic before moving on",
           "slots": {
             "eyebrow": "LESSON PLAN · 07",
             "headline": "Check the logic before moving on",
-            "bullets": [
-              "A — expand the scope",
-              "B — run a bounded pilot",
-              "C — defer the measure"
-            ]
+            "quote": "What would you change in your next real decision?",
+            "attribution": "Reflection prompt"
           }
         },
         {
@@ -5749,11 +6127,11 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "earth-story"
     },
     {
       "id": "training-module",
-      "designLanguage": "neutral",
       "name": "Training module",
       "summary": "A practical workplace module built around demonstration and practice.",
       "purpose": "teaching",
@@ -5762,8 +6140,8 @@
         "enablement",
         "workshop"
       ],
-      "themeKey": "bento",
-      "motionStyle": "dynamic",
+      "themeKey": "forest",
+      "motionStyle": "editorial",
       "transitionStyle": "fade",
       "voiceStyle": "supportive",
       "reviewed": true,
@@ -5780,16 +6158,12 @@
         },
         {
           "key": "learning-objectives-2",
-          "pattern": "learning-objectives",
+          "pattern": "concept",
           "purpose": "Know the standard and practise it",
           "slots": {
             "eyebrow": "TRAINING MODULE · 02",
             "headline": "Know the standard and practise it",
-            "bullets": [
-              "Explain the core model",
-              "Apply it to a real case",
-              "Evaluate the result"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -5847,16 +6221,13 @@
         },
         {
           "key": "quiz-7",
-          "pattern": "quiz",
+          "pattern": "reflection",
           "purpose": "Choose the strongest response",
           "slots": {
             "eyebrow": "TRAINING MODULE · 07",
             "headline": "Choose the strongest response",
-            "bullets": [
-              "A — expand the scope",
-              "B — run a bounded pilot",
-              "C — defer the measure"
-            ]
+            "quote": "What would you change in your next real decision?",
+            "attribution": "Reflection prompt"
           }
         },
         {
@@ -5894,11 +6265,11 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "earth-story"
     },
     {
       "id": "thesis-defence",
-      "designLanguage": "neutral",
       "name": "Thesis defence",
       "summary": "A rigorous academic argument with method, evidence and implications.",
       "purpose": "teaching",
@@ -5907,8 +6278,8 @@
         "research",
         "defence"
       ],
-      "themeKey": "lavender",
-      "motionStyle": "editorial",
+      "themeKey": "cinema-noir",
+      "motionStyle": "cinematic",
       "transitionStyle": "fade",
       "voiceStyle": "scholarly",
       "reviewed": true,
@@ -5925,16 +6296,13 @@
         },
         {
           "key": "learning-objectives-2",
-          "pattern": "learning-objectives",
+          "pattern": "quote",
           "purpose": "The defence has four objectives",
           "slots": {
             "eyebrow": "THESIS DEFENCE · 02",
             "headline": "The defence has four objectives",
-            "bullets": [
-              "Explain the core model",
-              "Apply it to a real case",
-              "Evaluate the result"
-            ]
+            "quote": "Clarity begins with choosing what deserves attention.",
+            "attribution": "Design principle"
           }
         },
         {
@@ -5978,30 +6346,23 @@
         },
         {
           "key": "exercise-6",
-          "pattern": "exercise",
+          "pattern": "story-beat",
           "purpose": "Test the model against the evidence",
           "slots": {
             "eyebrow": "THESIS DEFENCE · 06",
             "headline": "Test the model against the evidence",
-            "bullets": [
-              "Choose one current challenge",
-              "Name the evidence",
-              "Write the next action"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
           "key": "quiz-7",
-          "pattern": "quiz",
+          "pattern": "reflection",
           "purpose": "The result survives the key challenge",
           "slots": {
             "eyebrow": "THESIS DEFENCE · 07",
             "headline": "The result survives the key challenge",
-            "bullets": [
-              "A — expand the scope",
-              "B — run a bounded pilot",
-              "C — defer the measure"
-            ]
+            "quote": "What would you change in your next real decision?",
+            "attribution": "Reflection prompt"
           }
         },
         {
@@ -6039,11 +6400,11 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "cinema-noir"
     },
     {
       "id": "incident-review",
-      "designLanguage": "neutral",
       "name": "Incident review",
       "summary": "A blameless technical review from architecture to corrective action.",
       "purpose": "technical",
@@ -6052,9 +6413,9 @@
         "reliability",
         "postmortem"
       ],
-      "themeKey": "neo-technical",
+      "themeKey": "system-terminal",
       "motionStyle": "technical",
-      "transitionStyle": "fade",
+      "transitionStyle": "cut",
       "voiceStyle": "calm",
       "reviewed": true,
       "slides": [
@@ -6147,42 +6508,41 @@
         },
         {
           "key": "incident-7",
-          "pattern": "incident",
+          "pattern": "data-model",
           "purpose": "The incident unfolded in twelve minutes",
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 07",
             "headline": "The incident unfolded in twelve minutes",
-            "bullets": [
-              "09:12 — latency rises",
-              "09:18 — retries amplify load",
-              "09:27 — traffic is limited"
-            ]
+            "code": "document -> slides -> elements\n         -> narration -> takes",
+            "language": "text",
+            "caption": "A compact example keeps the boundary inspectable."
           }
         },
         {
           "key": "root-cause-8",
-          "pattern": "root-cause",
+          "pattern": "system-flow",
           "purpose": "Three conditions combined at once",
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 08",
             "headline": "Three conditions combined at once",
-            "body": "Trigger: one dependency slowed unexpectedly.",
             "bullets": [
-              "No retry budget",
-              "No admission control",
-              "Alert followed symptoms"
+              "Validate input",
+              "Resolve the scene",
+              "Render deterministically",
+              "Publish the artifact"
             ]
           }
         },
         {
           "key": "decision-9",
-          "pattern": "decision",
+          "pattern": "demo",
           "purpose": "Bound retries and isolate partitions",
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 09",
             "headline": "Bound retries and isolate partitions",
-            "subtitle": "Owner: Platform · Start: this month",
-            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
+            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "language": "text",
+            "caption": "A compact example keeps the boundary inspectable."
           }
         },
         {
@@ -6199,11 +6559,11 @@
             ]
           }
         }
-      ]
+      ],
+      "designLanguage": "system-terminal"
     },
     {
       "id": "research-talk",
-      "designLanguage": "neutral",
       "name": "Research talk",
       "summary": "A technical research narrative linking model, experiment and result.",
       "purpose": "technical",
@@ -6212,9 +6572,9 @@
         "conference",
         "technical"
       ],
-      "themeKey": "blueprint",
-      "motionStyle": "editorial",
-      "transitionStyle": "fade",
+      "themeKey": "glassmorphism",
+      "motionStyle": "dynamic",
+      "transitionStyle": "zoom",
       "voiceStyle": "precise",
       "reviewed": true,
       "slides": [
@@ -6260,26 +6620,31 @@
         },
         {
           "key": "api-contract-4",
-          "pattern": "api-contract",
+          "pattern": "feature-grid",
           "purpose": "The API preserves experimental control",
           "slots": {
             "eyebrow": "RESEARCH TALK · 04",
             "headline": "The API preserves experimental control",
-            "code": "POST /v1/exports\n{ \"kind\": \"mp4\", \"fps\": 30 }",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "bullets": [
+              "Capture intent in context",
+              "Compose from reviewed patterns",
+              "Export without rebuilding"
+            ]
           }
         },
         {
           "key": "data-model-5",
-          "pattern": "data-model",
+          "pattern": "architecture",
           "purpose": "The data model keeps provenance explicit",
           "slots": {
             "eyebrow": "RESEARCH TALK · 05",
             "headline": "The data model keeps provenance explicit",
-            "code": "document -> slides -> elements\n         -> narration -> takes",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "body": "The control plane owns intent and policy.",
+            "bullets": [
+              "The engine owns layout",
+              "The worker owns exports",
+              "The schema owns the contract"
+            ]
           }
         },
         {
@@ -6347,23 +6712,19 @@
         },
         {
           "key": "appendix-10",
-          "pattern": "appendix",
+          "pattern": "closing",
           "purpose": "Methods and replication notes",
           "slots": {
             "eyebrow": "RESEARCH TALK · 10",
             "headline": "Methods and replication notes",
-            "bullets": [
-              "Method and assumptions",
-              "Detailed measures",
-              "Source notes"
-            ]
+            "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "spatial-future"
     },
     {
       "id": "system-design-review",
-      "designLanguage": "neutral",
       "name": "System design review",
       "summary": "A decision-oriented architecture review with contracts and trade-offs.",
       "purpose": "technical",
@@ -6372,9 +6733,9 @@
         "system design",
         "review"
       ],
-      "themeKey": "midnight",
+      "themeKey": "system-terminal",
       "motionStyle": "technical",
-      "transitionStyle": "fade",
+      "transitionStyle": "cut",
       "voiceStyle": "analytical",
       "reviewed": true,
       "slides": [
@@ -6467,42 +6828,41 @@
         },
         {
           "key": "incident-7",
-          "pattern": "incident",
+          "pattern": "data-model",
           "purpose": "The main risk is queue contention",
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 07",
             "headline": "The main risk is queue contention",
-            "bullets": [
-              "09:12 — latency rises",
-              "09:18 — retries amplify load",
-              "09:27 — traffic is limited"
-            ]
+            "code": "document -> slides -> elements\n         -> narration -> takes",
+            "language": "text",
+            "caption": "A compact example keeps the boundary inspectable."
           }
         },
         {
           "key": "root-cause-8",
-          "pattern": "root-cause",
+          "pattern": "system-flow",
           "purpose": "Contention comes from shared scheduling",
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 08",
             "headline": "Contention comes from shared scheduling",
-            "body": "Trigger: one dependency slowed unexpectedly.",
             "bullets": [
-              "No retry budget",
-              "No admission control",
-              "Alert followed symptoms"
+              "Validate input",
+              "Resolve the scene",
+              "Render deterministically",
+              "Publish the artifact"
             ]
           }
         },
         {
           "key": "decision-9",
-          "pattern": "decision",
+          "pattern": "demo",
           "purpose": "Approve isolation by workload class",
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 09",
             "headline": "Approve isolation by workload class",
-            "subtitle": "Owner: Platform · Start: this month",
-            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
+            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "language": "text",
+            "caption": "A compact example keeps the boundary inspectable."
           }
         },
         {
@@ -6519,11 +6879,11 @@
             ]
           }
         }
-      ]
+      ],
+      "designLanguage": "system-terminal"
     },
     {
       "id": "onboarding",
-      "designLanguage": "neutral",
       "name": "Team onboarding",
       "summary": "A welcoming introduction to purpose, people and ways of working.",
       "purpose": "team",
@@ -6534,7 +6894,7 @@
       ],
       "themeKey": "playful-pastel",
       "motionStyle": "playful",
-      "transitionStyle": "fade",
+      "transitionStyle": "push",
       "voiceStyle": "welcoming",
       "reviewed": true,
       "slides": [
@@ -6550,15 +6910,24 @@
         },
         {
           "key": "team-update-2",
-          "pattern": "team-update",
+          "pattern": "wins",
           "purpose": "Here is how the team is moving",
           "slots": {
             "eyebrow": "TEAM ONBOARDING · 02",
             "headline": "Here is how the team is moving",
-            "bullets": [
-              "Shipped the core path",
-              "Learned where users pause",
-              "Next: simplify review"
+            "metrics": [
+              {
+                "value": "4",
+                "label": "milestones shipped"
+              },
+              {
+                "value": "31%",
+                "label": "faster cycle"
+              },
+              {
+                "value": "9.2",
+                "label": "team confidence"
+              }
             ]
           }
         },
@@ -6587,15 +6956,16 @@
         },
         {
           "key": "blockers-4",
-          "pattern": "blockers",
+          "pattern": "pros-cons",
           "purpose": "Ask early when context is missing",
           "slots": {
             "eyebrow": "TEAM ONBOARDING · 04",
             "headline": "Ask early when context is missing",
+            "body": "Benefits: predictable, inspectable and reversible.",
             "bullets": [
-              "Access — owner: Operations",
-              "Scope — owner: Product",
-              "Capacity — owner: Engineering"
+              "Trade-off: fewer free-form choices",
+              "Requires reviewed patterns",
+              "Optimises consistency"
             ]
           }
         },
@@ -6656,16 +7026,13 @@
         },
         {
           "key": "checklist-9",
-          "pattern": "checklist",
+          "pattern": "shout-outs",
           "purpose": "Keep this first-week checklist",
           "slots": {
             "eyebrow": "TEAM ONBOARDING · 09",
             "headline": "Keep this first-week checklist",
-            "bullets": [
-              "The owner is named",
-              "The failure path is tested",
-              "The result is measurable"
-            ]
+            "quote": "Rina made the failure path testable before it reached customers.",
+            "attribution": "The launch team"
           }
         },
         {
@@ -6678,11 +7045,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "play-lab"
     },
     {
       "id": "retrospective",
-      "designLanguage": "neutral",
       "name": "Team retrospective",
       "summary": "A candid review of wins, friction and concrete improvements.",
       "purpose": "team",
@@ -6691,8 +7058,8 @@
         "agile",
         "improvement"
       ],
-      "themeKey": "sunset",
-      "motionStyle": "dynamic",
+      "themeKey": "civic",
+      "motionStyle": "restrained",
       "transitionStyle": "fade",
       "voiceStyle": "candid",
       "reviewed": true,
@@ -6746,16 +7113,18 @@
         },
         {
           "key": "blockers-4",
-          "pattern": "blockers",
+          "pattern": "big-number",
           "purpose": "Two blockers interrupted the rhythm",
           "slots": {
             "eyebrow": "TEAM RETROSPECTIVE · 04",
             "headline": "Two blockers interrupted the rhythm",
-            "bullets": [
-              "Access — owner: Operations",
-              "Scope — owner: Product",
-              "Capacity — owner: Engineering"
-            ]
+            "metrics": [
+              {
+                "value": "62%",
+                "label": "faster cycle time"
+              }
+            ],
+            "caption": "Measured across the first four teams"
           }
         },
         {
@@ -6804,13 +7173,25 @@
         },
         {
           "key": "shout-outs-8",
-          "pattern": "shout-outs",
+          "pattern": "wins",
           "purpose": "Recognition belongs close to the work",
           "slots": {
             "eyebrow": "TEAM RETROSPECTIVE · 08",
             "headline": "Recognition belongs close to the work",
-            "quote": "Rina made the failure path testable before it reached customers.",
-            "attribution": "The launch team"
+            "metrics": [
+              {
+                "value": "4",
+                "label": "milestones shipped"
+              },
+              {
+                "value": "31%",
+                "label": "faster cycle"
+              },
+              {
+                "value": "9.2",
+                "label": "team confidence"
+              }
+            ]
           }
         },
         {
@@ -6837,11 +7218,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "data-desk"
     },
     {
       "id": "team-kickoff",
-      "designLanguage": "neutral",
       "name": "Team kickoff",
       "summary": "An energising kickoff aligning mission, roles and first milestones.",
       "purpose": "team",
@@ -6850,9 +7231,9 @@
         "project",
         "alignment"
       ],
-      "themeKey": "flat",
-      "motionStyle": "energetic",
-      "transitionStyle": "fade",
+      "themeKey": "playful-pastel",
+      "motionStyle": "playful",
+      "transitionStyle": "push",
       "voiceStyle": "energising",
       "reviewed": true,
       "slides": [
@@ -6868,15 +7249,24 @@
         },
         {
           "key": "team-update-2",
-          "pattern": "team-update",
+          "pattern": "wins",
           "purpose": "The work begins from a shared signal",
           "slots": {
             "eyebrow": "TEAM KICKOFF · 02",
             "headline": "The work begins from a shared signal",
-            "bullets": [
-              "Shipped the core path",
-              "Learned where users pause",
-              "Next: simplify review"
+            "metrics": [
+              {
+                "value": "4",
+                "label": "milestones shipped"
+              },
+              {
+                "value": "31%",
+                "label": "faster cycle"
+              },
+              {
+                "value": "9.2",
+                "label": "team confidence"
+              }
             ]
           }
         },
@@ -6905,15 +7295,16 @@
         },
         {
           "key": "blockers-4",
-          "pattern": "blockers",
+          "pattern": "pros-cons",
           "purpose": "Name the constraints before they surprise us",
           "slots": {
             "eyebrow": "TEAM KICKOFF · 04",
             "headline": "Name the constraints before they surprise us",
+            "body": "Benefits: predictable, inspectable and reversible.",
             "bullets": [
-              "Access — owner: Operations",
-              "Scope — owner: Product",
-              "Capacity — owner: Engineering"
+              "Trade-off: fewer free-form choices",
+              "Requires reviewed patterns",
+              "Optimises consistency"
             ]
           }
         },
@@ -6974,16 +7365,13 @@
         },
         {
           "key": "checklist-9",
-          "pattern": "checklist",
+          "pattern": "shout-outs",
           "purpose": "Leave with a ready-to-start checklist",
           "slots": {
             "eyebrow": "TEAM KICKOFF · 09",
             "headline": "Leave with a ready-to-start checklist",
-            "bullets": [
-              "The owner is named",
-              "The failure path is tested",
-              "The result is measurable"
-            ]
+            "quote": "Rina made the failure path testable before it reached customers.",
+            "attribution": "The launch team"
           }
         },
         {
@@ -6996,11 +7384,11 @@
             "subtitle": "Choose the team, name the measure and start this week"
           }
         }
-      ]
+      ],
+      "designLanguage": "play-lab"
     },
     {
       "id": "event-story",
-      "designLanguage": "neutral",
       "name": "Event story",
       "summary": "A cinematic event narrative with people, moments and a clear arc.",
       "purpose": "personal",
@@ -7009,7 +7397,7 @@
         "story",
         "celebration"
       ],
-      "themeKey": "glassmorphism",
+      "themeKey": "cinema-noir",
       "motionStyle": "cinematic",
       "transitionStyle": "fade",
       "voiceStyle": "warm",
@@ -7089,16 +7477,12 @@
         },
         {
           "key": "event-schedule-7",
-          "pattern": "event-schedule",
+          "pattern": "story-beat",
           "purpose": "The rhythm carried us from welcome to celebration",
           "slots": {
             "eyebrow": "EVENT STORY · 07",
             "headline": "The rhythm carried us from welcome to celebration",
-            "bullets": [
-              "16:00 — welcome",
-              "17:00 — ceremony",
-              "18:30 — dinner and stories"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -7133,11 +7517,11 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "cinema-noir"
     },
     {
       "id": "wedding-story",
-      "designLanguage": "neutral",
       "name": "Wedding story",
       "summary": "An elegant personal story for ceremonies, dinners and keepsakes.",
       "purpose": "personal",
@@ -7147,7 +7531,7 @@
         "memories"
       ],
       "themeKey": "quiet-luxury",
-      "motionStyle": "cinematic",
+      "motionStyle": "editorial",
       "transitionStyle": "fade",
       "voiceStyle": "tender",
       "reviewed": true,
@@ -7200,16 +7584,16 @@
         },
         {
           "key": "case-study-5",
-          "pattern": "case-study",
+          "pattern": "gallery",
           "purpose": "One journey changed the shape of home",
           "slots": {
             "eyebrow": "WEDDING STORY · 05",
             "headline": "One journey changed the shape of home",
-            "body": "The team lost context whenever work moved between tools.",
+            "body": "A collection of interfaces built around calm decisions.",
             "bullets": [
-              "Mapped the failure point",
-              "Designed one shared state",
-              "Cut rework by 42%"
+              "Product systems",
+              "Data stories",
+              "Identity and motion"
             ]
           }
         },
@@ -7226,16 +7610,12 @@
         },
         {
           "key": "event-schedule-7",
-          "pattern": "event-schedule",
+          "pattern": "story-beat",
           "purpose": "Tonight unfolds in four chapters",
           "slots": {
             "eyebrow": "WEDDING STORY · 07",
             "headline": "Tonight unfolds in four chapters",
-            "bullets": [
-              "16:00 — welcome",
-              "17:00 — ceremony",
-              "18:30 — dinner and stories"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -7270,11 +7650,11 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "quiet-luxe"
     },
     {
       "id": "personal-narrative",
-      "designLanguage": "neutral",
       "name": "Personal narrative",
       "summary": "A reflective life or career story told through decisive moments.",
       "purpose": "personal",
@@ -7283,8 +7663,8 @@
         "career",
         "storytelling"
       ],
-      "themeKey": "editorial-serif",
-      "motionStyle": "editorial",
+      "themeKey": "cinema-noir",
+      "motionStyle": "cinematic",
       "transitionStyle": "fade",
       "voiceStyle": "reflective",
       "reviewed": true,
@@ -7363,16 +7743,12 @@
         },
         {
           "key": "event-schedule-7",
-          "pattern": "event-schedule",
+          "pattern": "story-beat",
           "purpose": "The next chapter has its own rhythm",
           "slots": {
             "eyebrow": "PERSONAL NARRATIVE · 07",
             "headline": "The next chapter has its own rhythm",
-            "bullets": [
-              "16:00 — welcome",
-              "17:00 — ceremony",
-              "18:30 — dinner and stories"
-            ]
+            "body": "A concise explanation keeps the claim grounded and actionable."
           }
         },
         {
@@ -7407,7 +7783,8 @@
             "subtitle": "The next chapter starts together"
           }
         }
-      ]
+      ],
+      "designLanguage": "cinema-noir"
     },
     {
       "id": "swiss-strategy-brief",

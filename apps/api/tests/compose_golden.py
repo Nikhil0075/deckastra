@@ -1,9 +1,10 @@
 """Deterministic composition, for the neutral-language regression guard.
 
 Design languages (UI audit 2026-10-10, unit 5) add geometry beside the
-composer's own; the composer's own must not move. This composes every reviewed
-template with ids from a counter and a fixed clock, and hashes the canonical
-JSON, so "neutral is unchanged" is a byte comparison rather than a belief.
+composer's own; the composer's own must not move. This composes every slide pattern's example in
+the neutral language with ids from a counter and a fixed clock, and hashes the
+canonical JSON, so "neutral is unchanged" is a byte comparison rather than a
+belief.
 
 Run as a script to (re)record `goldens/compose_neutral.json`. Re-recording is a
 deliberate act after a reviewed change to the neutral look, never a way to make
@@ -54,16 +55,37 @@ def digest(document: dict) -> str:
 
 
 def neutral_digests() -> dict[str, str]:
-    """Every reviewed template in the neutral language, composed and hashed."""
-    from deckastra_api import presets, template_compose
+    """Every slide pattern's example, composed by the neutral composer and hashed.
 
+    Until unit 7a this hashed the templates that composed in neutral; since then
+    every template has a language, so the guard is anchored on the composer
+    itself rather than on a catalog that has moved on. One single-slide deck per
+    pattern, on one fixed theme and motion style, covers every base layout and
+    every slot shape the patterns use.
+    """
+    from deckastra_api import presets
+    from deckastra_api.compose import compose_document
+
+    catalog = presets.catalog()
+    theme, theme_id = presets.resolve_theme("neo-technical")
     out: dict[str, str] = {}
-    for preset in presets.public_catalog()["presets"]:
-        if preset.get("designLanguage", "neutral") != "neutral":
-            continue
+    for pattern, definition in sorted((catalog.get("patternDefinitions") or {}).items()):
+        preset = {
+            "name": f"Pattern {pattern}",
+            "summary": definition.get("summary", ""),
+            "motionStyle": "restrained",
+            "slides": [{"key": pattern, "pattern": pattern, "purpose": definition.get("name", pattern), "slots": definition.get("exampleSlots") or {}}],
+        }
+        plan = presets.story_plan_from_preset(preset)
         with deterministic():
-            document = template_compose.compose_template(preset["id"])
-        out[preset["id"]] = digest(document)
+            document = compose_document(
+                plan,
+                instruction=f"Pattern: {pattern}",
+                motion_plan=presets.motion_plan_from_preset(preset),
+                theme_definition=theme,
+                theme_id=theme_id,
+            )
+        out[pattern] = digest(document)
     return out
 
 

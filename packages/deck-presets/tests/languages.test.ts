@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   DECK_PRESETS,
+  DESIGN_LANGUAGE_IDS,
   DESIGN_LANGUAGES,
+  TEMPLATE_LANGUAGE,
+  type DesignLanguageId,
   PILOT_SOURCES,
   isDesignLanguage,
   resolvePreset,
@@ -51,10 +54,38 @@ describe("design languages (UI audit unit 5)", () => {
     expect(validatePresetSources([long]).map((issue) => issue.code)).toEqual(["E_PRESET_HEADLINE_LONG"]);
   });
 
-  it("keeps the neutral templates exactly as they were", () => {
-    const neutral = DECK_PRESETS.filter((preset) => preset.designLanguage === "neutral");
-    expect(neutral).toHaveLength(24);
-    expect(neutral.find((preset) => preset.id === "business-pitch")).toMatchObject({ themeKey: "quiet-luxury", motionStyle: "restrained" });
+  it("puts every original template in a language, three to each (unit 7a)", () => {
+    const counts = new Map<string, number>();
+    for (const preset of DECK_PRESETS) counts.set(preset.designLanguage, (counts.get(preset.designLanguage) ?? 0) + 1);
+    expect(counts.get("neutral") ?? 0).toBe(0);
+    for (const id of DESIGN_LANGUAGE_IDS.filter((one) => one !== "neutral")) expect(counts.get(id) ?? 0, id).toBeGreaterThanOrEqual(3);
+    expect(Object.keys(TEMPLATE_LANGUAGE)).toHaveLength(24);
+  });
+
+  it("takes a template's theme, motion and transition from its language", () => {
+    for (const preset of DECK_PRESETS) {
+      const defaults = DESIGN_LANGUAGES[preset.designLanguage as DesignLanguageId].defaults;
+      if (PILOT_SOURCES.some((pilot) => pilot.id === preset.id)) continue;
+      expect([preset.themeKey, preset.motionStyle, preset.transitionStyle], preset.id).toEqual([defaults.themeKey, defaults.motionStyle, defaults.transitionStyle]);
+    }
+  });
+
+  it("swaps a pattern for the language's rhythm but keeps the slide's key", () => {
+    const quarterly = DECK_PRESETS.find((preset) => preset.id === "quarterly-review")!;
+    const market = quarterly.slides.find((slide) => slide.key === "market-5")!;
+    expect(market.pattern).toBe("big-number");
+    // The founding templates keep the sequence they were written with.
+    expect(DECK_PRESETS.find((preset) => preset.id === "business-pitch")!.slides.map((slide) => slide.key)[0]).toBe("opening");
+  });
+
+  it("keeps every template's headlines within its language's limit", () => {
+    for (const preset of DECK_PRESETS) {
+      const limit = DESIGN_LANGUAGES[preset.designLanguage as DesignLanguageId].density.maxHeadlineWords;
+      for (const slide of preset.slides) {
+        const words = String(slide.slots.headline ?? "").trim().split(/\s+/).filter(Boolean).length;
+        expect(words, `${preset.id}/${slide.key}`).toBeLessThanOrEqual(limit);
+      }
+    }
   });
 
   it("states its rules and forbidden combinations in words an agent can follow", () => {

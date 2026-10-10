@@ -138,7 +138,7 @@ def test_reviewed_presets_create_a_deterministic_deck(client: TestClient, auth: 
         "business", "product", "teaching", "technical", "team", "personal"
     }
     assert len(listed["presets"]) == 28
-    assert len(listed["themes"]) == 22
+    assert len(listed["themes"]) == 23
     assert len(listed["slidePatterns"]) == 60
     assert set(listed["motionStyles"]) == {
         "restrained", "dynamic", "cinematic", "editorial", "energetic", "technical", "playful"
@@ -161,8 +161,12 @@ def test_reviewed_presets_create_a_deterministic_deck(client: TestClient, auth: 
     assert body["document"]["metadata"]["templateId"] == "business-pitch"
     assert body["document"]["theme"]["name"] == "Minimal Light"
     assert len(body["document"]["slides"]) == 10
-    assert body["document"]["slides"][0]["elements"][1]["content"]["blocks"][0]["spans"][0]["text"] == "One clear direction"
-    assert body["document"]["metadata"]["motionStyle"] == "restrained"
+    # Found by role: since unit 7a the slide is composed in a language, whose
+    # motifs come before the words.
+    headline = next(element for element in body["document"]["slides"][0]["elements"] if element.get("semanticRole") == "headline")
+    assert headline["content"]["blocks"][0]["spans"][0]["text"] == "One clear direction"
+    # The template's motion is its language's (Quiet Luxe); its voice is its own.
+    assert body["document"]["metadata"]["motionStyle"] == "editorial"
     assert body["document"]["metadata"]["voiceStyle"] == "confident"
     assert body["document"]["slides"][0]["layout"]["templateId"] == "preset.title"
     assert body["document"]["slides"][5]["layout"]["templateId"] == "preset.agenda"

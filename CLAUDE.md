@@ -4203,8 +4203,8 @@ to undo:
   because it is the copy that drifts. The emitted catalog carries the resolved
   values, so readers that predate languages see no change.
 - **The neutral composer must not move a byte.** `apps/api/tests/goldens/
-  compose_neutral.json` is a SHA-256 per neutral template, composed with fixed
-  ids and clock (`compose_golden.py`). Regenerate it only after a deliberate
+  compose_neutral.json` is a SHA-256 per slide pattern, composed in neutral with
+  fixed ids and clock (`compose_golden.py`). Regenerate it only after a deliberate
   neutral change: `python apps/api/tests/compose_golden.py`.
 - **A deck records its language** as `metadata.designLanguage {id, version}`;
   a neutral deck records nothing. The version is in the preview cache key, so
@@ -4212,6 +4212,21 @@ to undo:
 - **The preview sheet compares grammar, not only pixels**: a language cover
   with the same headline size, alignment, position and shapes as a neutral
   cover is a recolour and a finding.
+- **Every template has a language** (unit 7a). There are nine: neutral, the
+  two pilots, and Play Lab, System Terminal, Quiet Luxe, Data Desk, Earth Story
+  and Spatial Future.
+  - `TEMPLATE_LANGUAGE` in `deck-presets/src/index.ts` assigns the 24 original
+    templates, three per language. Their theme, motion and transition come from
+    the language; their voice stays their own.
+  - `LANGUAGE_RHYTHM` swaps a few patterns per language, and a swapped slide
+    **keeps its key**, because keys are `deck_from_template`'s public address.
+  - The six later languages' geometry is `languages_more.py`, on shared helpers
+    in `language_kit.py`. Only System Terminal has a theme of its own.
+- **Headline limits are checked for every template** (`E_PRESET_HEADLINE_LONG`),
+  not only those written for a language.
+- **The neutral golden hashes the composer, not the catalog.** Since no
+  template composes in neutral, `compose_golden.py` hashes every pattern's
+  example slide in neutral on a fixed theme.
 
 ### One deck, many languages, narrated by step (integration plan 01, 2026-10-02)
 

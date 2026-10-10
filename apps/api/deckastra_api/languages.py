@@ -39,37 +39,10 @@ from .compose import (
     _rich_text,
     _text,
 )
-from .ids import new_id
+from .language_kit import _shape, _solid
 from .models import SlideLayout, SlidePlan
 
 Layout = Callable[[SlidePlan], list[dict[str, Any]]]
-
-
-def _shape(
-    name: str,
-    *,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    fill: dict[str, Any],
-    kind: str = "rectangle",
-    role: str = "decoration",
-) -> dict[str, Any]:
-    """A drawn motif. Decoration by role, so motion and overlap checks leave it be."""
-    return {
-        "id": new_id("el"),
-        "type": "shape",
-        "name": name,
-        "semanticRole": role,
-        "shape": kind,
-        "transform": {"x": round(x, 2), "y": round(y, 2), "width": round(width, 2), "height": round(height, 2)},
-        "style": {"fill": fill, "cornerRadius": 0},
-    }
-
-
-def _solid(color: str) -> dict[str, Any]:
-    return {"type": "solid", "color": color}
 
 
 # ------------------------------------------------------------------ swiss signal
@@ -697,6 +670,13 @@ LANGUAGE_LAYOUTS: dict[str, dict[SlideLayout, Layout]] = {
         SlideLayout.SPLIT: noir_split,
     },
 }
+
+
+# The six after the pilots (unit 7a) live in their own module, so this one stays
+# the pilots and the registry.
+from .languages_more import MORE_LANGUAGE_LAYOUTS  # noqa: E402
+
+LANGUAGE_LAYOUTS.update(MORE_LANGUAGE_LAYOUTS)
 
 
 class UnknownLanguage(ValueError):
