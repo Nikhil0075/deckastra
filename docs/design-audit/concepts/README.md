@@ -48,3 +48,15 @@ centre, the queue with Approve, Reject and Undo for what was applied this
 session. The built view follows it. In the desktop `ai` step at a 1426px window,
 the Review picture was 407px wide against the Assistant column's 150px.
 
+
+## Unit 6 · Presenter ink
+
+`unit6-ink/presenter-ink.webp` is the presenter window with the pen in hand and
+a stroke drawn on the current slide. `unit6-ink/presenter-ink-audience.webp` is
+the projector a moment later, showing the same stroke and the ink tools at the
+right of the control bar. Both were captured by the desktop `presenter` step on a fresh profile. The
+blue line in the presenter's preview is the slide's own drawn-path element,
+which the preview shows at rest. It is not ink.
+
+No concept was generated for this unit. The tools sit in the bars present mode
+already has, rather than in a new surface.

@@ -7,7 +7,9 @@ import type { OpenPresenterWindow, PresenterWindow } from "@deckastra/workspace-
 
 import { fitToDisplay } from "../lib/display-fit";
 import { clickSteps } from "../lib/presenter";
-import { PresentChannel, type PresentState } from "../lib/presentSync";
+import { PresentChannel, type LaserPoint, type PresentState } from "../lib/presentSync";
+import { INK_COLORS, InkMirror, InkSession, newInkId, type InkOp, type InkStroke, type InkTool } from "../lib/ink";
+import { InkLayer, InkToolbar } from "./InkLayer";
 import { browserPresenterWindow } from "../lib/presenter-window";
 import { Icon, type IconName } from "../ui";
 import { cx } from "../ui/cx";
@@ -64,6 +66,12 @@ export interface PresentModeProps {
    * to know which shell it is mounted in.
    */
   openPresenter?: OpenPresenterWindow;
+  /**
+   * Save the talk's ink as an annotated copy of the deck (UI audit unit 6).
+   * Resolves to a sentence for the person. Offered only in the audience window,
+   * which holds every slide's ink; absent, the button is not shown.
+   */
+  onSaveInk?: (strokes: Map<string, InkStroke[]>) => Promise<string>;
 }
 
 const IDLE_MS = 2500;
@@ -76,6 +84,9 @@ const IDLE_MS = 2500;
  */
 const COMMAND_FALLBACK_MS = 500;
 
+/** The ink tools' keys: laser, pen, highlighter, eraser (`C` clears the slide). */
+const INK_KEYS: Record<string, InkTool> = { k: "laser", e: "pen", h: "highlighter", x: "eraser" };
+
 export function PresentMode({
   scene,
   onExit,
@@ -84,6 +95,7 @@ export function PresentMode({
   presenterOnly = false,
   channelName,
   openPresenter = browserPresenterWindow,
+  onSaveInk,
 }: PresentModeProps) {
   const [index, setIndex] = useState(initialSlide);
   const [step, setStep] = useState(0);
@@ -116,6 +128,21 @@ export function PresentMode({
   const startedAt = useRef(Date.now());
   const pendingCommand = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Ink (UI audit unit 6). The audience window holds the authoritative session;
+  // a presenter window mirrors it and sends commands. Session state, never the
+  // document's: nothing here reaches the deck unless the person saves a copy.
+  const inkSession = useRef(new InkSession());
+  const inkMirror = useRef<InkMirror | null>(null);
+  if (presenterOnly && !inkMirror.current) inkMirror.current = new InkMirror(newInkId());
+  const [, setInkVersion] = useState(0);
+  const [tool, setTool] = useState<InkTool | null>(null);
+  const toolRef = useRef<InkTool | null>(null);
+  toolRef.current = tool;
+  const [inkColor, setInkColor] = useState<string>(INK_COLORS[0]);
+  const [remoteLaser, setRemoteLaser] = useState<LaserPoint | null>(null);
+  const [inkNotice, setInkNotice] = useState<string | null>(null);
+  const [savingInk, setSavingInk] = useState(false);
+
   const slides = scene.slides;
   const slide = slides[index];
   const steps = useMemo(() => (slide ? clickSteps(slide, reducedMotion) : 0), [slide, reducedMotion]);
@@ -135,6 +162,28 @@ export function PresentMode({
     ...(speaking.wordIndex !== undefined ? { wordIndex: speaking.wordIndex, word: speaking.word } : {}),
   } : null;
   stateRef.current = { index, step, blacked, motionPaused, muted, speaking: spoken };
+  const slideIdRef = useRef<string | undefined>(undefined);
+  slideIdRef.current = scene.slides[index]?.slideId;
+
+  /** Tell a presenter window what the ink on the slide on screen is now (audience side). */
+  const postInk = useCallback(() => {
+    const slideId = slideIdRef.current;
+    if (!presenterOnly && slideId) channel.current?.postInk(inkSession.current.snapshot(slideId));
+  }, [presenterOnly]);
+
+  /**
+   * One ink operation from this window. The audience window applies it and
+   * reports; a presenter window asks the audience window and shows its own
+   * stroke until the answer comes.
+   */
+  const dispatchInk = useCallback((op: InkOp) => {
+    if (presenterOnly && inkMirror.current) {
+      channel.current?.inkCommand(inkMirror.current.command(op));
+    } else if (inkSession.current.apply(op)) {
+      postInk();
+    }
+    setInkVersion((value) => value + 1);
+  }, [postInk, presenterOnly]);
 
   const setIndexSynced = useCallback((next: number | ((current: number) => number)) => {
     setIndex((current) => {
@@ -249,6 +298,27 @@ export function PresentMode({
       currentIndex: () => indexRef.current,
       slideCount: () => slideCountRef.current,
       currentState: presenterOnly ? undefined : () => stateRef.current,
+      currentInk: presenterOnly
+        ? undefined
+        : () => (slideIdRef.current ? inkSession.current.snapshot(slideIdRef.current) : undefined),
+      // Audience: apply in arrival order and answer, changed or not, so the
+      // sender learns its command was seen.
+      onInkCommand: presenterOnly
+        ? undefined
+        : (command) => {
+            inkSession.current.accept(command);
+            const slideId = slideIdRef.current;
+            if (slideId) bus.postInk(inkSession.current.snapshot(slideId));
+            setInkVersion((value) => value + 1);
+          },
+      onInkState: presenterOnly
+        ? (snapshot) => {
+            // Even an older or equal snapshot can acknowledge pending strokes.
+            inkMirror.current?.receive(snapshot);
+            setInkVersion((value) => value + 1);
+          }
+        : undefined,
+      onLaser: setRemoteLaser,
       // Presenter side: the audience window is the authority on step and blackout.
       onState: presenterOnly
         ? (state) => {
@@ -303,6 +373,12 @@ export function PresentMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, step, blacked, motionPaused, muted, spoken?.text, spoken?.remainingMs, spoken?.wordIndex, spoken?.word, presenterOnly]);
 
+  // The presenter window shows ink only for the slide on the projector.
+  useEffect(() => {
+    postInk();
+    setRemoteLaser(null);
+  }, [index, postInk]);
+
   // A new slide starts at its first reveal (or its last, entered backwards);
   // read it once the motion for that slide has mounted.
   useEffect(() => {
@@ -328,6 +404,36 @@ export function PresentMode({
       // keeps its own keys.
       const target = event.target as HTMLElement | null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+
+      // Ink. Undo and redo are the ink's here: present mode has no document
+      // history to reach, and the editor's handler is off while presenting.
+      const command = event.ctrlKey || event.metaKey;
+      const slideId = slideIdRef.current;
+      if (command && slideId && (event.key === "z" || event.key === "Z" || event.key === "y" || event.key === "Y")) {
+        event.preventDefault();
+        const redo = event.key === "y" || event.key === "Y" || event.shiftKey;
+        dispatchInk({ op: redo ? "redo" : "undo", slideId });
+        return;
+      }
+      if (!command && !event.altKey) {
+        const picked = INK_KEYS[event.key.toLowerCase()];
+        if (picked) {
+          event.preventDefault();
+          setTool((current) => (current === picked ? null : picked));
+          return;
+        }
+        if ((event.key === "c" || event.key === "C") && slideId) {
+          event.preventDefault();
+          dispatchInk({ op: "clear-slide", slideId });
+          return;
+        }
+        // Escape puts the tool down first; a second Escape leaves.
+        if (event.key === "Escape" && toolRef.current) {
+          event.preventDefault();
+          setTool(null);
+          return;
+        }
+      }
 
       switch (event.key) {
         case "ArrowRight":
@@ -398,11 +504,18 @@ export function PresentMode({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [advance, go, onExit, presenterOnly, setIndexSynced, slides.length, toggleBlack, toggleMotion, toggleMute]);
+  }, [advance, dispatchInk, go, onExit, presenterOnly, setIndexSynced, slides.length, toggleBlack, toggleMotion, toggleMute]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
-      if (!document.fullscreenElement) onExit();
+      if (document.fullscreenElement) return;
+      // In full screen the browser takes Escape for itself. With a tool in hand
+      // that Escape meant "put the pen down", not "stop presenting".
+      if (toolRef.current) {
+        setTool(null);
+        return;
+      }
+      onExit();
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
@@ -498,6 +611,43 @@ export function PresentMode({
   }
 
   const hasAudio = Boolean(scene.soundtrack) || slides.some((one) => one.narration?.cues.length || one.soundCues?.length);
+
+  const mirror = inkMirror.current;
+  const inkStrokes = presenterOnly && mirror ? mirror.strokes(slide.slideId) : inkSession.current.strokes(slide.slideId);
+  const saveInk = onSaveInk && !presenterOnly
+    ? async () => {
+        setSavingInk(true);
+        setInkNotice(null);
+        try {
+          setInkNotice(await onSaveInk(inkSession.current.all()));
+        } catch (error) {
+          setInkNotice(error instanceof Error ? error.message : "The annotated copy could not be saved.");
+        } finally {
+          setSavingInk(false);
+        }
+      }
+    : undefined;
+  const ink = {
+    viewport: scene.viewport,
+    slideId: slide.slideId,
+    strokes: inkStrokes,
+    tool,
+    onTool: setTool,
+    color: inkColor,
+    onColor: setInkColor,
+    canUndo: presenterOnly && mirror ? mirror.canUndo(slide.slideId) : inkSession.current.canUndo(slide.slideId),
+    canRedo: presenterOnly && mirror ? mirror.canRedo(slide.slideId) : inkSession.current.canRedo(slide.slideId),
+    onUndo: () => dispatchInk({ op: "undo", slideId: slide.slideId }),
+    onRedo: () => dispatchInk({ op: "redo", slideId: slide.slideId }),
+    onClear: () => dispatchInk({ op: "clear-slide", slideId: slide.slideId }),
+    onStroke: (stroke: InkStroke) => dispatchInk({ op: "add", stroke }),
+    onErase: (strokeId: string) => dispatchInk({ op: "erase", slideId: slide.slideId, strokeId }),
+    onLaser: (point: LaserPoint | null) => channel.current?.laser(point),
+    remoteLaser,
+    ...(saveInk ? { onSave: () => void saveInk() } : {}),
+    saving: savingInk,
+    notice: inkNotice,
+  };
   const presenterProps = {
     scene,
     index,
@@ -516,6 +666,7 @@ export function PresentMode({
     onJump: setIndexSynced,
     onBlack: toggleBlack,
     startedAt: startedAt.current,
+    ink,
   };
 
   if (presenterOnly) {
@@ -547,6 +698,10 @@ export function PresentMode({
       data-present-playback={scene.playback?.mode ?? "manual"}
       data-present-locale={scene.locale}
       data-present-speaking={speaking?.cueId ?? ""}
+      // How many strokes the slide on screen carries, and which tool is in hand:
+      // the acceptance harness checks the two windows agree.
+      data-present-ink-count={inkStrokes.length}
+      data-present-ink-tool={tool ?? ""}
     >
       <div
         ref={containerRef}
@@ -571,6 +726,20 @@ export function PresentMode({
             scale={scale}
             onDone={() => setLeaving(null)}
             resolveAssetUrl={resolveAssetUrl}
+            overlay={
+              <InkLayer
+                slideId={slide.slideId}
+                viewport={scene.viewport}
+                strokes={inkStrokes}
+                tool={tool}
+                color={inkColor}
+                onStroke={ink.onStroke}
+                onErase={ink.onErase}
+                onLaser={ink.onLaser}
+                remoteLaser={remoteLaser}
+                testId="present-ink"
+              />
+            }
           />
         ) : null}
 
@@ -648,6 +817,26 @@ export function PresentMode({
             ) : null}
             <ControlButton icon="close" label="Exit (Esc)" onClick={onExit} />
           </div>
+
+          <InkToolbar
+            tool={tool}
+            onTool={setTool}
+            color={inkColor}
+            onColor={setInkColor}
+            canUndo={ink.canUndo}
+            canRedo={ink.canRedo}
+            onUndo={ink.onUndo}
+            onRedo={ink.onRedo}
+            onClear={ink.onClear}
+            hasInk={inkStrokes.length > 0}
+            {...(ink.onSave ? { onSave: ink.onSave } : {})}
+            saving={savingInk}
+          />
+          {inkNotice ? (
+            <div className="dk-present__notice" role="status">
+              {inkNotice}
+            </div>
+          ) : null}
 
           {steps > 0 ? (
             <div className="dk-present__steps" aria-label={`Reveal ${step} of ${steps}`}>
