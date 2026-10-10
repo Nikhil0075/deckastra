@@ -280,7 +280,7 @@ jobs:
       # covers alike, which is what the design-language units exist to fix.
       - name: Template cover report
         env:
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
         run: python packages/deck-presets/scripts/preview-sheet.py --out template-covers
 
       - name: Upload the template cover report
