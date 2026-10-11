@@ -62,9 +62,19 @@ async def _lifespan(application: FastAPI):
     telemetry.configure()
     from .assistant_routes import start_dispatcher
     assistant_stop = start_dispatcher()
+    # The small hosting profile has no always-on worker: the API does exports,
+    # imports and erasures itself while it is up (`export_worker.start_in_thread`).
+    background_stop = None
+    if os.environ.get("DECKASTRA_EXPORTS_IN_API") == "1":
+        import socket
+
+        from .export_worker import start_in_thread
+        background_stop = start_in_thread(f"api-{socket.gethostname()}")
     try:
         yield
     finally:
+        if background_stop is not None:
+            background_stop.set()
         assistant_stop.set()
         telemetry.shutdown()
 

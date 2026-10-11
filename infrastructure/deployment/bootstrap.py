@@ -53,7 +53,7 @@ class Cloud:
             raise RuntimeError(f"{method} {url}: {error.code} {error.read().decode()[:2000]}") from error
 
 
-def provision(cloud, foundation_only=False):
+def provision(cloud, foundation_only=False, size="small"):
     from release_checks import service_snapshot, deployment_origins, validate_origins
     from web_hosting import ensure_bucket_cors
     project, region = cloud.project, cloud.region
@@ -122,7 +122,7 @@ def provision(cloud, foundation_only=False):
     instance = "deckastra-postgres"
     if not foundation_only and not cloud.exists("sql", "instances", "describe", instance):
         cloud.run("sql", "instances", "create", instance, "--database-version=POSTGRES_16", f"--region={region}",
-            "--edition=ENTERPRISE", "--tier=db-custom-1-3840", "--storage-size=10GB", "--storage-type=SSD",
+            "--edition=ENTERPRISE", f"--tier={SIZES[size]['db_tier']}", "--storage-size=10GB", "--storage-type=SSD",
             "--backup-start-time=20:00", "--enable-point-in-time-recovery", "--retained-backups-count=7", "--async")
     state = {"project": project, "region": region, "instance": instance, "accounts": accounts,
              "connection_name": f"{project}:{region}:{instance}", "ai_enabled": False}
@@ -161,8 +161,21 @@ def database(cloud):
     print("Database and connection secret ready", flush=True)
 
 
-def deploy(cloud, tag):
+# How much is kept running (2026-10-11). "small" is for testing and demos with a
+# handful of people: no always-on worker (the API does exports while it is up),
+# the smallest database tier, and a US$1 daily cap on paid AI. "scaled" is the
+# shape for real traffic: a dedicated worker kept warm and a dedicated-vCPU
+# database. Measured on 2026-10-11, the scaled shape costs about INR 9,700 a
+# month per environment before anyone uses it; small costs about INR 1,000.
+SIZES = {
+    "small": {"db_tier": "db-f1-micro", "api_memory": "2Gi", "worker_min": "0", "exports_in_api": "1", "daily_usd": "1"},
+    "scaled": {"db_tier": "db-custom-1-3840", "api_memory": "1Gi", "worker_min": "1", "exports_in_api": "0", "daily_usd": "10"},
+}
+
+
+def deploy(cloud, tag, size="small"):
     project, region = cloud.project, cloud.region
+    shape = SIZES[size]
     from release_checks import service_snapshot, deployment_origins, verify_and_promote, traffic_argument, restore_worker
     previous = service_snapshot(cloud, "deckastra-api")
     previous_worker = service_snapshot(cloud, "deckastra-export-worker")
@@ -184,7 +197,8 @@ def deploy(cloud, tag):
             "DECKASTRA_GOOGLE_DESKTOP_CLIENT_ID": json.loads((Path(__file__).parent / "public-auth.json").read_text(encoding="utf-8"))[project]["googleDesktopClientId"],
             "DECKASTRA_VERTEX_IDENTITY": "attached", "DECKASTRA_VERTEX_IMAGE_MODEL": "", "DECKASTRA_VERTEX_PRICES": "{}",
             "DECKASTRA_TRANSLATION": "google", "DECKASTRA_TRANSLATION_USD_PER_MILLION": "20",
-            "DECKASTRA_ASSISTANT_MAX_COST_USD": "0.30", "DECKASTRA_GLOBAL_DAILY_USD": "10",
+            "DECKASTRA_ASSISTANT_MAX_COST_USD": "0.30", "DECKASTRA_GLOBAL_DAILY_USD": shape["daily_usd"],
+            "DECKASTRA_EXPORTS_IN_API": shape["exports_in_api"],
             "DECKASTRA_CREDITS_ENABLED": "1", "DECKASTRA_ACCOUNT_DELETION_ENABLED": "1", "DECKASTRA_TELEMETRY_GCP": "1", "DECKASTRA_GCS_ASSETS_BUCKET": f"{project}-assets",
             "DECKASTRA_GCS_EXPORTS_BUCKET": f"{project}-exports", "DECKASTRA_GCS_SERVICE_ACCOUNT": f"deckastra-api@{project}.iam.gserviceaccount.com",
             "DECKASTRA_OIDC_ISSUER": f"https://securetoken.google.com/{project}", "DECKASTRA_OIDC_AUDIENCE": project,
@@ -195,7 +209,7 @@ def deploy(cloud, tag):
         candidate_tag = "check-" + secrets.token_hex(6)
         args = ["--tag=" + candidate_tag, "--no-traffic"] if existing else ["--tag=" + candidate_tag]
         cloud.run("run", "deploy", "deckastra-api", *common, f"--image={image}/api:{tag}", f"--env-vars-file={env_file}",
-            f"--service-account=deckastra-api@{project}.iam.gserviceaccount.com", "--allow-unauthenticated", "--cpu=1", "--memory=1Gi",
+            f"--service-account=deckastra-api@{project}.iam.gserviceaccount.com", "--allow-unauthenticated", "--cpu=1", f"--memory={shape['api_memory']}",
             "--min-instances=0", "--max-instances=3", "--concurrency=8", "--timeout=900", "--no-cpu-throttling",
             "--startup-probe=httpGet.path=/ready,initialDelaySeconds=0,periodSeconds=5,timeoutSeconds=3,failureThreshold=24",
             "--set-secrets=DATABASE_URL=deckastra-database-url:latest,DECKASTRA_UPLOAD_SECRET=deckastra-upload-secret:latest,DECKASTRA_DEVICE_SECRET=deckastra-device-secret:latest,DECKASTRA_GOOGLE_DESKTOP_SECRET=deckastra-google-desktop-secret:latest", *args)
@@ -210,7 +224,7 @@ def deploy(cloud, tag):
         try:
             cloud.run("run", "deploy", "deckastra-export-worker", *common, f"--image={image}/export-worker:{tag}",
                 f"--env-vars-file={worker_file}", f"--service-account=deckastra-export-worker@{project}.iam.gserviceaccount.com",
-                "--no-allow-unauthenticated", "--cpu=1", "--memory=2Gi", "--min-instances=1", "--max-instances=1", "--concurrency=1",
+                "--no-allow-unauthenticated", "--cpu=1", "--memory=2Gi", f"--min-instances={shape['worker_min']}", "--max-instances=1", "--concurrency=1",
                 "--no-cpu-throttling", "--liveness-probe=httpGet.path=/health,periodSeconds=30,timeoutSeconds=5,failureThreshold=3",
                 "--set-secrets=DATABASE_URL=deckastra-database-url:latest")
         except Exception:
@@ -232,13 +246,15 @@ if __name__ == "__main__":
     parser.add_argument("--configuration", default="deckastra")
     parser.add_argument("--tag", default="dev")
     parser.add_argument("--foundation-only", action="store_true")
+    parser.add_argument("--size", choices=tuple(SIZES), default=os.environ.get("DECKASTRA_HOSTING_SIZE", "small"),
+                        help="small: testing and demos; scaled: real traffic. Changing it does not resize an existing database.")
     args = parser.parse_args()
     cloud = Cloud(args.project, args.region, args.configuration)
     if args.action == "provision":
-        provision(cloud, args.foundation_only)
+        provision(cloud, args.foundation_only, args.size)
     elif args.action == "database":
         database(cloud)
     elif args.action == "identity":
         identity(cloud)
     else:
-        deploy(cloud, args.tag)
+        deploy(cloud, args.tag, args.size)

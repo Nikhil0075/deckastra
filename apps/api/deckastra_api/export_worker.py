@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import logging
 import socket
+import threading
 import time
 
 from . import export_service
@@ -50,6 +51,33 @@ def run_once(worker_id: str, state: dict) -> bool:
     except Exception as error:
         log.error("Background export will retry: %s", type(error).__name__)
         return False
+
+
+def start_in_thread(worker_id: str, poll_seconds: float = 1.0) -> threading.Event:
+    """Run the same loop on a daemon thread of this process; set the event to stop it.
+
+    For the small hosting profile (2026-10-11): the API process does the
+    background work itself, so nothing has to stay running while nobody is
+    using the product. Cloud Run keeps an API instance alive for a while after
+    its last request and its CPU is never throttled, so an export queued by a
+    request finishes on the instance that queued it. Claiming is a row lock on
+    PostgreSQL, so a separate worker running beside it never takes the same job.
+    """
+    stop = threading.Event()
+
+    def loop() -> None:
+        state: dict = {}
+        while not stop.is_set():
+            try:
+                ran = run_once(worker_id, state)
+            except Exception:  # noqa: BLE001 - nothing may end the loop
+                logging.getLogger("deckastra").exception("Background pass failed")
+                ran = False
+            if not ran:
+                stop.wait(max(0.1, poll_seconds))
+
+    threading.Thread(target=loop, name="deckastra-background", daemon=True).start()
+    return stop
 
 
 def main() -> None:
