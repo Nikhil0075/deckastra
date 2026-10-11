@@ -5,45 +5,40 @@ frame, Quiet Luxe's portrait, Earth Story's arch, Spatial Future's hologram and
 Play Lab's picture blob. A template can ship the picture that goes in it. This
 page covers what may ship, how a picture is added, and where things stand.
 
-## Status, 2026-10-10: 22 demo pictures ship; none may be sold
+## Status, 2026-10-11: 22 commercial-release images approved
 
-The terms were read before anything was generated:
+All 22 OpenArt Starter demo pictures have been replaced. The current set was
+generated with OpenAI image generation through Codex. The official OpenAI
+Terms of Use say that, as between the user and OpenAI and to the extent
+permitted by applicable law, the user owns Output and OpenAI assigns any right,
+title and interest it has in that Output to the user.
 
-> "For subscription levels at, and above, the 'Plus' level (as described on our
-> pricing page), you may also freely use Output you generate for commercial
-> purposes."
+That provider evidence is necessary but not sufficient for release. The terms
+also put responsibility for the content and appropriate human review on the
+user. The files have now passed both the agent inspection and the product
+owner's review:
 
-The account is on **Starter**, which the pricing page lists below Plus. Every
-plan may use output for non-commercial purposes, and the person wants a demo
-first and a commercial plan later. So the 22 pictures were generated **for demo
-use**, and the pipeline enforces that distinction:
-
-- each entry records `license.use: "demo"`, the plan, and the terms it was
-  made under;
-- the build, the tests and demos accept demo pictures;
-- `problems(release=True)` and `apps/desktop/scripts/verify-release.mjs` refuse
-  a release that carries any demo picture, or any picture not reviewed by a
-  person (`review.by: "person"`).
-
-Before a commercial release, regenerate each picture under a plan that allows
-commercial use, have a person review it, and update its entry. The prompts are
-in the manifest, so the same picture can be asked for again.
+- every entry records `license.provider: "OpenAI"`, commercial use, the exact
+  terms URL and retrieval fingerprint;
+- every entry records the exact prompt, source PNG checksum and delivered JPEG
+  checksum;
+- agent inspection checked watermarks, logos, legible text, public figures,
+  anatomy, composition and design-language fit;
+- the product owner reviewed the 22-image contact sheet and approved the set;
+- every entry records that decision as `review.by: "person"`, so both
+  `problems(release=True)` and `apps/desktop/scripts/verify-release.mjs` accept
+  the media review evidence.
 
 | | |
 | --- | --- |
-| Terms | <https://openart.ai/terms>, retrieved 2026-10-10, SHA-256 of the page `00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2` |
-| Pricing | <https://openart.ai/pricing>, retrieved 2026-10-10 |
-| Model | OpenArt Seedream 4.5, text-to-image, 2K, 15 credits each; 330 credits for all 22 |
-| Pictures | 22, 3.6 MB in all (largest 329 KB), 1600px on the long edge, JPEG quality 82 |
-| Review | by Claude, the implementing agent: no watermark, no logos, no legible text, fits its frame and language. Recorded as `by: "agent"`. |
+| Terms | <https://openai.com/policies/row-terms-of-use/>, retrieved 2026-10-11; normalized retrieved-text SHA-256 `003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b` |
+| Model | OpenAI image generation through Codex, text-to-image |
+| Pictures | 22, 4.68 MB in all (largest 374 KB), 1600px on the long edge, JPEG quality 79–82 |
+| Review | Codex inspected every image; the product owner approved all 22 from the contact sheet on 2026-10-11. Recorded as `by: "person"`. |
 
-Two review notes are recorded on their entries. The workflow sketch
-(`earth-customer-case-study-scene.jpg`) has near-legible scribbled words. The
-warehouse and greenhouse pictures show generated people with visible faces.
-Both are fine for a demo, and both are worth another look before release.
-
-Contact sheets, with every picture and six templates using them:
-`concepts/unit7b-media/`.
+The release-review contact sheet is
+`concepts/unit10-release-media/contact-sheet.jpg`. The earlier OpenArt demo
+audit remains in `concepts/unit7b-media/` as historical evidence only.
 
 ## What may ship
 
@@ -60,9 +55,9 @@ It refuses:
   `prompt`, `sourceSha256` (the file as downloaded), and `alt` text;
 - an entry without a review: `review.result: "approved"`, a named `reviewer`
   and a `date`;
-- an entry without licence evidence: `license.commercialUse: true`, a `plan`
-  that grants it, and the `termsUrl`, `termsRetrievedAt` and `termsSha256` of
-  the terms it was made under;
+- an entry without provider-specific licence evidence:
+  `license.commercialUse: true`, a provider and plan/workflow accepted by the
+  validator, plus `termsUrl`, `termsRetrievedAt` and `termsSha256`;
 - an entry that names no template and role (`hero` or `scene`).
 
 JPEG, not WebP: PowerPoint does not open WebP, and the PPTX exporter refuses it
@@ -93,10 +88,11 @@ with no picture folder.
 
 ## Adding a picture
 
-1. Make it under terms that allow commercial use, and save the terms page's
-   URL, the date, and the page's SHA-256.
-2. Export a JPEG at quality 82, 1920px or less on the long edge, and 400 KB or
-   less. Name it `<language>-<template>-<role>.jpg`.
+1. Make it under terms that allow commercial use, and save the provider, terms
+   URL, retrieval date and a reproducible fingerprint of the retrieved terms.
+2. Export a JPEG at quality 82 (lower only as needed for the ceiling), 1920px
+   or less on the long edge, and 400 KB or less. Name it
+   `<language>-<template>-<role>.jpg`.
 3. Look at it, then write its alt text.
 4. Add an entry to `packages/deck-presets/media/MANIFEST.json` with every
    field above, then run `python -m pytest apps/api/tests/test_preset_media.py`.

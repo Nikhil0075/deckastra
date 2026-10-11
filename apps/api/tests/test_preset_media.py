@@ -46,7 +46,7 @@ def _entry(name: str, data: bytes, size: tuple[int, int], uses: list[dict], **ov
         "height": size[1],
         "alt": f"A flat colour standing in for {name}",
         "review": {"result": "approved", "reviewer": "test", "date": "2026-10-10"},
-        "license": {"use": "commercial", "plan": "Plus", "commercialUse": True, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64},
+        "license": {"provider": "OpenArt", "use": "commercial", "plan": "Plus", "commercialUse": True, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64},
         "templates": uses,
     }
     entry.update(overrides)
@@ -123,7 +123,7 @@ def test_demo_pictures_are_usable_and_never_releasable(tmp_path):
     folder.mkdir()
     data = _jpeg(400, 300, (9, 9, 9))
     (folder / "demo-shot.jpg").write_bytes(data)
-    licence = {"use": "demo", "plan": "Starter", "commercialUse": False, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64}
+    licence = {"provider": "OpenArt", "use": "demo", "plan": "Starter", "commercialUse": False, "termsUrl": "https://openart.ai/terms", "termsRetrievedAt": "2026-10-10", "termsSha256": "0" * 64}
     manifest = {"media": [_entry("demo-shot.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license=licence)]}
     (folder / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
     preset_media._load.cache_clear()
@@ -141,8 +141,8 @@ def test_with_no_pictures_a_frame_stays_a_frame(tmp_path, monkeypatch):
     preset_media._load.cache_clear()
 
 
-def test_every_shipped_template_with_a_frame_shows_a_picture_and_none_is_releasable():
-    """The 22 demo pictures fill every frame the catalog draws, and a release refuses all of them."""
+def test_every_shipped_template_with_a_frame_is_releasable():
+    """All 22 pictures fill their frames and carry complete release evidence."""
     from deckastra_api import presets
 
     preset_media._load.cache_clear()
@@ -151,9 +151,27 @@ def test_every_shipped_template_with_a_frame_shows_a_picture_and_none_is_releasa
         frames = [e for s in document["slides"] for e in s["elements"] if e.get("name") in preset_media.FRAME_NAMES]
         assert len(_pictures(document)) == len(frames), preset["id"]
         assert validate_document(document) == [], preset["id"]
-    refused = preset_media.problems(SHIPPED, release=True)
-    assert len(preset_media.demo_only(SHIPPED)) == len(preset_media.entries()) == 22
-    assert all("demo use" in line or "reviewed by a person" in line for line in refused)
+    assert preset_media.demo_only(SHIPPED) == []
+    assert len(preset_media.entries()) == 22
+    assert preset_media.problems(SHIPPED, release=True) == []
+
+
+def test_openai_terms_are_valid_commercial_evidence(media):
+    manifest = json.loads((media / "MANIFEST.json").read_text(encoding="utf-8"))
+    for entry in manifest["media"]:
+        entry["license"] = {
+            "provider": "OpenAI",
+            "use": "commercial",
+            "plan": "ChatGPT/Codex built-in image generation",
+            "commercialUse": True,
+            "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+            "termsRetrievedAt": "2026-10-11",
+            "termsSha256": "0" * 64,
+        }
+        entry["review"]["by"] = "person"
+    (media / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+    preset_media._load.cache_clear()
+    assert preset_media.problems(media, release=True) == []
 
 
 def test_a_template_puts_its_pictures_in_its_frames(media):
@@ -211,7 +229,7 @@ def test_the_budget_refuses_what_may_not_ship(tmp_path):
     (folder / "unreviewed.jpg").write_bytes(data)
     big = _jpeg(1900, 1900, (0, 0, 0))
     manifest = {"media": [
-        _entry("starter.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license={"use": "commercial", "plan": "Starter", "commercialUse": False, "termsUrl": "u", "termsRetrievedAt": "d", "termsSha256": "s"}),
+        _entry("starter.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], license={"provider": "OpenArt", "use": "commercial", "plan": "Starter", "commercialUse": False, "termsUrl": "u", "termsRetrievedAt": "d", "termsSha256": "s"}),
         _entry("changed.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], sha256="0" * 64),
         _entry("unreviewed.jpg", data, (400, 300), [{"template": "x", "role": "scene"}], review={}),
         _entry("missing.jpg", big, (1900, 1900), [{"template": "x", "role": "scene"}]),
@@ -220,7 +238,7 @@ def test_the_budget_refuses_what_may_not_ship(tmp_path):
     (folder / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
     preset_media._load.cache_clear()
     found = " | ".join(preset_media.problems(folder))
-    assert "starter.jpg is marked for commercial use but was not made under terms that allow it" in found
+    assert "starter.jpg is marked for commercial use but was not made under recorded terms that allow it" in found
     assert "changed.jpg does not match its recorded sha256" in found
     assert "unreviewed.jpg has no recorded approval" in found
     assert "missing.jpg is in the manifest and not on disk" in found

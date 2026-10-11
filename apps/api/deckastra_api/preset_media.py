@@ -254,10 +254,26 @@ def _rewrite(nodes: Any, renamed: dict[str, str]) -> None:
 # ------------------------------------------------------------------ the budget
 
 
-COMMERCIAL_PLANS = {"Plus", "Pro", "Wonder", "Enterprise"}
-#: What a picture may be used for. `demo` is non-commercial use, which OpenArt's
-#: terms allow on every plan; `commercial` needs a plan that grants it.
+OPENART_COMMERCIAL_PLANS = {"Plus", "Pro", "Wonder", "Enterprise"}
+OPENAI_TERMS_URLS = {
+    "https://openai.com/policies/row-terms-of-use/",
+    "https://openai.com/policies/terms-of-use/",
+}
+#: What a picture may be used for. `demo` is non-commercial use;
+#: `commercial` needs provider-specific evidence that grants it.
 USES = ("demo", "commercial")
+
+
+def _allows_commercial_use(licence: dict[str, Any]) -> bool:
+    """Whether the recorded provider terms support the commercial marker."""
+    if licence.get("commercialUse") is not True:
+        return False
+    provider = str(licence.get("provider") or "")
+    if provider == "OpenArt":
+        return licence.get("plan") in OPENART_COMMERCIAL_PLANS
+    if provider == "OpenAI":
+        return bool(licence.get("plan")) and licence.get("termsUrl") in OPENAI_TERMS_URLS
+    return False
 
 
 def demo_only(directory: Path | None = None) -> list[str]:
@@ -320,8 +336,11 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
         use = licence.get("use")
         if use not in USES:
             out.append(f"{label} does not say whether it is for demo or commercial use.")
-        elif use == "commercial" and (licence.get("commercialUse") is not True or licence.get("plan") not in COMMERCIAL_PLANS):
-            out.append(f"{label} is marked for commercial use but was not made under terms that allow it (plan {licence.get('plan')!r}).")
+        elif use == "commercial" and not _allows_commercial_use(licence):
+            out.append(
+                f"{label} is marked for commercial use but was not made under recorded terms that allow it "
+                f"(provider {licence.get('provider')!r}, plan {licence.get('plan')!r})."
+            )
         elif release and use != "commercial":
             out.append(f"{label} was made for demo use (plan {licence.get('plan')!r}) and may not ship in a release.")
         if release and review.get("by") != "person":
