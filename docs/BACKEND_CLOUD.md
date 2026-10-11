@@ -36,6 +36,17 @@ python infrastructure/deployment/bootstrap.py deploy --project deckastra --tag R
 python infrastructure/deployment/smoke_cloud.py --project deckastra
 ```
 
+**Size (`--size`, or `DECKASTRA_HOSTING_SIZE`), 2026-10-11.** `small`, the default, is for testing and demos with a handful of people. Nothing stays running while nobody uses the product:
+
+- The export worker scales to zero, and the API runs exports, imports and erasures itself (`DECKASTRA_EXPORTS_IN_API=1`, `export_worker.start_in_thread`).
+- The API has 2Gi of memory for Chromium.
+- Postgres is `db-f1-micro`.
+- Paid AI is capped at US$1 a day.
+
+`scaled` is the earlier shape for real traffic: one warm worker, a dedicated-vCPU database and a US$10 cap.
+
+Measured on the 2026-10-11 bill, `scaled` costs about INR 9,700 a month per environment before anyone uses it; `small` costs about INR 1,000. Deploying does not resize an existing database. Change it with `gcloud sql instances patch deckastra-postgres --tier=…`, which restarts it for a few minutes.
+
 The migration completes before API traffic changes. The previous API revision keeps traffic while the new API and worker start. A deployment with an irreversible database migration must be recovered with a compatible image or a database restore, not a blind downgrade. The `.mydeck` migration refuses downgrade while package export rows exist.
 
 **A release is both services or neither.** `bootstrap.py deploy` runs in this order:
