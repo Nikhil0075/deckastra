@@ -194,6 +194,48 @@ def worth_translating(value: Any) -> bool:
     return any(ch.isalpha() for ch in text_content(value))
 
 
+def coverage(document: dict[str, Any], locale: str) -> dict[str, int]:
+    """How much of one language is translated and current, counted as the editor counts it."""
+    entries = ((document.get("locales") or {}).get(locale) or {}).get("entries") or {}
+    counts = {"translated": 0, "outdated": 0, "missing": 0}
+    for slot in locale_slots(document):
+        if not worth_translating(slot.value):
+            continue
+        entry = entries.get(slot.path)
+        if not entry:
+            counts["missing"] += 1
+        elif entry.get("sourceHash") != text_hash(slot.value):
+            counts["outdated"] += 1
+        else:
+            counts["translated"] += 1
+    return counts
+
+
+def premature_reviews(before: dict[str, Any], after: dict[str, Any]) -> list[str]:
+    """Languages a change marks reviewed while some of their words are still missing or outdated.
+
+    "Reviewed" is the claim that a person read the whole language through, and
+    an agent's change that made it while slots were still in the original was
+    exactly what the 2026-10-11 deck review found. Only a change *to* reviewed
+    is judged: a deck already reviewed whose source later moved is outdated,
+    and every unrelated edit to it must not start failing.
+    """
+    problems: list[str] = []
+    old = before.get("locales") or {}
+    for tag, overlay in (after.get("locales") or {}).items():
+        if not isinstance(overlay, dict) or overlay.get("status") != "reviewed":
+            continue
+        if (old.get(tag) or {}).get("status") == "reviewed":
+            continue
+        counts = coverage(after, tag)
+        if counts["missing"] or counts["outdated"]:
+            problems.append(
+                f"{tag} cannot be marked reviewed: {counts['missing']} still missing and "
+                f"{counts['outdated']} outdated. Translate them first (locale_list names them)."
+            )
+    return problems
+
+
 LOCALE_TAG = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
 
 

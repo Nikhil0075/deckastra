@@ -34,12 +34,35 @@ export interface PresetIssue {
 
 const hasText = (value: SlotValue | undefined): boolean => {
   if (typeof value === "string") return value.trim().length > 0;
-  return Array.isArray(value) && value.length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return typeof value === "object" && value !== null;
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 function valueMatches(definition: SlotDefinition, value: unknown): boolean {
   if (definition.kind === "text") return typeof value === "string";
+  if (definition.kind === "chart") {
+    if (!isRecord(value) || !Array.isArray(value.categories) || !Array.isArray(value.series)) return false;
+    const categories = value.categories as unknown[];
+    return categories.length > 0 && categories.every((c) => typeof c === "string") &&
+      (value.series as unknown[]).length > 0 &&
+      (value.series as unknown[]).every((s) =>
+        isRecord(s) && typeof s.name === "string" && Array.isArray(s.values) &&
+        s.values.length === categories.length && s.values.every((v) => typeof v === "number" && Number.isFinite(v)));
+  }
+  if (definition.kind === "diagram") {
+    if (!isRecord(value) || !Array.isArray(value.nodes)) return false;
+    const keys = (value.nodes as unknown[]).map((n) => (isRecord(n) && typeof n.label === "string" ? n.key : undefined));
+    if (keys.length < 2 || keys.some((k) => typeof k !== "string") || new Set(keys).size !== keys.length) return false;
+    return ((value.edges ?? []) as unknown[]).every((e) =>
+      isRecord(e) && keys.includes(e.source as string) && keys.includes(e.target as string));
+  }
   if (!Array.isArray(value)) return false;
+  if (definition.kind === "timeline") {
+    return value.every((item) => isRecord(item) && typeof item.when === "string" && typeof item.label === "string");
+  }
   if (definition.kind === "text-list") return value.every((item) => typeof item === "string");
   return value.every(
     (item): item is MetricSlotValue =>
@@ -137,8 +160,10 @@ export function validateDeckPresets(
           }
           const blankIndex = value.findIndex((item) =>
             typeof item === "string" ? item.trim().length === 0 :
-              typeof item === "object" && item !== null &&
-              (!(item as MetricSlotValue).value.trim() || !(item as MetricSlotValue).label.trim()),
+              definition.kind === "timeline"
+                ? !String((item as { when: string }).when).trim() || !String((item as { label: string }).label).trim()
+                : typeof item === "object" && item !== null &&
+                  (!(item as MetricSlotValue).value.trim() || !(item as MetricSlotValue).label.trim()),
           );
           if (blankIndex >= 0) {
             issues.push({ code: "E_SLOT_EMPTY", path: `${slotPath}/${blankIndex}`, message: `Slot ${JSON.stringify(slotName)} contains a blank item.` });
@@ -211,6 +236,8 @@ function slideMarkup(pattern: keyof typeof PATTERN_DEFINITIONS): string {
     body = `<ul>${((slots.bullets as string[] | undefined) ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   } else if (layout === "metrics") {
     body = `<div class="metrics">${((slots.metrics as MetricSlotValue[] | undefined) ?? []).map((item) => `<div><b>${escapeHtml(item.value)}</b><span>${escapeHtml(item.label)}</span></div>`).join("")}</div>`;
+  } else if (layout === "chart" || layout === "diagram" || layout === "timeline" || layout === "image") {
+    body = `<p class="body">[${escapeHtml(layout)}]</p>`;
   } else if (layout === "quote") {
     body = `<blockquote>“${escapeHtml(slots.quote)}”</blockquote><p class="attribution">— ${escapeHtml(slots.attribution)}</p>`;
   } else if (layout === "code") {

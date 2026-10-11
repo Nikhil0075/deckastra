@@ -59,20 +59,31 @@ def compose_template(
     # gallery copy. Narration resolves the default provider voice from this
     # style while an explicitly selected cue or request voice still wins.
     document["metadata"]["voiceStyle"] = str(preset.get("voiceStyle") or "")
-    previous_slide = None
     pacing = str((motion_plan.get("slides") or [{}])[0].get("pacing") or "measured")
-    for slide in document.get("slides") or []:
-        transition, _warnings = motion.plan_transition(
-            previous_slide,
-            slide,
-            str(preset.get("transitionStyle") or "fade"),
-            pacing,
-        )
+    plan_transitions(document, plan, language, str(preset.get("transitionStyle") or "fade"), pacing)
+    # The template's own pictures in the frames its language drew (unit 7b).
+    return preset_media.attach(document, template_id)
+
+
+def plan_transitions(document: dict[str, Any], plan: Any, language: str, style: str, pacing: str = "measured") -> None:
+    """Write each slide's transition: the style, or the language's accent for that kind of slide.
+
+    Deterministic by slide kind, so the same plan always moves the same way.
+    A slide whose layout the language names an accent for (a title, a full-bleed
+    photograph) arrives differently from the slides around it; everything else
+    takes the style. The first slide is planned too: `plan_transition` knows
+    there is nothing to come from.
+    """
+    accents = ((presets.catalog().get("designLanguages") or {}).get(language) or {}).get("transitionAccents") or {}
+    layouts = [getattr(getattr(slide, "layout", None), "value", None) for slide in getattr(plan, "slides", [])]
+    previous_slide = None
+    for index, slide in enumerate(document.get("slides") or []):
+        layout = layouts[index] if index < len(layouts) else None
+        kind = str(accents.get(layout) or style) if layout else style
+        transition, _warnings = motion.plan_transition(previous_slide, slide, kind, pacing)
         if transition is not None:
             slide["transition"] = transition
         previous_slide = slide
-    # The template's own pictures in the frames its language drew (unit 7b).
-    return preset_media.attach(document, template_id)
 
 
 @lru_cache(maxsize=1)

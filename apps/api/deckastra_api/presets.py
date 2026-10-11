@@ -141,7 +141,9 @@ def slide_plan_from_pattern(
         raise PresetError(f"Missing required slots for {pattern_id}: " + ", ".join(missing))
     for name, slot in definitions.items():
         value = values.get(name)
-        if slot.get("kind") in {"text-list", "metrics"} and value is not None:
+        if slot.get("kind") in {"chart", "diagram"} and value is not None and not isinstance(value, dict):
+            raise PresetError(f"Slot {name!r} on {pattern_id} must be an object.")
+        if slot.get("kind") in {"text-list", "metrics", "timeline"} and value is not None:
             if not isinstance(value, list):
                 raise PresetError(f"Slot {name!r} on {pattern_id} must be a list.")
             if len(value) < int(slot.get("minItems") or 0) or len(value) > int(slot.get("maxItems") or 10_000):
@@ -157,6 +159,8 @@ def slide_plan_from_pattern(
             quote=str(values.get("quote") or ""), attribution=str(values.get("attribution") or ""),
             code=str(values.get("code") or ""), language=str(values.get("language") or ""),
             caption=str(values.get("caption") or ""), speaker_notes=str(values.get("speaker_notes") or ""),
+            chart=values.get("chart") or None, diagram=values.get("diagram") or None,
+            timeline=list(values.get("timeline") or []), picture=str(values.get("picture") or ""),
         )
     except (TypeError, ValueError) as error:
         raise PresetError(f"Content for {label or pattern_id!r} is invalid: {error}") from error

@@ -4318,6 +4318,50 @@ to undo:
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.
 
+### Decks that vary, and agents told how (2026-10-11)
+
+A review of an agent-built deck found it correct and monotonous: cards and
+lists throughout, one transition, no chart where the numbers were, and a
+translation called done with slots missing. Rules that are easy to undo:
+
+- **Four data layouts** (`chart`, `diagram`, `timeline`, `image` in
+  `SlideLayout`; `_layout_*` in `compose.py`). The plan carries data, never
+  geometry: chart categories and named series, diagram nodes by the agent's
+  own key (the composer mints `dn_`/`de_` ids), dated timeline entries, and
+  the words a photograph should show. A data layout without its data is
+  refused by the model validator, where the plan is written.
+- **Nine data patterns** (`bar-chart` … `full-bleed-photo`) with slot kinds
+  `chart`, `diagram` and `timeline`. They are appended after `thank-you`,
+  because `PATTERN_DEFINITIONS` key order is checked against `SLIDE_PATTERNS`.
+- **Waterfall and slope charts** are renderer geometry like every other chart,
+  so PDF and PowerPoint draw them with no exporter change. A waterfall's first
+  bar is a level, not a change, and ends in a Total; a slope labels its ends
+  and has no legend.
+- **A generated picture fills the slide's image frame**, directly above it and
+  above any template picture already there, so the scrim and headline drawn
+  after the frame stay on top (`assistant_routes`, `preset_media.FRAME_NAMES`).
+- **Transitions come from the language, with accents by slide kind**
+  (`transitionAccents` in `languages.ts`; `template_compose.plan_transitions`,
+  used by both creation routes). `deck_compose` used to set none.
+- **`variety.report`** measures a deck's structure (composer layout, not
+  pattern name), longest run, evidence slides and transitions. `deck_compose`
+  returns its warnings. `scripts/eval-deck-variety.py` composes three briefs
+  before and after; the record is `docs/design-audit/VARIETY_EVAL.md`. It
+  measures what the composer can express, not a live agent.
+- **A language is marked reviewed only when complete.** `create_proposal`
+  refuses a change *to* reviewed while anything is missing or outdated
+  (`locales.premature_reviews`, `E_LOCALE_INCOMPLETE`); a language already
+  reviewed whose source later moved is not refused. The editor disables Mark
+  reviewed the same way, and `locale_propose` returns `coverage`.
+- **`theme_propose`** builds a whole theme from a few colours and two bundled
+  faces, refusing text below 4.5:1 (`office_theme.theme_from_palette`).
+- **The deck-design skill** is `apps/mcp-server/src/deck-design.ts`, served as
+  `deckastra://guides/deck-design` and mirrored to
+  `apps/mcp-server/skills/deckastra-deck-design/SKILL.md`. A test holds the
+  file to the constant and every tool the guide names to the registered tools.
+- **The neutral golden pins `language_kit`'s ids too**: it binds `new_id` at
+  import, and the timeline and image layouts draw through it.
+
 ### Presenter ink (UI audit unit 6, 2026-10-10)
 
 Laser, pen, highlighter and eraser while presenting (`lib/ink.ts`,

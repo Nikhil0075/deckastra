@@ -430,6 +430,51 @@ def test_generated_media_is_registered_and_checkpointed(client, auth, deck, monk
         assert "base64" not in media and media["size_bytes"] == len(output.getvalue())
 
 
+
+def test_a_generated_picture_fills_the_slides_image_frame_under_its_words(client, auth, monkeypatch):
+    """On a photo slide the picture goes into the frame, beneath the scrim and headline."""
+    import base64
+    from types import SimpleNamespace
+    from deckastra_api import media_quotes
+    composed = client.post("/v1/decks/compose", headers=auth, json={"story_plan": {
+        "title": "Field work", "audience": "", "objective": "", "narrative_arc": "",
+        "slides": [{"layout": "image", "purpose": "p", "key_message": "k", "headline": "Built for the field",
+                    "picture": "An engineer on a rooftop at dusk"}],
+    }})
+    assert composed.status_code == 200, composed.text
+    deck = composed.json()
+    slide = deck["document"]["slides"][0]
+    frame_index = next(i for i, e in enumerate(slide["elements"]) if e.get("name") == "Image frame")
+    monkeypatch.setattr(media_quotes, "configured_image_client", lambda: SimpleNamespace(
+        model="imagen-fixture", estimate_reservation=lambda request: .04))
+    quoted = client.post("/v1/media/quotes/image", headers=auth, json={
+        "presentation_id": deck["presentation_id"], "expected_version_id": deck["version_id"],
+        "slide_id": slide["id"], "prompt": "An engineer on a rooftop at dusk",
+    })
+    assert quoted.status_code == 200, quoted.text
+    run_id = client.post("/v1/assistant/runs", headers=auth, json={
+        **payload(deck), "task": "image", "instruction": "An engineer on a rooftop at dusk",
+        "scope": {"kind": "slide", "slide_ids": [slide["id"]], "element_ids": []},
+        "image_quote_token": quoted.json()["quote_token"],
+    }).json()["id"]
+    monkeypatch.setattr(assistant_routes, "model_client", lambda emit: object())
+    output = io.BytesIO(); Image.new("RGB", (32, 18), "orange").save(output, "PNG")
+    monkeypatch.setattr(assistant_tasks, "compute", lambda *args: {"media": [{"base64": base64.b64encode(output.getvalue()).decode(), "kind": "image", "extension": "png", "content_type": "image/png", "width": 32, "height": 18, "provider": "fixture"}]})
+    monkeypatch.setattr(assistant_routes.object_storage, "put", lambda key, data, mime: None)
+    assistant_routes.execute(run_id)
+    result = client.get(f"/v1/assistant/runs/{run_id}", headers=auth).json()
+    assert result["status"] == "completed", result
+    with db_session.session_scope() as session:
+        from deckastra_api.db.models import TransactionRow
+        proposal = session.get(TransactionRow, result["result"]["transaction_id"])
+        placed = [op for op in proposal.operations_json if "/elements/" in op["path"]]
+    assert len(placed) == 1
+    assert placed[0]["path"] == f"/slides/id:{slide['id']}/elements/{frame_index + 1}"
+    picture = placed[0]["value"]
+    assert picture["fit"] == "cover"
+    assert picture["transform"] == slide["elements"][frame_index]["transform"]
+    assert picture["altText"] == "An engineer on a rooftop at dusk"
+
 def test_quoted_video_becomes_bounded_assets_and_a_pending_proposal(client, auth, deck, monkeypatch):
     import base64
     from types import SimpleNamespace

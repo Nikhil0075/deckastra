@@ -116,6 +116,11 @@ def create_proposal(
             "The proposed change would produce an invalid document: " + "; ".join(errors[:3]),
             code="E001",
         )
+    from .locales import premature_reviews
+
+    premature = premature_reviews(loaded.document, preview)
+    if premature:
+        raise ProposalError("; ".join(premature), code="E_LOCALE_INCOMPLETE")
 
     if not assessment.requires_approval:
         result = store.commit_transaction(

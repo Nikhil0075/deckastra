@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -8,6 +9,7 @@ import type { Attached } from "../src/attach";
 import { createAttachedClient } from "../src/client";
 import { registerTools } from "../src/tools";
 import { registerGuidance } from "../src/guidance";
+import { DECK_DESIGN_GUIDE } from "../src/deck-design";
 
 /**
  * The agent's side of the seam, driven over the real protocol.
@@ -133,6 +135,21 @@ describe("the tool surface", () => {
     });
     const body = prompt.messages[0]?.content;
     expect(body && body.type === "text" ? body.text : "").toContain("deckastra://examples/technical");
+    expect(body && body.type === "text" ? body.text : "").toContain("deckastra://guides/deck-design");
+  });
+
+  it("serves the deck-design skill, and the installable SKILL.md says exactly the same", async () => {
+    const client = await connect();
+    const read = await client.readResource({ uri: "deckastra://guides/deck-design" });
+    const served = String(read.contents[0] && "text" in read.contents[0] ? read.contents[0].text : "");
+    expect(served).toBe(DECK_DESIGN_GUIDE);
+    // Every tool the guide names is one this server registers.
+    const tools = new Set((await client.listTools()).tools.map((tool) => tool.name));
+    const named = [...served.matchAll(/`([a-z]+_[a-z_]+)`/g)].map((match) => match[1]!).filter((name) => !["key_message"].includes(name));
+    expect(named.filter((name) => !tools.has(name))).toEqual([]);
+    const skill = readFileSync(new URL("../skills/deckastra-deck-design/SKILL.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+    expect(skill.replace(/^---\n[\s\S]*?\n---\n\n/, "")).toBe(DECK_DESIGN_GUIDE);
+    expect(skill).toMatch(/^---\nname: deckastra-deck-design\ndescription: .+\n---\n/);
   });
 
   it("lists presets and composes a template without accepting geometry", async () => {

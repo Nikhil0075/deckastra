@@ -80,6 +80,18 @@ def test_ulid_alphabet_excludes_ambiguous_letters():
 # -------------------------------------------------------------------- compose
 
 
+def data_for(text: str = "A label") -> dict:
+    """What the data layouts need: they refuse a plan without it."""
+    label = text[:60]
+    return {
+        "chart": {"categories": ["Q1", "Q2", "Q3"], "series": [{"name": label[:40] or "S", "values": [1.5, 2.25, 3]}], "unit": "%"},
+        "diagram": {"nodes": [{"key": "a", "label": label}, {"key": "b", "label": label}, {"key": "c", "label": label}],
+                    "edges": [{"source": "a", "target": "b", "label": label[:40]}, {"source": "b", "target": "c"}]},
+        "timeline": [{"when": "Q1", "label": label, "detail": text[:120]}, {"when": "Q2", "label": label}],
+        "picture": text[:400],
+    }
+
+
 @pytest.mark.parametrize("layout", list(SlideLayout))
 def test_every_layout_composes_a_valid_document(layout):
     plan = StoryPlan(
@@ -103,6 +115,7 @@ def test_every_layout_composes_a_valid_document(layout):
                 code='{"op": "replace"}',
                 language="json",
                 caption="A caption",
+                **data_for(),
             )
         ],
     )
@@ -194,6 +207,7 @@ def test_every_pattern_survives_stress_content(sample_name, text):
             code="result = run(input)\nassert result.reviewed",
             language="python",
             caption=text,
+            **data_for(text),
         )
         for layout in SlideLayout
     ]
@@ -307,5 +321,6 @@ def test_composed_documents_carry_no_credentials_or_signed_urls():
 
 def test_layout_vocabulary_is_closed():
     assert {layout.value for layout in SlideLayout} == {
-        "title", "statement", "bullets", "metrics", "quote", "code", "split"
+        "title", "statement", "bullets", "metrics", "quote", "code", "split",
+        "chart", "diagram", "timeline", "image",
     }

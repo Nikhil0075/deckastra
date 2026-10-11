@@ -164,6 +164,11 @@ def test_every_layout_composes_in_every_language(layout):
         caption="A caption",
         metrics=[{"value": "62%", "label": "faster"}, {"value": "3", "label": "teams"}],
         code="print('hi')",
+        # The data layouts refuse a plan without their data, so every slide carries it.
+        chart={"categories": ["A", "B"], "series": [{"name": "S", "values": [1, 2]}]},
+        diagram={"nodes": [{"key": "a", "label": "A"}, {"key": "b", "label": "B"}], "edges": [{"source": "a", "target": "b"}]},
+        timeline=[{"when": "Q1", "label": "Start"}, {"when": "Q2", "label": "Finish"}],
+        picture="A photograph",
     )
     for language in languages.LANGUAGE_LAYOUTS:
         slide = compose_slide(plan, 0, language)

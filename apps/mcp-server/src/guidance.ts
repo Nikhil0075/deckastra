@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { WorkspaceClient } from "@deckastra/workspace-contracts";
 
 import type { Attached } from "./attach";
+import { DECK_DESIGN_GUIDE } from "./deck-design";
 
 const PURPOSES = ["business", "product", "teaching", "technical", "team", "personal"] as const;
 type Purpose = (typeof PURPOSES)[number];
@@ -17,7 +18,7 @@ Deckastra is the deterministic presentation engine; you provide narrative intent
 2. Call \`preset_list\` with the deck purpose. Every template composes in a design language; filter by \`language\` if the person named a look.
 3. Call \`design_language_get\` for the chosen template's language and follow its rules and density limits when you write slot text.
 4. Prefer \`deck_from_template\`: fill named slots under stable slide keys in one call.
-5. Use \`deck_compose\` only when the template sequence does not fit, and pass the same \`design_language\`. StoryPlan layouts are limited to \`title\`, \`statement\`, \`bullets\`, \`metrics\`, \`quote\`, \`code\`, and \`split\`.
+5. Use \`deck_compose\` only when the template sequence does not fit, and pass the same \`design_language\`. StoryPlan layouts are \`title\`, \`statement\`, \`bullets\`, \`metrics\`, \`quote\`, \`code\` and \`split\` for words, and \`chart\`, \`diagram\`, \`timeline\` and \`image\` for evidence. Read deckastra://guides/deck-design before choosing them.
 
 Never send coordinates, font sizes, colours, timing in milliseconds, or raw document JSON to the creation tools. Deckastra owns geometry, theme tokens, motion timing, schema validity, and export mapping.
 
@@ -120,6 +121,17 @@ export function registerGuidance(server: McpServer, client: WorkspaceClient, att
   );
 
   server.registerResource(
+    "deckastra-deck-design",
+    "deckastra://guides/deck-design",
+    {
+      title: "Designing a deck",
+      description: "Art direction, choosing a structure per slide, variety rules, pictures, and the checks before answering.",
+      mimeType: "text/markdown",
+    },
+    async (uri) => markdownResource(uri, DECK_DESIGN_GUIDE),
+  );
+
+  server.registerResource(
     "deckastra-current-theme",
     "deckastra://current/theme",
     { title: "Current deck theme tokens", description: "The portable theme and token values for the deck open in Deckastra.", mimeType: "text/markdown" },
@@ -167,9 +179,10 @@ export function registerGuidance(server: McpServer, client: WorkspaceClient, att
           type: "text",
           text:
             `Build a ${purpose} presentation about ${topic} for ${audience}. ` +
-            `Read deckastra://guides/authoring and deckastra://examples/${purpose}. ` +
+            `Read deckastra://guides/authoring, deckastra://guides/deck-design and deckastra://examples/${purpose}. ` +
             "Call workspace_list and preset_list, then create the complete first draft with deck_from_template in one call. " +
-            "Preview representative slides and run design_check. Do not invent facts or send geometry.",
+            "Choose one visual per slide and vary the structure. Preview every slide and run design_check. " +
+            "Do not invent facts or send geometry.",
         },
       }],
     }),

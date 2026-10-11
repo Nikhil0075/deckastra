@@ -28,7 +28,7 @@ GOLDEN = Path(__file__).resolve().parent / "goldens" / "compose_neutral.json"
 @contextmanager
 def deterministic() -> Iterator[None]:
     """Counter ids and a fixed clock, everywhere the composer reads them."""
-    from deckastra_api import compose, ids, motion
+    from deckastra_api import compose, ids, language_kit, motion
 
     counter = {"n": 0}
 
@@ -36,7 +36,7 @@ def deterministic() -> Iterator[None]:
         counter["n"] += 1
         return f"{prefix}_{counter['n']:026d}"
 
-    patched = [(module, getattr(module, "new_id")) for module in (ids, compose, motion) if hasattr(module, "new_id")]
+    patched = [(module, getattr(module, "new_id")) for module in (ids, compose, language_kit, motion) if hasattr(module, "new_id")]
     original_now = compose._now
     try:
         for module, _ in patched:

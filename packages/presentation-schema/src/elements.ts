@@ -365,6 +365,8 @@ export const CHART_KINDS = [
   "stackedBar",
   "stackedColumn",
   "combo",
+  "waterfall",
+  "slope",
 ] as const;
 
 /** Open: an unrecognized chart type renders as a bar chart with a capability warning. */

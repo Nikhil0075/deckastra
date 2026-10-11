@@ -1,7 +1,8 @@
 import type { MotionStyleId } from "./schema";
 
 /** The composer's seven base layouts, which every slide pattern composes as. */
-export type ComposerLayout = "title" | "statement" | "bullets" | "metrics" | "quote" | "code" | "split";
+export type ComposerLayout = "title" | "statement" | "bullets" | "metrics" | "quote" | "code" | "split"
+  | "chart" | "diagram" | "timeline" | "image";
 const SIX = ["title", "statement", "bullets", "metrics", "quote", "split"] as const;
 
 /**
@@ -84,6 +85,13 @@ export interface DesignLanguage {
   /** The language's own rules, as prose an agent follows before it writes slot text. */
   rules: readonly string[];
   defaults: LanguageDefaults;
+  /**
+   * The transition into a slide of a given composer layout, where it differs
+   * from `defaults.transitionStyle` (2026-10-11). A whole deck on one
+   * transition was what a review of agent-built decks called monotonous; the
+   * variety is the language's, decided by slide kind, never at random.
+   */
+  transitionAccents?: Partial<Record<ComposerLayout, string>>;
 }
 
 export const DESIGN_LANGUAGES = {
@@ -132,6 +140,7 @@ export const DESIGN_LANGUAGES = {
       "Prefer a single large figure to a row of small ones.",
     ],
     defaults: { themeKey: "swiss-signal", motionStyle: "restrained", transitionStyle: "cut", voiceStyle: "direct" },
+    transitionAccents: { title: "wipe", statement: "wipe" },
   },
   "cinema-noir": {
     id: "cinema-noir",
@@ -161,6 +170,7 @@ export const DESIGN_LANGUAGES = {
       "A number is evidence in a case file: state it, then say what it means.",
     ],
     defaults: { themeKey: "cinema-noir", motionStyle: "cinematic", transitionStyle: "fade", voiceStyle: "measured" },
+    transitionAccents: { title: "blurDissolve", quote: "blurDissolve", image: "zoom" },
   },
   "play-lab": {
     id: "play-lab",
@@ -184,6 +194,7 @@ export const DESIGN_LANGUAGES = {
       "Keep headlines warm and direct: address the audience as you.",
     ],
     defaults: { themeKey: "playful-pastel", motionStyle: "playful", transitionStyle: "push", voiceStyle: "bright" },
+    transitionAccents: { title: "zoom", metrics: "flip", image: "iris" },
   },
   "system-terminal": {
     id: "system-terminal",
@@ -207,6 +218,7 @@ export const DESIGN_LANGUAGES = {
       "Green marks what succeeded or what matters; nothing else is coloured.",
     ],
     defaults: { themeKey: "system-terminal", motionStyle: "technical", transitionStyle: "cut", voiceStyle: "precise" },
+    transitionAccents: { title: "wipe", code: "split", diagram: "wipe" },
   },
   "quiet-luxe": {
     id: "quiet-luxe",
@@ -230,6 +242,7 @@ export const DESIGN_LANGUAGES = {
       "Every slide leaves at least a third of its area empty.",
     ],
     defaults: { themeKey: "quiet-luxury", motionStyle: "editorial", transitionStyle: "fade", voiceStyle: "assured" },
+    transitionAccents: { quote: "blurDissolve", image: "blurDissolve" },
   },
   "data-desk": {
     id: "data-desk",
@@ -253,6 +266,7 @@ export const DESIGN_LANGUAGES = {
       "Put the most important figure first, on the left.",
     ],
     defaults: { themeKey: "civic", motionStyle: "restrained", transitionStyle: "fade", voiceStyle: "analytical" },
+    transitionAccents: { chart: "push", metrics: "push", timeline: "wipe" },
   },
   "earth-story": {
     id: "earth-story",
@@ -276,6 +290,7 @@ export const DESIGN_LANGUAGES = {
       "Each section opens on the earth block or an arch, never a bare heading.",
     ],
     defaults: { themeKey: "forest", motionStyle: "editorial", transitionStyle: "fade", voiceStyle: "warm" },
+    transitionAccents: { title: "blurDissolve", image: "zoom" },
   },
   "spatial-future": {
     id: "spatial-future",
@@ -299,6 +314,7 @@ export const DESIGN_LANGUAGES = {
       "Figures glow in the accent; their labels stay quiet.",
     ],
     defaults: { themeKey: "glassmorphism", motionStyle: "dynamic", transitionStyle: "zoom", voiceStyle: "optimistic" },
+    transitionAccents: { bullets: "slide", chart: "fade", diagram: "fade" },
   },
 } as const satisfies Record<string, DesignLanguage>;
 
