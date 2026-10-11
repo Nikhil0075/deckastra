@@ -87,4 +87,14 @@ The `.mydeck` reader validates paths, entries, digests, sizes, compression ratio
 * Finalize the operator's legal identity, domain, support address, privacy/terms/data-processing text and consent publication. Drafts are in `docs/legal/` and must not be published with placeholders.
 * Paid subscriptions, top-ups, payment verification, GST registration/invoices, Business-tier launch decisions and signing/release credentials remain Track 3/4 work. There is no live paid checkout in this backend change.
 
-Do not set `DECKASTRA_VERTEX_IMAGE_MODEL` to a guessed model ID or enable live media without verified pricing and an approved budget.
+Paid media was approved and enabled on 2026-10-12, with pinned models and prices in `bootstrap.py` (`MEDIA`). Each model was confirmed available in the project, and each price was read from Google's own pages that day:
+
+| Medium | Model | Price set |
+| --- | --- | --- |
+| Voice | Text-to-Speech Chirp 3 HD | US$30 per million characters |
+| Pictures | `gemini-3.1-flash-lite-image` | US$0.25 / US$30 per million input / output tokens |
+| Video | `veo-3.1-fast-generate-001` in `us-central1` | held at US$0.15/s, above the US$0.08–0.12 list price |
+
+The `small` size gives 300 free credits a month and US$1 a day per account and per request. The global cap of US$1 a day still bounds the whole cloud.
+
+Never set a model ID that was guessed, or a price below the list price: a low price lets real spend pass the caps.

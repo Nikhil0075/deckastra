@@ -42,9 +42,22 @@ def _insert_once(session, row):
         pass
 
 
+def free_allowance() -> int:
+    """Credits a free account gets each month (`DECKASTRA_FREE_MONTHLY_CREDITS`, default 60).
+
+    A setting rather than a constant (2026-10-12) so a demo period can be more
+    generous without a release; the daily dollar caps still bound real spend.
+    """
+    try:
+        value = int(os.environ.get("DECKASTRA_FREE_MONTHLY_CREDITS", "60"))
+    except ValueError:
+        return 60
+    return value if value > 0 else 60
+
+
 def account(session, user_id, at=None):
     at = utc(at or datetime.now(timezone.utc))
-    allowance = 60
+    allowance = free_allowance()
     _insert_once(session, CreditAccount(user_id=user_id, plan="free", monthly_allowance=allowance,
         balance_micros=allowance * MICROS_PER_CREDIT, period_start=at,
         period_end=next_month(at, at.day), anchor_day=at.day))
@@ -64,6 +77,21 @@ def account(session, user_id, at=None):
     if exists is None:
         session.add(CreditEntry(id=new_id("cre"), user_id=user_id, operation_id=grant_key, kind="grant",
             amount_micros=row.monthly_allowance * MICROS_PER_CREDIT, created_at=at))
+    # A free account follows the configured allowance. A raise is granted now,
+    # once per period and amount, as its own ledger entry, so an account made
+    # before the change is not left at the old figure until it renews. A cut
+    # takes effect at the next renewal and takes nothing back.
+    configured = free_allowance()
+    if row.plan == "free" and configured != row.monthly_allowance:
+        if configured > row.monthly_allowance:
+            raise_key = f"{grant_key}:allowance:{configured}"
+            raised = session.scalar(select(CreditEntry.id).where(CreditEntry.operation_id == raise_key, CreditEntry.kind == "grant"))
+            if raised is None:
+                extra = (configured - row.monthly_allowance) * MICROS_PER_CREDIT
+                row.balance_micros += extra
+                session.add(CreditEntry(id=new_id("cre"), user_id=user_id, operation_id=raise_key, kind="grant",
+                    amount_micros=extra, created_at=at))
+        row.monthly_allowance = configured
     session.flush()
     return row
 
