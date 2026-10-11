@@ -5033,6 +5033,18 @@ IntermediateScene --+--> packages/export-pdf   --> apps/worker, Chromium printTo
                     +--> packages/export-pptx  --> OOXML, no browser
 ```
 
+**MP4 export was removed (2026-10-11).** The exports are PDF, PowerPoint and
+the `.mydeck` file. A screenshot-stitched video could not match a deck played
+live, PowerPoint's own "Create a Video" makes a better one from the exported
+`.pptx` (which carries transitions, click steps and narration), and dropping it
+took a whole encoder pipeline out of the product. Video *clips inside* a deck
+stay: generated or uploaded, they play in the editor and present mode, embed in
+PowerPoint, and reach a PDF as their poster frame. ffmpeg still ships, for one
+job only: cutting a generated clip's poster frame (`video_poster`), so its audit
+now asks for a PNG encoder rather than H.264 and AAC. An old `mp4` export row
+keeps downloading; retrying one is refused (`export_service.retry`), and the
+database constraint still allows the value, because migrations are additive.
+
 **Adapters receive scenes, never the document for geometry.** Doc 04 §32.1, and
 it is what stops PDF and PPTX disagreeing about where an element sits. The one
 thing PPTX reads from the document is *semantics* the scene resolved away — a

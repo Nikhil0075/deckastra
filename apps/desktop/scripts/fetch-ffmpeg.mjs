@@ -23,7 +23,7 @@ import { auditFfmpeg, probeFfmpeg } from "./check-ffmpeg.mjs";
  *  - Google Cloud Storage through `gcloud storage cp <object>#<generation>`.
  *
  * Outside a release a failure leaves no ffmpeg and says the package will not
- * export MP4; with `DECKASTRA_RELEASE=1` it stops the build.
+ * make poster frames for generated clips; with `DECKASTRA_RELEASE=1` it stops the build.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -107,6 +107,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       process.exit(1);
     }
     console.warn(`[ffmpeg] ${message}`);
-    console.warn("[ffmpeg] Continuing without ffmpeg: this package will not export MP4.");
+    console.warn("[ffmpeg] Continuing without ffmpeg: generated clips in this package will have no poster frame.");
   }
 }

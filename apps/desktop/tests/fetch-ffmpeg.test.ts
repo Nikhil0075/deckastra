@@ -127,7 +127,7 @@ describe("the release gate and a binary added after the build", () => {
     const result = verifyRelease({
       releaseDir: release, distManifest: join(root, "dist", "build-manifest.json"), publisher: "CN=Test", requireSigned: false,
       probe: (paths: string[]) => new Map(paths.map((path) => [path, { status: "Valid", subject: "CN=Test" }])),
-      ffmpegProbe: () => ({ buildconf: "configuration: --enable-version3", encoders: " V....D h264_mf  x\n A....D aac  y" }),
+      ffmpegProbe: () => ({ buildconf: "configuration: --enable-version3", encoders: " V....D png  x" }),
     });
     expect(result.problems.join(" ")).toMatch(/records no files for ffmpeg/);
     expect(existsSync(join(resources, "ffmpeg", "ffmpeg.exe"))).toBe(true);

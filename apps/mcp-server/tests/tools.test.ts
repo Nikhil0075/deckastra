@@ -711,12 +711,12 @@ describe("the tool surface", () => {
 
   it("mints its own export idempotency key", async () => {
     const client = await connect({
-      "/v1/presentations/pres_open/exports": { id: "exp_1", kind: "mp4", status: "queued" },
+      "/v1/presentations/pres_open/exports": { id: "exp_1", kind: "pdf", status: "queued" },
     });
 
     await client.callTool({
       name: "document_export",
-      arguments: { presentation_id: "pres_open", kind: "mp4" },
+      arguments: { presentation_id: "pres_open", kind: "pdf" },
     });
 
     const started = sent.find((request) => request.method === "POST" && request.url.includes("export"))!;

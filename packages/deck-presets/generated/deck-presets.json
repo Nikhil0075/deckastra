@@ -1996,7 +1996,7 @@
       "exampleSlots": {
         "eyebrow": "LIVE DEMO",
         "headline": "One action produces a reviewable result",
-        "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+        "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
         "language": "text",
         "caption": "A compact example keeps the boundary inspectable."
       }
@@ -2643,7 +2643,7 @@
       "exampleSlots": {
         "eyebrow": "API CONTRACT",
         "headline": "The boundary is small and versioned",
-        "code": "POST /v1/exports\n{ \"kind\": \"mp4\", \"fps\": 30 }",
+        "code": "POST /v1/exports\n{ \"kind\": \"pptx\", \"include_notes\": true }",
         "language": "text",
         "caption": "A compact example keeps the boundary inspectable."
       }
@@ -5720,7 +5720,7 @@
           "slots": {
             "eyebrow": "PRODUCT ROADMAP · 06",
             "headline": "The prototype proves the interaction",
-            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }
@@ -5858,7 +5858,7 @@
           "slots": {
             "eyebrow": "RELEASE NOTES · 06",
             "headline": "See the new flow",
-            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }
@@ -6532,7 +6532,7 @@
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 04",
             "headline": "The contract allowed unbounded retries",
-            "code": "POST /v1/exports\n{ \"kind\": \"mp4\", \"fps\": 30 }",
+            "code": "POST /v1/exports\n{ \"kind\": \"pptx\", \"include_notes\": true }",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }
@@ -6606,7 +6606,7 @@
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 09",
             "headline": "Bound retries and isolate partitions",
-            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }
@@ -6852,7 +6852,7 @@
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 04",
             "headline": "Contracts keep each boundary testable",
-            "code": "POST /v1/exports\n{ \"kind\": \"mp4\", \"fps\": 30 }",
+            "code": "POST /v1/exports\n{ \"kind\": \"pptx\", \"include_notes\": true }",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }
@@ -6926,7 +6926,7 @@
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 09",
             "headline": "Approve isolation by workload class",
-            "code": "const deck = await compose(brief);\nawait deck.export('mp4');",
+            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
             "language": "text",
             "caption": "A compact example keeps the boundary inspectable."
           }

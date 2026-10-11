@@ -61,7 +61,7 @@ _ID_PREFIXES = {
 _ENUMS = {
     "outcome": {"completed", "failed", "refused", "exhausted", "awaiting_approval", "model", "stub"},
     "direction": {"input", "output", "total"},
-    "kind": {"png", "pdf", "pptx", "mp4", "mydeck"},
+    "kind": {"png", "pdf", "pptx", "mydeck"},
     "limit": {"monthly_generations", "monthly_tokens", "storage_bytes", "daily_credits"},
     "http.request.method": {"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS", "HEAD"},
 }

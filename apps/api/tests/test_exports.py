@@ -190,20 +190,32 @@ def test_an_unknown_format_is_refused_before_any_work(client, auth, deck):
     assert response.status_code == 422
 
 
-def test_an_mp4_job_pins_its_frame_rate(client, auth, deck, monkeypatch):
+def test_mp4_export_is_no_longer_offered_and_an_old_video_job_is_not_rerendered(client, auth, deck, monkeypatch):
+    """MP4 export was removed (2026-10-11). A new request is refused by the
+    contract, and a video job from before stays a row that cannot run again."""
     from deckastra_api.db.models import ExportJob
 
     monkeypatch.delenv("DECKASTRA_EXPORT_INLINE", raising=False)
-    response = client.post(
+    refused = client.post(
         f"/v1/presentations/{deck}/exports",
         headers=auth,
-        json={"kind": "mp4", "fps": 60, "idempotency_key": "video-cadence-proof"},
+        json={"kind": "mp4", "idempotency_key": "video-gone"},
     )
-    assert response.status_code == 202
+    assert refused.status_code == 422
+
+    started = client.post(
+        f"/v1/presentations/{deck}/exports",
+        headers=auth,
+        json={"kind": "pdf", "idempotency_key": "stand-in-for-an-old-video"},
+    )
+    assert started.status_code == 202
     with db_session.session_scope() as session:
-        job = session.get(ExportJob, response.json()["id"])
-        assert job.kind == "mp4"
-        assert job.options_json["fps"] == 60
+        job = session.get(ExportJob, started.json()["id"])
+        job.kind = "mp4"
+        job.status = "failed"
+    retried = client.post(f"/v1/exports/{started.json()['id']}/retry", headers=auth)
+    assert retried.status_code == 409
+    assert "no longer offered" in retried.json()["detail"]
 
 
 def test_a_stranger_cannot_export_a_deck_they_cannot_see(client, auth, deck):

@@ -1067,11 +1067,11 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     {
       title: "Export a deck",
       description:
-        "Start a PDF, PPTX or narrated MP4 export. Returns a job; poll it with export_status. The file stays " +
+        "Start a PDF or PPTX export. Returns a job; poll it with export_status. The file stays " +
         "in Deckastra: this tool cannot write to a path, and the user saves it from the app.",
       inputSchema: {
         presentation_id: z.string().min(1),
-        kind: z.enum(["pdf", "pptx", "mp4"]),
+        kind: z.enum(["pdf", "pptx"]),
         include_notes: z.boolean().default(false),
         at_time: z.enum(["final", "initial"]).default("final"),
         locale: z
