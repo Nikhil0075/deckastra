@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "budget": {
     "maxFiles": 30,
     "maxFileBytes": 409600,
@@ -7,1000 +7,1063 @@
     "maxLongEdge": 1920,
     "format": "image/jpeg"
   },
-  "note": "Template pictures, with provenance. These 22 were made on OpenArt's Starter plan for demo (non-commercial) use: the build and tests accept them, and a release refuses them until each is regenerated under a plan that allows commercial use and reviewed by a person. See docs/design-audit/MEDIA.md.",
+  "note": "Twenty-two OpenAI-generated commercial-release images with full prompt, source, terms and human-review provenance. Approved for release media use on 2026-10-11. See docs/design-audit/MEDIA.md.",
   "media": [
     {
       "file": "earth-customer-case-study-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "ETMKIRHss0Q1alQaudLl",
-      "prompt": "a small team working together around a long wooden table inside a sunlit greenhouse office full of plants, laptops and paper sketches, warm natural light, earthy greens, terracotta and sand tones, documentary lifestyle photography, candid, people seen from a distance, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: A small collaborative team around a long wooden table inside a sunlit greenhouse studio full of healthy plants, laptops and blank paper sketches.\nScene/backdrop: airy greenhouse workspace, earthy greens, terracotta and sand tones.\nComposition/framing: portrait 3:4, documentary wide view with generous foreground; people are distant, faces turned away or softly out of focus.\nLighting/mood: warm natural daylight, candid, thoughtful collaboration.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable real-world materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "0e20e7836749ba7aa83dd2e66a113ba8ee1db98c5e8d620edd380e26a6c52b60",
+      "sourceSha256": "0a1d0166dd447f2093c498131bbf29a5d9100d0003cc8f523131fcc1c05d8019",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "13c0097281d03be8d2b1f833e9cb9649600e3bf3b8c75d88f8a5643ce8329709",
-      "bytes": 253212,
+      "sha256": "7b4cb0fe3eb9b8a5ce36526c13a78612695420cfcc86a7e944a87516a105b818",
+      "bytes": 292580,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A team working together at a long wooden table in a sunlit greenhouse office.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
-        "note": "Shows generated, fictional people at a distance."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "customer-case-study",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "earth-customer-case-study-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "t3sOzVQzcq9DZK3BwFlO",
-      "prompt": "close-up of hands sketching a simple workflow diagram with a pencil on recycled paper, beside a cup of tea and a small potted fern on a wooden desk, warm morning light, earthy greens, terracotta and sand tones, natural documentary photography, shallow depth of field, no legible text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Close-up of hands drawing a simple workflow made only of blank boxes, circles and connecting arrows with a graphite pencil on recycled paper, beside tea and a small potted fern.\nComposition/framing: portrait 3:4, close crop, the diagram is visibly unlabeled.\nLighting/mood: warm morning light, earthy greens, terracotta and sand, shallow depth of field.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable real-world materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.\nAvoid: any words, letters, numerals, handwriting or symbols that resemble writing.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "763d5980eb5371ddc984916fe78e0d4f8f5ee67ef90bcf8ac1890c5af25280b4",
+      "sourceSha256": "0fa986c5d36ae5659c77d5d3aaadddd4686ddbc7ccd1b3515e090f7573db0dd3",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "eedca7c68b8d1ac42eb5c965eb20fdb596e655dc4ea62db8804f569dc46a4df2",
-      "bytes": 161597,
+      "sha256": "195e01822321111fbcd88e70421f0241112dba305d3670b7d8c906cd786cb5b5",
+      "bytes": 220029,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Hands sketching a simple workflow diagram beside a cup of tea and a fern.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
-        "note": "The sketch carries near-legible scribbled words; replace before release."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "customer-case-study",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "earth-lesson-plan-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "nHmkZRsvsA7FM7j0gYFm",
-      "prompt": "small hands planting green seedlings into dark soil in a school garden bed, warm golden morning light, earthy greens, terracotta pots and sand tones, natural documentary photography, shallow depth of field, hopeful and calm, no faces, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Small hands planting fresh green seedlings into dark soil in a school garden bed.\nComposition/framing: portrait 3:4, close documentary crop, hands and seedlings are the focus, no faces.\nLighting/mood: hopeful calm golden morning light.\nColor palette: earthy greens, terracotta pots and sand tones.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable real-world materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "373fdf944b4fafd55c152267afbcb6550dce5aafc47c87c27887f4dca60175e5",
+      "sourceSha256": "ad3d51b6082535a36115cd5a99ebb78e4c05adb3b402bf7947d69977d23c66bd",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "e68b7b0a2ab2674d63cf30d8fcd2a9b3c14534942493fe4820c6671bbff8d138",
-      "bytes": 178829,
+      "sha256": "e9e525d5c95bde831fae36e9e19bf52c24bf3ba5f77e0d5c7c93c1cb427ffbea",
+      "bytes": 236012,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Small hands planting seedlings in a school garden bed.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "lesson-plan",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "earth-lesson-plan-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "nmeQgizGxoF9VMxDz0rY",
-      "prompt": "an outdoor classroom under a large spreading oak tree, a teacher and a small group of students sitting on wooden benches with notebooks, dappled sunlight through leaves, earthy greens and warm sand tones, natural documentary photography, seen from a distance, no legible text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Outdoor classroom beneath a large spreading oak tree, a teacher and small group of students sitting on wooden benches with closed blank notebooks.\nComposition/framing: portrait 3:4, seen from behind and at a distance; faces are not identifiable.\nLighting/mood: soft dappled sunlight, calm natural documentary photography.\nColor palette: earthy greens and warm sand tones.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable real-world materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "8a51f9ac6da98d501825ef1ce48ee9a493716ed19510a017669fd4a975134ba7",
+      "sourceSha256": "56367ea443206e6b6e7c61887f20476b05be04bcfe4a988e66344310762e6afa",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "aaade159264ce32151b230755c9e33fab0d30d26febe62186451354cc4d1f3d8",
-      "bytes": 337034,
+      "sha256": "4ff69391ba637e2afa03627d01f55b08741705b614d253fd722526388c7bacac",
+      "bytes": 382909,
       "width": 1200,
       "height": 1600,
-      "jpegQuality": 82,
+      "jpegQuality": 79,
       "alt": "An outdoor class on benches under a large oak tree.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "lesson-plan",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "earth-training-module-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "L0qyKA2gRhVMy9UIQgqg",
-      "prompt": "a craftsperson's workshop bench with well-worn hand tools, a measuring tape and an open notebook, warm sunlight falling across oiled wood, earthy browns, olive greens and sand tones, natural documentary photography, craftsmanship and care, no faces, no legible text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: A craftsperson's workshop bench with a well-worn hand plane, chisels, measuring tape and a closed blank notebook.\nComposition/framing: portrait 3:4 still life, no people.\nLighting/mood: warm sunlight across oiled wood, craftsmanship and care.\nColor palette: earthy browns, olive greens and sand tones.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "ebc952a420dcc02df78c5aa6611ef1fd6da597df991f9333138a2648c72b269e",
+      "sourceSha256": "a9e69662201625cefcf3d5f2d2eacfcb645548c4a24e6b6dc3c511475900d871",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "a292bc39fe566541d7ac7aaf9885c022778e08c9dae09fa6c9bf9c16c9e023a5",
-      "bytes": 187211,
+      "sha256": "afac4c48a72a1ea07fc735e8b9f50590c239c57144b22e9b5029d00bebab60c7",
+      "bytes": 263536,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A workshop bench with a hand plane, a tape measure and an open notebook in sunlight.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "training-module",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "earth-training-module-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "KfTKxisOMzwcVMrC1h1m",
-      "prompt": "two colleagues reviewing a checklist on a clipboard in a bright, tidy warehouse with tall shelves of boxes and potted plants, warm natural light from skylights, earthy greens, terracotta and sand tones, natural documentary photography, seen from a distance, no legible text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Two colleagues reviewing a blank grid checklist on a clipboard in a bright tidy warehouse with tall shelves, cardboard boxes and a few potted plants.\nComposition/framing: portrait 3:4, medium-wide documentary view from behind; faces fully turned away or outside the frame.\nLighting/mood: warm natural skylight, calm practical teamwork.\nColor palette: earthy greens, terracotta and sand.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.\nAvoid: readable writing, labels, barcodes, distorted faces, front-facing people.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "c63902eb2c0aef9e65b0ad35e1f435d61d22840c57b4f81d6e7a49c23bd2ac47",
+      "sourceSha256": "afb37e0ef804ce4230d2d92470697117520c5ed6faed01fcd444cb156e06dc72",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "2308746dbd3fb9c7fdfcd48abad6af835dcbde103f9737ca4c968ab7e6f5a61e",
-      "bytes": 225752,
+      "sha256": "ae1b107a06a1d8252e0d0f923cb3589a799d479b46d37497f93aaa5dc0db81ea",
+      "bytes": 215259,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Two colleagues reviewing a checklist in a bright warehouse with plants.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language.",
-        "note": "Shows generated, fictional people with visible faces."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "training-module",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-business-pitch-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "7h0cYeHYHHhGTLTMynLJ",
-      "prompt": "minimal architectural detail of a travertine stone wall and a curved plaster archway washed in soft late-afternoon sunlight, long gentle shadows, cream, beige and warm taupe palette, quiet luxury editorial photography, calm and spacious, shot on medium format film, no people, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Minimal architectural detail of a travertine stone wall and one curved plaster archway washed in late-afternoon sunlight.\nComposition/framing: tall 9:16 editorial composition, generous negative space, no people.\nLighting/mood: long gentle shadows, calm and spacious, medium-format film character.\nColor palette: cream, beige and warm taupe.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "9:16"
       },
-      "sourceSha256": "16d0ef8ee386dda8a9ce3038200cc216b7c7f0a6ce50c8e0e087939e401be975",
+      "sourceSha256": "e9111f352cce73a6d5bc0b76ba43a7bffc91e9ecb34ca05c439769677e3d3784",
       "sourceSize": [
-        1600,
-        2848
+        941,
+        1672
       ],
-      "sha256": "e228f0f9f95202b1bfd1890f252f137bbfee63929d6b800fac5cbf8314929a8f",
-      "bytes": 153474,
+      "sha256": "df655eadfc3aef11915ef96f478b0f3e1c5e13360cd3b7a726bf45870f742092",
+      "bytes": 169354,
       "width": 899,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A travertine wall and a curved plaster archway in soft afternoon light.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "business-pitch",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-business-pitch-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "dE0fxpRcg5ZOq4cVedqM",
-      "prompt": "calm minimalist boardroom with a long pale oak table and linen upholstered chairs, soft diffused natural light from tall windows, a single ceramic vase with a dried branch, neutral beige and cream palette, quiet luxury interior editorial photography, medium format film look, no people, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Calm minimalist boardroom with a long pale-oak table, linen upholstered chairs and a single ceramic vase holding one dried branch.\nComposition/framing: portrait 3:4 interior editorial photograph, no people.\nLighting/mood: soft diffused natural light through tall windows, refined and quiet.\nColor palette: neutral beige and cream.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "9e04ca33790fd6c46a2b49f39c88c82eae77b9761a29edeef6a0849c99bf583a",
+      "sourceSha256": "4ea65415a1fd4d30618517fdc2744fe8965bba399d921839a03929bc5e64cc35",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "6d4afea9be4cc0be99af77480198dabb645a242488820833e1464b3b6717965e",
-      "bytes": 138644,
+      "sha256": "a7d58df6cd8d11754d62ee155309f43a706178dc67ab195dde960d2f0c5bf62c",
+      "bytes": 188152,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A calm boardroom with a pale oak table, linen chairs and a vase with a dried branch.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "business-pitch",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-personal-portfolio-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "2NQrZ2HzVgb090vT7LCm",
-      "prompt": "quiet artist's studio corner, a linen-covered chair beside a plaster wall with sketches and fabric swatches pinned to it, soft north window light, muted cream, sand and taupe palette, quiet luxury editorial photography, medium format film look, calm and minimal, no people, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Quiet artist's studio corner with a linen-covered chair beside a softly textured plaster wall, blank abstract paper studies and fabric swatches pinned in a restrained arrangement.\nComposition/framing: tall 9:16 editorial photograph, no people, generous negative space.\nLighting/mood: soft north-window light, calm and minimal, medium-format film character.\nColor palette: muted cream, sand and taupe.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original quiet-luxury editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "9:16"
       },
-      "sourceSha256": "52aecad59a1e719ce64769059520408448cf9412691b0ca0f002893bbfacbdff",
+      "sourceSha256": "c5d63a6728a227a4cf205be56c4aff65ea1439b1f4fe45ca813780a6cddd84ce",
       "sourceSize": [
-        1600,
-        2848
+        941,
+        1672
       ],
-      "sha256": "9d6b6a4005cc0cd009b8e15aded9200da5e29df20999d63a60876e215d26ee3d",
-      "bytes": 125511,
+      "sha256": "9ebfb2977a1f3782e0a1aef6e501a4224aa62665cc91eb751b757e12a6e8fd53",
+      "bytes": 168807,
       "width": 899,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A studio corner with a linen-covered chair and sketches pinned to a plaster wall.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "personal-portfolio",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-personal-portfolio-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "Cf09dco8B9ejimTg0JUA",
-      "prompt": "hands arranging handmade ceramic vases and a small book on a pale oak shelf, soft diffused window light, cream, sand and warm taupe palette, quiet luxury editorial still life photography, shallow depth of field, calm and refined, no faces, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Close-up of hands arranging handmade ceramic vases and a closed unmarked art book on a pale-oak shelf.\nComposition/framing: portrait 3:4 still-life editorial crop; no face visible.\nLighting/mood: soft diffused window light, shallow depth of field, calm and refined.\nColor palette: cream, sand and warm taupe.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original quiet-luxury editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "c57ab05b0001b1e90031f054267e75a6802b351e8c4c19b5dbee461ec75723d4",
+      "sourceSha256": "16f4cd093a112266bc3923f0f671054c89d63f5d301ee776a6d10c16ee9417a3",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "2badc0fbe675d4d61e46962705c4ca3910f4d6acd48d53fe790032eb7ae69c4c",
-      "bytes": 106339,
+      "sha256": "a66e2b99ec74c1d8005243c47e43ed5895685566fa5f801484ece4d8f98de031",
+      "bytes": 152982,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Hands arranging handmade ceramic vases on a pale oak shelf.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "personal-portfolio",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-wedding-story-hero.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "A4aKkCQrtRNY6KRfiMgj",
-      "prompt": "close-up of ivory silk wedding dress fabric draped softly with a strand of pearls resting on it, gentle window light, delicate folds and texture, cream and soft ivory palette, fine art editorial photography, shallow depth of field, elegant and calm, no people, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Close-up of ivory silk wedding fabric draped softly with one delicate strand of pearls resting across its folds.\nComposition/framing: tall 9:16 fine-art editorial still life, no people.\nLighting/mood: gentle window light, delicate texture, elegant and calm, shallow depth of field.\nColor palette: cream and soft ivory.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original quiet-luxury editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "9:16"
       },
-      "sourceSha256": "49d108629bd3849b080041dcb5cf04370ddce90e5bccfa0ae90b488c21ffb2e7",
+      "sourceSha256": "09dd2f0e2f66d1a29c892c41e37d192659c05d6af774ec5467098226e51e2214",
       "sourceSize": [
-        1600,
-        2848
+        941,
+        1672
       ],
-      "sha256": "b13b26c1f569173575868f72372c0e553a61118fc0c93e5e2bf69cef066d39d1",
-      "bytes": 88358,
+      "sha256": "ca2ddd99f5316557449ebab98ab6ac7e07236c9b715fc9a8bce1611b9ccc60ee",
+      "bytes": 109209,
       "width": 899,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Ivory silk fabric with a strand of pearls in soft window light.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "wedding-story",
           "role": "hero"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "luxe-wedding-story-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "ASJgxrmpXL4GbSXjeQnj",
-      "prompt": "elegant wedding reception table setting with white garden roses, eucalyptus, tall taper candles and linen napkins, soft golden-hour light through sheer curtains, cream, ivory and soft beige palette, quiet luxury editorial photography, shallow depth of field, no people, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Use case: photorealistic-natural\nPrimary request: Elegant wedding reception table setting with white garden roses, eucalyptus, tall unlit taper candles and neatly folded linen napkins.\nComposition/framing: portrait 3:4 editorial table scene, no people.\nLighting/mood: soft golden-hour light through sheer curtains, refined and quiet, shallow depth of field.\nColor palette: cream, ivory and soft beige.\nAsset type: bundled Deckastra presentation-template photograph for commercial release.\nStyle requirement: polished original quiet-luxury editorial photography, believable materials, clean enough to crop into a presentation frame.\nConstraints: no readable text, no letter-like pseudo-writing, no logos, no trademarks, no watermark, no recognizable public figure, no copyrighted character. Natural anatomy and hands.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "3:4"
       },
-      "sourceSha256": "b318924d269765351d798896c857a064206ec470f0f9b67a86b9423142a69852",
+      "sourceSha256": "20f8c98da8e056b7a5c9181be4ecf43ab1ac71c97ddbbaee7a9e8d461125c84d",
       "sourceSize": [
-        1728,
-        2304
+        1086,
+        1448
       ],
-      "sha256": "b83c62a700a1559127cfedeca02a629f283a27c5cb631f1acdf527cc4b21f0f6",
-      "bytes": 150439,
+      "sha256": "974be0a79fffba4113f793ce7cfe19f9b257a274fcb0f8f718ab55bdcf624271",
+      "bytes": 218467,
       "width": 1200,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A wedding table set with white roses, eucalyptus and tall candles in golden light.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "wedding-story",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "noir-case-file-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "mUYJmJqLYqEhvp3jr5pN",
-      "prompt": "1940s private detective's office at night, venetian blind shadows striping across a wooden desk stacked with manila case files and a rotary telephone, a single desk lamp casting a pool of warm light, cigarette smoke curling in the beam, black and white film noir photograph, deep chiaroscuro shadows, high contrast, subtle 35mm film grain, cinematic composition, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium cinematic editorial photograph for a presentation template image. Use case: a noir \"case file\" deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A 1940s private detective office at night: dark wooden desk, neatly stacked blank manila folders with absolutely no labels or writing, an unbranded rotary telephone, metal desk lamp, venetian-blind shadows, rain-softened window light. Black-and-white, high contrast, subtle film grain, elegant and restrained, generous negative space for slide typography. No people required. No readable text, no letter-like pseudo-writing, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "160d7feeb6006cf1a966b16472379a2597577591f73f008b2f3f7d87a7681220",
+      "sourceSha256": "f43107d5c6d9a36264ce905062aeecb3977166086151f6bc8076a7c3c214f83f",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "f46047fbc64972ce1b6f2eb233945475864713e40e89b27c0abc0c0ecb7764f0",
-      "bytes": 203375,
+      "sha256": "0571514dddd0e3998c11b8aa22f81810ba38eb53ba8f6550a2cf6b058982655b",
+      "bytes": 188267,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A detective's desk at night, stacked case files and a telephone under a single lamp, striped by venetian-blind shadows.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "noir-case-file",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "noir-event-story-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "yfmoTqvMfzj1Ph21PS2T",
-      "prompt": "elegant 1940s evening gala seen through a tall doorway, silhouettes of guests in evening wear dancing beneath a glowing crystal chandelier, warm light spilling into a dark corridor, black and white film noir photograph, high contrast, soft haze, 35mm film grain, cinematic, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium cinematic editorial photograph for a presentation template image. Use case: a noir event-story deck concept. Asset type: commercial software release artwork. Square 1:1 composition. View through an Art Deco doorway into a sophisticated 1940s evening gala: chandelier glow, polished floor, small groups appearing only as distant anonymous silhouettes with no identifiable faces, dramatic pools of light and shadow, elegant black-and-white photography, subtle film grain, generous negative space for slide typography. No readable text, no letter-like pseudo-writing, no numbers, no logos, no trademarks, no watermark, no recognizable public figures, no copyrighted characters. Natural human anatomy and realistic proportions.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "5a0f6488d62907a0f7895c99199dbfe393ea6151dd2eefe2f48a6a5b26f055f4",
+      "sourceSha256": "5331b16c9890d7ffed1b0a9d8f6030b4679c9c74a3dde07442ba69b6cfbabbf2",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "dd64f35c86e5912170f25114b70e9f7b39f2390659719b35f2edae8becbc3c55",
-      "bytes": 139960,
+      "sha256": "550f522bb516f6c6930553e57969edce3e77e97aea0cd77bf993f7eeff2b80f8",
+      "bytes": 251553,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Silhouetted couples dancing beneath a chandelier, seen through a dark doorway.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "event-story",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "noir-night-story-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "Q1j7EpdI7PJCyGAqbstA",
-      "prompt": "rain-slicked city street at night in the 1940s, a lone figure in a trench coat and fedora standing under a single streetlamp seen from behind, reflections shimmering on wet cobblestones, fog, black and white film noir photograph, deep shadows, high contrast, 35mm film grain, cinematic, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium cinematic editorial photograph for a presentation template image. Use case: a noir night-story deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A lone anonymous figure seen fully from behind beneath a streetlamp on a rain-soaked cobblestone street, light fog, wet reflections, deep shadows, 1940s film-noir atmosphere, black-and-white, high contrast, subtle film grain, strong leading lines and generous negative space for slide typography. Face must not be visible. No readable text, no letter-like pseudo-writing, no numbers, no logos, no trademarks, no watermark, no recognizable public figures, no copyrighted characters. Natural anatomy.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "164e313e045dcd15bd74a7d447eceff1cdd214b92ff846002669d0f8a3b16250",
+      "sourceSha256": "6f781a625ee6282ac915aa256ccaf7950c6c591c135a1cc61fbc465a5d73a243",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "bb641983a3caa988283f5dea52428b7b74b181c9b455d00e2e84d3806a70cb94",
-      "bytes": 280513,
+      "sha256": "1348927ffedb60f38aa71bf6548532c2a68d08ca8f439a8c694ee5cb42ea1fae",
+      "bytes": 274204,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A lone figure in a trench coat under a streetlamp on a wet, foggy cobbled street at night.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "noir-night-story",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "noir-personal-narrative-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "CO5vIKAE2Tk8eLZ3W4pb",
-      "prompt": "silhouette of a person standing at a tall window at night looking out over distant city lights, venetian blind shadows falling across the room and the wall, contemplative mood, black and white film noir photograph, deep shadows, high contrast, 35mm film grain, cinematic, no visible face, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium cinematic editorial photograph for a presentation template image. Use case: a noir personal-narrative deck concept. Asset type: commercial software release artwork. Square 1:1 composition. An anonymous person rendered as a clean silhouette, seen from behind at a tall apartment window overlooking soft city lights at night; face completely hidden, reflective but not bleak, strong architectural framing, elegant black-and-white, high contrast, subtle film grain, generous negative space for slide typography. No readable text, no letter-like pseudo-writing, no numbers, no logos, no trademarks, no watermark, no recognizable public figures, no copyrighted characters. Natural anatomy.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "efcda35cb5c354e27463a11291b1a464f83da68a6f32a5d80f98816e445f3de3",
+      "sourceSha256": "b1b430c8db4a0c0323c12cb0eb92f15fdcbc04d6738204f3ebe0d89c32d3f699",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "2ab7c487eb5ede5b77dd08a88a94db5e82f116e4a433e300201f42c3d3190752",
-      "bytes": 227642,
+      "sha256": "35990958208f2df83c24453e6b58c98bc6e8aaf585317dc18eeb70eb50fedd66",
+      "bytes": 206751,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A silhouetted person at a tall window looking out at city lights, with blind shadows across the room.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "personal-narrative",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "noir-thesis-defence-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "kOSm8xKWKPSbyiK5ShR3",
-      "prompt": "old university library reading room at night, a single green banker's lamp glowing over open books and handwritten research notes on a long oak table, tall dark bookshelves fading into shadow, film noir lighting, black and white with deep chiaroscuro, quiet scholarly mood, 35mm film grain, no text, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium cinematic editorial photograph for a presentation template image. Use case: a noir thesis-defence deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A grand university library reading table late at night, tall shadowed bookshelves, an iconic shaded banker-style lamp rendered in black-and-white, open books positioned so pages are blank or turned away, blank research sheets with absolutely no writing, a precise fountain pen and reading glasses. High-contrast monochrome, subtle film grain, rigorous scholarly mood, generous negative space for slide typography. No people. No readable text, no letter-like pseudo-writing, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "83cdfc3b2f2625ae88f6d7d44cf702ef4745d65eada84a2086d3470c8e69411d",
+      "sourceSha256": "e4d9dc44d0a7418e3831e562b4f39d5780dbf0fd58dc123139a4bc2de21650d4",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "6409ec31112e89eebbc3074bbf14c616c7fb3a84b875f1d69e25916b336d0f5e",
-      "bytes": 205839,
+      "sha256": "ccdd20d34f8a06a8aeb71589f60a39fd52cda0d8dacdf83ead0d5dc367ed3bf1",
+      "bytes": 171766,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A library reading room at night: open books and handwritten notes under a green banker's lamp.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "thesis-defence",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "play-onboarding-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "XNFr9fTtV7AFwKw9oMyA",
-      "prompt": "cheerful 3D clay illustration of a cosy welcome desk with a potted plant, a coffee mug, a little name badge and a waving paper flag, soft pastel purple, pink and cream background, rounded friendly shapes, soft studio lighting, cute and welcoming, no text, no letters, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a polished playful 3D clay-style illustration for a presentation template image. Use case: employee onboarding deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A welcoming miniature reception desk with a completely blank name badge, a small blank flag, friendly rounded chair, plain ceramic mug, leafy plant, simple doorway and soft floating shapes. Cheerful but sophisticated palette of coral, lavender, teal, warm yellow and cream; tactile matte clay materials; soft studio lighting; generous negative space for slide typography. No faces, no mascots, no readable text, no letter-like pseudo-writing, no letters, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "16aac42900f93eb6a406e05f33a0eafffa7bfc8ff598f57df37938da7543df26",
+      "sourceSha256": "a4a261b5d023922770448e7ac49599ce33c6ed1868da7e98be3d070e2c39311d",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "568f892e343500dc4facb0eb2f8f55ade87b826bf8c9910fa43b90be8fafcdec",
-      "bytes": 130594,
+      "sha256": "870a8937a5dc7c9b4a196eca9769703c713c83553138ef4c89202a2c3f1af051",
+      "bytes": 147012,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A clay welcome desk with a plant, a smiling coffee mug, a name badge and a little flag.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "onboarding",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "play-teaching-workshop-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "b9MJkQBGIKq4oiEYadQa",
-      "prompt": "playful 3D clay illustration of colourful stacked building blocks and a glowing lightbulb on a soft pastel lilac and peach background, rounded friendly shapes, soft studio lighting, cute and cheerful, clean composition, no text, no letters, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a polished playful 3D clay-style illustration for a presentation template image. Use case: teaching-workshop deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A delightful hands-on learning tableau made from rounded clay forms: colorful modular blocks, a glowing abstract lightbulb symbol with no lettering, simple gears, an open blank notebook with pristine empty pages, pencils, and a few floating geometric shapes. Cheerful but sophisticated coral, cobalt, mint, warm yellow and cream palette; tactile matte clay materials; soft studio lighting; generous negative space for slide typography. No people, no faces, no readable text, no letter-like pseudo-writing, no letters, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "d40f219ad92e388e639257151af60c56873cb2491721f8332533141d4bd16e36",
+      "sourceSha256": "38394a5c635343fa96dad35a0c05f1dc70c1566b62d95157c0fbe0f5fc358fae",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "f622db57b601f2b8b13777909f48de9ed89fb593beb016e7e53acf221f455a80",
-      "bytes": 99250,
+      "sha256": "412c99303b7a04229ccc185c89e45b93226b14cf58bc12cb53c9d58cc707ce48",
+      "bytes": 151847,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Clay building blocks in pastel colours with a glowing lightbulb on top.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "teaching-workshop",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "play-team-kickoff-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "YQfLfn8uu2fFsjz765fM",
-      "prompt": "playful 3D clay illustration of a small rocket launching upward with a puff of cloud and colourful confetti, soft pastel lilac, pink and mint background, rounded friendly shapes, soft studio lighting, energetic and fun, no text, no letters, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a polished playful 3D clay-style illustration for a presentation template image. Use case: team-kickoff deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A charming small clay rocket lifting gently from a rounded launch platform through puffy clouds, celebratory confetti and geometric streamers, energetic upward movement, no flame danger and no characters. Cheerful but sophisticated coral, violet, sky blue, warm yellow and cream palette; tactile matte clay materials; soft studio lighting; generous negative space for slide typography. No readable text, no letter-like pseudo-writing, no letters, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "e20f41e3fc1d149dcd278f799da94bed723654c49b2272bee21638d6771cca8f",
+      "sourceSha256": "623a51ed726dd68213b6152f159193f8110a6377bc0d86f0f899a2e5b510079f",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "56ceb94746c20ad7cd0c23ac1ad670667edbdb0cd77d143901f96e787216b689",
-      "bytes": 106731,
+      "sha256": "da1ce31b7c40466dd5961a778b80d0c12430c9206c97035b8c8a135d178699ac",
+      "bytes": 103560,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A clay rocket lifting off from a puff of cloud with confetti.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "team-kickoff",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "space-product-launch-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "Ixu1JDaFGcaEuyYSrPFs",
-      "prompt": "floating translucent glass interface panels and soft glowing light trails hovering in a deep indigo and violet space, cyan and pink rim light, futuristic product reveal render, cinematic depth of field, clean and minimal, no text, no numbers, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium abstract futuristic 3D artwork for a presentation template image. Use case: a space-inspired product-launch deck concept. Asset type: commercial software release artwork. Square 1:1 composition. Layered translucent glass panels and luminous aerodynamic ribbons sweeping toward a bright focal point, with subtle particles and elegant depth; deep indigo background with electric violet, cyan and restrained magenta light; precise, sophisticated, high-end product keynote aesthetic; generous negative space for slide typography. No product branding and no people. No readable text, no letter-like pseudo-writing, no letters, no numbers, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "65cdc5feea090d487d6ed2b323bd96b9c2ef639049bcd5288f9e8f277aa2608b",
+      "sourceSha256": "f1d58c337971186b365da85f34b91b44aeb268345dc1869fde95699b8a72aa74",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "b0e21957089386bce81ca7afe9dcdce22d0d5a1dcf9d96965cfaa79471ddce1a",
-      "bytes": 143678,
+      "sha256": "2cbfb22a4cccb4e76fde50f65819b022e50ddef9c4820d67c5be457d21c55d12",
+      "bytes": 230168,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "Translucent glass interface panels floating in indigo light, circled by glowing light trails.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "product-launch",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     },
     {
       "file": "space-research-talk-scene.jpg",
-      "model": "OpenArt Seedream 4.5 (byte-plus-seedream-4-5)",
+      "model": "OpenAI image generation (Codex built-in)",
       "mode": "text2image",
-      "generatedAt": "2026-10-10",
-      "openartHistoryId": "u7jxINPPrDbtnwVxVjo4",
-      "prompt": "abstract three-dimensional visualization of a glowing network graph of connected nodes floating in deep space, indigo, violet and cyan light, soft bokeh particles, futuristic scientific illustration, cinematic, clean, no text, no numbers, no logos, no watermark",
+      "generatedAt": "2026-10-11",
+      "prompt": "Create a premium abstract scientific visualization for a presentation template image. Use case: a space-inspired research-talk deck concept. Asset type: commercial software release artwork. Square 1:1 composition. A luminous three-dimensional network of nodes and fine connecting lines floating in deep space, suggesting discovery and complex systems without depicting any specific real dataset; a few softly glowing orbital arcs, layered depth, midnight indigo with cyan and violet accents, rigorous and elegant, generous negative space for slide typography. No people. No readable text, no letter-like pseudo-writing, no letters, no numbers, no formulas, no logos, no trademarks, no watermark, no copyrighted characters.",
       "settings": {
-        "resolution": "2K",
+        "workflow": "Codex built-in image generation",
         "aspectRatio": "1:1"
       },
-      "sourceSha256": "52c0ca328d6cb2ae8c7085174ddcc6a98dc3f44208f3cd13831fb503f51a092e",
+      "sourceSha256": "05ef08c3d59e026948209c1541c13fe3ce87c4f79f6c8ca43ee7a0d319bb5391",
       "sourceSize": [
-        2048,
-        2048
+        1254,
+        1254
       ],
-      "sha256": "6bea03e65dba8b2f9874d80292091c03b7259e040e63ca11bbb5a5d545d5d364",
-      "bytes": 163882,
+      "sha256": "95cb7fdde62974dbbf88a348f14bfab22ebc7629579fa9b4cde5b35aafeac203",
+      "bytes": 337592,
       "width": 1600,
       "height": 1600,
       "jpegQuality": 82,
       "alt": "A glowing network of connected nodes floating in deep space.",
       "review": {
         "result": "approved",
-        "by": "agent",
-        "reviewer": "Claude (implementing agent)",
-        "date": "2026-10-10",
-        "checked": "No watermark, no logos, no legible text; fits its frame; matches its language."
+        "by": "person",
+        "reviewer": "Product owner (approval recorded in Codex)",
+        "date": "2026-10-11",
+        "checked": "No watermark, logos or legible text; no recognizable public figures; composition, anatomy and template fit inspected.",
+        "note": "Approved by the product owner after reviewing the 22-image release contact sheet."
       },
       "license": {
-        "use": "demo",
-        "plan": "Starter",
-        "commercialUse": false,
-        "termsUrl": "https://openart.ai/terms",
-        "termsRetrievedAt": "2026-10-10",
-        "termsSha256": "00685fc4f42dc4bb56c5acb168e493e74d5fc593c93e1bf4cdb60b01c5c10fc2",
-        "note": "Non-commercial (demo) use only on the Starter plan. Regenerate under Plus or above before any commercial release."
+        "provider": "OpenAI",
+        "use": "commercial",
+        "plan": "ChatGPT/Codex built-in image generation",
+        "commercialUse": true,
+        "termsUrl": "https://openai.com/policies/row-terms-of-use/",
+        "termsRetrievedAt": "2026-10-11",
+        "termsSha256": "003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b",
+        "termsSnapshot": "SHA-256 of the normalized text returned by the official OpenAI terms page retrieval.",
+        "note": "OpenAI Terms of Use assign Output ownership to the user as between the user and OpenAI, to the extent permitted by applicable law. Human review and legal compliance remain the user's responsibility."
       },
       "templates": [
         {
           "template": "research-talk",
           "role": "scene"
         }
-      ]
+      ],
+      "provider": "OpenAI"
     }
   ]
 }
