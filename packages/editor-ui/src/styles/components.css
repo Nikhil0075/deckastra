@@ -325,6 +325,7 @@ body:has(.dk-root) {
   position: fixed;
   z-index: var(--dk-z-popover);
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--dk-surface);
   border: var(--dk-line) solid var(--dk-rule);
   box-shadow: 4px 4px 0 var(--dk-ink);
@@ -473,10 +474,20 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
 }
 .dk-tabs__list {
   display: flex;
+  min-width: 0;
+  /* A tab row longer than its column scrolls inside itself. It used to push
+     the whole panel wider, so the Add library and the theme gallery scrolled
+     sideways and cut off their first column (2026-10-12). */
+  overflow-x: auto;
+  /* Thin rather than hidden, so a tab past the edge is visibly there. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--dk-rule) transparent;
   border-bottom: var(--dk-line) solid var(--dk-rule);
 }
 .dk-tabs__tab {
   display: inline-flex;
+  flex: none;
+  white-space: nowrap;
   align-items: center;
   gap: var(--dk-space-1);
   height: var(--dk-control-lg);
@@ -767,6 +778,13 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
   font: inherit;
   font-size: 11px;
   color: var(--dk-ink-muted);
+}
+/* On the black highlight the muted grey was 2.5:1 (the a11y step, 2026-10-12):
+   the key takes the row's own inverse colour there. */
+.dk-menu__item:focus-visible .dk-menu__shortcut,
+.dk-menu__item--active .dk-menu__shortcut,
+button.dk-menu__item:hover:not([aria-disabled="true"]) .dk-menu__shortcut {
+  color: inherit;
 }
 
 .dk-menu__shortcut + .dk-menu__check {

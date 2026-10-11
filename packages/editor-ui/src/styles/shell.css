@@ -44,7 +44,10 @@
 
 .dk-appbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The end column is never narrower than what it holds; the title side gives
+     way first. Equal outer columns let a full end group (agent access on, a
+     wide window) spill left under the mode switch and cover a mode (2026-10-12). */
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
   align-items: center;
   gap: var(--dk-space-3);
   height: var(--dk-bar-height);
@@ -76,10 +79,43 @@
 .dk-appbar__center {
   display: flex;
   justify-content: center;
-  min-width: 360px;
+  min-width: 0;
 }
-.dk-appbar__center .dk-segmented {
-  width: 100%;
+/* Design and Motion, then one menu of the other modes (2026-10-12). */
+.dk-modeswitch {
+  display: flex;
+  align-items: stretch;
+}
+.dk-modeswitch .dk-segmented__item {
+  min-width: 92px;
+}
+.dk-modeswitch__more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dk-space-1);
+  height: var(--dk-control-sm);
+  padding: 0 var(--dk-space-2) 0 var(--dk-space-3);
+  border: var(--dk-line) solid var(--dk-rule);
+  border-left: 0;
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  font-size: var(--dk-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--dk-tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dk-modeswitch__more:hover:not(.dk-modeswitch__more--on) {
+  background: var(--dk-sunk);
+}
+.dk-modeswitch__more--on {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
+}
+.dk-modeswitch__more:focus-visible {
+  outline-offset: -4px;
 }
 .dk-brand {
   width: 20px;
@@ -563,6 +599,9 @@
   flex: none;
   min-height: 0;
   overflow-y: auto;
+  /* A side panel never scrolls sideways: anything wider than the column was
+     a bug that cut off its left edge (2026-10-12). */
+  overflow-x: hidden;
   background: var(--dk-ground);
   font-size: var(--dk-text-sm);
   scrollbar-width: thin;
@@ -572,6 +611,37 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+}
+.dk-panel > *,
+.dk-library > * {
+  min-width: 0;
+  max-width: 100%;
+}
+/* Side panels are narrow: tabs there take less padding, so five fit or nearly. */
+.dk-panel .dk-tabs__tab,
+.dk-library .dk-tabs__tab {
+  padding: 0 var(--dk-space-2);
+}
+/* A row of choices in a side panel (the twelve transition kinds) wraps onto a
+   grid instead of running past the column. The bar's mode switch is not in a
+   panel and keeps its single row. */
+.dk-panel .dk-segmented,
+.dk-library .dk-segmented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: var(--dk-line);
+  background: var(--dk-rule);
+}
+.dk-panel .dk-segmented__item,
+.dk-library .dk-segmented__item {
+  border-left: 0;
+  background: var(--dk-surface);
+}
+.dk-panel .dk-segmented__item--checked,
+.dk-library .dk-segmented__item--checked {
+  background: var(--dk-blue);
+  color: var(--dk-on-blue);
 }
 /* The panel scrolls; what is in it never shrinks to fit. Motion mode stacks
    the host's motion panel and the narration sections in one column, and a
@@ -740,6 +810,7 @@
 }
 .dk-code__tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--dk-space-2);
   padding: var(--dk-space-2) var(--dk-space-3);
@@ -825,8 +896,15 @@
 .dk-code__banner-actions,
 .dk-code__applybar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--dk-space-2);
+}
+/* The status line has the full width above the buttons: squeezed beside three
+   of them in a narrow panel it ran under Discard (2026-10-12). */
+.dk-code__applybar > .dk-code__diagnostic {
+  flex: 1 0 100%;
 }
 .dk-code__applybar {
   padding: var(--dk-space-2) var(--dk-space-3);
@@ -3207,6 +3285,7 @@
   flex: none;
   padding: var(--dk-space-3, 12px);
   overflow-y: auto;
+  overflow-x: hidden;
   border-right: var(--dk-line) solid var(--dk-rule);
   background: var(--dk-surface);
 }
@@ -3531,6 +3610,7 @@
     min-width: 0;
   }
   .dk-appbar__center .dk-segmented__item {
+    min-width: 0;
     padding: 0 var(--dk-space-2);
   }
   .dk-appbar__end .dk-appbar__assistant .dk-btn__label {

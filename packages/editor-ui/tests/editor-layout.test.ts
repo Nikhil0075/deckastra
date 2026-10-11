@@ -55,7 +55,13 @@ describe("zoom steps", () => {
 });
 
 describe("modes", () => {
-  it("has the four Figma modes, with Present deliberately not one of them", () => {
-    expect(EDITOR_MODES.map((mode) => mode.value)).toEqual(["design", "motion", "code"]);
+  it("has the modes, with Present deliberately not one of them", () => {
+    expect(EDITOR_MODES.map((mode) => mode.value)).toEqual(["design", "motion", "narration", "code", "media"]);
+  });
+
+  it("puts Design and Motion on the bar and the rest in its menu, each with its own shortcut", () => {
+    expect(EDITOR_MODES.filter((mode) => mode.primary).map((mode) => mode.value)).toEqual(["design", "motion"]);
+    expect(EDITOR_MODES.filter((mode) => !mode.primary).map((mode) => mode.label)).toEqual(["Narration & sound", "Code", "Import & generate"]);
+    expect(new Set(EDITOR_MODES.map((mode) => mode.shortcut)).size).toBe(EDITOR_MODES.length);
   });
 });

@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { BrowserWindow } from "electron";
+import { app, type BrowserWindow } from "electron";
 
 import { capture, trustedClick, until } from "./smoke";
 
@@ -204,6 +204,14 @@ async function runLanguagesInner(window: BrowserWindow, dir: string, record: Rec
       await k.need("the confirmed translation never came back", `!document.querySelector('[data-testid="translate-missing-hi-IN"]')?.textContent?.includes('Confirm translation')`, 60_000);
     }
     record.translateMessage = await k.page<string>(`document.querySelector('[data-testid="languages-message"]').textContent`);
+    // An installed app never uses the stand-in translator (it would write fake
+    // translations into someone's deck), so unsigned it has none, and says so.
+    // That is the product working: skipped by name, never red, the same rule
+    // as a11y without axe-core (2026-10-12).
+    if (app.isPackaged && /sign in/i.test(String(record.translateMessage))) {
+      record.skipped = "translation needs a signed-in Deckastra account in an installed app; run this step from a checkout or signed in";
+      return;
+    }
     if (await k.page<boolean>(`Boolean(document.querySelector('[data-testid="proposal-apply"]'))`)) {
       await k.need("the proposal's After picture never drew", `document.querySelector('[data-testid="proposal-after"] [data-final-frame]')`, 15_000);
       await capture(window, join(dir, "languages-proposal.png"));
@@ -278,10 +286,10 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     ]);
     await k.settle();
 
-    // A line per step, typed into the Motion panel.
+    // A line per step, typed into Narration & sound (its own mode since 2026-10-12).
     // The assistant (where Languages lives) sits over the mode's own panel.
     await k.page(`document.querySelector('[data-testid="close-assistant"]')?.click()`);
-    await k.press("mode-motion");
+    await openNarration(k);
     await k.need("the narration panel did not appear", `document.querySelectorAll('[data-testid="narration-step"]').length === 4`, 10_000);
     const lines = ["Three steps make this work.", "First, write it.", "Then translate it.", "Finally, narrate it."];
     for (let step = 0; step < 4; step += 1) {
@@ -316,7 +324,7 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
       await k.need("applying the voices did not clear the card", `!document.querySelector('[data-testid="proposal-card"]')`, 20_000);
       await k.settle();
       await k.press("close-assistant");
-      await k.press("mode-motion");
+      await openNarration(k);
     }
     stored = await k.stored(created);
     const takes = stored.slides[0].narration.cues.map((cue: any) => cue.takes?.en?.durationMs ?? 0);
@@ -403,4 +411,11 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
   } finally {
     await k.cleanup(created, original);
   }
+}
+
+/** Narration & sound is in the bar's More menu (2026-10-12). */
+async function openNarration(k: { press: (testId: string) => Promise<void>; need: (what: string, expression: string, ms?: number) => Promise<unknown> }): Promise<void> {
+  await k.press("mode-more");
+  await k.need("the More modes menu did not open", `document.querySelector('[data-testid="mode-narration"]')`, 5_000);
+  await k.press("mode-narration");
 }

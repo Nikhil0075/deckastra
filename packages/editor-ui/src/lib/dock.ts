@@ -31,7 +31,10 @@ export const DOCK_TABS: ReadonlyArray<{ value: DockTab; label: string }> = [
 export const DEFAULT_DOCK: DockLayout = {
   design: { open: false, tab: "notes" },
   motion: { open: true, tab: "timeline" },
+  // Narration is paced against the click steps, which the timeline draws.
+  narration: { open: true, tab: "timeline" },
   code: { open: false, tab: "notes" },
+  media: { open: false, tab: "notes" },
 };
 
 const STORAGE_KEY = "deckastra.dock";
@@ -87,7 +90,7 @@ export function dockShows(state: DockState, tab: DockTab): boolean {
 
 /** How tall the open dock's body is, in px. Motion mode gives the timeline room to work. */
 export function dockBodyHeight(mode: EditorMode, tab: DockTab): number {
-  if (tab === "timeline" && mode === "motion") return 300;
+  if (tab === "timeline" && (mode === "motion" || mode === "narration")) return 300;
   return 168;
 }
 

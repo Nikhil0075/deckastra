@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
-import { Button, IconButton, Menu, Popover, Segmented, StatusChip, type MenuItem } from "../../ui";
+import { Button, Icon, IconButton, Menu, Popover, Segmented, StatusChip, type MenuItem } from "../../ui";
 import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
 import { TaskCentre } from "./TaskCentre";
 import { ExportPanel } from "../ExportPanel";
@@ -46,6 +46,59 @@ export interface AppBarProps {
    * its count while anything waits, and while it is open.
    */
   review?: { count: number; open: boolean; onToggle: () => void };
+}
+
+/**
+ * Design and Motion on the bar, the other modes one menu after them
+ * (2026-10-12). When one of those is in use the menu button says which, in the
+ * selected colour, so the bar always names the mode on screen.
+ */
+export function ModeSwitch({ mode, onMode }: { mode: EditorMode; onMode: (mode: EditorMode) => void }) {
+  const primary = EDITOR_MODES.filter((entry) => entry.primary);
+  const more = EDITOR_MODES.filter((entry) => !entry.primary);
+  const current = more.find((entry) => entry.value === mode);
+  return (
+    <div className="dk-modeswitch">
+      <Segmented
+        label="Editor mode"
+        size="sm"
+        value={mode}
+        onChange={onMode}
+        items={primary.map((entry) => ({
+          value: entry.value,
+          label: entry.label,
+          "data-testid": `mode-${entry.value}`,
+        }))}
+      />
+      <Menu
+        label="More modes"
+        align="end"
+        items={more.map((entry) => ({
+          id: entry.value,
+          testId: `mode-${entry.value}`,
+          label: entry.label,
+          icon: entry.icon,
+          shortcut: entry.shortcut,
+          checked: entry.value === mode,
+          onSelect: () => onMode(entry.value),
+        }))}
+        trigger={(props) => (
+          <button
+            type="button"
+            className={current ? "dk-modeswitch__more dk-modeswitch__more--on" : "dk-modeswitch__more"}
+            aria-label={current ? `${current.label}. More modes` : "More modes"}
+            title="Narration & sound, Code, Import & generate"
+            data-testid="mode-more"
+            data-mode={current?.value}
+            {...props}
+          >
+            <span className="dk-modeswitch__label">{current ? current.label : "More"}</span>
+            <Icon name="chevronDown" size={14} />
+          </button>
+        )}
+      />
+    </div>
+  );
 }
 
 /**
@@ -98,17 +151,7 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
       </div>
 
       <div className="dk-appbar__center">
-        <Segmented
-          label="Editor mode"
-          size="sm"
-          value={mode}
-          onChange={onMode}
-          items={EDITOR_MODES.map((entry) => ({
-            value: entry.value,
-            label: entry.label,
-            "data-testid": `mode-${entry.value}`,
-          }))}
-        />
+        <ModeSwitch mode={mode} onMode={onMode} />
       </div>
 
       <div className="dk-appbar__end">

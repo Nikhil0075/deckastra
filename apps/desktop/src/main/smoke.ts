@@ -1595,7 +1595,7 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
     [1366, 768],
     [1920, 1080],
   ];
-  const EDITOR = ["present", "account-menu", "open-share", "mode-design", "mode-code", "undo", "open-deck-list", "agent-access-open"];
+  const EDITOR = ["present", "account-menu", "open-share", "mode-design", "mode-more", "undo", "open-deck-list", "agent-access-open"];
   const HOME = ["account-menu", "deck-search", "view-all"];
 
   const sweep = async (where: "editor" | "home", essentials: string[], bar: string) => {
@@ -2435,7 +2435,14 @@ async function runA11y(window: BrowserWindow, dir: string, record: Record<string
           await click("mode-motion");
         },
       ],
-      ["code", async () => click("mode-code")],
+      [
+        "code",
+        async () => {
+          // Code is in the bar's More menu (2026-10-12).
+          await click("mode-more");
+          await click("mode-code");
+        },
+      ],
       [
         // Settings (roadmap 08 §1.3), at AI and privacy: the old Intelligence
         // drawer's content lives there now.
@@ -3466,6 +3473,12 @@ async function runMenu(
 
   press("mode-code");
   await expect("View > Code did not switch mode", `document.querySelector('[data-editor-mode="code"]')`);
+  // The modes behind the bar's More menu (2026-10-12): the bar's button names
+  // the one in use.
+  press("mode-narration");
+  await expect("View > Narration & sound did not switch mode", `document.querySelector('[data-editor-mode="narration"]') && document.querySelector('[data-testid="mode-more"]')?.dataset.mode === "narration"`);
+  press("mode-media");
+  await expect("View > Import & generate did not switch mode", `document.querySelector('[data-editor-mode="media"]') && document.querySelector('[data-testid="import-generate-panel"]')`);
   press("mode-motion");
   await expect("View > Motion did not switch mode", `document.querySelector('[data-editor-mode="motion"]')`);
   press("mode-design");
@@ -4183,8 +4196,18 @@ export async function capture(window: BrowserWindow, file: string): Promise<void
   // A settle beat before the shot: the scene builds from browser text metrics,
   // and capturing mid-measurement photographs a layout no user ever sees.
   await new Promise((resolve) => setTimeout(resolve, 1200));
-  const image = await window.webContents.capturePage();
-  await writeFile(file, image.toPNG());
+  // A picture is evidence beside the step's checks, never one of them. With
+  // the display off or locked Chromium has no frame to give ("UnknownVizError"),
+  // and the presenter step failed on a screenshot after every behaviour it
+  // checks had passed (2026-10-12). The reason is written where the picture
+  // would have been, so the record still says what happened.
+  try {
+    const image = await window.webContents.capturePage();
+    await writeFile(file, image.toPNG());
+  } catch (error) {
+    await writeFile(`${file}.missing.txt`, `No picture: ${error instanceof Error ? error.message : String(error)}
+`).catch(() => undefined);
+  }
 }
 
 /**
