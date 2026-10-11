@@ -1,5 +1,5 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
-import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest } from "./assistant";
+import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest, VideoQuote, VideoQuoteRequest } from "./assistant";
 
 import type { AppliedChange, PendingProposal, ProposalDetail } from "./agent";
 import type {
@@ -93,6 +93,8 @@ export interface WorkspaceClient {
   readonly assistant?: {
     capabilities(options?: RequestOptions & { presentationId?: string; slideId?: string; locale?: string }): Promise<AssistantCapabilities>;
     quoteImage(presentationId: string, request: ImageQuoteRequest, options?: RequestOptions): Promise<PaidServiceQuote>;
+    /** The price of one muted video clip. Optional: an older service has no clips. */
+    quoteVideo?(presentationId: string, request: VideoQuoteRequest, options?: RequestOptions): Promise<VideoQuote>;
     start(request: AssistantRequest, options?: RequestOptions): Promise<AssistantRun>;
     get(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     list(presentationId: string, options?: RequestOptions): Promise<{ runs: AssistantRun[] }>;

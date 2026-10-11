@@ -1,5 +1,5 @@
 import type {
-  AssistantRun, AssistantCapabilities, AssistantEvent, AssistantAsset, DesignCheckResult,
+  AssistantRun, AssistantCapabilities, AssistantEvent, AssistantAsset, DesignCheckResult, VideoQuote,
   TransitionRequest,
   TransitionResult,
   AccountContext,
@@ -280,6 +280,9 @@ const q = encodeURIComponent;
       capabilities: (o) => json<AssistantCapabilities>(`/v1/assistant/capabilities${o?.presentationId ? `?presentation_id=${q(o.presentationId)}${o.slideId ? `&slide_id=${q(o.slideId)}` : ""}${o.locale ? `&locale=${q(o.locale)}` : ""}` : ""}`, { ...o }),
       quoteImage: (presentationId, body, o) => json<PaidServiceQuote>("/v1/media/quotes/image", {
         ...o, body: { presentation_id: presentationId, ...body }, fallback: "The image price could not be checked.",
+      }),
+      quoteVideo: (presentationId, body, o) => json<VideoQuote>("/v1/media/quotes/video", {
+        ...o, body: { presentation_id: presentationId, ...body }, fallback: "The clip price could not be checked.",
       }),
       start: (body, o) => json<AssistantRun>("/v1/assistant/runs", { ...o, body }),
       get: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}`, { ...o }),

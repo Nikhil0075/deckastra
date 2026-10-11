@@ -75,7 +75,7 @@ class AssistantRequest(BaseModel):
     locale: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
     voice: str = Field(default="default", max_length=100)
     source_asset_ids: list[str] = Field(default_factory=list, max_length=10)
-    export_kind: Literal["pdf", "pptx", "mp4"] = "pdf"
+    export_kind: Literal["pdf", "pptx"] = "pdf"
     motion_entrance: str = Field(default="fade", max_length=40)
     motion_pacing: Literal["tight", "measured", "deliberate"] = "measured"
     # Unset means "as many click reveals as the slide already has", so re-planning

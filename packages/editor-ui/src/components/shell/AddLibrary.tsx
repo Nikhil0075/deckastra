@@ -8,6 +8,7 @@ import type { PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
 import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx, type IconName } from "../../ui";
+import { GenerateMedia } from "./GenerateMedia";
 import { PatternThumb, usePatternPreviews } from "./PatternPreview";
 
 /**
@@ -468,6 +469,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
         }}
       />
       <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG. You can also paste a picture or drop one on the slide.</p>
+      <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} />
       <h4 className="dk-library__heading">Objects</h4>
       <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
     </>
