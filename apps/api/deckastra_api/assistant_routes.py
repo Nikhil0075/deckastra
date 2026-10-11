@@ -22,7 +22,7 @@ from deckastra_agents.budgets import RunBudget, RunCancelled
 from deckastra_agents.vertex_model import configured_image_client
 from deckastra_agents.video_model import configured_video_client
 from deckastra_agents.router import ModelUnavailable
-from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales, preset_media
+from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales, preset_media, local_mode
 from .assistant_assets import fingerprints, describe as describe_asset
 from .assistant_models import AssistantRun, AssistantEvent, AssistantReservation
 from .auth import Principal, Role, current_principal, resolve_presentation_access
@@ -217,7 +217,7 @@ def capabilities():
             status = speech.speech_status()
             provider = status["provider"]
             task_reason = None if status["available"] else status["reason"]
-            if provider == "google":
+            if provider == "google" and not local_mode.account_gateway():
                 try:
                     from deckastra_agents.vertex_model import configuration
                     configuration()
@@ -258,6 +258,10 @@ def capabilities():
 
 def scoped_capabilities(value, document, scope, workspace_id, session, locale=None):
     """Read-only affordability for the selected document and speech scripts."""
+    if local_mode.account_gateway():
+        # The cloud prices the request and holds the account's credits and
+        # limits; a local ceiling here has nothing to describe.
+        return value
     speech_task = value["tasks"]["speech"]
     if speech_task["available"] and speech_task["provider"] == "google":
         rate = float(os.environ["DECKASTRA_SPEECH_USD_PER_MILLION"])
@@ -374,7 +378,7 @@ def create_run(request: AssistantRequest, background: BackgroundTasks, principal
     availability = scoped_capabilities(capabilities(), loaded.document, request.scope.model_dump(), access.workspace_id, session, request.locale)["tasks"][request.task]
     if not availability["available"]:
         raise HTTPException(503, availability["reason"])
-    if availability["provider"] in {"vertex", "google"}:
+    if availability["provider"] in {"vertex", "google"} and not local_mode.account_gateway():
         try:
             workspace_ceiling(access.workspace_id)
         except ModelUnavailable as exc:

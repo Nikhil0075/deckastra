@@ -52,6 +52,10 @@ class GatewayClient:
             "pronunciations": [{"term": item.term, "say": item.say} for item in pronunciations]})
         return value["audio"]
 
+    def voices(self, locale):
+        """The account's voices for a language, as the hosted API lists them."""
+        return self._call(f"/voices?locale={locale}")["voices"]
+
     def image_capability(self):
         if self._image_capability is None:
             self._image_capability = self._call("/capabilities").get("tasks", {}).get("image", {})

@@ -75,6 +75,9 @@ def selected_speech_provider() -> str:
         )
     if choice == "google":
         return "google"
+    from . import local_mode
+    if not choice and local_mode.account_gateway():
+        return "google"
     production = distribution() or os.environ.get("DECKASTRA_ENV") == "production"
     if choice == "stub" or not production:
         if production:
@@ -90,6 +93,10 @@ def speech_status() -> dict[str, Any]:
         provider = selected_speech_provider()
     except ModelUnavailable as error:
         return {"provider": "none", "available": False, "reason": str(error)}
+    from . import local_mode
+    if provider == "google" and local_mode.account_gateway():
+        return {"provider": "google", "available": True,
+                "reason": "Voiced with your Deckastra account's credits. The script is sent to Google."}
     if provider == "google":
         if not google_credentials.configured():
             return {
@@ -514,6 +521,13 @@ def voices(locale: str) -> list[dict[str, Any]]:
     cached = _VOICE_CACHE.get(locale)
     if cached and time.monotonic() - cached[0] < VOICE_CACHE_SECONDS:
         return cached[1]
+    from . import local_mode
+    if local_mode.account_gateway():
+        # An installed desktop holds no Google key; the account lists them.
+        from deckastra_agents.gateway_client import GatewayClient
+        listed = list(GatewayClient().voices(locale))
+        _VOICE_CACHE[locale] = (time.monotonic(), listed)
+        return listed
     try:
         with httpx.Client(timeout=30) as http:
             response = _google_request(
