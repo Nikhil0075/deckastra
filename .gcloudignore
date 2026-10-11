@@ -8,6 +8,10 @@ gha-creds-*.json
 **/*.log
 **/*.png
 **/*.jpg
+# The template pictures are product content, not stray build output: without
+# them every template's frames were empty in the cloud (2026-10-11), while the
+# desktop build, which does not read this file, showed them.
+!packages/deck-presets/media/*.jpg
 **/*.mp3
 .venv
 venv
