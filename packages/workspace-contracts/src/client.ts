@@ -39,6 +39,8 @@ import type {
   InsertPatternRequest,
   InsertPatternResult,
   PatternPreviews,
+  ThemeProposalRequest,
+  ThemeProposalResult,
   PresetCatalog,
   TemplatePreviewRequest,
   TemplatePreviewResult,
@@ -264,6 +266,11 @@ export interface WorkspaceClient {
    * sends is intent, and the durations come back computed. A caller that could
    * send milliseconds would be a caller that could over-run the entrance budget.
    */
+  /** A deck's palette and faces, as one reviewable change. Optional: an older service has none. */
+  readonly theme?: {
+    propose(presentationId: string, body: ThemeProposalRequest, options?: RequestOptions): Promise<ThemeProposalResult>;
+  };
+
   readonly motion: {
     capabilities(options?: RequestOptions): Promise<MotionCapabilities>;
     propose(

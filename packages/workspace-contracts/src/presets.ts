@@ -204,6 +204,35 @@ export interface InsertPatternRequest {
  * library draws as each pattern's tile. Read-only; the editor draws each slide
  * in the deck's own theme.
  */
+/**
+ * An art direction's palette and faces (POST /presentations/{id}/theme). Every
+ * other colour role is derived; text below WCAG AA is refused.
+ */
+export interface ThemeProposalRequest {
+  expected_version_id: string;
+  name?: string;
+  background: string;
+  foreground: string;
+  accent: string;
+  secondary?: string;
+  series?: string[];
+  display_font?: string;
+  body_font?: string;
+  intent?: string;
+  client_label?: string;
+  dry_run?: boolean;
+}
+
+export interface ThemeProposalResult {
+  outcome: string;
+  risk_tier?: string;
+  transaction_id?: string;
+  version_id?: string | null;
+  text_contrast: number;
+  accent_contrast: number;
+  notes: string[];
+}
+
 export interface PatternPreviews {
   language: string;
   /** Changes when the catalog does, so a cached answer is never an old one. */

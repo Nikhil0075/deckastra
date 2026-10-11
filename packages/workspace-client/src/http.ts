@@ -38,6 +38,8 @@ import type {
   InsertPatternRequest,
   InsertPatternResult,
   PatternPreviews,
+  ThemeProposalRequest,
+  ThemeProposalResult,
   PreviewRequest,
   PreviewResult,
   MotionPreviewRequest,
@@ -423,6 +425,15 @@ const q = encodeURIComponent;
           `/v1/presentations/${q(presentationId)}/slides/${q(slideId)}/sources`,
           { ...request },
         ),
+    },
+
+    theme: {
+      propose: (presentationId, body: ThemeProposalRequest, request) =>
+        json<ThemeProposalResult>(`/v1/presentations/${q(presentationId)}/theme`, {
+          body,
+          fallback: "That palette could not be applied.",
+          ...request,
+        }),
     },
 
     motion: {

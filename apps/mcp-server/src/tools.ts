@@ -206,6 +206,42 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 
   server.registerTool(
+    "theme_propose",
+    {
+      title: "Set the deck's colours and type",
+      description:
+        "Give the deck the palette and faces an art direction asks for. Name a background, the text " +
+        "colour on it, an accent, optionally a secondary colour and up to five chart colours, and a " +
+        "display and body face. The app derives every other role (surfaces, borders, muted text, " +
+        "readable text on the accent) and refuses text below WCAG AA (4.5:1). The deck keeps its own " +
+        "named colours and object styles. Faces that ship with Deckastra: Inter, Manrope, DM Sans, " +
+        "Work Sans, Nunito, Playfair Display, Lora, Source Serif 4, Fraunces, Jost, Space Grotesk, " +
+        "Bebas Neue, Archivo Black, JetBrains Mono, IBM Plex Mono, Caveat; any other face is named in " +
+        "the notes because it may be substituted elsewhere. Pass dry_run to see the contrast first. " +
+        "Like any change, it applies or becomes a proposal for the user, and you cannot choose which.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        name: z.string().min(1).max(120).optional(),
+        background: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        foreground: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        accent: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        secondary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+        series: z.array(z.string().regex(/^#[0-9A-Fa-f]{6}$/)).max(5).optional(),
+        display_font: z.string().min(1).max(80).optional(),
+        body_font: z.string().min(1).max(80).optional(),
+        dry_run: z.boolean().default(false),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, ...body }) =>
+      guard(async () => {
+        if (!client.theme) throw new Error("This workspace service cannot set a deck's theme.");
+        return json(await client.theme.propose(presentation_id, { ...body, client_label: client.clientId.replace(/^mcp:/, "") }));
+      }),
+  );
+
+  server.registerTool(
     "design_language_get",
     {
       title: "Read one design language's rules",

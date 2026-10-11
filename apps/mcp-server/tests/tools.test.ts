@@ -709,6 +709,27 @@ describe("the tool surface", () => {
     expect(answer.would_produce.slides[0].elements[0].transform).toBeUndefined();
   });
 
+  it("sets a palette through the app, which derives the rest and computes the risk", async () => {
+    const client = await connect({
+      "/v1/presentations/pres_open/theme": { outcome: "planned", text_contrast: 14.2, accent_contrast: 12.1, notes: [] },
+    });
+    const result = await client.callTool({
+      name: "theme_propose",
+      arguments: { presentation_id: "pres_open", expected_version_id: "ver_1", background: "#1C1F22", foreground: "#F4F1EA",
+        accent: "#C6FF3D", display_font: "Archivo Black", dry_run: true },
+    });
+    expect(JSON.parse(text(result)).text_contrast).toBe(14.2);
+    const sentBody = sent.find((request) => request.url.includes("/theme"))!.body as Record<string, unknown>;
+    expect(sentBody).toMatchObject({ background: "#1C1F22", accent: "#C6FF3D", dry_run: true });
+    // The caller names colours; it cannot declare a risk tier.
+    expect(sentBody).not.toHaveProperty("risk_tier");
+    const refused = await client.callTool({
+      name: "theme_propose",
+      arguments: { presentation_id: "pres_open", expected_version_id: "ver_1", background: "graphite", foreground: "#FFFFFF", accent: "#C6FF3D" },
+    });
+    expect((refused as { isError?: boolean }).isError).toBe(true);
+  });
+
   it("mints its own export idempotency key", async () => {
     const client = await connect({
       "/v1/presentations/pres_open/exports": { id: "exp_1", kind: "pdf", status: "queued" },
