@@ -105,3 +105,38 @@ def test_reservations_cannot_be_replayed(users):
     with pytest.raises(ValueError):
         observer("once", .01, -1)
     assert balance(users[0])["remaining_credits"] == 58
+
+
+def test_raising_the_free_allowance_tops_up_existing_accounts_once(users, monkeypatch):
+    """A demo period can be more generous without a release (2026-10-12)."""
+    at = datetime(2026, 10, 12, tzinfo=timezone.utc)
+    with db.session_scope() as session:
+        row = credits.account(session, users[0], at)
+        assert row.monthly_allowance == 60
+        row.balance_micros = 20 * credits.MICROS_PER_CREDIT  # 40 of 60 spent
+    monkeypatch.setenv("DECKASTRA_FREE_MONTHLY_CREDITS", "300")
+    for _ in range(3):  # however often the account is read, the raise lands once
+        with db.session_scope() as session:
+            row = credits.account(session, users[0], at)
+    assert row.monthly_allowance == 300
+    assert balance(users[0])["remaining_credits"] == 260
+    with db.session_scope() as session:
+        raises = session.scalars(select(CreditEntry).where(CreditEntry.user_id == users[0], CreditEntry.operation_id.like("%:allowance:300"))).all()
+    assert len(raises) == 1 and raises[0].amount_micros == 240 * credits.MICROS_PER_CREDIT
+    # A new account starts at the configured allowance, and the next month renews to it.
+    assert balance(users[1])["remaining_credits"] == 300
+    with db.session_scope() as session:
+        assert credits.account(session, users[0], datetime(2026, 11, 13, tzinfo=timezone.utc)).balance_micros == 300 * credits.MICROS_PER_CREDIT
+
+
+def test_lowering_the_free_allowance_takes_nothing_back_until_renewal(users, monkeypatch):
+    at = datetime(2026, 10, 12, tzinfo=timezone.utc)
+    monkeypatch.setenv("DECKASTRA_FREE_MONTHLY_CREDITS", "300")
+    with db.session_scope() as session:
+        credits.account(session, users[0], at)
+    monkeypatch.setenv("DECKASTRA_FREE_MONTHLY_CREDITS", "60")
+    with db.session_scope() as session:
+        row = credits.account(session, users[0], at)
+        assert row.balance_micros == 300 * credits.MICROS_PER_CREDIT and row.monthly_allowance == 60
+    with db.session_scope() as session:
+        assert credits.account(session, users[0], datetime(2026, 11, 13, tzinfo=timezone.utc)).balance_micros == 60 * credits.MICROS_PER_CREDIT

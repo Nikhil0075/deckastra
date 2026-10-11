@@ -42,8 +42,36 @@ def _bootstrap():
 
 def test_the_small_profile_has_nothing_always_on_and_the_scaled_one_keeps_its_shape():
     sizes = _bootstrap().SIZES
-    assert sizes["small"] == {"db_tier": "db-f1-micro", "api_memory": "2Gi", "worker_min": "0",
-                              "exports_in_api": "1", "daily_usd": "1"}
+    assert {key: sizes["small"][key] for key in ("db_tier", "api_memory", "worker_min", "exports_in_api", "daily_usd")} == {
+        "db_tier": "db-f1-micro", "api_memory": "2Gi", "worker_min": "0", "exports_in_api": "1", "daily_usd": "1"}
+    # One short video clip (4 s at the held US$0.15/s) fits the demo limits.
+    assert float(sizes["small"]["request_max_usd"]) >= 4 * 0.15
+    assert float(sizes["small"]["account_daily_usd"]) >= 4 * 0.15
     # The shape real traffic used before, unchanged, so going back is one flag.
     assert sizes["scaled"]["worker_min"] == "1" and sizes["scaled"]["exports_in_api"] == "0"
     assert sizes["scaled"]["db_tier"] == "db-custom-1-3840"
+
+
+def test_what_the_deploy_sets_actually_turns_voice_pictures_and_video_on(monkeypatch):
+    """Each paid medium is configured by the real code, from exactly the deployed values.
+
+    On 2026-10-12 video looked enabled (its model had a default) and could
+    never run: the deploy set no per-second price, and a US$0.30 request
+    ceiling refused any clip. This reads the same functions the API does.
+    """
+    from deckastra_agents import video_model, vertex_model
+    from deckastra_api import speech
+
+    bootstrap = _bootstrap()
+    shape = bootstrap.SIZES["small"]
+    env = {**bootstrap.MEDIA, "DECKASTRA_VERTEX_PROJECT": "deckastra-prod", "DECKASTRA_VERTEX_LOCATION": "global",
+           "DECKASTRA_VERTEX_IDENTITY": "attached", "DECKASTRA_ASSISTANT_MAX_COST_USD": shape["request_max_usd"],
+           "DECKASTRA_ENV": "production"}
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    assert vertex_model.image_model_id() == "gemini-3.1-flash-lite-image"
+    assert "gemini-3.1-flash-lite-image" in vertex_model.configuration()["prices"]
+    video = video_model.configuration()
+    assert video["location"] == "us-central1" and video["rate"] == 0.15
+    assert video_model.quote(4, video)["usd"] <= float(shape["request_max_usd"])
+    assert speech.selected_speech_provider() == "google"

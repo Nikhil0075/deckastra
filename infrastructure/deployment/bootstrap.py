@@ -173,8 +173,32 @@ def database(cloud):
 # database. Measured on 2026-10-11, the scaled shape costs about INR 9,700 a
 # month per environment before anyone uses it; small costs about INR 1,000.
 SIZES = {
-    "small": {"db_tier": "db-f1-micro", "api_memory": "2Gi", "worker_min": "0", "exports_in_api": "1", "daily_usd": "1"},
-    "scaled": {"db_tier": "db-custom-1-3840", "api_memory": "1Gi", "worker_min": "1", "exports_in_api": "0", "daily_usd": "10"},
+    "small": {"db_tier": "db-f1-micro", "api_memory": "2Gi", "worker_min": "0", "exports_in_api": "1", "daily_usd": "1",
+              # The demo period (2026-10-12): 300 free credits a month, and a
+              # dollar a day per account and per request, so one short video
+              # clip fits. The global US$1 a day still bounds the whole cloud.
+              "free_credits": "300", "account_daily_usd": "1", "request_max_usd": "1.00"},
+    "scaled": {"db_tier": "db-custom-1-3840", "api_memory": "1Gi", "worker_min": "1", "exports_in_api": "0", "daily_usd": "10",
+               "free_credits": "60", "account_daily_usd": "0.30", "request_max_usd": "0.30"},
+}
+
+# Paid media, pinned and priced (approved 2026-10-12). Each model was confirmed
+# available in the project and each price read from Google's own pages that
+# day. A price set above the list price only over-holds credits; one below it
+# would let real spend pass the caps, so when in doubt the number goes up.
+MEDIA = {
+    # Text-to-Speech, Chirp 3 HD: US$30 per million characters.
+    "DECKASTRA_SPEECH": "google",
+    "DECKASTRA_SPEECH_USD_PER_MILLION": "30",
+    # Gemini 3.1 Flash Lite Image: US$0.25 in / US$30 out per million tokens,
+    # about US$0.034 a picture. Gemini 2.5 Flash Image was shut down on 2 Oct 2026.
+    "DECKASTRA_VERTEX_IMAGE_MODEL": "gemini-3.1-flash-lite-image",
+    "DECKASTRA_VERTEX_PRICES": json.dumps({"gemini-3.1-flash-lite-image": {"input": 0.25, "output": 30}}),
+    # Veo 3.1 Fast, listed at US$0.08-0.12 a second for 720p-1080p; held at
+    # US$0.15. Veo is regional, so it is called in us-central1.
+    "DECKASTRA_VERTEX_VIDEO_MODEL": "veo-3.1-fast-generate-001",
+    "DECKASTRA_VERTEX_VIDEO_LOCATION": "us-central1",
+    "DECKASTRA_VEO_USD_PER_SECOND": "0.15",
 }
 
 
@@ -200,9 +224,11 @@ def deploy(cloud, tag, size="small"):
         env = {"DECKASTRA_ENV": "production",
             "GOOGLE_CLOUD_PROJECT": project, "DECKASTRA_VERTEX_PROJECT": project, "DECKASTRA_VERTEX_LOCATION": "global",
             "DECKASTRA_GOOGLE_DESKTOP_CLIENT_ID": json.loads((Path(__file__).parent / "public-auth.json").read_text(encoding="utf-8"))[project]["googleDesktopClientId"],
-            "DECKASTRA_VERTEX_IDENTITY": "attached", "DECKASTRA_VERTEX_IMAGE_MODEL": "", "DECKASTRA_VERTEX_PRICES": "{}",
+            "DECKASTRA_VERTEX_IDENTITY": "attached", **MEDIA,
             "DECKASTRA_TRANSLATION": "google", "DECKASTRA_TRANSLATION_USD_PER_MILLION": "20",
-            "DECKASTRA_ASSISTANT_MAX_COST_USD": "0.30", "DECKASTRA_GLOBAL_DAILY_USD": shape["daily_usd"],
+            "DECKASTRA_ASSISTANT_MAX_COST_USD": shape["request_max_usd"], "DECKASTRA_GLOBAL_DAILY_USD": shape["daily_usd"],
+            "DECKASTRA_ACCOUNT_DAILY_USD": shape["account_daily_usd"], "DECKASTRA_DEVICE_DAILY_USD": shape["account_daily_usd"],
+            "DECKASTRA_FREE_MONTHLY_CREDITS": shape["free_credits"],
             "DECKASTRA_EXPORTS_IN_API": shape["exports_in_api"],
             "DECKASTRA_CREDITS_ENABLED": "1", "DECKASTRA_ACCOUNT_DELETION_ENABLED": "1", "DECKASTRA_TELEMETRY_GCP": "1", "DECKASTRA_GCS_ASSETS_BUCKET": f"{project}-assets",
             "DECKASTRA_GCS_EXPORTS_BUCKET": f"{project}-exports", "DECKASTRA_GCS_SERVICE_ACCOUNT": f"deckastra-api@{project}.iam.gserviceaccount.com",

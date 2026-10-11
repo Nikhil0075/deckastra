@@ -4251,6 +4251,33 @@ easy to undo:
   `STILL_TO_REMOVE` is a ratchet: the test fails when a listed file has gone
   clean, so the list can only get shorter.
 
+### Paid media is on, pinned and priced (2026-10-12)
+
+`bootstrap.py` `MEDIA` sets the speech provider, the image model and its token
+prices, and the Veo model, region and per-second price. The `small` size sets
+the demo limits:
+
+- 300 free credits a month (`DECKASTRA_FREE_MONTHLY_CREDITS`);
+- US$1 a day per account and per device;
+- US$1 per request;
+- US$1 a day for the whole cloud.
+
+Rules that are easy to undo:
+
+- **A model is set only after the project confirms it.** A free
+  `countTokens`, or the publisher-model lookup for Veo, proves it is
+  available. Its price comes from Google's page, rounded up, never down.
+- **Raising the free allowance tops up existing accounts at once**, as one
+  ledger grant per period and amount (`credits.account`). A cut waits for
+  renewal and takes nothing back.
+- `tests/test_exports_in_api.py` runs the real configuration functions on the
+  deployed values. Video once looked enabled because its model had a default,
+  and could never run: no per-second price was set, and the US$0.30 request
+  ceiling refused every clip.
+- **The budget stop switches Vertex AI, Translation and Text-to-Speech off**
+  for the rest of the month once a project passes ₹5,000. If staging's AI is
+  off, check `deckastra-budget-stop` logs before suspecting the code.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,
