@@ -35,7 +35,11 @@ def run_smoke(cloud, url=None):
             assert http.get(url + "/v1/account/credits").status_code == 401
             balance = http.get(url + "/v1/account/credits", headers=headers)
             assert balance.status_code == 200, f"Credit API status {balance.status_code}"
-            assert balance.json()["remaining_credits"] == 60
+            # A new account starts with the configured monthly allowance
+            # (DECKASTRA_FREE_MONTHLY_CREDITS, 300 in the small size since
+            # 2026-10-12), not a figure written into this check.
+            granted = balance.json()
+            assert granted["monthly_allowance"] >= 60 and granted["remaining_credits"] == granted["monthly_allowance"], f"Credits: {granted}"
             made = http.post(url + "/v1/presentations", headers=headers, json={"title": "Disposable cloud check"})
             assert made.status_code == 201, f"Create status {made.status_code}: {made.text[:200]}"
             deck = made.json()
@@ -81,9 +85,19 @@ def run_smoke(cloud, url=None):
             assert imported_status["presentation_id"] != deck["presentation_id"]
             fonts = http.get(url + "/v1/font-packs/japanese")
             assert fonts.status_code == 200 and len(fonts.json()["files"]) == 2
-            disabled = http.post(url + "/v1/assistant/infer", headers=headers,
-                json={"task": "image", "system": "Create an image", "messages": [{"role": "user", "content": "Blue abstract background"}], "image_output": True})
-            assert disabled.status_code == 503
+            # The AI gate, checked without spending anything. Image generation
+            # is on since 2026-10-12, so the old check (expect a refusal for a
+            # real image request) would now generate and pay for a picture on
+            # every deploy. Instead: an unsigned call is refused, a malformed
+            # device is refused before any provider is reached, and the
+            # account's capabilities say the configured media are available.
+            ask = {"task": "image", "system": "Create an image", "messages": [{"role": "user", "content": "Blue abstract background"}], "image_output": True}
+            assert http.post(url + "/v1/assistant/infer", json=ask).status_code == 401
+            assert http.post(url + "/v1/assistant/infer", headers={**headers, "X-Deckastra-Device": "x" * 129}, json=ask).status_code == 422
+            offered = http.get(url + "/v1/account/capabilities", headers=headers)
+            assert offered.status_code == 200, f"Capabilities status {offered.status_code}"
+            tasks = offered.json()["tasks"]
+            assert tasks["image"]["available"] and tasks["video"]["available"], f"Media not configured: {tasks}"
             deletion = http.request("DELETE", url + "/v1/account", headers=headers, json={"confirm": "DELETE"})
             assert deletion.status_code == 202, f"Deletion status {deletion.status_code}"
             receipt = deletion.json()["id"]
