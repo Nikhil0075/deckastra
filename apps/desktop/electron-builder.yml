@@ -29,11 +29,26 @@ fileAssociations:
 directories:
   output: release
   buildResources: build
-# Only the built bundles. Everything else — workspace packages, node_modules,
-# TypeScript source — is already inside them.
+# Only what the app loads from inside the archive: the main bundle, the
+# preload and the renderer (`dist/main`), and `package.json` for its `main`.
+# Workspace packages, node_modules and TypeScript source are already inside
+# the bundles.
+#
+# This used to be `dist/**/*`, which put a second copy of everything below in
+# `extraResources` into app.asar (the service, the exporter, the MCP server and
+# ffmpeg, which the app only ever runs from `resources/`), plus the build's own
+# scratch: the service's virtual environment (`.venv`) and PyInstaller's work
+# folder (`.pyinstaller`), about 530MB unpacked that nothing reads.
+#
+# electron-builder also copies the production dependencies' `node_modules`
+# unless told not to. The bundles import nothing but `electron` and Node's own
+# modules (the build checks this), so that was a third copy of React, zod, the
+# fonts and every workspace package, read by nothing.
 files:
-  - dist/**/*
+  - dist/main/**/*
+  - "!dist/main/**/*.map"
   - package.json
+  - "!node_modules/**/*"
 asar: true
 # The workspace service, beside the app rather than inside the archive. An
 # executable cannot be run from within an asar, and `sidecar.ts` looks for it at
