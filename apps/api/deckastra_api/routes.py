@@ -587,6 +587,129 @@ def insert_pattern(
             "slide_id": slide["id"], "pattern": request.pattern, "warnings": warnings}
 
 
+class ThemeRequest(BaseModel):
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    name: str = Field(default="Agent theme", min_length=1, max_length=120)
+    background: str = Field(min_length=7, max_length=7)
+    foreground: str = Field(min_length=7, max_length=7)
+    accent: str = Field(min_length=7, max_length=7)
+    secondary: str | None = Field(default=None, min_length=7, max_length=7)
+    series: list[str] = Field(default_factory=list, max_length=5)
+    display_font: str | None = Field(default=None, min_length=1, max_length=80)
+    body_font: str | None = Field(default=None, min_length=1, max_length=80)
+    intent: str = Field(default="Set the deck's colours and type", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+    dry_run: bool = False
+
+
+#: What a deck adds to its theme that a new palette must not take away
+#: (CLAUDE.md, "A theme change keeps the deck's own named colours and styles").
+_DECK_OWNED_THEME_KEYS = ("objectStyles", "icons", "modes", "table")
+
+
+@router.post("/presentations/{presentation_id}/theme")
+def propose_theme(
+    presentation_id: str,
+    request: ThemeRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """An art direction's palette and faces, as one reviewable change.
+
+    Agents could reach a theme only by hand-writing a patch to it, so a brief
+    that asked for graphite, lime and cobalt stayed in the template's colours.
+    The caller names a few colours and two faces; every other role is derived
+    (`office_theme.theme_from_palette`) and text below WCAG AA is refused. The
+    change is a proposal whose risk the server computes, like any other.
+    """
+    from . import office_theme
+
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != request.expected_version_id:
+        raise HTTPException(409, {"message": "This deck changed since you read it. Read it again first.", "code": "E310", "current_version_id": head.version_id})
+    try:
+        theme, notes = office_theme.theme_from_palette(
+            request.name, background=request.background, foreground=request.foreground, accent=request.accent,
+            secondary=request.secondary, series=request.series, display_font=request.display_font, body_font=request.body_font,
+        )
+    except office_theme.OfficeThemeError as error:
+        raise HTTPException(422, str(error)) from error
+    current = head.document.get("theme") or {}
+    custom = (current.get("colors") or {}).get("custom")
+    if custom:
+        theme["colors"]["custom"] = copy.deepcopy(custom)
+    for key in _DECK_OWNED_THEME_KEYS:
+        if key in current:
+            theme[key] = copy.deepcopy(current[key])
+    if office_theme.contrast(request.accent, request.background) < 3:
+        notes.append("The accent is under 3:1 on the background, so lines and shapes drawn in it will be faint.")
+    operations: list[dict[str, Any]] = [{"op": "replace", "path": "/theme", "value": theme}]
+    if "themeId" in head.document:
+        # The deck no longer follows a saved workspace theme; it has its own.
+        operations.append({"op": "remove", "path": "/themeId"})
+    report = {
+        "text_contrast": round(office_theme.contrast(request.foreground, request.background), 2),
+        "accent_contrast": round(office_theme.contrast(request.accent, request.background), 2),
+        "notes": notes,
+    }
+    if request.dry_run:
+        return {"outcome": "planned", "operations": operations, "version_id": head.version_id, **report}
+    try:
+        outcome = proposals.create_proposal(
+            session, presentation_id=presentation_id, operations=operations, intent=request.intent,
+            created_by=principal.user_id, agent_id=f"mcp:{request.client_label}"[:120],
+            reason="Palette and type from an art direction", expected_version_id=request.expected_version_id,
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(409, {"message": str(error), "code": error.code}) from error
+    return {"outcome": outcome["status"], "risk_tier": outcome["risk_tier"], "reasons": outcome.get("reasons") or [],
+            "transaction_id": outcome["transaction_id"], "version_id": outcome.get("version_id"),
+            "expires_at": outcome.get("expires_at"), **report}
+
+
+_PATTERN_PREVIEWS: dict[tuple[str, str], dict[str, Any]] = {}
+
+
+@router.get("/patterns/preview")
+def preview_patterns(
+    language: str = "neutral",
+    principal: Principal = Depends(current_principal),
+) -> dict[str, Any]:
+    """Every slide pattern's example, composed in one design language.
+
+    What the Add library draws as each pattern's tile: the slide Insert would add
+    to a deck in that language, with the pattern's example words. It reads no
+    deck and stores nothing, so it needs no version and cannot go stale while
+    someone types; the editor draws it in the deck's own theme. Composition is
+    deterministic, so one answer per language and catalog revision is kept.
+    """
+    from .template_compose import catalog_revision
+
+    del principal  # a signed-in caller, nothing more: the answer is the same for everyone
+    if language not in languages.LANGUAGE_LAYOUTS:
+        language = "neutral"
+    key = (language, catalog_revision())
+    cached = _PATTERN_PREVIEWS.get(key)
+    if cached is not None:
+        return cached
+    slides: dict[str, Any] = {}
+    for pattern in presets.catalog().get("slidePatterns") or []:
+        try:
+            plan = presets.slide_plan_from_pattern(pattern)
+            story, _ = languages.apply_density(StoryPlan(title="", audience="", objective="", narrative_arc="", slides=[plan]), language)
+            slides[pattern] = compose_slide(story.slides[0], 0, language)
+        except presets.PresetError:
+            # A pattern whose example cannot compose is left out rather than
+            # failing the gallery; the tile falls back to its name.
+            continue
+    answer = {"language": language, "revision": key[1], "slides": slides}
+    if len(_PATTERN_PREVIEWS) > 32:
+        _PATTERN_PREVIEWS.clear()
+    _PATTERN_PREVIEWS[key] = answer
+    return answer
+
+
 class MotionStyleRequest(BaseModel):
     expected_version_id: str = Field(min_length=1, max_length=64)
     style: str = Field(min_length=1, max_length=80)

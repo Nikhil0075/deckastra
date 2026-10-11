@@ -206,6 +206,42 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 
   server.registerTool(
+    "theme_propose",
+    {
+      title: "Set the deck's colours and type",
+      description:
+        "Give the deck the palette and faces an art direction asks for. Name a background, the text " +
+        "colour on it, an accent, optionally a secondary colour and up to five chart colours, and a " +
+        "display and body face. The app derives every other role (surfaces, borders, muted text, " +
+        "readable text on the accent) and refuses text below WCAG AA (4.5:1). The deck keeps its own " +
+        "named colours and object styles. Faces that ship with Deckastra: Inter, Manrope, DM Sans, " +
+        "Work Sans, Nunito, Playfair Display, Lora, Source Serif 4, Fraunces, Jost, Space Grotesk, " +
+        "Bebas Neue, Archivo Black, JetBrains Mono, IBM Plex Mono, Caveat; any other face is named in " +
+        "the notes because it may be substituted elsewhere. Pass dry_run to see the contrast first. " +
+        "Like any change, it applies or becomes a proposal for the user, and you cannot choose which.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        name: z.string().min(1).max(120).optional(),
+        background: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        foreground: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        accent: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+        secondary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+        series: z.array(z.string().regex(/^#[0-9A-Fa-f]{6}$/)).max(5).optional(),
+        display_font: z.string().min(1).max(80).optional(),
+        body_font: z.string().min(1).max(80).optional(),
+        dry_run: z.boolean().default(false),
+        intent: z.string().min(1).max(500).optional(),
+      },
+    },
+    async ({ presentation_id, ...body }) =>
+      guard(async () => {
+        if (!client.theme) throw new Error("This workspace service cannot set a deck's theme.");
+        return json(await client.theme.propose(presentation_id, { ...body, client_label: client.clientId.replace(/^mcp:/, "") }));
+      }),
+  );
+
+  server.registerTool(
     "design_language_get",
     {
       title: "Read one design language's rules",
@@ -235,6 +271,31 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       }),
   );
 
+  // Data a slide carries rather than words (2026-10-11). Names and numbers only:
+  // the renderer lays out the chart, the layout engine places the diagram.
+  const chartData = z.object({
+    type: z.enum(["column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope"]).optional(),
+    categories: z.array(z.string().min(1).max(40)).min(1).max(24),
+    series: z.array(z.object({ name: z.string().min(1).max(60), values: z.array(z.number()).min(1).max(24) })).min(1).max(6),
+    unit: z.string().max(12).optional(),
+  });
+  const diagramData = z.object({
+    kind: z.enum(["architecture", "flow", "sequence", "network", "mindmap"]).optional(),
+    direction: z.enum(["LR", "TB"]).optional(),
+    nodes: z.array(z.object({
+      key: z.string().min(1).max(40),
+      label: z.string().min(1).max(60),
+      sublabel: z.string().max(80).optional(),
+      role: z.string().max(20).optional(),
+    })).min(2).max(12),
+    edges: z.array(z.object({ source: z.string(), target: z.string(), label: z.string().max(40).optional() })).max(24).optional(),
+  });
+  const timelineData = z.array(z.object({
+    when: z.string().min(1).max(24),
+    label: z.string().min(1).max(60),
+    detail: z.string().max(120).optional(),
+  })).max(8);
+
   server.registerTool(
     "deck_from_template",
     {
@@ -251,6 +312,9 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
           z.string(),
           z.array(z.string()),
           z.array(z.object({ value: z.string(), label: z.string() })),
+          chartData,
+          diagramData,
+          timelineData,
         ]))).optional(),
       },
     },
@@ -259,7 +323,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   );
 
   const storySlide = z.object({
-    layout: z.enum(["title", "statement", "bullets", "metrics", "quote", "code", "split"]),
+    layout: z.enum(["title", "statement", "bullets", "metrics", "quote", "code", "split", "chart", "diagram", "timeline", "image"]),
     purpose: z.string(),
     key_message: z.string(),
     headline: z.string(),
@@ -274,6 +338,10 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     language: z.string().optional(),
     caption: z.string().optional(),
     speaker_notes: z.string().optional(),
+    chart: chartData.optional().describe("Required by the chart layout."),
+    diagram: diagramData.optional().describe("Required by the diagram layout."),
+    timeline: timelineData.optional().describe("Two or more entries, required by the timeline layout."),
+    picture: z.string().max(400).optional().describe("The image layout: what the photograph shows."),
   });
   server.registerTool(
     "deck_compose",
@@ -283,7 +351,10 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         "Create a deck from narrative intent, words and fixed layout names. Do not send coordinates, " +
         "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry. " +
         "Name a design_language (see design_language_get) to compose in its grammar and theme; " +
-        "its density limits apply, and anything trimmed or too long comes back as warnings.",
+        "its density limits apply, and anything trimmed or too long comes back as warnings. " +
+        "Data layouts: chart (with chart: categories, named series, unit; types include waterfall and slope), " +
+        "diagram (with diagram: nodes by key and edges between keys), timeline (with two or more dated entries) " +
+        "and image (a full-bleed photograph, described in picture). Vary layouts: do not use one three slides running.",
       inputSchema: {
         project_id: z.string().min(1).optional(),
         theme_key: z.string().min(1).optional(),
@@ -308,6 +379,9 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     z.string(),
     z.array(z.string()),
     z.array(z.object({ value: z.string(), label: z.string() })),
+    chartData,
+    diagramData,
+    timelineData,
   ]);
   server.registerTool(
     "slide_insert_pattern",
@@ -962,11 +1036,27 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
           intent: `Translate ${entries.length} item${entries.length === 1 ? "" : "s"} into ${locale}`,
           expected_version_id,
         });
+        // Coverage once this lands, so an agent cannot report a language as done
+        // while slides are still in the original (the 2026-10-11 review found a
+        // deck called "translated" with a third of its slots missing).
+        const overlay = read.document.locales?.[locale];
+        const landed = Object.fromEntries(entries.map((entry) => [entry.slot_path, { value: entry.text, sourceHash: localeTextHash(slots.get(entry.slot_path)!.value) }]));
+        const after = languagesOf({
+          ...read.document,
+          locales: { ...read.document.locales, [locale]: { locale, status: "draft", ...overlay, entries: { ...overlay?.entries, ...landed } } },
+        } as never).find((language) => !language.source && language.locale === locale);
+        const coverage = after
+          ? { translated: after.translated, outdated: after.outdated, missing: after.missing, complete: after.missing === 0 && after.outdated === 0 }
+          : undefined;
         return json({
           outcome: result.outcome,
           risk_tier: result.risk_tier,
           transaction_id: result.transaction_id,
           version_id: result.version_id,
+          ...(coverage ? { coverage } : {}),
+          ...(coverage && !coverage.complete
+            ? { note: `${locale} is not complete: ${coverage.missing} missing and ${coverage.outdated} outdated. Call locale_list with this locale for the rest before saying the deck is translated.` }
+            : {}),
           ...(result.outcome === "pending" ? { awaiting: "The user approves translations in Deckastra › AI › Pending changes." } : {}),
         });
       }),
@@ -1067,11 +1157,11 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     {
       title: "Export a deck",
       description:
-        "Start a PDF, PPTX or narrated MP4 export. Returns a job; poll it with export_status. The file stays " +
+        "Start a PDF or PPTX export. Returns a job; poll it with export_status. The file stays " +
         "in Deckastra: this tool cannot write to a path, and the user saves it from the app.",
       inputSchema: {
         presentation_id: z.string().min(1),
-        kind: z.enum(["pdf", "pptx", "mp4"]),
+        kind: z.enum(["pdf", "pptx"]),
         include_notes: z.boolean().default(false),
         at_time: z.enum(["final", "initial"]).default("final"),
         locale: z

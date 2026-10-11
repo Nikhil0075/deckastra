@@ -97,3 +97,55 @@ def test_an_inserted_pattern_composes_in_the_decks_language(client, auth):
     slide = response.json()["operations"][0]["value"]
     # System Terminal's window bar, not the neutral statement.
     assert any(element.get("name") == "Window bar" for element in slide["elements"])
+
+
+def test_pattern_previews_are_every_pattern_composed_in_the_language_and_store_nothing(client, auth):
+    """The Add library draws each pattern as the slide Insert would add."""
+    from deckastra_api.db.models import Presentation
+    from deckastra_api.db import session as db_session
+
+    with db_session.session_scope() as session:
+        before = session.query(Presentation).count()
+    swiss = client.get("/v1/patterns/preview?language=system-terminal", headers=auth)
+    assert swiss.status_code == 200, swiss.text
+    body = swiss.json()
+    assert body["language"] == "system-terminal"
+    assert set(body["slides"]) == set(presets.catalog()["slidePatterns"])
+    # The language's own grammar, not the neutral statement.
+    assert any(e.get("name") == "Window bar" for e in body["slides"]["statement"]["elements"])
+    # An unknown language is drawn neutral rather than refused.
+    assert client.get("/v1/patterns/preview?language=nope", headers=auth).json()["language"] == "neutral"
+    with db_session.session_scope() as session:
+        assert session.query(Presentation).count() == before
+
+
+def test_a_composed_deck_moves_in_its_languages_transitions_with_accents_by_slide_kind(client, auth):
+    """Agent decks used to arrive with no transitions; now the language decides, by slide kind."""
+    slides = [
+        {"layout": "title", "purpose": "p", "key_message": "k", "headline": "Grid demand"},
+        {"layout": "bullets", "purpose": "p", "key_message": "k", "headline": "Three causes", "bullets": ["One", "Two"]},
+        {"layout": "chart", "purpose": "p", "key_message": "k", "headline": "Demand rose",
+         "chart": {"categories": ["2025", "2026"], "series": [{"name": "GW", "values": [3, 5]}]}},
+    ]
+    plan = {"title": "T", "audience": "", "objective": "", "narrative_arc": "", "slides": slides}
+    body = client.post("/v1/decks/compose", headers=auth, json={"story_plan": plan, "design_language": "data-desk"}).json()
+    kinds = [slide.get("transition", {}).get("type") for slide in body["document"]["slides"]]
+    # Data Desk fades by default and pushes into a chart.
+    assert kinds[1] == "fade" and kinds[2] == "push"
+    neutral = client.post("/v1/decks/compose", headers=auth, json={"story_plan": plan}).json()
+    assert {slide.get("transition", {}).get("type") for slide in neutral["document"]["slides"][1:]} == {"fade"}
+
+
+def test_deck_compose_says_when_a_deck_repeats_one_structure(client, auth):
+    bullets = {"layout": "bullets", "purpose": "p", "key_message": "k", "bullets": ["One", "Two"]}
+    plan = {"title": "T", "audience": "", "objective": "", "narrative_arc": "",
+            "slides": [{**bullets, "headline": f"Point {n}"} for n in range(1, 5)]}
+    warnings = client.post("/v1/decks/compose", headers=auth, json={"story_plan": plan}).json()["warnings"]
+    assert any("Slides 1–4 all use the bullets structure" in w for w in warnings), warnings
+    varied = {**plan, "slides": [
+        {"layout": "statement", "purpose": "p", "key_message": "k", "headline": "One claim"},
+        {**bullets, "headline": "Two points"},
+        {"layout": "chart", "purpose": "p", "key_message": "k", "headline": "It grew",
+         "chart": {"categories": ["A", "B"], "series": [{"name": "S", "values": [1, 2]}]}},
+    ]}
+    assert client.post("/v1/decks/compose", headers=auth, json={"story_plan": varied}).json()["warnings"] == []

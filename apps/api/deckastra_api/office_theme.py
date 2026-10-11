@@ -225,3 +225,58 @@ def _build(name: str, c: dict[str, str | None], major: str | None, minor: str | 
         {"foreground": "colors.accentForeground", "background": "colors.accent", "minimumRatio": 4.5},
     ]
     return theme
+
+
+# The families the app ships (renderer/src/font-library.ts), so a theme an agent
+# writes can say which faces will travel. Held to the TypeScript list by
+# tests/test_theme_routes.py: a second list is only safe while a test compares
+# the two.
+BUNDLED_FONTS = frozenset({
+    "Inter", "Manrope", "DM Sans", "Work Sans", "Nunito", "Playfair Display", "Lora",
+    "Source Serif 4", "Fraunces", "Jost", "Space Grotesk", "Bebas Neue", "Archivo Black",
+    "JetBrains Mono", "IBM Plex Mono", "Caveat",
+})
+
+_HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def theme_from_palette(
+    name: str,
+    *,
+    background: str,
+    foreground: str,
+    accent: str,
+    secondary: str | None = None,
+    series: list[str] | None = None,
+    display_font: str | None = None,
+    body_font: str | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """A full theme from the few colours and faces an art direction names.
+
+    The agent's theme tool (2026-10-11). The same builder the PowerPoint import
+    uses, so every other role (surfaces, borders, muted text, chart series,
+    readable text on the accent) is derived the same way. Text that would read
+    under WCAG AA on its background is refused here rather than noted: an import
+    has to take the theme it is given, an agent can choose another colour.
+    """
+    for label, value in (("background", background), ("foreground", foreground), ("accent", accent),
+                         ("secondary", secondary), *((f"series[{i}]", v) for i, v in enumerate(series or []))):
+        if value is not None and not _HEX.match(value):
+            raise OfficeThemeError(f"{label} must be a six-digit hex colour such as #1E4BD2, not {value!r}.")
+    ratio = contrast(foreground, background)
+    if ratio < 4.5:
+        raise OfficeThemeError(
+            f"Text on the background would be {ratio:.1f}:1; WCAG AA asks for 4.5:1. Choose a lighter or darker foreground."
+        )
+    colours: dict[str, str | None] = {"lt1": background.upper(), "dk1": foreground.upper(), "accent1": accent.upper(),
+                                      "accent2": secondary.upper() if secondary else None}
+    for index, value in enumerate((series or [])[:5], start=3):
+        colours[f"accent{index}"] = value.upper()
+    notes: list[str] = []
+    theme = _build(name or "Agent theme", colours, display_font, body_font, notes)
+    notes = [note for note in notes if "names no heading or body font" not in note]
+    for face in (display_font, body_font):
+        if face and face not in BUNDLED_FONTS:
+            notes.append(f"{face} does not ship with Deckastra; it draws only where it is installed, and another face stands in elsewhere.")
+    theme["description"] = "Set by an art direction."
+    return theme, notes

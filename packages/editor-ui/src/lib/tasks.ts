@@ -42,7 +42,6 @@ export interface TaskExportsClient {
 const KIND_WORDS: Record<string, string> = {
   pdf: "PDF",
   pptx: "PowerPoint",
-  mp4: "Video",
   mydeck: "Deckastra file",
   png: "Picture",
 };

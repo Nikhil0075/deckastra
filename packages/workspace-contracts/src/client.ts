@@ -1,5 +1,5 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
-import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest } from "./assistant";
+import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest, VideoQuote, VideoQuoteRequest } from "./assistant";
 
 import type { AppliedChange, PendingProposal, ProposalDetail } from "./agent";
 import type {
@@ -38,6 +38,9 @@ import type {
   DeckFromTemplateRequest,
   InsertPatternRequest,
   InsertPatternResult,
+  PatternPreviews,
+  ThemeProposalRequest,
+  ThemeProposalResult,
   PresetCatalog,
   TemplatePreviewRequest,
   TemplatePreviewResult,
@@ -92,6 +95,8 @@ export interface WorkspaceClient {
   readonly assistant?: {
     capabilities(options?: RequestOptions & { presentationId?: string; slideId?: string; locale?: string }): Promise<AssistantCapabilities>;
     quoteImage(presentationId: string, request: ImageQuoteRequest, options?: RequestOptions): Promise<PaidServiceQuote>;
+    /** The price of one muted video clip. Optional: an older service has no clips. */
+    quoteVideo?(presentationId: string, request: VideoQuoteRequest, options?: RequestOptions): Promise<VideoQuote>;
     start(request: AssistantRequest, options?: RequestOptions): Promise<AssistantRun>;
     get(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     list(presentationId: string, options?: RequestOptions): Promise<{ runs: AssistantRun[] }>;
@@ -250,6 +255,8 @@ export interface WorkspaceClient {
       body: InsertPatternRequest,
       options?: RequestOptions,
     ): Promise<InsertPatternResult>;
+    /** Every pattern's example slide in a design language. Optional: absent, tiles show their names. */
+    previewPatterns?(language: string, options?: RequestOptions): Promise<PatternPreviews>;
   };
 
   /**
@@ -259,6 +266,11 @@ export interface WorkspaceClient {
    * sends is intent, and the durations come back computed. A caller that could
    * send milliseconds would be a caller that could over-run the entrance budget.
    */
+  /** A deck's palette and faces, as one reviewable change. Optional: an older service has none. */
+  readonly theme?: {
+    propose(presentationId: string, body: ThemeProposalRequest, options?: RequestOptions): Promise<ThemeProposalResult>;
+  };
+
   readonly motion: {
     capabilities(options?: RequestOptions): Promise<MotionCapabilities>;
     propose(

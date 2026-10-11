@@ -15,7 +15,8 @@ const themeKeys = new Set(DECK_PRESETS.map((preset) => preset.themeKey));
 
 describe("preset quality gate", () => {
   it("meets the reviewed launch catalog targets", () => {
-    expect(SLIDE_PATTERNS).toHaveLength(60);
+    // 60 word patterns and nine that carry data (charts, diagrams, milestones, a photograph).
+    expect(SLIDE_PATTERNS).toHaveLength(69);
     expect(Object.keys(MOTION_STYLES)).toHaveLength(7);
     expect(MOTION_STYLES.playful.entrance).toBe("wordCascade");
     // 24 neutral templates and four in the pilot design languages (unit 5).

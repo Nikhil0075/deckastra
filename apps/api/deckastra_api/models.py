@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SlideLayout(str, Enum):
@@ -36,11 +36,84 @@ class SlideLayout(str, Enum):
     QUOTE = "quote"
     CODE = "code"
     SPLIT = "split"
+    # Layouts that carry data rather than words (2026-10-11). Without them an
+    # agent asked for a revenue chart, a system diagram or a roadmap could only
+    # draw cards and rows, and every deck converged on the same three shapes.
+    CHART = "chart"
+    DIAGRAM = "diagram"
+    TIMELINE = "timeline"
+    IMAGE = "image"
 
 
 class Metric(BaseModel):
     value: str = Field(description="The number itself, e.g. '250ms' or '3x'. Short.")
     label: str = Field(description="What the number measures. A few words.")
+
+
+class ChartSeriesPlan(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    values: list[float] = Field(min_length=1, max_length=24)
+
+
+class ChartPlan(BaseModel):
+    """The numbers, never the drawing: the renderer lays the chart out."""
+
+    type: Literal["column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope"] = "column"
+    categories: list[str] = Field(min_length=1, max_length=24)
+    series: list[ChartSeriesPlan] = Field(min_length=1, max_length=6)
+    #: Shown after each number ("%", "₹ cr"). Empty for none.
+    unit: str = Field(default="", max_length=12)
+
+    @model_validator(mode="after")
+    def _one_value_per_category(self) -> "ChartPlan":
+        for series in self.series:
+            if len(series.values) != len(self.categories):
+                raise ValueError(
+                    f"Series {series.name!r} has {len(series.values)} values for {len(self.categories)} categories."
+                )
+        if len({series.name for series in self.series}) != len(self.series):
+            raise ValueError("Each series needs its own name.")
+        return self
+
+
+class DiagramNodePlan(BaseModel):
+    #: The agent's own name for the node, used only to connect edges; the
+    #: composer mints the real id.
+    key: str = Field(min_length=1, max_length=40)
+    label: str = Field(min_length=1, max_length=60)
+    sublabel: str = Field(default="", max_length=80)
+    #: "service", "datastore", "external" or "actor".
+    role: str = Field(default="", max_length=20)
+
+
+class DiagramEdgePlan(BaseModel):
+    source: str = Field(min_length=1, max_length=40)
+    target: str = Field(min_length=1, max_length=40)
+    label: str = Field(default="", max_length=40)
+
+
+class DiagramPlan(BaseModel):
+    kind: Literal["architecture", "flow", "sequence", "network", "mindmap"] = "architecture"
+    direction: Literal["LR", "TB"] = "LR"
+    nodes: list[DiagramNodePlan] = Field(min_length=2, max_length=12)
+    edges: list[DiagramEdgePlan] = Field(default_factory=list, max_length=24)
+
+    @model_validator(mode="after")
+    def _edges_join_known_nodes(self) -> "DiagramPlan":
+        keys = [node.key for node in self.nodes]
+        if len(set(keys)) != len(keys):
+            raise ValueError("Each diagram node needs its own key.")
+        for edge in self.edges:
+            missing = [end for end in (edge.source, edge.target) if end not in keys]
+            if missing:
+                raise ValueError(f"An edge names {', '.join(missing)}, which is not a node.")
+        return self
+
+
+class TimelineEntryPlan(BaseModel):
+    when: str = Field(min_length=1, max_length=24)
+    label: str = Field(min_length=1, max_length=60)
+    detail: str = Field(default="", max_length=120)
 
 
 class SlidePlan(BaseModel):
@@ -70,6 +143,22 @@ class SlidePlan(BaseModel):
     language: str = Field(default="", description="Language of the code block.")
     caption: str = Field(default="", description="Small text under the main content.")
     speaker_notes: str = Field(default="", description="What the presenter says here.")
+    chart: ChartPlan | None = Field(default=None, description="Used by the chart layout: categories and series.")
+    diagram: DiagramPlan | None = Field(default=None, description="Used by the diagram layout: nodes and edges.")
+    timeline: list[TimelineEntryPlan] = Field(default_factory=list, max_length=8, description="Used by the timeline layout.")
+    picture: str = Field(default="", max_length=400, description="Used by the image layout: what the photograph shows.")
+
+    @model_validator(mode="after")
+    def _data_for_data_layouts(self) -> "SlidePlan":
+        # A data layout without its data would compose an empty frame; say so
+        # where the plan is written instead.
+        if self.layout == SlideLayout.CHART and self.chart is None:
+            raise ValueError("A chart slide needs chart data (categories and series).")
+        if self.layout == SlideLayout.DIAGRAM and self.diagram is None:
+            raise ValueError("A diagram slide needs a diagram (nodes and edges).")
+        if self.layout == SlideLayout.TIMELINE and len(self.timeline) < 2:
+            raise ValueError("A timeline slide needs at least two entries.")
+        return self
 
 
 class StoryPlan(BaseModel):

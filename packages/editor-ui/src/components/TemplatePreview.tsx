@@ -108,7 +108,8 @@ function useTemplatePreview(templateId: string, themeKey: string, slides: Slides
 }
 
 /** A box that reports its width and whether it is on screen. */
-function useSeen<T extends HTMLElement>(): { ref: React.RefObject<T | null>; width: number; onScreen: boolean } {
+/** Its width, and whether it is on screen (or about to be). Shared with the Add library's pattern tiles. */
+export function useSeen<T extends HTMLElement>(): { ref: React.RefObject<T | null>; width: number; onScreen: boolean } {
   const ref = useRef<T | null>(null);
   const [width, setWidth] = useState(0);
   const [onScreen, setOnScreen] = useState(false);

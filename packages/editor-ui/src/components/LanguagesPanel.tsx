@@ -283,6 +283,15 @@ export function LanguagesPanel({
                     size="sm"
                     variant="ghost"
                     icon="check"
+                    // "Reviewed" says a person read the whole language through, which
+                    // cannot be true while some of it is still in the original.
+                    disabled={language.status !== "reviewed" && (language.missing > 0 || language.outdated > 0)}
+                    title={
+                      language.status !== "reviewed" && (language.missing > 0 || language.outdated > 0)
+                        ? `Translate the ${language.missing + language.outdated} remaining first`
+                        : undefined
+                    }
+                    data-testid={`mark-reviewed-${language.tag}`}
                     onClick={() =>
                       editor.apply(setLocaleStatusOperations(source, language.tag, language.status === "reviewed" ? "draft" : "reviewed"), {
                         label: language.status === "reviewed" ? "Mark as draft" : "Mark as reviewed",

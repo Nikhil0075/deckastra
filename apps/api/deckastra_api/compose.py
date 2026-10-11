@@ -584,6 +584,211 @@ def _layout_split(plan: SlidePlan) -> list[dict[str, Any]]:
     return elements
 
 
+
+# ------------------------------------------------- layouts that carry data
+#
+# Added 2026-10-11, after a review found every agent-built deck converging on
+# cards and rows: the schema could draw charts, diagrams and photographs, and no
+# layout put one on a slide. The plan carries the data; geometry is here.
+
+
+def _subtitle_below(plan: SlidePlan, y: float, width: float = CONTENT_W * 0.8) -> tuple[list[dict[str, Any]], float]:
+    if not plan.subtitle:
+        return [], y
+    return [
+        _text(role="subtitle", x=CONTENT_X, y=y, width=width, height=60, content=_rich_text(plan.subtitle),
+              token="body", size=26, color="token:colors.foregroundMuted")
+    ], y + 84
+
+
+def _chart_alt_text(plan: SlidePlan) -> str:
+    """Words for a screen reader (WCAG 1.1.1): the kind, then every value."""
+    chart = plan.chart
+    assert chart is not None
+    unit = f" {chart.unit}" if chart.unit else ""
+    parts = []
+    for series in chart.series:
+        values = ", ".join(f"{category} {value:g}{unit}" for category, value in zip(chart.categories, series.values))
+        parts.append(f"{series.name}: {values}")
+    kind = {"stackedColumn": "stacked column", "stackedBar": "stacked bar"}.get(chart.type, chart.type)
+    return f"{kind.capitalize()} chart. " + "; ".join(parts)[:900]
+
+
+def _layout_chart(plan: SlidePlan) -> list[dict[str, Any]]:
+    chart = plan.chart
+    assert chart is not None
+    elements = [_headline(plan.headline, size=56)]
+    extra, y = _subtitle_below(plan, 300)
+    elements += extra
+    bottom = CONTENT_BOTTOM - (64 if plan.caption else 0)
+    # A takeaway beside the chart when there is one: the number is the
+    # evidence, the sentence is the point.
+    width = CONTENT_W * (0.66 if plan.body else 1.0)
+    keys = [f"s{index}" for index in range(len(chart.series))]
+    rows = [
+        {"category": category, **{key: series.values[i] for key, series in zip(keys, chart.series)}}
+        for i, category in enumerate(chart.categories)
+    ]
+    # Encoded by series *name*, so the legend and the slope's end labels read
+    # as the agent wrote them.
+    for row in rows:
+        for key, series in zip(keys, chart.series):
+            row[series.name] = row.pop(key)
+    names = [series.name for series in chart.series]
+    style: dict[str, Any] = {
+        # A pie names its slices in the legend; a slope and a waterfall label
+        # their own marks.
+        "showLegend": chart.type in ("pie", "donut") or (len(names) > 1 and chart.type not in ("slope", "waterfall")),
+        "showDataLabels": len(chart.categories) <= 8,
+        "showGridlines": chart.type not in ("pie", "donut", "slope"),
+    }
+    # One number of decimals for the whole chart, the most the data uses (at
+    # most two), so "2.1" and "4" do not sit side by side as "2.10" and "4".
+    decimals = max((len(f"{value:g}".split(".")[1]) if "." in f"{value:g}" else 0) for series in chart.series for value in series.values)
+    number_format: dict[str, Any] = {"decimals": min(decimals, 2)}
+    if chart.unit:
+        number_format["suffix"] = chart.unit if chart.unit.startswith("%") else f" {chart.unit}"
+    style["numberFormat"] = number_format
+    elements.append({
+        "id": new_id("el"),
+        "type": "chart",
+        "name": "Chart",
+        "semanticRole": "chart",
+        "chartType": chart.type,
+        "transform": {"x": CONTENT_X, "y": round(y + 10, 2), "width": round(width, 2), "height": round(bottom - y - 10, 2)},
+        "data": {"type": "inline", "rows": rows},
+        "encoding": {"category": "category", "value": names if len(names) > 1 else names[0]},
+        "chartStyle": style,
+        "altText": _chart_alt_text(plan),
+    })
+    if plan.body:
+        side_x = CONTENT_X + CONTENT_W * 0.70
+        elements.append(
+            _text(role="body", x=side_x, y=y + 40, width=CONTENT_W * 0.30, height=bottom - y - 40,
+                  content=_rich_text(plan.body), token="body", size=28, line_height=1.4)
+        )
+    if plan.caption:
+        elements.append(_caption(plan.caption, CONTENT_BOTTOM - 48))
+    return elements
+
+
+def _layout_diagram(plan: SlidePlan) -> list[dict[str, Any]]:
+    diagram = plan.diagram
+    assert diagram is not None
+    elements = [_headline(plan.headline, size=56)]
+    extra, y = _subtitle_below(plan, 300)
+    elements += extra
+    bottom = CONTENT_BOTTOM - (64 if plan.caption else 0)
+    ids = {node.key: new_id("dn") for node in diagram.nodes}
+    nodes = []
+    for node in diagram.nodes:
+        entry: dict[str, Any] = {"id": ids[node.key], "label": node.label}
+        if node.sublabel:
+            entry["sublabel"] = node.sublabel
+        if node.role:
+            entry["role"] = node.role
+        nodes.append(entry)
+    edges = []
+    for edge in diagram.edges:
+        entry = {"id": new_id("de"), "from": ids[edge.source], "to": ids[edge.target], "direction": "forward"}
+        if edge.label:
+            entry["label"] = edge.label
+        edges.append(entry)
+    described = "; ".join(
+        f"{next(n.label for n in diagram.nodes if n.key == e.source)} to {next(n.label for n in diagram.nodes if n.key == e.target)}"
+        + (f" ({e.label})" if e.label else "")
+        for e in diagram.edges
+    )
+    elements.append({
+        "id": new_id("el"),
+        "type": "diagram",
+        "name": "Diagram",
+        "semanticRole": "diagram",
+        "diagramType": diagram.kind,
+        "transform": {"x": CONTENT_X, "y": round(y + 10, 2), "width": CONTENT_W, "height": round(bottom - y - 10, 2)},
+        "nodes": nodes,
+        "edges": edges,
+        "layoutHint": {"algorithm": "layered", "direction": diagram.direction, "mode": "managed"},
+        "altText": (f"{diagram.kind.capitalize()} diagram of " + ", ".join(n.label for n in diagram.nodes)
+                    + (f". Connections: {described}." if described else "."))[:900],
+    })
+    if plan.caption:
+        elements.append(_caption(plan.caption, CONTENT_BOTTOM - 48))
+    return elements
+
+
+def _layout_timeline(plan: SlidePlan) -> list[dict[str, Any]]:
+    """A rule across the slide, a marker per entry, the date above and the words below."""
+    from .language_kit import _shape, _solid
+
+    entries = plan.timeline
+    elements = [_headline(plan.headline, size=56)]
+    extra, _ = _subtitle_below(plan, 300)
+    elements += extra
+    rule_y = 560.0
+    elements.append(_shape("Timeline rule", x=CONTENT_X, y=rule_y - 2, width=CONTENT_W, height=4,
+                           fill=_solid("token:colors.borderStrong")))
+    step = CONTENT_W / len(entries)
+    for index, entry in enumerate(entries):
+        x = CONTENT_X + step * index
+        centre = x + step / 2
+        elements.append(_shape(f"Milestone {index + 1}", kind="ellipse", x=centre - 14, y=rule_y - 14, width=28, height=28,
+                               fill=_solid("token:colors.accent")))
+        elements.append(
+            _text(role="label", x=x + 8, y=rule_y - 96, width=step - 16, height=56, content=_rich_text(entry.when),
+                  token="caption", size=22, weight=700, color="token:colors.accent", align="center")
+        )
+        elements.append(
+            _text(role="body", x=x + 8, y=rule_y + 40, width=step - 16, height=72, content=_rich_text(entry.label),
+                  token="h3", size=26, weight=600, align="center", fit="shrinkToFit", min_font_size=18)
+        )
+        if entry.detail:
+            elements.append(
+                _text(role="body", x=x + 8, y=rule_y + 120, width=step - 16, height=140, content=_rich_text(entry.detail),
+                      token="bodySmall", size=20, color="token:colors.foregroundMuted", align="center",
+                      fit="shrinkToFit", min_font_size=14)
+            )
+    if plan.caption:
+        elements.append(_caption(plan.caption, CONTENT_BOTTOM - 48))
+    return elements
+
+
+def _layout_image(plan: SlidePlan) -> list[dict[str, Any]]:
+    """A full-bleed photograph with the headline on a scrim at its foot.
+
+    The frame is a named placeholder until a picture fills it: a generated image
+    for this slide takes the frame's place (`assistant_routes`), and the scrim
+    keeps the headline readable over whatever the photograph turns out to be.
+    """
+    from .language_kit import _shape, _solid
+
+    elements = [
+        # Full bleed is the slide's background, which is what lets it reach the
+        # edges: Design Check's safe area (W104) exempts a background.
+        _shape("Image frame", x=0, y=0, width=VIEWPORT_W, height=VIEWPORT_H, fill=_solid("token:colors.surfaceAlt"),
+               role="background"),
+        _shape("Scrim", x=0, y=VIEWPORT_H - 420, width=VIEWPORT_W, height=420, fill=_solid("#000000"), opacity=0.55,
+               role="decoration"),
+    ]
+    elements[0]["altText"] = plan.picture or plan.headline
+    if plan.picture:
+        elements[0]["metadata"] = {"picture": plan.picture}
+    if plan.eyebrow:
+        elements.append(
+            _text(role="eyebrow", x=CONTENT_X, y=VIEWPORT_H - 360, width=CONTENT_W, height=40, content=_rich_text(plan.eyebrow),
+                  token="caption", size=20, weight=700, color="#FFFFFF", letter_spacing=2, transform_case="uppercase")
+        )
+    headline = _headline(plan.headline, y=VIEWPORT_H - 310, size=64)
+    headline["typography"]["color"] = "#FFFFFF"
+    headline["transform"]["height"] = 160
+    elements.append(headline)
+    if plan.subtitle:
+        elements.append(
+            _text(role="subtitle", x=CONTENT_X, y=VIEWPORT_H - 140, width=CONTENT_W * 0.8, height=56,
+                  content=_rich_text(plan.subtitle), token="body", size=26, color="#FFFFFF")
+        )
+    return elements
+
 _LAYOUTS = {
     SlideLayout.TITLE: _layout_title,
     SlideLayout.STATEMENT: _layout_statement,
@@ -592,6 +797,10 @@ _LAYOUTS = {
     SlideLayout.QUOTE: _layout_quote,
     SlideLayout.CODE: _layout_code,
     SlideLayout.SPLIT: _layout_split,
+    SlideLayout.CHART: _layout_chart,
+    SlideLayout.DIAGRAM: _layout_diagram,
+    SlideLayout.TIMELINE: _layout_timeline,
+    SlideLayout.IMAGE: _layout_image,
 }
 
 

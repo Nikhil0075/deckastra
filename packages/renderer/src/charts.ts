@@ -112,6 +112,10 @@ const KNOWN_KINDS = new Set([
   "stackedBar",
   "stackedColumn",
   "combo",
+  // A running total built from changes, ending in a total bar (2026-10-11).
+  "waterfall",
+  // Each series' first and last value, joined, labelled at both ends (2026-10-11).
+  "slope",
 ]);
 
 interface SeriesPoint {
@@ -502,7 +506,7 @@ export function buildChartPayload(
     return { ...empty, notice: warnings[0] ?? "This chart has no data to show." };
   }
 
-  const showLegend = style.showLegend ?? series.length > 1;
+  const showLegend = style.showLegend ?? (series.length > 1 && chartType !== "slope" && chartType !== "waterfall");
   const legendPosition =
     style.legendPosition ?? (chartType === "pie" || chartType === "donut" ? "right" : "bottom");
 
@@ -605,6 +609,24 @@ export function buildChartPayload(
 
   // ----------------------------------------------------- cartesian charts
 
+  // A waterfall reads its first series as changes and ends in a total; a slope
+  // compares each series' first and last values only. Both draw a different set
+  // of categories from the data's own, so the rest of the layout uses these.
+  const waterfall = chartType === "waterfall";
+  const slope = chartType === "slope";
+  if ((waterfall || slope) && series.length === 0) return { ...empty, notice: "This chart has no data to show." };
+  if (waterfall && series.length > 1) warnings.push("A waterfall draws one series; only the first is shown.");
+  if (slope && categories.length < 2) return { ...empty, notice: "A slope chart needs a first and a last value." };
+  const runningTotals: number[] = [];
+  if (waterfall) {
+    let total = 0;
+    for (const category of categories) {
+      total += series[0]!.points.find((p) => p.category === category)?.value ?? 0;
+      runningTotals.push(total);
+    }
+  }
+  const drawnCategories = waterfall ? [...categories, "Total"] : slope ? [categories[0]!, categories.at(-1)!] : categories;
+
   const horizontal = chartType === "bar" || chartType === "stackedBar";
   const stacked =
     chartType === "stackedBar" ||
@@ -623,6 +645,15 @@ export function buildChartPayload(
       }
       valuesForScale.push(positive, negative);
     }
+  } else if (waterfall) {
+    valuesForScale.push(0, ...runningTotals);
+  } else if (slope) {
+    for (const s of series) {
+      for (const category of drawnCategories) {
+        const point = s.points.find((p) => p.category === category);
+        if (point) valuesForScale.push(point.value);
+      }
+    }
   } else {
     for (const s of series) for (const point of s.points) valuesForScale.push(point.value);
   }
@@ -639,7 +670,8 @@ export function buildChartPayload(
       chartType === "stackedBar" ||
       chartType === "stackedColumn" ||
       chartType === "area" ||
-      chartType === "combo");
+      chartType === "combo" ||
+      waterfall);
 
   // Two passes: size the gutters from the formatted labels, then lay out. The
   // first pass needs a scale, so it runs against the full box and is thrown away.
@@ -658,10 +690,12 @@ export function buildChartPayload(
   );
   const widestCategoryLabel = Math.max(
     0,
-    ...categories.map((label) => estimateLabelWidth(label, fontSize)),
+    ...drawnCategories.map((label) => estimateLabelWidth(label, fontSize)),
   );
 
-  const hideValueAxis = valueAxis?.hidden === true;
+  // A slope chart is read from the labels at its ends, so its value axis and
+  // gridlines are off unless asked for.
+  const hideValueAxis = valueAxis?.hidden ?? slope;
   const hideCategoryAxis = categoryAxis?.hidden === true;
 
   const gutterLeft = horizontal
@@ -679,16 +713,38 @@ export function buildChartPayload(
       ? 0
       : fontSize * 1.6;
 
+  const slopeEndRoom = slope
+    ? AXIS_LABEL_GAP +
+      Math.max(
+        0,
+        ...series.map((s) => {
+          const last = s.points.find((p) => p.category === drawnCategories[1]);
+          return estimateLabelWidth(`${s.label} ${last ? formatNumber(last.value, numberFormat) : ""}`, fontSize);
+        }),
+      )
+    : 0;
+  const slopeStartRoom = slope
+    ? AXIS_LABEL_GAP +
+      Math.max(
+        0,
+        ...series.map((s) => {
+          const first = s.points.find((p) => p.category === drawnCategories[0]);
+          return estimateLabelWidth(first ? formatNumber(first.value, numberFormat) : "", fontSize);
+        }),
+      )
+    : 0;
+  const gutterStart = gutterLeft + (slope && hideValueAxis ? slopeStartRoom : 0);
+
   const titleSpace = {
     left: (horizontal ? categoryAxis?.title : valueAxis?.title) ? fontSize * 1.6 : 0,
     bottom: (horizontal ? valueAxis?.title : categoryAxis?.title) ? fontSize * 1.6 : 0,
   };
 
   const plot: Rect = {
-    x: round(legend.inset.left + gutterLeft + titleSpace.left),
+    x: round(legend.inset.left + gutterStart + titleSpace.left),
     y: round(legend.inset.top + fontSize * 0.6),
     width: round(
-      width - legend.inset.left - legend.inset.right - gutterLeft - titleSpace.left - fontSize * 0.6,
+      width - legend.inset.left - legend.inset.right - gutterStart - titleSpace.left - fontSize * 0.6 - slopeEndRoom,
     ),
     height: round(
       height -
@@ -714,13 +770,13 @@ export function buildChartPayload(
   });
 
   const bands = bandScale(
-    categories.length,
+    drawnCategories.length,
     horizontal ? plot.y : plot.x,
     horizontal ? plot.y + plot.height : plot.x + plot.width,
-    categories.length > 12 ? 0.1 : 0.25,
+    drawnCategories.length > 12 ? 0.1 : 0.25,
   );
 
-  const showGridlines = style.showGridlines ?? chartTheme?.showGridlines ?? true;
+  const showGridlines = style.showGridlines ?? (slope ? false : (chartTheme?.showGridlines ?? true));
 
   if (showGridlines && !hideValueAxis) {
     for (const tick of scale.ticks) {
@@ -762,7 +818,7 @@ export function buildChartPayload(
   }
 
   if (!hideCategoryAxis) {
-    categories.forEach((category, index) => {
+    drawnCategories.forEach((category, index) => {
       texts.push({
         id: `${element.id}:ctick:${index}`,
         text: category,
@@ -944,6 +1000,99 @@ export function buildChartPayload(
       for (const [cx, cy] of coordinates) {
         points.push({ id: `${element.id}:pt:${s.key}:${cx}:${cy}`, cx, cy, r: pointSize, fill: s.color });
       }
+    }
+  } else if (waterfall) {
+    // Each change floats from the running total before it; the last bar is the
+    // total from zero. Rises and falls take the theme's positive and negative
+    // colours, so the direction is in the colour as well as the position.
+    const rise = String(resolveValue(theme, theme.source.colors.chartPositive ?? "token:colors.success", "#2E9E6B"));
+    const fall = String(resolveValue(theme, theme.source.colors.chartNegative ?? "token:colors.danger", "#D0453A"));
+    const showLabels = style.showDataLabels ?? true;
+    let previous = 0;
+    drawnCategories.forEach((category, index) => {
+      const isTotal = index === drawnCategories.length - 1;
+      const end = isTotal ? runningTotals.at(-1) ?? 0 : runningTotals[index]!;
+      const start = isTotal ? 0 : previous;
+      const from = scale.project(start);
+      const to = scale.project(end);
+      const low = Math.min(from, to);
+      const size = Math.max(1, Math.abs(to - from));
+      const delta = end - start;
+      rects.push({
+        id: `${element.id}:wf:${index}`,
+        x: bands.start(index),
+        y: round(low),
+        width: round(bands.bandWidth),
+        height: round(size),
+        fill: isTotal ? series[0]!.color : delta >= 0 ? rise : fall,
+        radius: round(Math.min(barRadius, size / 2)),
+      });
+      if (!isTotal && index < drawnCategories.length - 1) {
+        // A thin connector from this bar's end to the next bar's start.
+        const y = round(to);
+        paths.push({
+          id: `${element.id}:wfc:${index}`,
+          d: `M ${round(bands.start(index) + bands.bandWidth)} ${y} L ${bands.start(index + 1)} ${y}`,
+          stroke: axisColor,
+          strokeWidth: 1,
+          fill: "none",
+          dash: "4 4",
+        });
+      }
+      if (showLabels) {
+        // The first bar is where the walk starts, a level rather than a change.
+        const text = isTotal || index === 0 ? formatNumber(end, numberFormat) : `${delta >= 0 ? "+" : "−"}${formatNumber(Math.abs(delta), numberFormat)}`;
+        texts.push({
+          id: `${element.id}:wfl:${index}`,
+          text,
+          x: bands.centre(index),
+          y: round(Math.min(from, to) - AXIS_LABEL_GAP),
+          anchor: "middle",
+          fontSize,
+          fill: labelColor,
+          weight: 600,
+        });
+      }
+      previous = end;
+    });
+  } else if (slope) {
+    for (const s of series) {
+      const first = s.points.find((p) => p.category === drawnCategories[0]);
+      const last = s.points.find((p) => p.category === drawnCategories[1]);
+      if (!first || !last) {
+        warnings.push(`${s.label} has no ${!first ? "first" : "last"} value, so it is left out of the slope.`);
+        continue;
+      }
+      const left: [number, number] = [bands.centre(0), scale.project(first.value)];
+      const right: [number, number] = [bands.centre(1), scale.project(last.value)];
+      paths.push({
+        id: `${element.id}:slope:${s.key}`,
+        d: `M ${left[0]} ${left[1]} L ${right[0]} ${right[1]}`,
+        stroke: s.color,
+        strokeWidth: lineWidth,
+        fill: "none",
+      });
+      points.push({ id: `${element.id}:pt:${s.key}:0`, cx: left[0], cy: left[1], r: pointSize, fill: s.color });
+      points.push({ id: `${element.id}:pt:${s.key}:1`, cx: right[0], cy: right[1], r: pointSize, fill: s.color });
+      texts.push({
+        id: `${element.id}:sl:${s.key}:0`,
+        text: formatNumber(first.value, numberFormat),
+        x: round(left[0] - AXIS_LABEL_GAP),
+        y: round(left[1] + fontSize * 0.35),
+        anchor: "end",
+        fontSize,
+        fill: labelColor,
+      });
+      texts.push({
+        id: `${element.id}:sl:${s.key}:1`,
+        text: `${s.label} ${formatNumber(last.value, numberFormat)}`,
+        x: round(right[0] + AXIS_LABEL_GAP),
+        y: round(right[1] + fontSize * 0.35),
+        anchor: "start",
+        fontSize,
+        fill: s.color,
+        weight: 600,
+      });
     }
   } else if (chartType === "scatter") {
     for (const s of series) {

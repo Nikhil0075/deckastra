@@ -5,7 +5,7 @@ export interface AssistantRequest {
   instruction?: string;
   scope: { kind: "deck" | "slide" | "elements"; slide_ids: string[]; element_ids: string[] };
   quality?: "quality"; locale?: string; voice?: string;
-  source_asset_ids?: string[]; export_kind?: "pdf" | "pptx" | "mp4";
+  source_asset_ids?: string[]; export_kind?: "pdf" | "pptx";
   motion_entrance?: string; motion_pacing?: "tight" | "measured" | "deliberate"; motion_click_reveals?: number;
   /** Replace a slide's existing animation tracks; otherwise those slides are kept. */
   motion_replace?: boolean;
@@ -16,6 +16,20 @@ export interface AssistantRequest {
   image_quote_token?: string;
 }
 
+export interface VideoQuoteRequest {
+  prompt: string;
+  duration_seconds: 4 | 6 | 8;
+  aspect_ratio: "16:9" | "9:16";
+}
+export interface VideoQuote {
+  quote_token: string;
+  expires_at: number;
+  model?: string | null;
+  duration_seconds: 4 | 6 | 8;
+  aspect_ratio: "16:9" | "9:16";
+  estimated_usd: number;
+  credit_cost: number;
+}
 export interface ImageQuoteRequest {
   expected_version_id: string;
   slide_id: string;

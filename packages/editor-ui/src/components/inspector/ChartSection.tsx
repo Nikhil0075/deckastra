@@ -41,6 +41,8 @@ const CHARTS: { value: string; label: string }[] = [
   { value: "stackedColumn", label: "Stacked column" },
   { value: "stackedBar", label: "Stacked bar" },
   { value: "combo", label: "Combo" },
+  { value: "waterfall", label: "Waterfall" },
+  { value: "slope", label: "Slope" },
 ];
 
 export function ChartSection({

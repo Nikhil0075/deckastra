@@ -5,6 +5,9 @@ export type PurposeGroup = (typeof PURPOSE_GROUPS)[number];
 
 export const BASE_SLIDE_PATTERNS = ["title", "statement", "bullets", "metrics", "quote", "code", "split"] as const;
 export type BaseSlidePattern = (typeof BASE_SLIDE_PATTERNS)[number];
+/** Composer layouts that carry data; they have no pattern of their own name. */
+export const DATA_LAYOUTS = ["chart", "diagram", "timeline", "image"] as const;
+export type DataLayout = (typeof DATA_LAYOUTS)[number];
 
 export const SLIDE_PATTERNS = [
   ...BASE_SLIDE_PATTERNS,
@@ -61,12 +64,40 @@ export const SLIDE_PATTERNS = [
   "event-schedule",
   "story-beat",
   "thank-you",
+  // Patterns that carry data rather than words (2026-10-11). A review of
+  // agent-built decks found every one converging on cards and rows, because no
+  // pattern could put a chart, a diagram, a dated sequence or a photograph on a
+  // slide.
+  "bar-chart",
+  "trend-chart",
+  "waterfall-chart",
+  "slope-chart",
+  "share-chart",
+  "system-diagram",
+  "process-flow",
+  "milestones",
+  "full-bleed-photo",
 ] as const;
 export type SlidePattern = (typeof SLIDE_PATTERNS)[number];
 
 export type MetricSlotValue = { value: string; label: string };
-export type SlotValue = string | string[] | MetricSlotValue[];
-export type SlotKind = "text" | "text-list" | "metrics";
+/** The numbers for a chart. The renderer lays it out; nothing here is geometry. */
+export interface ChartSlotValue {
+  type?: "column" | "bar" | "line" | "area" | "pie" | "donut" | "stackedColumn" | "stackedBar" | "combo" | "waterfall" | "slope";
+  categories: string[];
+  series: Array<{ name: string; values: number[] }>;
+  unit?: string;
+}
+/** Boxes and arrows by name; the composer mints ids and the layout engine places them. */
+export interface DiagramSlotValue {
+  kind?: "architecture" | "flow" | "sequence" | "network" | "mindmap";
+  direction?: "LR" | "TB";
+  nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>;
+  edges?: Array<{ source: string; target: string; label?: string }>;
+}
+export type TimelineSlotItem = { when: string; label: string; detail?: string };
+export type SlotValue = string | string[] | MetricSlotValue[] | ChartSlotValue | DiagramSlotValue | TimelineSlotItem[];
+export type SlotKind = "text" | "text-list" | "metrics" | "chart" | "diagram" | "timeline";
 
 export interface SlotDefinition {
   kind: SlotKind;
@@ -83,7 +114,7 @@ export interface SlidePatternDefinition {
   name: string;
   summary: string;
   /** The deterministic geometry family used to compose this semantic pattern. */
-  composerLayout: BaseSlidePattern;
+  composerLayout: BaseSlidePattern | DataLayout;
   slots: Record<string, SlotDefinition>;
   /** At least one named slot in each group must contain content. */
   requiresOneOf?: string[][];
@@ -273,7 +304,7 @@ export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> =
   "release-plan": listPattern("Release plan", "Sequence release scope and confidence checks.", "RELEASE PLAN", "Ship value in controlled increments", ["Pilot — prove the core", "Beta — widen the cohort", "Launch — scale support"]),
   pricing: splitPattern("Pricing", "Explain the offer and what each level unlocks.", "PRICING", "Start free and pay when the workflow scales", "Free: core creation and local export.", ["Pro: richer media", "Team: shared controls", "Enterprise: governance"]),
   feedback: quotePattern("Customer feedback", "Anchor the product story in a customer voice.", "CUSTOMER VOICE", "What changed for the user", "We stopped rebuilding the same story in three different tools.", "Pilot customer"),
-  demo: codePattern("Demo", "Show a compact product or technical demonstration.", "LIVE DEMO", "One action produces a reviewable result", "const deck = await compose(brief);\nawait deck.export('mp4');"),
+  demo: codePattern("Demo", "Show a compact product or technical demonstration.", "LIVE DEMO", "One action produces a reviewable result", "const deck = await compose(brief);\nawait deck.export('pdf');"),
   changelog: listPattern("Changelog", "Summarise release changes by user impact.", "WHAT'S NEW", "This release removes the rough edges", ["Faster first draft", "Clearer review states", "More reliable exports"]),
   "learning-objectives": listPattern("Learning objectives", "State observable outcomes for the session.", "YOU WILL", "Three capabilities define success", ["Explain the core model", "Apply it to a real case", "Evaluate the result"]),
   concept: statementPattern("Concept", "Teach one foundational idea at a time.", "CORE IDEA", "Constraints turn vague intent into useful choices"),
@@ -284,7 +315,7 @@ export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> =
   resources: listPattern("Resources", "Collect the references learners need after the session.", "KEEP LEARNING", "Continue with these resources", ["One-page field guide", "Worked example library", "Practice checklist"]),
   architecture: splitPattern("Architecture", "Explain a system boundary and its responsibilities.", "ARCHITECTURE", "Separate orchestration from deterministic execution", "The control plane owns intent and policy.", ["The engine owns layout", "The worker owns exports", "The schema owns the contract"]),
   "system-flow": listPattern("System flow", "Trace data through the important system stages.", "SYSTEM FLOW", "Data crosses four explicit boundaries", ["Validate input", "Resolve the scene", "Render deterministically", "Publish the artifact"]),
-  "api-contract": codePattern("API contract", "Show the narrow request or response that joins systems.", "API CONTRACT", "The boundary is small and versioned", "POST /v1/exports\n{ \"kind\": \"mp4\", \"fps\": 30 }"),
+  "api-contract": codePattern("API contract", "Show the narrow request or response that joins systems.", "API CONTRACT", "The boundary is small and versioned", "POST /v1/exports\n{ \"kind\": \"pptx\", \"include_notes\": true }"),
   "data-model": codePattern("Data model", "Make the persisted relationship concrete.", "DATA MODEL", "The document remains the source of truth", "document -> slides -> elements\n         -> narration -> takes"),
   incident: listPattern("Incident timeline", "Reconstruct an incident in observable order.", "INCIDENT", "The failure propagated through three moments", ["09:12 — latency rises", "09:18 — retries amplify load", "09:27 — traffic is limited"]),
   "root-cause": splitPattern("Root cause", "Separate the triggering event from the systemic cause.", "ROOT CAUSE", "A missing bound turned retries into load", "Trigger: one dependency slowed unexpectedly.", ["No retry budget", "No admission control", "Alert followed symptoms"]),
@@ -300,6 +331,70 @@ export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> =
   "event-schedule": listPattern("Event schedule", "Orient guests with an ordered programme.", "SCHEDULE", "A day designed to build connection", ["16:00 — welcome", "17:00 — ceremony", "18:30 — dinner and stories"]),
   "story-beat": statementPattern("Story beat", "Hold one emotional turn in a personal narrative.", "THEN EVERYTHING CHANGED", "The smallest decision opened the largest possibility"),
   "thank-you": titlePattern("Thank you", "Close a personal story with warmth and a clear invitation.", "WITH GRATITUDE", "Thank you for being part of the story", "The next chapter starts together"),
+  "bar-chart": chartPattern("Bar chart", "Compare a few values side by side, with the takeaway beside them.", "RESULTS", "Revenue grew every quarter", {
+    type: "column", categories: ["Q1", "Q2", "Q3", "Q4"], series: [{ name: "Revenue", values: [2.1, 3.4, 4, 4.7] }], unit: "$M",
+  }, "Repeat customers drove two thirds of the growth."),
+  "trend-chart": chartPattern("Trend chart", "Show how one or more measures moved over time.", "TREND", "Weekly active teams doubled", {
+    type: "line", categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], series: [{ name: "Active teams", values: [120, 138, 161, 190, 214, 246] }],
+  }),
+  "waterfall-chart": chartPattern("Waterfall chart", "Walk from a starting total to an ending one through each change.", "BRIDGE", "How the year's revenue was built", {
+    type: "waterfall", categories: ["Opening", "New customers", "Expansion", "Churn"], series: [{ name: "Revenue", values: [10, 4.5, 2, -1.5] }], unit: "$M",
+  }),
+  "slope-chart": chartPattern("Slope chart", "Compare where several things started and ended.", "SHIFT", "North overtook South", {
+    type: "slope", categories: ["2024", "2026"], series: [{ name: "North", values: [42, 88] }, { name: "South", values: [70, 51] }, { name: "West", values: [30, 36] }], unit: "%",
+  }),
+  "share-chart": chartPattern("Share chart", "Show how a whole divides into a few parts.", "MIX", "Utilities are nearly half of demand", {
+    type: "donut", categories: ["Utilities", "Industrial", "Residential"], series: [{ name: "Share", values: [45, 35, 20] }], unit: "%",
+  }),
+  "system-diagram": diagramPattern("System diagram", "Name the parts of a system and how they connect.", "ARCHITECTURE", "Three services and one source of truth", {
+    kind: "architecture", direction: "LR",
+    nodes: [{ key: "app", label: "Web app", role: "external" }, { key: "api", label: "API", role: "service" }, { key: "jobs", label: "Workers", role: "service" }, { key: "db", label: "Database", role: "datastore" }],
+    edges: [{ source: "app", target: "api", label: "HTTPS" }, { source: "api", target: "db" }, { source: "api", target: "jobs", label: "queue" }, { source: "jobs", target: "db" }],
+  }),
+  "process-flow": diagramPattern("Process flow", "Show the steps a request, a person or a thing goes through.", "HOW IT WORKS", "From request to resolution in four steps", {
+    kind: "flow", direction: "LR",
+    nodes: [{ key: "ask", label: "Request" }, { key: "triage", label: "Triage" }, { key: "fix", label: "Fix" }, { key: "close", label: "Confirm" }],
+    edges: [{ source: "ask", target: "triage" }, { source: "triage", target: "fix" }, { source: "fix", target: "close" }],
+  }),
+  milestones: {
+    name: "Milestones",
+    summary: "Dated steps along one line, from now to the goal.",
+    composerLayout: "timeline",
+    slots: {
+      ...common,
+      headline: text("Headline", "Where the sequence leads.", { required: true, recommendedMaxChars: 90 }),
+      subtitle: text("Subtitle", "Optional framing for the sequence.", { recommendedMaxChars: 120 }),
+      timeline: { kind: "timeline", label: "Milestones", description: "Two to six dated steps: when, what, and an optional detail.", required: true, minItems: 2, maxItems: 6, itemRecommendedMaxChars: 60 },
+      caption: text("Caption", "Optional qualifier.", { recommendedMaxChars: 120 }),
+    },
+    exampleSlots: {
+      eyebrow: "ROADMAP",
+      headline: "From pilot to general availability",
+      timeline: [
+        { when: "Q1", label: "Pilot", detail: "Two design partners" },
+        { when: "Q2", label: "Beta", detail: "Twenty teams" },
+        { when: "Q3", label: "Launch", detail: "Self-serve sign-up" },
+        { when: "Q4", label: "Scale", detail: "Enterprise controls" },
+      ],
+    },
+  },
+  "full-bleed-photo": {
+    name: "Full-bleed photo",
+    summary: "One photograph across the whole slide, the headline on a scrim at its foot.",
+    composerLayout: "image",
+    slots: {
+      ...common,
+      headline: text("Headline", "What the picture means.", { required: true, recommendedMaxChars: 70 }),
+      subtitle: text("Subtitle", "One line of context.", { recommendedMaxChars: 100 }),
+      picture: text("Picture", "What the photograph shows, in words: its alt text, and the prompt if one is generated.", { required: true, recommendedMaxChars: 300 }),
+    },
+    exampleSlots: {
+      eyebrow: "IN THE FIELD",
+      headline: "Built for the people doing the work",
+      subtitle: "A field engineer checking an installation at dusk",
+      picture: "A field engineer in a hard hat checking a rooftop solar installation at dusk",
+    },
+  },
 };
 
 function listPattern(name: string, summary: string, eyebrow: string, headline: string, bullets: string[]): SlidePatternDefinition {
@@ -363,6 +458,35 @@ function codePattern(name: string, summary: string, eyebrow: string, headline: s
     name, summary, composerLayout: "code",
     slots: { ...common, headline: text("Headline", "What the example demonstrates.", { required: true, recommendedMaxChars: 100 }), code: text("Code", "The literal sample.", { required: true }), language: text("Language", "Syntax language key.", { recommendedMaxChars: 24 }), caption: text("Caption", "Optional explanation.", { recommendedMaxChars: 120 }) },
     exampleSlots: { eyebrow, headline, code, language: "text", caption: "A compact example keeps the boundary inspectable." },
+  };
+}
+
+function chartPattern(name: string, summary: string, eyebrow: string, headline: string, chart: ChartSlotValue, body?: string): SlidePatternDefinition {
+  return {
+    name, summary, composerLayout: "chart",
+    slots: {
+      ...common,
+      headline: text("Headline", "The conclusion the chart proves, not a label for it.", { required: true, recommendedMaxChars: 90 }),
+      subtitle: text("Subtitle", "Optional framing above the chart.", { recommendedMaxChars: 120 }),
+      body: text("Takeaway", "One sentence beside the chart saying why it matters.", { recommendedMaxChars: 160 }),
+      chart: { kind: "chart", label: "Chart", description: "Categories, one or more named series with one value per category, and an optional unit.", required: true },
+      caption: text("Caption", "The source of the numbers.", { recommendedMaxChars: 120 }),
+    },
+    exampleSlots: { eyebrow, headline, chart, ...(body ? { body } : {}) },
+  };
+}
+
+function diagramPattern(name: string, summary: string, eyebrow: string, headline: string, diagram: DiagramSlotValue): SlidePatternDefinition {
+  return {
+    name, summary, composerLayout: "diagram",
+    slots: {
+      ...common,
+      headline: text("Headline", "What the diagram shows about the system.", { required: true, recommendedMaxChars: 90 }),
+      subtitle: text("Subtitle", "Optional framing above the diagram.", { recommendedMaxChars: 120 }),
+      diagram: { kind: "diagram", label: "Diagram", description: "Two to twelve named nodes and the edges between them, by node key.", required: true },
+      caption: text("Caption", "Optional qualifier.", { recommendedMaxChars: 120 }),
+    },
+    exampleSlots: { eyebrow, headline, diagram },
   };
 }
 

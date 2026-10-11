@@ -219,7 +219,7 @@ export function buildNotices() {
   };
   section("The editor, exporter and agent server (JavaScript)", npm.components);
   section("Content included in the editor's own code (icon geometry)", vendored.components);
-  if (binaries.length) section("Programs Deckastra runs (MP4 export and video frames)", binaries);
+  if (binaries.length) section("Programs Deckastra runs (video poster frames)", binaries);
   section("The workspace service (Python)", py.components);
   if (py.cpython) {
     lines.push(rule, `Python ${py.cpython.version} (embedded interpreter)`, rule, "", py.cpython.text, "");

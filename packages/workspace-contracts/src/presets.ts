@@ -9,9 +9,17 @@ export type SlidePattern = BaseSlidePattern
   | "learning-objectives" | "concept" | "example" | "exercise" | "quiz" | "reflection" | "resources"
   | "architecture" | "system-flow" | "api-contract" | "data-model" | "incident" | "root-cause" | "benchmark"
   | "team-update" | "wins" | "blockers" | "responsibilities" | "retrospective" | "shout-outs"
-  | "gallery" | "biography" | "event-schedule" | "story-beat" | "thank-you";
-export type PresetSlotValue = string | string[] | Array<{ value: string; label: string }>;
-export type PresetSlotKind = "text" | "text-list" | "metrics";
+  | "gallery" | "biography" | "event-schedule" | "story-beat" | "thank-you"
+  | "bar-chart" | "trend-chart" | "waterfall-chart" | "slope-chart" | "share-chart"
+  | "system-diagram" | "process-flow" | "milestones" | "full-bleed-photo";
+export type PresetSlotValue =
+  | string
+  | string[]
+  | Array<{ value: string; label: string }>
+  | { type?: string; categories: string[]; series: Array<{ name: string; values: number[] }>; unit?: string }
+  | { kind?: string; direction?: "LR" | "TB"; nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>; edges?: Array<{ source: string; target: string; label?: string }> }
+  | Array<{ when: string; label: string; detail?: string }>;
+export type PresetSlotKind = "text" | "text-list" | "metrics" | "chart" | "diagram" | "timeline";
 export type MotionStyleId = "restrained" | "dynamic" | "cinematic" | "editorial" | "energetic" | "technical" | "playful";
 
 export interface PresetSlotDefinition {
@@ -114,7 +122,8 @@ export interface StoryMetric {
 }
 
 export interface StoryPlanSlide {
-  layout: SlidePattern;
+  /** A composer layout; the data layouts carry their data in the fields below. */
+  layout: SlidePattern | "chart" | "diagram" | "image";
   purpose: string;
   key_message: string;
   headline: string;
@@ -129,6 +138,19 @@ export interface StoryPlanSlide {
   language?: string;
   caption?: string;
   speaker_notes?: string;
+  /** Required by the chart layout. */
+  chart?: { type?: string; categories: string[]; series: Array<{ name: string; values: number[] }>; unit?: string };
+  /** Required by the diagram layout; edges name nodes by key. */
+  diagram?: {
+    kind?: string;
+    direction?: "LR" | "TB";
+    nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>;
+    edges?: Array<{ source: string; target: string; label?: string }>;
+  };
+  /** Two or more entries, required by the timeline layout. */
+  timeline?: Array<{ when: string; label: string; detail?: string }>;
+  /** The image layout: what the photograph shows. */
+  picture?: string;
 }
 
 export interface StoryPlanInput {
@@ -197,6 +219,47 @@ export interface InsertPatternRequest {
   client_label?: string;
   /** Return the editor-ready operation without creating a server proposal. */
   dry_run?: boolean;
+}
+
+/**
+ * Every slide pattern's example, composed in one design language: what the Add
+ * library draws as each pattern's tile. Read-only; the editor draws each slide
+ * in the deck's own theme.
+ */
+/**
+ * An art direction's palette and faces (POST /presentations/{id}/theme). Every
+ * other colour role is derived; text below WCAG AA is refused.
+ */
+export interface ThemeProposalRequest {
+  expected_version_id: string;
+  name?: string;
+  background: string;
+  foreground: string;
+  accent: string;
+  secondary?: string;
+  series?: string[];
+  display_font?: string;
+  body_font?: string;
+  intent?: string;
+  client_label?: string;
+  dry_run?: boolean;
+}
+
+export interface ThemeProposalResult {
+  outcome: string;
+  risk_tier?: string;
+  transaction_id?: string;
+  version_id?: string | null;
+  text_contrast: number;
+  accent_contrast: number;
+  notes: string[];
+}
+
+export interface PatternPreviews {
+  language: string;
+  /** Changes when the catalog does, so a cached answer is never an old one. */
+  revision: string;
+  slides: Record<string, unknown>;
 }
 
 export interface InsertPatternResult {

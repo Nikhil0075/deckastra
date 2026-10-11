@@ -1,5 +1,5 @@
 import type {
-  AssistantRun, AssistantCapabilities, AssistantEvent, AssistantAsset, DesignCheckResult,
+  AssistantRun, AssistantCapabilities, AssistantEvent, AssistantAsset, DesignCheckResult, VideoQuote,
   TransitionRequest,
   TransitionResult,
   AccountContext,
@@ -37,6 +37,9 @@ import type {
   PresetCatalog,
   InsertPatternRequest,
   InsertPatternResult,
+  PatternPreviews,
+  ThemeProposalRequest,
+  ThemeProposalResult,
   PreviewRequest,
   PreviewResult,
   MotionPreviewRequest,
@@ -280,6 +283,9 @@ const q = encodeURIComponent;
       quoteImage: (presentationId, body, o) => json<PaidServiceQuote>("/v1/media/quotes/image", {
         ...o, body: { presentation_id: presentationId, ...body }, fallback: "The image price could not be checked.",
       }),
+      quoteVideo: (presentationId, body, o) => json<VideoQuote>("/v1/media/quotes/video", {
+        ...o, body: { presentation_id: presentationId, ...body }, fallback: "The clip price could not be checked.",
+      }),
       start: (body, o) => json<AssistantRun>("/v1/assistant/runs", { ...o, body }),
       get: (id, o) => json<AssistantRun>(`/v1/assistant/runs/${q(id)}`, { ...o }),
       list: (id, o) => json<{ runs: AssistantRun[] }>(`/v1/assistant/runs?presentation_id=${q(id)}`, { ...o }),
@@ -421,6 +427,15 @@ const q = encodeURIComponent;
         ),
     },
 
+    theme: {
+      propose: (presentationId, body: ThemeProposalRequest, request) =>
+        json<ThemeProposalResult>(`/v1/presentations/${q(presentationId)}/theme`, {
+          body,
+          fallback: "That palette could not be applied.",
+          ...request,
+        }),
+    },
+
     motion: {
       capabilities: (request) => json<MotionCapabilities>("/v1/motion/capabilities", { ...request }),
       propose: (presentationId, body: MotionRequest, request) =>
@@ -473,6 +488,11 @@ const q = encodeURIComponent;
         json<InsertPatternResult>(`/v1/presentations/${q(presentationId)}/patterns/insert`, {
           body,
           fallback: "That slide pattern could not be inserted.",
+          ...request,
+        }),
+      previewPatterns: (language, request) =>
+        json<PatternPreviews>(`/v1/patterns/preview?language=${encodeURIComponent(language)}`, {
+          fallback: "Slide pattern previews could not be read.",
           ...request,
         }),
     },

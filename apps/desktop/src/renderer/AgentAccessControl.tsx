@@ -48,10 +48,22 @@ export function AgentAccessControl({
           size="sm"
           variant="secondary"
           className={access.allowed ? "dk-agent-chip dk-agent-chip--on" : "dk-agent-chip"}
+          // The whole sentence is the name and the tooltip; the time is the
+          // part a narrow bar drops (UI audit follow-up: at 1366px the full
+          // chip pushed the bar's end group across the mode switch).
+          aria-label={access.allowed ? `Agents on${until ? ` until ${until}` : ""}` : "Agents off"}
+          title={access.allowed ? `Agents on${until ? ` until ${until}` : ""}` : "Agents off"}
           data-testid="agent-access-open"
           {...props}
         >
-          {access.allowed ? `Agents on${until ? ` · until ${until}` : ""}` : "Agents off"}
+          {access.allowed ? (
+            <>
+              Agents on
+              {until ? <span className="dk-agent-chip__until"> · until {until}</span> : null}
+            </>
+          ) : (
+            "Agents off"
+          )}
         </Button>
       )}
     >

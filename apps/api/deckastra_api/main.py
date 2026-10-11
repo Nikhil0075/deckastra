@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from . import grants, languages, local_mode, object_storage, preset_media, presets, quotas, store, template_compose
+from . import grants, languages, local_mode, object_storage, preset_media, presets, quotas, store, template_compose, variety
 from .auth import (
     Principal,
     current_principal,
@@ -352,6 +352,11 @@ def deck_compose(
         language=language,
         language_version=version,
     )
+    # An agent's deck moves like a template's: the language's transition, with
+    # its accents by slide kind. It used to arrive with no transitions at all.
+    template_compose.plan_transitions(document, plan, language, str(defaults.get("transitionStyle") or "fade"))
     stored = _store_composed(session, principal, document, project_id=project.id)
-    stored.warnings = warnings
+    # Said while the agent is still here to act on it: a run of one structure,
+    # no evidence on any slide, one transition throughout.
+    stored.warnings = [*warnings, *variety.report(document)["warnings"]]
     return stored

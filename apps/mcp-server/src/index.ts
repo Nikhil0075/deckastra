@@ -63,7 +63,10 @@ export async function main(): Promise<void> {
         "document_read before changing it, and pass the version_id it returns as " +
         "expected_version_id when you propose a change, so the user's own edits are never " +
         "overwritten. Changes that carry real risk become proposals the user approves in the " +
-        "app; you cannot approve them yourself.",
+        "app; you cannot approve them yourself. Before building or restyling a deck, read " +
+        "deckastra://guides/deck-design: pick a design language, give each slide one claim and " +
+        "one visual (chart, diagram, timeline or photograph where the content has one), vary " +
+        "the structure, and preview every slide before you answer.",
     },
   );
 

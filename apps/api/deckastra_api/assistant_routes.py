@@ -22,7 +22,7 @@ from deckastra_agents.budgets import RunBudget, RunCancelled
 from deckastra_agents.vertex_model import configured_image_client
 from deckastra_agents.video_model import configured_video_client
 from deckastra_agents.router import ModelUnavailable
-from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales
+from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales, preset_media
 from .assistant_assets import fingerprints, describe as describe_asset
 from .assistant_models import AssistantRun, AssistantEvent, AssistantReservation
 from .auth import Principal, Role, current_principal, resolve_presentation_access
@@ -75,7 +75,7 @@ class AssistantRequest(BaseModel):
     locale: str = Field(default="en", pattern=r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$")
     voice: str = Field(default="default", max_length=100)
     source_asset_ids: list[str] = Field(default_factory=list, max_length=10)
-    export_kind: Literal["pdf", "pptx", "mp4"] = "pdf"
+    export_kind: Literal["pdf", "pptx"] = "pdf"
     motion_entrance: str = Field(default="fade", max_length=40)
     motion_pacing: Literal["tight", "measured", "deliberate"] = "measured"
     # Unset means "as many click reveals as the slide already has", so re-planning
@@ -797,13 +797,39 @@ def _execute(run_id):
                         factor = min(view["width"] * .7 / placed["width"], view["height"] * .65 / placed["height"])
                         width, height = placed["width"] * factor, placed["height"] * factor
                         element = {"id": new_id("el"), "type": "image", "assetId": placed["id"], "fit": "contain", "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "altText": "Generated illustration requested as: " + request["instruction"][:400]}
+                        # A slide drawn with an image frame (the image layout, a
+                        # language's photo frame) gets the picture *in* the frame,
+                        # directly above it, so the scrim and the headline drawn
+                        # after the frame stay on top. Centred at 70% it covered
+                        # the words the layout had put over the photograph.
+                        frame = next(((i, e) for i, e in enumerate(chosen[0].get("elements") or []) if e.get("type") == "shape" and e.get("name") in preset_media.FRAME_NAMES), None)
+                        if frame is not None:
+                            frame_index, frame_element = frame
+                            element["transform"], element["fit"] = dict(frame_element["transform"]), "cover"
+                            element["name"], element["semanticRole"] = "Generated picture", str(frame_element.get("semanticRole") or "supportingVisual")
+                            if frame_element.get("altText"):
+                                element["altText"] = str(frame_element["altText"])[:900]
+                            radius = (frame_element.get("style") or {}).get("cornerRadius") or 0
+                            if frame_element.get("shape") == "pill":
+                                radius = min(element["transform"]["width"], element["transform"]["height"]) / 2
+                            if radius:
+                                element["style"] = {"cornerRadius": radius}
+                            # Above any picture already in the frame (a template's), so
+                            # the new one is what shows and the old one can be deleted.
+                            slide_elements = chosen[0].get("elements") or []
+                            at = frame_index + 1
+                            while at < len(slide_elements) and slide_elements[at].get("type") == "image" and slide_elements[at].get("transform") == frame_element["transform"]:
+                                at += 1
+                            media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/{at}", "value": element})
+                            element = None
                     else:
                         clip = next(item for item in final["assets"] if item["kind"] == "video")
                         poster = next(item for item in final["assets"] if item["kind"] == "image")
                         factor = min(view["width"] * .82 / clip["width"], view["height"] * .78 / clip["height"])
                         width, height = clip["width"] * factor, clip["height"] * factor
                         element = {"id": new_id("el"), "type": "video", "assetId": clip["id"], "posterAssetId": poster["id"], "fit": "cover", "autoplay": True, "loop": True, "muted": True, "controls": False, "startTimeMs": 0, "endTimeMs": clip["duration_ms"], "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "name": "Generated video: " + request["instruction"][:180]}
-                    media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/-", "value": element})
+                    if element is not None:
+                        media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/-", "value": element})
                     final["warnings"] = [*final.get("warnings", []), f"Review the generated {request['task']} and placement before applying."]
                 if media_operations:
                     errors = author_service.check(current.document, media_operations)

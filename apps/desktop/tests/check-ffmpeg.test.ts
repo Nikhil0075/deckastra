@@ -11,7 +11,7 @@ import { verifyRelease } from "../scripts/verify-release.mjs";
 
 /**
  * A desktop installer distributes ffmpeg, so it may ship only an LGPL build
- * that can do what the exporter asks of it (apps/worker/src/video.ts).
+ * that can do the one job it has: cut a PNG poster frame from a generated clip.
  */
 
 const LGPL = "configuration: --target-os=mingw32 --enable-version3 --disable-debug --enable-mediafoundation --enable-libvpx";
@@ -24,7 +24,7 @@ const ENCODERS = [
 ].join("\r\n");
 
 describe("auditing an ffmpeg for the installer", () => {
-  it("accepts an LGPL build with Media Foundation H.264 and built-in AAC", () => {
+  it("accepts an LGPL build that can write a PNG poster frame", () => {
     expect(auditFfmpeg({ buildconf: LGPL, encoders: ENCODERS })).toEqual({ problems: [], warnings: [] });
   });
 
@@ -40,11 +40,12 @@ describe("auditing an ffmpeg for the installer", () => {
     expect(problems.join(" ")).toMatch(/libx264/);
   });
 
-  it("refuses a build that cannot write the export's H.264 or AAC", () => {
-    const noMf = auditFfmpeg({ buildconf: LGPL, encoders: ENCODERS.replace(/.*h264_mf.*\r\n/, "") }).problems;
-    expect(noMf.join(" ")).toMatch(/h264_mf/);
-    const noAac = auditFfmpeg({ buildconf: LGPL, encoders: ENCODERS.replace(/.*aac.*$/, "") }).problems;
-    expect(noAac.join(" ")).toMatch(/aac/);
+  it("refuses a build that cannot write a poster frame, and no longer asks for H.264 or AAC", () => {
+    const noPng = auditFfmpeg({ buildconf: LGPL, encoders: ENCODERS.replace(/.*png.*\r\n/, "") }).problems;
+    expect(noPng.join(" ")).toMatch(/png/);
+    // MP4 export, the only thing that needed them, was removed.
+    const noMf = auditFfmpeg({ buildconf: LGPL, encoders: ENCODERS.replace(/.*h264_mf.*\r\n/, "").replace(/.*aac.*$/, "") });
+    expect(noMf.problems).toEqual([]);
   });
 
   it("notes compiled-in OpenH264 without refusing the build", () => {
@@ -106,7 +107,7 @@ describe("the release gate and ffmpeg", () => {
   const verify = (built: ReturnType<typeof release>, probe = signed(), ffmpegProbe = () => ({ buildconf: LGPL, encoders: ENCODERS })) =>
     verifyRelease({ releaseDir: built.releaseDir, distManifest: built.distManifest, probe, publisher: PUBLISHER, requireSigned: true, ffmpegProbe });
 
-  it("passes a release without ffmpeg and says MP4 export is unavailable", () => {
+  it("passes a release without ffmpeg", () => {
     const result = verify(release(false));
     expect(result.problems).toEqual([]);
     expect(result.report.ffmpeg).toEqual({ present: false });

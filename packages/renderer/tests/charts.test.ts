@@ -277,3 +277,67 @@ describe("chart layout", () => {
     expect(payload.notice).toContain("not on this slide");
   });
 });
+
+// ------------------------------------------------------- waterfall and slope
+
+describe("a waterfall", () => {
+  const rows = [
+    { c: "Start", v: 100 },
+    { c: "New customers", v: 40 },
+    { c: "Churn", v: -25 },
+    { c: "Upsell", v: 15 },
+  ];
+  const payload = chartOf({ chartType: "waterfall", data: { type: "inline", rows } });
+
+  it("floats each change from the running total and ends in a total from zero", () => {
+    expect(payload.chartType).toBe("waterfall");
+    expect(payload.rects).toHaveLength(rows.length + 1);
+    const total = payload.rects.at(-1)!;
+    const baseline = payload.axisLines[0]!.y1;
+    // The total bar rests on the zero line.
+    expect(Math.round(total.y + total.height)).toBe(Math.round(baseline));
+    // "Churn" falls, so it starts where "New customers" ended.
+    const rise = payload.rects[1]!;
+    const fall = payload.rects[2]!;
+    expect(Math.round(fall.y)).toBe(Math.round(rise.y));
+    expect(fall.fill).not.toBe(rise.fill);
+  });
+
+  it("says where the walk starts, each change with its sign, and the total plainly", () => {
+    const labels = payload.texts.filter((text) => text.id.includes(":wfl:")).map((text) => text.text);
+    expect(labels).toEqual(["100", "+40", "−25", "+15", "130"]);
+    expect(payload.texts.some((text) => text.text === "Total")).toBe(true);
+  });
+});
+
+describe("a slope chart", () => {
+  const rows = [
+    { c: "2024", north: 40, south: 70 },
+    { c: "2025", north: 55, south: 60 },
+    { c: "2026", north: 90, south: 50 },
+  ];
+  const payload = chartOf({
+    chartType: "slope",
+    data: { type: "inline", rows },
+    encoding: { category: "c", value: ["north", "south"] },
+  });
+
+  it("joins each series' first and last values, and labels both ends", () => {
+    expect(payload.paths.filter((path) => path.id.includes(":slope:"))).toHaveLength(2);
+    expect(payload.points).toHaveLength(4);
+    const ends = payload.texts.filter((text) => text.id.includes(":sl:")).map((text) => text.text);
+    expect(ends).toEqual(expect.arrayContaining(["40", "north 90", "70", "south 50"]));
+    // Only the first and last categories are drawn.
+    expect(payload.texts.some((text) => text.text === "2025")).toBe(false);
+  });
+
+  it("is read from its labels: no value axis, gridlines or legend unless asked for", () => {
+    expect(payload.gridlines).toEqual([]);
+    expect(payload.legend).toEqual([]);
+    expect(payload.texts.some((text) => text.id.includes(":vtick:"))).toBe(false);
+  });
+
+  it("says when it has nothing to compare", () => {
+    expect(chartOf({ chartType: "slope", data: { type: "inline", rows: [{ c: "Only", v: 1 }] } }).notice).toMatch(/first and a last/);
+  });
+});

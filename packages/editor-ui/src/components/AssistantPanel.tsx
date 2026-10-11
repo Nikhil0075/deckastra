@@ -105,7 +105,7 @@ export function AssistantPanel({
       </Section>
 
       <Section title="Media" data-testid="ai-media">
-        <p className="dk-muted">Add images, video, and audio from the deck's media library.</p>
+        <p className="dk-muted">Upload or generate pictures and video clips for this slide.</p>
         {onMediaOpen ? (
           <Button size="sm" variant="secondary" onClick={onMediaOpen} data-testid="assistant-open-media">
             Open media library

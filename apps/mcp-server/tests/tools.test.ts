@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -8,6 +9,7 @@ import type { Attached } from "../src/attach";
 import { createAttachedClient } from "../src/client";
 import { registerTools } from "../src/tools";
 import { registerGuidance } from "../src/guidance";
+import { DECK_DESIGN_GUIDE } from "../src/deck-design";
 
 /**
  * The agent's side of the seam, driven over the real protocol.
@@ -133,6 +135,21 @@ describe("the tool surface", () => {
     });
     const body = prompt.messages[0]?.content;
     expect(body && body.type === "text" ? body.text : "").toContain("deckastra://examples/technical");
+    expect(body && body.type === "text" ? body.text : "").toContain("deckastra://guides/deck-design");
+  });
+
+  it("serves the deck-design skill, and the installable SKILL.md says exactly the same", async () => {
+    const client = await connect();
+    const read = await client.readResource({ uri: "deckastra://guides/deck-design" });
+    const served = String(read.contents[0] && "text" in read.contents[0] ? read.contents[0].text : "");
+    expect(served).toBe(DECK_DESIGN_GUIDE);
+    // Every tool the guide names is one this server registers.
+    const tools = new Set((await client.listTools()).tools.map((tool) => tool.name));
+    const named = [...served.matchAll(/`([a-z]+_[a-z_]+)`/g)].map((match) => match[1]!).filter((name) => !["key_message"].includes(name));
+    expect(named.filter((name) => !tools.has(name))).toEqual([]);
+    const skill = readFileSync(new URL("../skills/deckastra-deck-design/SKILL.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+    expect(skill.replace(/^---\n[\s\S]*?\n---\n\n/, "")).toBe(DECK_DESIGN_GUIDE);
+    expect(skill).toMatch(/^---\nname: deckastra-deck-design\ndescription: .+\n---\n/);
   });
 
   it("lists presets and composes a template without accepting geometry", async () => {
@@ -709,14 +726,35 @@ describe("the tool surface", () => {
     expect(answer.would_produce.slides[0].elements[0].transform).toBeUndefined();
   });
 
+  it("sets a palette through the app, which derives the rest and computes the risk", async () => {
+    const client = await connect({
+      "/v1/presentations/pres_open/theme": { outcome: "planned", text_contrast: 14.2, accent_contrast: 12.1, notes: [] },
+    });
+    const result = await client.callTool({
+      name: "theme_propose",
+      arguments: { presentation_id: "pres_open", expected_version_id: "ver_1", background: "#1C1F22", foreground: "#F4F1EA",
+        accent: "#C6FF3D", display_font: "Archivo Black", dry_run: true },
+    });
+    expect(JSON.parse(text(result)).text_contrast).toBe(14.2);
+    const sentBody = sent.find((request) => request.url.includes("/theme"))!.body as Record<string, unknown>;
+    expect(sentBody).toMatchObject({ background: "#1C1F22", accent: "#C6FF3D", dry_run: true });
+    // The caller names colours; it cannot declare a risk tier.
+    expect(sentBody).not.toHaveProperty("risk_tier");
+    const refused = await client.callTool({
+      name: "theme_propose",
+      arguments: { presentation_id: "pres_open", expected_version_id: "ver_1", background: "graphite", foreground: "#FFFFFF", accent: "#C6FF3D" },
+    });
+    expect((refused as { isError?: boolean }).isError).toBe(true);
+  });
+
   it("mints its own export idempotency key", async () => {
     const client = await connect({
-      "/v1/presentations/pres_open/exports": { id: "exp_1", kind: "mp4", status: "queued" },
+      "/v1/presentations/pres_open/exports": { id: "exp_1", kind: "pdf", status: "queued" },
     });
 
     await client.callTool({
       name: "document_export",
-      arguments: { presentation_id: "pres_open", kind: "mp4" },
+      arguments: { presentation_id: "pres_open", kind: "pdf" },
     });
 
     const started = sent.find((request) => request.method === "POST" && request.url.includes("export"))!;

@@ -250,7 +250,7 @@ export function verifyRelease({ releaseDir, distManifest, current, probe, publis
 
   // 5. ffmpeg, when shipped, is an LGPL build that can do the export's job,
   // and it is signed like our own executables: the installer distributes it.
-  // Its absence is not a failure, only a release without MP4 export.
+  // Its absence is not a failure, only a release whose generated clips arrive without a poster frame.
   const ffmpeg = join(resources, "ffmpeg", "ffmpeg.exe");
   if (existsSync(ffmpeg)) {
     const { problems: ffmpegProblems, warnings } = auditFfmpeg(ffmpegProbe(ffmpeg));
@@ -341,7 +341,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   console.log(
     report.ffmpeg?.present
       ? `[verify-release] ffmpeg: ${report.ffmpeg.file}${report.ffmpeg.warnings.length ? ` (${report.ffmpeg.warnings.length} note(s))` : ""}`
-      : "[verify-release] ffmpeg: not shipped; this build cannot export MP4.",
+      : "[verify-release] ffmpeg: not shipped; this build cannot make poster frames for generated clips.",
   );
   for (const warning of report.ffmpeg?.warnings ?? []) console.log(`[verify-release] note: ${warning}`);
   for (const row of report.signatures.filter((entry) => entry.ours)) {

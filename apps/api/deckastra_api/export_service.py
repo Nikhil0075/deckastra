@@ -66,10 +66,9 @@ def export_root() -> Path:
 #: A 60-slide PDF renders in about six seconds on a warm machine. This is the
 #: point past which something is wrong rather than slow.
 EXPORT_TIMEOUT_SECONDS = 300
-VIDEO_EXPORT_TIMEOUT_SECONDS = 1800
 LEASE_SECONDS = 60
 
-KINDS = ("pdf", "pptx", "mp4", "mydeck")
+KINDS = ("pdf", "pptx", "mydeck")
 
 
 class ExportCancelled(RuntimeError):
@@ -171,8 +170,8 @@ def run_job(
             session,
             presentation_id=job.presentation_id,
             document=document,
-            still=job.kind not in ("pptx", "mp4"),
-            audio=asset_service.audio_for_export(document, (job.options_json or {}).get("locale")) if job.kind in ("pptx", "mp4") else set(),
+            still=job.kind != "pptx",
+            audio=asset_service.audio_for_export(document, (job.options_json or {}).get("locale")) if job.kind == "pptx" else set(),
         )
         if job.kind != "mydeck":
             from .font_packs import ensure_for_document
@@ -193,7 +192,6 @@ def run_job(
             options,
             should_cancel=should_cancel,
             assets=assets,
-            timeout=VIDEO_EXPORT_TIMEOUT_SECONDS if job.kind == "mp4" else None,
         )
     except ExportCancelled:
         # Nothing to publish: a file from a render the user stopped is a file they
@@ -397,6 +395,10 @@ def request_cancel(session: Session, job: ExportJob) -> ExportJob:
 def retry(session: Session, job: ExportJob) -> ExportJob:
     if job.status not in {"failed", "cancelled"}:
         raise ExportError("Only failed or cancelled exports can be retried.")
+    # MP4 export was removed (2026-10-11). An old video job keeps its row and,
+    # if it finished, its file; it cannot be rendered again.
+    if job.kind not in KINDS:
+        raise ExportError(f"{job.kind!r} exports are no longer offered. Export a PDF or PowerPoint instead.")
     job.status = "queued"
     job.stage = "queued"
     job.progress = 0.0
