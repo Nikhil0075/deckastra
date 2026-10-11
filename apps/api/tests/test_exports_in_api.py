@@ -70,7 +70,14 @@ def test_what_the_deploy_sets_actually_turns_voice_pictures_and_video_on(monkeyp
     for key, value in env.items():
         monkeypatch.setenv(key, value)
     assert vertex_model.image_model_id() == "gemini-3.1-flash-lite-image"
-    assert "gemini-3.1-flash-lite-image" in vertex_model.configuration()["prices"]
+    # Price a picture the way /v1/account/capabilities does. Loading the prices
+    # was not enough: the image rate is its own field, and its absence passed
+    # here and failed the production deploy's smoke check (2026-10-12).
+    from deckastra_agents.router import ModelRequest
+
+    client = vertex_model.VertexClient("gemini-3.1-flash-lite-image", vertex_model.configuration(), token=lambda: "unused")
+    probe = ModelRequest("media", "", [], stage="image", max_tokens=4096, image_output=True)
+    assert 0 < client.estimate_reservation(probe) <= float(shape["request_max_usd"])
     video = video_model.configuration()
     assert video["location"] == "us-central1" and video["rate"] == 0.15
     assert video_model.quote(4, video)["usd"] <= float(shape["request_max_usd"])
