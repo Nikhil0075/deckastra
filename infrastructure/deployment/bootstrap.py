@@ -190,10 +190,13 @@ MEDIA = {
     # Text-to-Speech, Chirp 3 HD: US$30 per million characters.
     "DECKASTRA_SPEECH": "google",
     "DECKASTRA_SPEECH_USD_PER_MILLION": "30",
-    # Gemini 3.1 Flash Lite Image: US$0.25 in / US$30 out per million tokens,
-    # about US$0.034 a picture. Gemini 2.5 Flash Image was shut down on 2 Oct 2026.
+    # Gemini 3.1 Flash Lite Image: US$0.25 in, US$30 per million image tokens
+    # out, about US$0.034 a picture. The image rate is its own field
+    # (`image_output`); text output is held at the same figure, since Google
+    # lists only the image rate for this model and the higher number is safe.
+    # Gemini 2.5 Flash Image was shut down on 2 Oct 2026.
     "DECKASTRA_VERTEX_IMAGE_MODEL": "gemini-3.1-flash-lite-image",
-    "DECKASTRA_VERTEX_PRICES": json.dumps({"gemini-3.1-flash-lite-image": {"input": 0.25, "output": 30}}),
+    "DECKASTRA_VERTEX_PRICES": json.dumps({"gemini-3.1-flash-lite-image": {"input": 0.25, "output": 30, "image_output": 30}}),
     # Veo 3.1 Fast, listed at US$0.08-0.12 a second for 720p-1080p; held at
     # US$0.15. Veo is regional, so it is called in us-central1.
     "DECKASTRA_VERTEX_VIDEO_MODEL": "veo-3.1-fast-generate-001",
