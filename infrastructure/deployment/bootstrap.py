@@ -84,7 +84,12 @@ def provision(cloud, foundation_only=False, size="small"):
                               ("deckastraStorageCleanup", "storage.objects.delete,storage.objects.list")):
         if not cloud.exists("iam", "roles", "describe", name):
             cloud.run("iam", "roles", "create", name, f"--title={name}", f"--permissions={permissions}", "--stage=GA")
-    cloud.member(accounts["export-worker"], f"projects/{project}/roles/deckastraIdentityCleanup")
+    # The API takes the worker's background work in the small size (exports,
+    # imports, account erasure), so it holds the worker's rights too. Granted in
+    # every size, so switching size never needs an IAM change: without them the
+    # first small deploy failed its smoke test, unable to save the PDF (2026-10-11).
+    for service in ("export-worker", "api"):
+        cloud.member(accounts[service], f"projects/{project}/roles/deckastraIdentityCleanup")
     for kind in ("assets", "exports", "packs", "build-source"):
         bucket = f"{project}-{kind}"
         if not cloud.exists("storage", "buckets", "describe", f"gs://{bucket}"):
@@ -95,7 +100,7 @@ def provision(cloud, foundation_only=False, size="small"):
                         (accounts["export-worker"], "roles/storage.objectCreator"),
                         (accounts["export-worker"], f"projects/{project}/roles/deckastraStorageCleanup")]
         elif kind == "exports":
-            bindings = [(accounts["api"], "roles/storage.objectViewer"), (accounts["export-worker"], "roles/storage.objectAdmin")]
+            bindings = [(accounts["api"], "roles/storage.objectAdmin"), (accounts["export-worker"], "roles/storage.objectAdmin")]
         elif kind == "build-source":
             bindings = [(accounts["build"], "roles/storage.objectViewer")]
         elif kind == "packs":
