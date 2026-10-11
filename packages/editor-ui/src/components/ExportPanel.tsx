@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { ExportJob, ExportReport, ExportWarning } from "@deckastra/workspace-contracts";
 import { commitFocusedDraft } from "../lib/drafts";
+import { downloadExport } from "../lib/export-download";
+import { followExport, reportExport, statusOf } from "../lib/tasks";
 import { Button, StatusChip } from "../ui";
 
 /**
@@ -49,21 +51,45 @@ export interface ExportSaveBarrier {
 
 export interface ExportPanelProps {
   presentationId: string;
+  /** The deck's name, so the task centre can say whose file it is. */
+  deckTitle?: string | null;
   /** Absent in the deck list, where no deck is open and what is stored is the deck. */
   editor?: ExportSaveBarrier;
 }
 
-export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
+export function ExportPanel({ presentationId, deckTitle = null, editor }: ExportPanelProps) {
   const client = useWorkspaceClient();
   const [state, setState] = useState<State>({ phase: "idle" });
   const [includeNotes, setIncludeNotes] = useState(false);
   const [atTime, setAtTime] = useState<"final" | "initial">("final");
   const polling = useRef<AbortController | null>(null);
+  // The job this panel is watching, for the task centre (UI audit Unit 9).
+  const watching = useRef<ExportJob | null>(null);
+  const said = useRef({ presentationId, deckTitle });
+  said.current = { presentationId, deckTitle };
 
-  useEffect(() => () => polling.current?.abort(), []);
+  const report = (job: ExportJob) => {
+    watching.current = job;
+    reportExport(said.current.presentationId, said.current.deckTitle, job);
+  };
+
+  // Leaving (the drawer closed, the deck left) does not abandon a running
+  // export: the task centre takes it over and keeps asking, so the file the
+  // service is still making has somewhere to land.
+  useEffect(
+    () => () => {
+      polling.current?.abort();
+      const job = watching.current;
+      if (job && statusOf(job) === "running") {
+        followExport(client.exports, said.current.presentationId, said.current.deckTitle, job);
+      }
+    },
+    [client],
+  );
 
   async function poll(job: ExportJob, signal: AbortSignal) {
     let current = job;
+    report(current);
     while (["queued", "running"].includes(current.status)) {
       setState({ phase: "running", kind: current.kind, job: current });
       await new Promise<void>((resolve, reject) => {
@@ -74,6 +100,7 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
         }, { once: true });
       });
       current = await client.exports.status(current.id, { signal });
+      report(current);
     }
     if (current.status === "completed") setState({ phase: "ready", job: current });
     else setState({ phase: "failed", message: current.error ?? current.message ?? `Export ${current.status}.`, job: current });
@@ -134,6 +161,7 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
     try {
       const body = await client.exports.cancel(job.id);
       if (body.status === "cancelled") polling.current?.abort();
+      report(body);
       setState({ phase: "failed", message: body.message ?? "Export cancelled.", job: body });
     } catch (error) {
       setState({
@@ -159,23 +187,9 @@ export function ExportPanel({ presentationId, editor }: ExportPanelProps) {
   }
 
   async function download(job: ExportJob) {
-    // Handed over as bytes rather than linked directly: the download endpoint is
-    // authenticated and a bare <a href> cannot carry a credential. The desktop
-    // shell will hand the same bytes to a native save dialog instead.
-    let bytes: Blob;
-    try {
-      bytes = await client.exports.download(job.id);
-    } catch {
+    if (!(await downloadExport(client.exports, job))) {
       setState({ phase: "failed", message: "The file is no longer available. Export it again." });
-      return;
     }
-
-    const url = URL.createObjectURL(bytes);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = job.filename ?? `deck.${job.kind}`;
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   const busyKind = state.phase === "running" || state.phase === "saving" ? state.kind : null;

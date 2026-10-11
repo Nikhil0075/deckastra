@@ -60,6 +60,16 @@
   gap: var(--dk-space-2);
   min-width: 0;
 }
+/* The start gives way first: the deck title is the one thing in the bar that
+   can be shortened without losing a control, so it ellipsizes, and anything
+   beyond that is clipped inside its own column rather than drawn across the
+   mode switch (UI audit Unit 9, found by the polish step with a long title). */
+.dk-appbar__start {
+  overflow: hidden;
+}
+.dk-appbar__title {
+  flex: 1 1 auto;
+}
 .dk-appbar__end {
   justify-content: flex-end;
 }
@@ -102,6 +112,7 @@
 .dk-appbar__group {
   display: flex;
   flex: none;
+  white-space: nowrap;
   margin-left: var(--dk-space-2);
   padding-left: var(--dk-space-2);
   border-left: var(--dk-line) solid var(--dk-rule-soft);
@@ -127,6 +138,7 @@
 }
 .dk-save {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--dk-space-1);
   font-size: var(--dk-text-sm);
@@ -2750,7 +2762,10 @@
   color: var(--dk-ink-inverse);
 }
 .dk-fontpicker__option--selected {
+  /* A bar and weight as well as the tint: not colour alone (WCAG 1.4.1). */
+  box-shadow: inset var(--dk-line-strong) 0 0 var(--dk-blue);
   background: var(--dk-sunk);
+  font-weight: 600;
 }
 
 /* Text style tiles: each drawn in the theme's own style for that role. */
@@ -3056,6 +3071,10 @@
   width: 68px;
   gap: 2px;
   overflow-y: auto;
+  /* A short window gives the rail a vertical scrollbar; without this, that
+     scrollbar's width then made it scroll sideways as well (UI audit Unit 9). */
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 .dk-rail__spacer {
   flex: 1;
@@ -3436,6 +3455,19 @@
    screen readers and in its tooltip (design review, 2026-09-26). Present keeps
    its label: it is the one action the bar exists for. */
 @media (max-width: 1500px) {
+  /* Below this the end group is sized to what it holds, and the start takes
+     what is left. Two equal outer columns let a wide end group spill left
+     under the mode switch at 1280px (UI audit Unit 9). */
+  .dk-appbar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  /* "Deckastra /" says what the mark beside it already says; the room goes to
+     the deck's own title and to the save state, whose Undo must stay
+     pressable when a change arrives from elsewhere. */
+  .dk-appbar__product,
+  .dk-appbar__sep {
+    display: none;
+  }
   /* The language code stays: like the agent chip, its words are its status
      ("HI" is which language is on the canvas), and it is two letters. */
   .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) .dk-btn__label {
@@ -3447,6 +3479,28 @@
     white-space: nowrap;
   }
   .dk-appbar__end .dk-btn:not(.dk-btn--primary):not(.dk-agent-chip):not(.dk-language-chip):not(.dk-appbar__assistant) {
+    position: relative;
+  }
+}
+/* Narrower still (a 1280px window at 125%, or any window at 200%): the mode
+   switch gives up its minimum and the Assistant keeps only its icon and its
+   name for screen readers. Present keeps its word. */
+@media (max-width: 1100px) {
+  .dk-appbar__center {
+    min-width: 0;
+  }
+  .dk-appbar__center .dk-segmented__item {
+    padding: 0 var(--dk-space-2);
+  }
+  .dk-appbar__end .dk-appbar__assistant .dk-btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .dk-appbar__end .dk-appbar__assistant {
     position: relative;
   }
 }
@@ -4201,8 +4255,11 @@
 }
 .dk-agent-setup__client--active {
   border-color: var(--dk-blue);
+  /* An underline bar and weight as well as the border's hue (WCAG 1.4.1). */
+  box-shadow: inset 0 calc(-1 * var(--dk-line-strong)) 0 var(--dk-blue);
   background: var(--dk-sunk);
   color: var(--dk-ink);
+  font-weight: 600;
 }
 .dk-agent-setup__client:focus-visible {
   outline: var(--dk-line-strong) solid var(--dk-blue);
@@ -4305,6 +4362,10 @@
 }
 .dk-shared__thumb[aria-selected="true"] {
   border-color: var(--dk-blue);
+  /* A second ring, so the choice is a shape and not only a hue (WCAG 1.4.1). */
+  box-shadow:
+    0 0 0 2px var(--dk-ground),
+    0 0 0 4px var(--dk-blue);
 }
 .dk-shared__thumb:focus-visible {
   outline: var(--dk-line-strong) solid var(--dk-blue);
@@ -4639,4 +4700,79 @@
 .dk-settings__choice .dk-segmented__item {
   flex: none;
   white-space: nowrap;
+}
+
+/* --- Task centre (shell/TaskCentre.tsx, UI audit Unit 9) ------------------- */
+
+.dk-tasks {
+  width: 340px;
+  padding: var(--dk-space-3);
+}
+.dk-tasks__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dk-space-2);
+}
+.dk-tasks__header .dk-label {
+  margin: 0;
+}
+.dk-tasks__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-tasks__row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-2);
+  padding-bottom: var(--dk-space-3);
+  border-bottom: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-tasks__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.dk-tasks__top {
+  display: flex;
+  align-items: center;
+  gap: var(--dk-space-2);
+  width: 100%;
+}
+.dk-tasks__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.dk-tasks__bar {
+  width: 100%;
+  height: var(--dk-space-1);
+  background: var(--dk-sunk);
+}
+.dk-tasks__fill {
+  display: block;
+  height: 100%;
+  background: var(--dk-blue);
+}
+.dk-tasks__detail {
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
+}
+
+/* What an approval became, with the way to version history (UI audit Unit 9). */
+.dk-proposals__applied,
+.dk-review__applied-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-1) var(--dk-space-2);
+  margin: 0;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm);
 }

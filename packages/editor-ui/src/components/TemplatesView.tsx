@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { DeckPreset, PresetCatalog, PresetSlotValue, PresetTheme, PurposeGroup } from "@deckastra/workspace-contracts";
 
-import { Button, Drawer, Select, StatusChip } from "../ui";
+import { Button, Drawer, InlineError, Select, SkeletonCards, StatusChip } from "../ui";
 import { cx } from "../ui/cx";
 import { TemplateContactSheet, TemplateCoverPreview } from "./TemplatePreview";
 
@@ -60,8 +60,13 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
   const [detail, setDetail] = useState<DeckPreset | null>(null);
   const start = useRef<HTMLElement | null>(null);
 
+  // The catalog's own failure, apart from a failed "Use template": only this
+  // one is answered by reading the catalog again.
+  const [catalogFailed, setCatalogFailed] = useState<string | null>(null);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    setCatalogFailed(null);
     client.presets
       .list({ fresh: true })
       .then((value) => {
@@ -69,12 +74,12 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
         setCatalog(value);
       })
       .catch((caught: unknown) => {
-        if (!cancelled) setError(caught instanceof Error ? caught.message : "Templates could not be loaded.");
+        if (!cancelled) setCatalogFailed(caught instanceof Error ? caught.message : "Templates could not be loaded.");
       });
     return () => {
       cancelled = true;
     };
-  }, [client]);
+  }, [client, catalogAttempt]);
 
   useEffect(() => {
     if (focusToken) start.current?.focus();
@@ -232,15 +237,14 @@ export function TemplatesView({ projectId, query, disabled = false, focusToken =
         </div>
       ) : null}
 
-      {error ? (
-        <p className="dk-decks__error" role="alert">
-          {error}
-        </p>
+      {error ? <InlineError data-testid="templates-error">{error}</InlineError> : null}
+      {catalogFailed ? (
+        <InlineError onRetry={() => setCatalogAttempt((count) => count + 1)} data-testid="templates-catalog-error">
+          {catalogFailed}
+        </InlineError>
       ) : null}
-      {!catalog && !error ? (
-        <p className="dk-muted" role="status">
-          Loading templates…
-        </p>
+      {!catalog && !catalogFailed ? (
+        <SkeletonCards label="Loading templates" count={6} gridClassName="dk-templates__grid" data-testid="templates-loading" />
       ) : null}
       {catalog ? (
         <p className="dk-templates__count" role="status">

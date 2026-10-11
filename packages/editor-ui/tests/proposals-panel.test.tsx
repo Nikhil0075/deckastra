@@ -56,7 +56,7 @@ it("shows a proposal made over MCP and approving it saves first, then adopts the
   expect(screen.getByText(/from claude-code via MCP/)).toBeTruthy();
 
   fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-  await screen.findByText("Applied: Rebuild the deck");
+  await screen.findByText("Applied: Rebuild the deck. Saved as a new version.");
 
   expect(order).toEqual(["save", "adopt"]);
   expect(onApplied).toHaveBeenCalledWith(document, "v2");

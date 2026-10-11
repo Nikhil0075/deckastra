@@ -4187,6 +4187,39 @@ easy to undo:
   palette. The desktop's agent chip shows only while access is on; consent is
   given in Settings › Agents & services (`settings-agent-toggle`), which is
   what the `consent` step drives.
+- **Polish, UI audit Unit 9 (2026-10-11).**
+  - **Loading is a shape, failure is said in place** (`ui/feedback.tsx`):
+    `Skeleton` and `SkeletonCards` replace every "Reading…" and "Loading…"
+    sentence, and keep the words as the status a screen reader hears.
+    `InlineError` says a failure where it happened, with Try again only when
+    there is something to retry.
+  - **The task centre** (`lib/tasks.ts`, `shell/TaskCentre.tsx`, `task-centre`)
+    is a per-window store that outlives every screen. `ExportPanel` reports
+    its job there as it polls and hands it over on unmount, so closing the
+    deck list's export drawer or leaving a deck no longer forgets a file the
+    service is still making. It shows only while it holds something.
+  - **Approving and undoing link to version history**: each says it was saved
+    as a new version, beside a Version history button (`review-history`,
+    `proposal-history`).
+  - **A change from elsewhere is undone from a banner**
+    (`ExternalChangeBanner`, `undo-external-change`); the bar says only
+    "Updated elsewhere". In the bar, the Undo was cut off at 1366px.
+  - **The app bar sizes its end group to what it holds below 1500px**, drops
+    "Deckastra /" there, and below 1100px the mode switch loses its minimum
+    and the Assistant its word. Two equal outer columns let the end group
+    spill under the mode switch at 1280px.
+  - **Names people write take their own direction** (`dir="auto"` on the deck
+    title and card titles), so an Arabic title reads right to left.
+  - **Colour is never the only signal** (DESIGN.md rule 3); three selections
+    that only turned blue now add a bar, a ring or a weight.
+  - **The `polish` smoke step** drives 1280×720, 1366×768, 1920×1080 and 200%
+    zoom on the editor and the home, and fails on sideways scroll, an
+    essential control outside the window, two bar buttons on top of each
+    other, or a control its own column has cut off (a bounding box ignores
+    clipping, so that is checked against the column). It then writes a long
+    title and an Arabic one through the page's proxy and puts the original
+    back. The interface is English only, so there is no interface
+    pseudo-locale to lengthen; the record says so.
 - **The home has views** (`lib/deck-views.ts`): All decks, Recent (12) and
   Trash are one request per project, merged, and a project that cannot be read
   fails the view rather than vanishing from it. Trash cards have no thumbnail

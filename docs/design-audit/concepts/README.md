@@ -108,3 +108,11 @@ profile, in the real app: the account menu's identity card (light and dark),
 and full-screen Settings at Privacy & data, Workspaces, Appearance and About.
 No OpenArt concept was generated for this unit. Settings is a page of words
 and controls, laid out on the existing primitives.
+
+## Unit 9 · Polish
+
+`unit9-polish/` holds screenshots from the desktop `polish` step on a fresh
+profile: the editor at 1280×720 and at 200% zoom, a very long deck title, an
+Arabic one with the outside-change banner under the bar, and the home at
+1366×768. No OpenArt concept was generated for this unit; it fixes what the
+step found on the existing screens.

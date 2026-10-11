@@ -8,7 +8,7 @@ import { useAssetUrls } from "../lib/asset-urls";
 import { useBrowserMeasurer } from "../lib/measurer";
 import type { EditorApi } from "../lib/useEditor";
 import { compareSlides, comparisonSummary, versionRows, type SlideChange } from "../lib/version-history";
-import { Button, Drawer, IconButton, StatusChip } from "../ui";
+import { Button, Drawer, IconButton, InlineError, Skeleton, StatusChip } from "../ui";
 import { cx } from "../ui/cx";
 import { FinalFrameSlide } from "./FinalFrameSlide";
 
@@ -53,6 +53,7 @@ export function VersionHistory({ editor, presentationId, open, onClose }: Versio
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [reloads, setReloads] = useState(0);
+  const [readAttempt, setReadAttempt] = useState(0);
 
   // Asked every time it opens: the list is a view of the server, and a deck an
   // agent changed since the last look has versions this one never saw.
@@ -97,7 +98,7 @@ export function VersionHistory({ editor, presentationId, open, onClose }: Versio
     return () => {
       cancelled = true;
     };
-  }, [client, documents, presentationId, selectedId]);
+  }, [client, documents, presentationId, selectedId, readAttempt]);
 
   const currentVersionId = editor.currentVersionId();
   const { rows, truncated } = useMemo(
@@ -184,9 +185,9 @@ export function VersionHistory({ editor, presentationId, open, onClose }: Versio
             {selectedRow.current ? <StatusChip tone="action">Current</StatusChip> : null}
           </p>
           {readError ? (
-            <p className="dk-versions__error" role="alert">
+            <InlineError onRetry={() => setReadAttempt((count) => count + 1)} data-testid="history-read-error">
               {readError}
-            </p>
+            </InlineError>
           ) : shownSlide ? (
             <>
               <div className="dk-versions__frame" data-testid="history-preview">
@@ -215,7 +216,7 @@ export function VersionHistory({ editor, presentationId, open, onClose }: Versio
               </div>
             </>
           ) : (
-            <p className="dk-versions__hint">Loading this version…</p>
+            <Skeleton label="Reading this version" lines={4} />
           )}
 
           {comparison && scene ? (
@@ -271,13 +272,11 @@ export function VersionHistory({ editor, presentationId, open, onClose }: Versio
       )}
 
       {loadError ? (
-        <p className="dk-versions__error" role="alert">
-          {loadError}{" "}
-          <Button size="sm" variant="ghost" onClick={() => setReloads((count) => count + 1)}>
-            Try again
-          </Button>
-        </p>
+        <InlineError onRetry={() => setReloads((count) => count + 1)} data-testid="history-load-error">
+          {loadError}
+        </InlineError>
       ) : null}
+      {!versions && !loadError ? <Skeleton label="Reading the version history" lines={5} /> : null}
 
       <ol className="dk-versions" aria-label="Versions, newest first">
         {rows.map((row) => (

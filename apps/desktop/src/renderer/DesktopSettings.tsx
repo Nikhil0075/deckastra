@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "@deckastra/editor-ui/ui";
+import { Button, InlineError, Skeleton } from "@deckastra/editor-ui/ui";
 import {
   AccountSettings,
   AgentSetupGuide,
@@ -112,12 +112,7 @@ function HostActionButton({
       >
         {busy ? busyLabel : label}
       </Button>
-      {error ? (
-        <span className="dk-settings__error" role="alert">
-          {" "}
-          {error}
-        </span>
-      ) : null}
+      {error ? <InlineError>{error}</InlineError> : null}
     </span>
   );
 }
@@ -187,15 +182,11 @@ function About({ bridge }: { bridge: DesktopBridge }) {
     <div className="dk-settings__section" data-testid="settings-about">
       <h3 className="dk-settings__heading">Deckastra</h3>
       {failed ? (
-        <p className="dk-settings__error" role="alert">
-          This build could not be described. Restart Deckastra and try again.
-        </p>
+        <InlineError>This build could not be described. Restart Deckastra and try again.</InlineError>
       ) : info ? (
         <p data-testid="settings-about-version">Version {info.appVersion}</p>
       ) : (
-        <p className="dk-muted" role="status">
-          Reading this build…
-        </p>
+        <Skeleton label="Reading this build" lines={1} />
       )}
       <p className="dk-muted">
         Upgrades are installed by hand: install the newer version over this one. Your decks are kept.
@@ -262,9 +253,7 @@ function DesktopAccount() {
     <div className="dk-settings__section" data-testid="settings-sign-in">
       <h3 className="dk-settings__heading">Deckastra account</h3>
       {state === null && !error ? (
-        <p className="dk-muted" role="status">
-          Reading your sign-in…
-        </p>
+        <Skeleton label="Reading your sign-in" lines={2} />
       ) : state && !state.configured ? (
         <p className="dk-muted">Signing in is not available in this build.</p>
       ) : state?.signedIn ? (
@@ -284,11 +273,7 @@ function DesktopAccount() {
           </Button>
         </>
       ) : null}
-      {error ? (
-        <p className="dk-settings__error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <InlineError data-testid="settings-sign-in-error">{error}</InlineError> : null}
     </div>
   );
 }
@@ -362,16 +347,14 @@ function Agents({
           </Button>
         </>
       ) : (
-        <p className="dk-muted">Reading whether agents may connect…</p>
+        <Skeleton label="Reading whether agents may connect" lines={2} />
       )}
       {launcher ? (
         <AgentSetupGuide launcher={launcher} onCopy={(text) => bridge.writeClipboardText(text)} />
       ) : setupError ? (
-        <p className="dk-settings__error" role="alert">
-          The setup command could not be prepared. Restart Deckastra and try again.
-        </p>
+        <InlineError>The setup command could not be prepared. Restart Deckastra and try again.</InlineError>
       ) : (
-        <p className="dk-muted" role="status">Preparing setup instructions…</p>
+        <Skeleton label="Preparing setup instructions" lines={3} />
       )}
       <h3 className="dk-settings__heading">Services</h3>
       <p className="dk-muted">

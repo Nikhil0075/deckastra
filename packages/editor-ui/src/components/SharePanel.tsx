@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { Share } from "@deckastra/workspace-contracts";
-import { Button, StatusChip } from "../ui";
+import { Button, Skeleton, StatusChip } from "../ui";
 
 /**
  * Share links (gap register doc 01 S2).
@@ -193,7 +193,7 @@ export function SharePanel({ presentationId }: { presentationId: string }) {
       ) : null}
 
       {shares === null ? (
-        <p className="dk-muted">Loading…</p>
+        <Skeleton label="Reading this deck's links" lines={2} />
       ) : shares.length === 0 ? (
         <p className="dk-muted">
           No links yet. A link lets someone open this deck without an account.

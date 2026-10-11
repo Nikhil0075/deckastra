@@ -4,6 +4,7 @@ import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
 import { Button, IconButton, Menu, Popover, Segmented, StatusChip, type MenuItem } from "../../ui";
 import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
+import { TaskCentre } from "./TaskCentre";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
 import { SaveIndicator } from "./SaveIndicator";
@@ -69,7 +70,9 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
         <h1 className="dk-appbar__title" title={title}>
           <span className="dk-appbar__product">Deckastra</span>
           <span className="dk-appbar__sep" aria-hidden="true">/</span>
-          <span className="dk-appbar__deck">{title}</span>
+          <span className="dk-appbar__deck" dir="auto">
+            {title}
+          </span>
         </h1>
         <span className="dk-appbar__group">
           <IconButton
@@ -191,12 +194,13 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
             </Button>
           )}
         >
-          <ExportPanel presentationId={presentationId} editor={editor} />
+          <ExportPanel presentationId={presentationId} deckTitle={title} editor={editor} />
           <SharePanel presentationId={presentationId} />
         </Popover>
         <Button size="sm" variant="primary" icon="play" onClick={onPresent} data-testid="present">
           Present
         </Button>
+        <TaskCentre />
         <AccountMenu {...account} />
       </div>
     </header>

@@ -5,7 +5,7 @@ import type { AccountContext, AccountWorkspace } from "@deckastra/workspace-cont
 import { useChromeTheme, type ThemePreference } from "../lib/chrome-theme";
 import { formatPronunciations, parsePronunciations, storedPronunciations } from "../lib/pronunciations";
 import { rovingIndex } from "../lib/ui-keys";
-import { Drawer, NumberField, Segmented } from "../ui";
+import { Drawer, InlineError, NumberField, Segmented, Skeleton } from "../ui";
 import { cx } from "../ui/cx";
 
 /**
@@ -146,13 +146,15 @@ export function SettingsAdvanced({ children, testId }: { children: ReactNode; te
  * it underneath a cached one. Four states, each said: reading, could not read,
  * a local install, an account. Shared by Profile and Workspaces.
  */
-function useFreshAccount(): { account: AccountContext | null; failed: boolean } {
+function useFreshAccount(): { account: AccountContext | null; failed: boolean; retry: () => void } {
   const client = useWorkspaceClient();
   const [account, setAccount] = useState<AccountContext | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setFailed(false);
     client.session
       .account({ fresh: true })
       .then((value) => live && setAccount(value))
@@ -160,16 +162,16 @@ function useFreshAccount(): { account: AccountContext | null; failed: boolean } 
     return () => {
       live = false;
     };
-  }, [client]);
+  }, [client, attempt]);
 
-  return { account, failed };
+  return { account, failed, retry: () => setAttempt((count) => count + 1) };
 }
 
-function AccountUnreadable() {
+function AccountUnreadable({ onRetry }: { onRetry: () => void }) {
   return (
-    <p className="dk-settings__error" role="alert">
-      Your account could not be read. Check that Deckastra is running, then open Settings again.
-    </p>
+    <InlineError onRetry={onRetry} data-testid="settings-account-error">
+      Your account could not be read. Check that Deckastra is running.
+    </InlineError>
   );
 }
 
@@ -185,9 +187,9 @@ function keptLocally(account: AccountContext, online: boolean): boolean {
 
 /** Profile: who this is, in plain words. */
 export function AccountSettings({ online = false }: { online?: boolean } = {}) {
-  const { account, failed } = useFreshAccount();
-  if (failed) return <AccountUnreadable />;
-  if (!account) return <p className="dk-muted">Reading your account…</p>;
+  const { account, failed, retry } = useFreshAccount();
+  if (failed) return <AccountUnreadable onRetry={retry} />;
+  if (!account) return <Skeleton label="Reading your account" lines={2} />;
 
   return (
     <div className="dk-settings__section" data-testid="settings-account">
@@ -228,9 +230,9 @@ const ROLE_WORDS: Record<string, string> = {
  * Advanced, for whoever is reading this to us.
  */
 export function WorkspaceSettings({ online = false }: { online?: boolean } = {}) {
-  const { account, failed } = useFreshAccount();
-  if (failed) return <AccountUnreadable />;
-  if (!account) return <p className="dk-muted">Reading your workspaces…</p>;
+  const { account, failed, retry } = useFreshAccount();
+  if (failed) return <AccountUnreadable onRetry={retry} />;
+  if (!account) return <Skeleton label="Reading your workspaces" lines={3} />;
 
   return (
     <div className="dk-settings__section" data-testid="settings-workspaces">

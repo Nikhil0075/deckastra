@@ -863,3 +863,73 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
   outline: none;
 }
 
+
+/* --- Loading and failing in place (ui/feedback.tsx, UI audit Unit 9) ------- */
+
+.dk-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  width: 100%;
+  max-width: 560px;
+}
+.dk-skeleton__line {
+  display: block;
+  height: var(--dk-space-3);
+  background: var(--dk-sunk);
+  animation: dk-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.dk-skeleton__line:nth-child(3n + 2) {
+  width: 82%;
+}
+.dk-skeleton__line:nth-child(3n) {
+  width: 64%;
+}
+.dk-skeleton__line--short {
+  width: 48%;
+}
+.dk-skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dk-space-2);
+  padding-bottom: var(--dk-space-2);
+}
+.dk-skeleton-card__thumb {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-sunk);
+  animation: dk-skeleton-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dk-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dk-skeleton__line,
+  .dk-skeleton-card__thumb {
+    animation: none;
+  }
+}
+
+.dk-inline-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dk-space-2) var(--dk-space-3);
+  padding: var(--dk-space-2) var(--dk-space-3);
+  border-left: var(--dk-line-strong) solid var(--dk-red);
+  background: var(--dk-surface);
+  color: var(--dk-ink);
+  font-size: var(--dk-text-md);
+}
+.dk-inline-error__text::before {
+  /* Not colour alone: the word says it failed. */
+  content: "Problem: ";
+  font-weight: 700;
+}
