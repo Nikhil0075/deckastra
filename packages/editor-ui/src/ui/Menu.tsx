@@ -35,6 +35,8 @@ export interface MenuItem {
   kind?: "radio" | "checkbox";
   /** A key shown at the end of the row. Display only; the shortcut is handled elsewhere. */
   shortcut?: string;
+  /** For tests and the desktop harness, which find controls by test id. */
+  testId?: string;
   onSelect: () => void;
 }
 
@@ -142,6 +144,7 @@ export function Menu({ trigger, items, label, align = "start", header }: MenuPro
       tabIndex={index === active ? 0 : -1}
       aria-disabled={item.disabled || undefined}
       className={cx("dk-menu__item", item.danger && "dk-menu__item--danger")}
+      data-testid={item.testId}
       onClick={() => activate(item)}
       onPointerMove={() => {
         if (!item.disabled && index !== active) setActive(index);

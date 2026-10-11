@@ -71,19 +71,27 @@ export function useFloating(
 
   useLayoutEffect(() => {
     if (!open) return;
-    const update = () => {
+    const update = (event?: Event) => {
       const trigger = triggerRef.current;
       const panel = panelRef.current;
       if (!trigger || !panel || typeof window === "undefined") return;
+      // Scrolling the panel itself does not move its trigger. Re-placing on it
+      // cleared the max-height below, the panel stopped overflowing, and the
+      // browser put it back at the top: the colour picker could not be
+      // scrolled at all (2026-10-12).
+      if (event?.type === "scroll" && event.target instanceof Node && panel.contains(event.target)) return;
       const t = trigger.getBoundingClientRect();
       const minWidth = matchWidth ? t.width : 0;
       // Measure at natural size: a max-height from an earlier placement would
-      // otherwise make the panel look shorter than it wants to be.
+      // otherwise make the panel look shorter than it wants to be. The scroll
+      // position is put back, because clearing the height resets it.
       const previous = panel.style.maxHeight;
+      const scrolled = panel.scrollTop;
       panel.style.maxHeight = "";
       const width = Math.max(panel.offsetWidth, minWidth);
       const height = panel.scrollHeight || panel.offsetHeight;
       panel.style.maxHeight = previous;
+      panel.scrollTop = scrolled;
       const placed = placePanel(
         { left: t.left, top: t.top, width: t.width, height: t.height },
         { width, height },
@@ -105,7 +113,7 @@ export function useFloating(
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => update());
     if (panelRef.current) observer?.observe(panelRef.current);
     return () => {
       window.removeEventListener("resize", update);

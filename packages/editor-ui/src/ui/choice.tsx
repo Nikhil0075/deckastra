@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { rovingIndex } from "../lib/ui-keys";
 import { cx } from "./cx";
@@ -105,6 +105,13 @@ export function Tabs<T extends string = string>({ label, value, items, onChange,
     items.findIndex((item) => item.value === value),
   );
   const active = items[activeIndex];
+
+  // A tab row longer than its column scrolls inside itself; the chosen tab is
+  // brought into view, including when it was chosen from elsewhere (the rail's
+  // Icons button opens the library at Icons, past the column's edge).
+  useEffect(() => {
+    refs.current[activeIndex]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [activeIndex]);
 
   const onKeyDown = (event: KeyboardEvent, index: number) => {
     const next = rovingIndex(index, items.length, event.key, { orientation: "horizontal", disabled });

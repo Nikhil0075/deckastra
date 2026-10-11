@@ -12,14 +12,32 @@
  * The editor's modes (doc 01 §6). Present is not one of them: it replaces the
  * whole window and is entered with a button, not switched to from a panel.
  */
-export type EditorMode = "design" | "motion" | "code";
+export type EditorMode = "design" | "motion" | "narration" | "code" | "media";
 
-export const EDITOR_MODES: ReadonlyArray<{ value: EditorMode; label: string }> = [
-  { value: "design", label: "Design" },
-  { value: "motion", label: "Motion" },
-  // Read-only in V1 (doc 01 §6.4): a view of the canonical JSON, never an editor
-  // of it. Editing JSON directly would be a second mutation path.
-  { value: "code", label: "Code" },
+export interface EditorModeEntry {
+  value: EditorMode;
+  label: string;
+  /**
+   * On the bar itself. The others are one menu after them (2026-10-12): five
+   * equal buttons would crowd the bar, and Design and Motion are where most of
+   * the time goes.
+   */
+  primary: boolean;
+  icon: "narration" | "code" | "upload" | "motion" | "select";
+  shortcut: string;
+}
+
+export const EDITOR_MODES: readonly EditorModeEntry[] = [
+  { value: "design", label: "Design", primary: true, icon: "select", shortcut: "Ctrl+1" },
+  { value: "motion", label: "Motion", primary: true, icon: "motion", shortcut: "Ctrl+2" },
+  // Narration used to be the first section of Motion, so a narrated deck's
+  // scripts, takes and sounds shared one scroll with transitions and planning.
+  { value: "narration", label: "Narration & sound", primary: false, icon: "narration", shortcut: "Ctrl+3" },
+  // Code edits canonical JSON through the ordinary patch path (doc 01 §6.4).
+  { value: "code", label: "Code", primary: false, icon: "code", shortcut: "Ctrl+4" },
+  // Bringing things in and having them made: pictures, video, a PowerPoint
+  // theme, translation.
+  { value: "media", label: "Import & generate", primary: false, icon: "upload", shortcut: "Ctrl+5" },
 ];
 
 // ----------------------------------------------------------------------- zoom

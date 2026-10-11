@@ -102,3 +102,30 @@ it("portals menus and select lists too, and keeps choosing by click", () => {
   fireEvent.click(screen.getByRole("option", { name: "Large" }));
   expect(chosen).toEqual(["front", "l"]);
 });
+
+it("keeps a pop-up's own scroll position when it is scrolled (the colour picker snapped back to the top)", () => {
+  render(
+    <Popover label="Colours" trigger={(props) => <button {...props}>Colours</button>}>
+      <div style={{ height: 2000 }}>Long list</div>
+    </Popover>,
+  );
+  fireEvent.click(screen.getByText("Colours"));
+  const panel = screen.getByText("Long list").closest(".dk-popover") as HTMLElement;
+  // jsdom has no layout: give the panel a max-height and a scroll position the
+  // way a browser would, then scroll it.
+  panel.style.maxHeight = "300px";
+  panel.scrollTop = 400;
+  const cleared: string[] = [];
+  const original = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, "maxHeight");
+  Object.defineProperty(panel.style, "maxHeight", {
+    configurable: true,
+    get: () => original?.get?.call(panel.style) ?? "",
+    set: (value: string) => {
+      cleared.push(value);
+      original?.set?.call(panel.style, value);
+    },
+  });
+  fireEvent.scroll(panel);
+  expect(cleared).toEqual([]);
+  expect(panel.scrollTop).toBe(400);
+});

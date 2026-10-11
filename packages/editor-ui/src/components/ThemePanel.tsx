@@ -42,7 +42,7 @@ export function ThemePanel({ editor, presentationId }: { editor: EditorApi; pres
  * refusal names what was wrong. An imported theme gets a fresh id, so two decks
  * that imported the same file are not mistaken for the same saved theme.
  */
-function ThemeFile({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
+export function ThemeFile({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
   const client = useWorkspaceClient();
   const input = useRef<HTMLInputElement>(null);
   const office = useRef<HTMLInputElement>(null);

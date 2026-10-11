@@ -51,7 +51,7 @@ import {
   type HostCommand,
   type SubscribeHostCommands,
 } from "../lib/host-commands";
-import { type EditorMode, type Zoom } from "../lib/editor-layout";
+import { EDITOR_MODES, type EditorMode, type Zoom } from "../lib/editor-layout";
 import { dockBodyHeight, loadDock, saveDock, type DockLayout, type DockState } from "../lib/dock";
 
 import { ConflictRecovery } from "./ConflictRecovery";
@@ -65,6 +65,7 @@ import type { SettingsSectionId } from "./SettingsShell";
 import { CanvasStage } from "./shell/CanvasStage";
 import { AssistantPanel } from "./AssistantPanel";
 import { MotionModePanel } from "./shell/MotionModePanel";
+import { ImportGeneratePanel } from "./shell/ImportGeneratePanel";
 import { NarrationPanel } from "./NarrationPanel";
 import { SlideStrip } from "./shell/SlideStrip";
 import { SpeakerNotes } from "./shell/SpeakerNotes";
@@ -972,13 +973,13 @@ export function EditorShell(props: EditorShellProps) {
       onOpenHistory={() => setHistoryOpen(true)}
       onVoiceOpen={() => {
         setAssistantOpen(false);
-        setMode("motion");
+        setMode("narration");
         setPanels({ ...panels, inspector: true });
       }}
       onMediaOpen={() => {
         setAssistantOpen(false);
-        setSide({ panel: "library", tab: "media" });
-        setPanels({ ...panels, tools: true });
+        setMode("media");
+        setPanels({ ...panels, inspector: true });
       }}
     />
   ) : null;
@@ -992,12 +993,25 @@ export function EditorShell(props: EditorShellProps) {
       <Suspense fallback={<div className="dk-modepanel dk-code dk-muted">Opening JSON editor…</div>}>
         <CodePanel editor={editor} />
       </Suspense>
+    ) : mode === "narration" ? (
+      // A mode of its own (2026-10-12). It was the first section of Motion,
+      // where scripts, takes and sounds shared one scroll with transitions.
+      <div className="dk-modepanel">
+        <NarrationPanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />
+      </div>
+    ) : mode === "media" ? (
+      <ImportGeneratePanel
+        editor={editor}
+        presentationId={props.presentationId}
+        slideId={slide?.id}
+        onAddImage={addImage}
+        onTranslate={() => {
+          openAssistant();
+          setLanguagesOpen(true);
+        }}
+      />
     ) : mode === "motion" ? (
       <div className="dk-modepanel">
-      {/* Above whichever motion panel the host supplies: narration is what a
-          narrated slide is paced by, and below the transition and planning
-          sections it was a scroll away (integration plan 01 §3.3). */}
-      <NarrationPanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />
       {props.motionAuthoring ? (
         <props.motionAuthoring.Panel
           editor={editor}
@@ -1415,7 +1429,7 @@ export function EditorShell(props: EditorShellProps) {
           />
         ) : null}
         {sidePanelShown ? (
-          <aside className="dk-panel" data-region="panel" aria-label={mode === "code" ? "Code" : mode === "motion" ? "Motion" : "Inspector"}>
+          <aside className="dk-panel" data-region="panel" aria-label={mode === "design" ? "Inspector" : (EDITOR_MODES.find((entry) => entry.value === mode)?.label ?? "Inspector")}>
             {rightPanel}
           </aside>
         ) : null}

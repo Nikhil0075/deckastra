@@ -4251,6 +4251,38 @@ easy to undo:
   `STILL_TO_REMOVE` is a ratchet: the test fails when a listed file has gone
   clean, so the list can only get shorter.
 
+### Five modes, two on the bar (2026-10-12)
+
+`EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,
+Code and Import & generate. Rules that are easy to undo:
+
+- **Design and Motion are buttons on the bar; the other three are one menu
+  after them** (`ModeSwitch` in `shell/AppBar.tsx`, `data-testid="mode-more"`).
+  While a menu mode is on, the button shows its name in the selected blue and
+  carries `data-mode`, so the bar always names the mode on screen. Menu items
+  keep `mode-<value>` test ids (`MenuItem.testId`); the desktop harness opens
+  `mode-more` first.
+- **Narration & sound is its own mode.** It was the first section of Motion and
+  shared one scroll with transitions and planning. Its dock opens on the
+  timeline, where the click steps are.
+- **Import & generate gathers existing components**
+  (`shell/ImportGeneratePanel.tsx`): the Add library's upload, `GenerateMedia`,
+  `ThemeFile` from the theme gallery, and a way to the Assistant's Languages.
+  It is not a second implementation of any of them.
+- Shortcuts are Ctrl+1 to Ctrl+5 in the desktop View menu; the host commands
+  are `mode-narration` and `mode-media`, listed in `HostCommand`,
+  `MENU_COMMANDS` and the palette.
+- **The bar's end column is never narrower than what it holds**
+  (`minmax(max-content, 1fr)`). Equal outer columns let a full end group (agent
+  access on, a wide window) spill under the mode switch and cover Code.
+- **A side panel never scrolls sideways.** Tab rows scroll inside themselves
+  and bring the active tab into view. Segmented rows in a panel wrap onto a
+  grid. `.dk-panel` and `.dk-library` hide horizontal overflow. Measure a new
+  panel with `scrollWidth > clientWidth`, because the clipping hides the bug.
+- **A pop-up ignores scrolls inside itself** (`useFloating`). Re-placing it
+  cleared its max-height, it stopped overflowing, and the browser reset it to
+  the top, so the colour picker could not be scrolled.
+
 ### Design languages: a grammar, not a recolour (UI audit unit 5, 2026-10-10)
 
 A design language decides grid, type scale, alignment and motifs; a theme

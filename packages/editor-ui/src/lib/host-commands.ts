@@ -23,8 +23,12 @@ export function modeForCommand(command: HostCommand): EditorMode | null {
       return "design";
     case "mode-motion":
       return "motion";
+    case "mode-narration":
+      return "narration";
     case "mode-code":
       return "code";
+    case "mode-media":
+      return "media";
     default:
       return null;
   }

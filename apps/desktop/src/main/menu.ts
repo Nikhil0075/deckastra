@@ -98,7 +98,9 @@ export function menuTemplate(
       submenu: [
         item("Design", "mode-design", "CmdOrCtrl+1"),
         item("Motion", "mode-motion", "CmdOrCtrl+2"),
-        item("Code", "mode-code", "CmdOrCtrl+3"),
+        item("Narration & sound", "mode-narration", "CmdOrCtrl+3"),
+        item("Code", "mode-code", "CmdOrCtrl+4"),
+        item("Import & generate", "mode-media", "CmdOrCtrl+5"),
         // The page binds Ctrl+K (roadmap 08 §1.5): every command by name, and
         // the assistant for anything that is not one.
         pageOwned("Command palette…", "command-palette", "CmdOrCtrl+K"),
