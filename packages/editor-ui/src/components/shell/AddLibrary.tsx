@@ -8,6 +8,7 @@ import type { PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
 import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx, type IconName } from "../../ui";
+import { PatternThumb, usePatternPreviews } from "./PatternPreview";
 
 /**
  * The Add library (design review, 2026-09-26): everything that can be put on a
@@ -206,6 +207,10 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
       .catch((error) => { if (live) setPatternNotice(error instanceof Error ? error.message : "Slide patterns could not be loaded."); });
     return () => { live = false; };
   }, [client, tab]);
+
+  // Each pattern drawn as the slide it adds, in this deck's language and theme.
+  const language = (document?.metadata as { designLanguage?: { id?: string } } | undefined)?.designLanguage?.id ?? "neutral";
+  const previews = usePatternPreviews(client, language, tab === "patterns");
 
   // Recent and favourites follow the person (design review, 2026-09-27): read
   // from the service once, merged with this browser's copy, which stays as the
@@ -513,19 +518,24 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
       <p className="dk-field__hint">Complete slide structures with named content slots. Layout and spacing stay consistent automatically.</p>
       {patternNotice ? <p className="dk-field__hint" role="status">{patternNotice}</p> : null}
       {!catalog && !patternNotice ? <p className="dk-field__hint">Loading slide patterns…</p> : null}
-      <div className="dk-library__grid" data-testid="library-patterns">
+      <div className="dk-library__grid dk-library__grid--patterns" data-testid="library-patterns">
         {patternEntries.map(({ pattern, definition }) => (
           <button
             key={pattern}
             type="button"
-            className="dk-library__add"
+            className="dk-library__add dk-library__pattern"
             disabled={patternBusy !== null}
             title={definition.summary}
             data-testid={`library-pattern-${pattern}`}
+            data-previewed={previews?.slides[pattern] && document ? "true" : undefined}
             onClick={() => void insertPattern(pattern)}
           >
-            <Icon name="grid" size={22} />
-            <span className="dk-library__caption">{patternBusy === pattern ? "Inserting…" : definition.name}</span>
+            {previews?.slides[pattern] && document ? (
+              <PatternThumb slide={previews.slides[pattern]} document={document} />
+            ) : (
+              <Icon name="grid" size={22} />
+            )}
+            <span className="dk-library__pattern-name">{patternBusy === pattern ? "Inserting…" : definition.name}</span>
           </button>
         ))}
       </div>

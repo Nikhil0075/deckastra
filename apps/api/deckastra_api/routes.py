@@ -587,6 +587,48 @@ def insert_pattern(
             "slide_id": slide["id"], "pattern": request.pattern, "warnings": warnings}
 
 
+_PATTERN_PREVIEWS: dict[tuple[str, str], dict[str, Any]] = {}
+
+
+@router.get("/patterns/preview")
+def preview_patterns(
+    language: str = "neutral",
+    principal: Principal = Depends(current_principal),
+) -> dict[str, Any]:
+    """Every slide pattern's example, composed in one design language.
+
+    What the Add library draws as each pattern's tile: the slide Insert would add
+    to a deck in that language, with the pattern's example words. It reads no
+    deck and stores nothing, so it needs no version and cannot go stale while
+    someone types; the editor draws it in the deck's own theme. Composition is
+    deterministic, so one answer per language and catalog revision is kept.
+    """
+    from .template_compose import catalog_revision
+
+    del principal  # a signed-in caller, nothing more: the answer is the same for everyone
+    if language not in languages.LANGUAGE_LAYOUTS:
+        language = "neutral"
+    key = (language, catalog_revision())
+    cached = _PATTERN_PREVIEWS.get(key)
+    if cached is not None:
+        return cached
+    slides: dict[str, Any] = {}
+    for pattern in presets.catalog().get("slidePatterns") or []:
+        try:
+            plan = presets.slide_plan_from_pattern(pattern)
+            story, _ = languages.apply_density(StoryPlan(title="", audience="", objective="", narrative_arc="", slides=[plan]), language)
+            slides[pattern] = compose_slide(story.slides[0], 0, language)
+        except presets.PresetError:
+            # A pattern whose example cannot compose is left out rather than
+            # failing the gallery; the tile falls back to its name.
+            continue
+    answer = {"language": language, "revision": key[1], "slides": slides}
+    if len(_PATTERN_PREVIEWS) > 32:
+        _PATTERN_PREVIEWS.clear()
+    _PATTERN_PREVIEWS[key] = answer
+    return answer
+
+
 class MotionStyleRequest(BaseModel):
     expected_version_id: str = Field(min_length=1, max_length=64)
     style: str = Field(min_length=1, max_length=80)

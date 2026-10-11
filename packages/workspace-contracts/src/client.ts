@@ -38,6 +38,7 @@ import type {
   DeckFromTemplateRequest,
   InsertPatternRequest,
   InsertPatternResult,
+  PatternPreviews,
   PresetCatalog,
   TemplatePreviewRequest,
   TemplatePreviewResult,
@@ -250,6 +251,8 @@ export interface WorkspaceClient {
       body: InsertPatternRequest,
       options?: RequestOptions,
     ): Promise<InsertPatternResult>;
+    /** Every pattern's example slide in a design language. Optional: absent, tiles show their names. */
+    previewPatterns?(language: string, options?: RequestOptions): Promise<PatternPreviews>;
   };
 
   /**

@@ -37,6 +37,7 @@ import type {
   PresetCatalog,
   InsertPatternRequest,
   InsertPatternResult,
+  PatternPreviews,
   PreviewRequest,
   PreviewResult,
   MotionPreviewRequest,
@@ -473,6 +474,11 @@ const q = encodeURIComponent;
         json<InsertPatternResult>(`/v1/presentations/${q(presentationId)}/patterns/insert`, {
           body,
           fallback: "That slide pattern could not be inserted.",
+          ...request,
+        }),
+      previewPatterns: (language, request) =>
+        json<PatternPreviews>(`/v1/patterns/preview?language=${encodeURIComponent(language)}`, {
+          fallback: "Slide pattern previews could not be read.",
           ...request,
         }),
     },

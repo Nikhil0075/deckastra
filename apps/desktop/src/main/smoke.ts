@@ -1595,7 +1595,7 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
     [1366, 768],
     [1920, 1080],
   ];
-  const EDITOR = ["present", "account-menu", "open-share", "mode-design", "undo", "open-deck-list"];
+  const EDITOR = ["present", "account-menu", "open-share", "mode-design", "mode-code", "undo", "open-deck-list", "agent-access-open"];
   const HOME = ["account-menu", "deck-search", "view-all"];
 
   const sweep = async (where: "editor" | "home", essentials: string[], bar: string) => {
@@ -1629,6 +1629,11 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
   const originalSize = window.getContentSize();
   Menu.getApplicationMenu()?.getMenuItemById("layout-reset")?.click();
   await sleep(300);
+
+  // With agent access on, the bar carries its widest chip. The first version of
+  // this step ran with it off and passed while the chip covered CODE at 1366px.
+  await page(`window.deckastra.setAgentAccess({ allow: true })`);
+  await need("the agent chip never appeared", `document.querySelector('[data-testid="agent-access-open"]')`);
 
   try {
     record.editor = await sweep("editor", EDITOR, ".dk-appbar");
@@ -1696,6 +1701,7 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
   } finally {
     window.webContents.setZoomFactor(1);
     window.setContentSize(originalSize[0]!, originalSize[1]!);
+    await page(`window.deckastra.setAgentAccess({ allow: false })`).catch(() => undefined);
   }
 
   record.interfaceLanguage = "English only: there is no interface pseudo-locale to lengthen; people's own words were tested instead.";

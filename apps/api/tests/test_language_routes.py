@@ -97,3 +97,23 @@ def test_an_inserted_pattern_composes_in_the_decks_language(client, auth):
     slide = response.json()["operations"][0]["value"]
     # System Terminal's window bar, not the neutral statement.
     assert any(element.get("name") == "Window bar" for element in slide["elements"])
+
+
+def test_pattern_previews_are_every_pattern_composed_in_the_language_and_store_nothing(client, auth):
+    """The Add library draws each pattern as the slide Insert would add."""
+    from deckastra_api.db.models import Presentation
+    from deckastra_api.db import session as db_session
+
+    with db_session.session_scope() as session:
+        before = session.query(Presentation).count()
+    swiss = client.get("/v1/patterns/preview?language=system-terminal", headers=auth)
+    assert swiss.status_code == 200, swiss.text
+    body = swiss.json()
+    assert body["language"] == "system-terminal"
+    assert set(body["slides"]) == set(presets.catalog()["slidePatterns"])
+    # The language's own grammar, not the neutral statement.
+    assert any(e.get("name") == "Window bar" for e in body["slides"]["statement"]["elements"])
+    # An unknown language is drawn neutral rather than refused.
+    assert client.get("/v1/patterns/preview?language=nope", headers=auth).json()["language"] == "neutral"
+    with db_session.session_scope() as session:
+        assert session.query(Presentation).count() == before

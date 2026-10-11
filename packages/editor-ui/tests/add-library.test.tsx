@@ -3,7 +3,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ICON_NAMES } from "@deckastra/renderer";
 import { withWorkspaceClient } from "@deckastra/workspace-client/testing";
 
+import { loadFixture } from "@deckastra/presentation-schema/fixtures";
 import { AddLibrary, type LibraryItem, type LibraryTab } from "../src/components/shell/AddLibrary";
+import { forgetPatternPreviews } from "../src/components/shell/PatternPreview";
 import { ToolRail } from "../src/components/shell/ToolRail";
 
 /**
@@ -114,4 +116,38 @@ it("inserts a reviewed slide pattern as one local editor change", async () => {
   });
   expect(saveNow).toHaveBeenCalled();
   expect(apply.mock.calls[0]![1]).toBe("Insert Statement slide");
+});
+
+it("draws each pattern as the slide it adds, read once per design language", async () => {
+  forgetPatternPreviews();
+  const fetcher = vi.fn(async (url: string) => {
+    const response = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as Response;
+    if (url.endsWith("/v1/presets")) return response({
+      description: "Reviewed",
+      purposeGroups: ["business"],
+      slidePatterns: ["statement", "quote"],
+      patternDefinitions: {
+        statement: { name: "Statement", summary: "One strong idea", composerLayout: "statement", slots: {}, exampleSlots: {} },
+        quote: { name: "Customer quote", summary: "A quote", composerLayout: "quote", slots: {}, exampleSlots: {} },
+      },
+      motionStyles: {}, presets: [], themes: [],
+    });
+    if (url.includes("/v1/patterns/preview")) return response({ language: "swiss-signal", revision: "r1", slides: { statement: { id: "sld_p", elements: [] } } });
+    return response(null);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const document = { ...loadFixture("technical"), metadata: { ...loadFixture("technical").metadata, designLanguage: { id: "swiss-signal", version: 1 } } };
+  const view = render(
+    <AddLibrary tab="patterns" onTab={() => {}} onClose={() => {}} onAdd={() => {}} onAddImage={() => {}} document={document as never} presentationId="pres_1" />,
+    { wrapper: withWorkspaceClient() },
+  );
+  // A pattern with a preview is drawn; one without keeps its icon and its name.
+  await waitFor(() => expect(screen.getByTestId("library-pattern-statement").getAttribute("data-previewed")).toBe("true"));
+  expect(screen.getByTestId("library-pattern-quote").getAttribute("data-previewed")).toBeNull();
+  // The full name is shown, not cut to fit a square.
+  expect(within(screen.getByTestId("library-pattern-quote")).getByText("Customer quote")).toBeTruthy();
+  const asked = fetcher.mock.calls.filter(([url]) => String(url).includes("/v1/patterns/preview"));
+  expect(asked).toHaveLength(1);
+  expect(String(asked[0]![0])).toContain("language=swiss-signal");
+  view.unmount();
 });

@@ -199,6 +199,18 @@ export interface InsertPatternRequest {
   dry_run?: boolean;
 }
 
+/**
+ * Every slide pattern's example, composed in one design language: what the Add
+ * library draws as each pattern's tile. Read-only; the editor draws each slide
+ * in the deck's own theme.
+ */
+export interface PatternPreviews {
+  language: string;
+  /** Changes when the catalog does, so a cached answer is never an old one. */
+  revision: string;
+  slides: Record<string, unknown>;
+}
+
 export interface InsertPatternResult {
   outcome: string;
   risk_tier?: string;
