@@ -587,6 +587,16 @@ where a "presigned" URL is an ordinary authenticated API path: there is nothing
 to sign, and a second signing scheme would be a second thing to get wrong. The
 URL is relative so it can never carry the loopback port into a stored document.
 
+**The archive holds the bundles and nothing else** (`electron-builder.yml`
+`files`, 2026-10-11). It was `dist/**/*`, which packed a second copy of
+everything `extraResources` ships beside it (service, exporter, MCP server,
+ffmpeg) plus the service build's `.venv` and PyInstaller work folder, and
+electron-builder added the production dependencies' `node_modules` as a third
+copy. `app.asar` went from 508MB to 7.7MB and the installer from 433MB to
+217MB; `open`, `edit`, `verify`, `export`, `design` and `presenter` passed on
+the packaged build afterwards. The bundles import only `electron` and Node's
+own modules, which is what makes excluding `node_modules` safe.
+
 Three bundles, because Electron runs three things under three sets of rules
 (`scripts/build.mjs`). The one that bites: **the preload must be CommonJS.** With
 `sandbox: true` a preload runs in a restricted context with no ESM loader, so an

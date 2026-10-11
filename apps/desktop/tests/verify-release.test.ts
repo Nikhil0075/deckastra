@@ -200,6 +200,10 @@ describe("the release gate", () => {
     const demo = verify(release);
     expect(demo.problems.join(" ")).toContain("were made for demo use and may not ship in a release");
 
+    writeFileSync(join(media, "MANIFEST.json"), JSON.stringify({ media: [{ file: "a.jpg", license: { use: "commercial" }, review: { by: "agent" } }] }));
+    const unreviewed = verify(release);
+    expect(unreviewed.problems.join(" ")).toContain("have not been reviewed by a person");
+
     rmSync(media, { recursive: true, force: true });
     const missing = verify(release);
     expect(missing.problems.join(" ")).toContain("ships no template picture folder");
