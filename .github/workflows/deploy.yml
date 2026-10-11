@@ -13,9 +13,12 @@ on:
         default: false
   push:
     branches: [main]
-    paths: ['apps/api/**', 'apps/worker/**', 'agents/**', 'packages/**', 'infrastructure/**', 'package*.json', '.github/workflows/deploy.yml']
+    # .gcloudignore and .dockerignore decide what reaches the image, so a change
+    # to either is a change to what deploys: merging the fix that let the
+    # template pictures through (#34) started no staging deploy without them.
+    paths: ['apps/api/**', 'apps/worker/**', 'agents/**', 'packages/**', 'infrastructure/**', 'package*.json', '.github/workflows/deploy.yml', '.gcloudignore', '.dockerignore']
   pull_request:
-    paths: ['apps/api/**', 'apps/worker/**', 'apps/desktop/src/main/**', 'agents/**', 'packages/**', 'infrastructure/**', '.github/workflows/deploy.yml']
+    paths: ['apps/api/**', 'apps/worker/**', 'apps/desktop/src/main/**', 'agents/**', 'packages/**', 'infrastructure/**', '.github/workflows/deploy.yml', '.gcloudignore', '.dockerignore']
 permissions:
   contents: read
   id-token: write
