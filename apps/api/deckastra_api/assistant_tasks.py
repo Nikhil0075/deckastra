@@ -174,6 +174,9 @@ def _compute(request, snapshot, client, budget, emit):
             raise UserFacingError("Choose a smaller scope: one speech job supports up to forty cues.")
         rate = float(__import__("os").environ.get("DECKASTRA_SPEECH_USD_PER_MILLION", "nan"))
         import math, uuid
+        from . import local_mode
+        if local_mode.account_gateway():
+            rate = 0.0  # the hosted account prices and charges each line
         if speech.selected_speech_provider() != "stub" and (not math.isfinite(rate) or rate < 0):
             raise UserFacingError("Configure DECKASTRA_SPEECH_USD_PER_MILLION before paid narration.")
         media = []

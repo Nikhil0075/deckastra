@@ -264,6 +264,9 @@ def selected_translator_name() -> str:
         if choice == "stub" and _installed_product():
             raise ModelUnavailable("The keyless stand-in translator is for development; it is not in an installed product.")
         return choice
+    from . import local_mode
+    if local_mode.account_gateway():
+        return "google"
     if _installed_product():
         raise ModelUnavailable(
             "Translation is not configured. Set DECKASTRA_TRANSLATION=google and configure Google Cloud Translation."
@@ -285,6 +288,10 @@ def translation_status() -> dict[str, Any]:
         "stub": "Development stand-in: every translation is the source text marked with the language. Nothing is sent.",
         "google": "Translated by Google Cloud Translation. Slide text is sent to Google.",
     }
+    from . import local_mode
+    if name == "google" and local_mode.account_gateway():
+        return {"provider": name, "available": True,
+                "reason": "Translated with your Deckastra account's credits. Slide text is sent to Google."}
     return {"provider": name, "available": True, "reason": reasons[name]}
 
 

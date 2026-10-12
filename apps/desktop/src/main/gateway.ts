@@ -27,7 +27,10 @@ export async function gatewayEnvironment(): Promise<NodeJS.ProcessEnv> {
       "/quote": "/v1/assistant/quote", "/translate": "/v1/assistant/translate", "/speech": "/v1/assistant/speech",
       "/capabilities": "/v1/account/capabilities", "/credits": "/v1/account/credits",
     };
-    const path = paths[request.url ?? ""];
+    // The voice list is the one read that names something: a language tag,
+    // checked here so nothing else can ride along in the query.
+    const voices = /^\/voices\?locale=([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3})$/.exec(request.url ?? "");
+    const path = voices ? `/v1/speech/voices?locale=${voices[1]}` : paths[request.url ?? ""];
     if (!path || request.method !== (["/infer", "/video", "/quote", "/translate", "/speech"].includes(request.url ?? "") ? "POST" : "GET")) {
       response.writeHead(404); response.end(); return;
     }

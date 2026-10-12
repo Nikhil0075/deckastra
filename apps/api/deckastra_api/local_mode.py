@@ -64,6 +64,23 @@ def enabled() -> bool:
     return True
 
 
+def account_gateway() -> bool:
+    """An installed desktop whose paid services go through the signed-in account.
+
+    The main process runs a private bridge to the hosted API (``main/gateway.ts``)
+    and hands this process only its address. Translation, voices, pictures and
+    video then run in the cloud, which prices them, enforces the account's
+    credits and daily limits, and refuses with "sign in" when nobody is. So none
+    of the local settings those services need on a server (a provider choice,
+    Google credentials, per-character prices, a workspace spend ceiling) apply
+    here, and asking for them switched every paid service off (2026-10-12).
+    Only an installed product: a checkout keeps the free stand-ins, which is what
+    the development smoke steps exercise.
+    """
+    return (enabled() and bool(os.environ.get("DECKASTRA_GATEWAY_URL"))
+            and os.environ.get("DECKASTRA_DISTRIBUTION", "").strip() == "1")
+
+
 def launch_secret() -> str:
     """The bearer this process accepts, minted by whatever started it.
 

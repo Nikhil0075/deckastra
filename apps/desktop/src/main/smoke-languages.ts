@@ -308,6 +308,15 @@ async function runNarrationInner(window: BrowserWindow, dir: string, record: Rec
     // Voiced by the stand-in, as a proposal.
     await k.press("narration-voice");
     await k.need("voicing never answered", `document.querySelector('[data-testid="narration-message"]')`, 60_000);
+    // An installed app voices through the signed-in account and never with the
+    // stand-in, so signed out it is told to sign in: skipped by name, as
+    // translation is above (2026-10-12).
+    const voiceMessage = await k.page<string>(`document.querySelector('[data-testid="narration-message"]').textContent`);
+    if (app.isPackaged && /sign in/i.test(voiceMessage)) {
+      record.voiceMessage = voiceMessage;
+      record.skipped = "voicing needs a signed-in Deckastra account in an installed app; run this step from a checkout or signed in";
+      return;
+    }
     if (await k.page<boolean>(`document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice') === true`)) {
       await k.press("narration-voice");
       await k.need("confirmed voicing never answered", `!document.querySelector('[data-testid="narration-voice"]')?.textContent?.includes('Confirm voice')`, 60_000);

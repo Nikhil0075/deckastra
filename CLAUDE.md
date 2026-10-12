@@ -4274,6 +4274,13 @@ Rules that are easy to undo:
   deployed values. Video once looked enabled because its model had a default,
   and could never run: no per-second price was set, and the US$0.30 request
   ceiling refused every clip.
+- **An installed, signed-in desktop needs none of those settings**
+  (`local_mode.account_gateway()`). Its local service reaches translation,
+  voices (including the voice list), pictures and video through the main
+  process's bridge (`main/gateway.ts`), and the cloud prices them and holds the
+  credits and limits. Asking locally for a provider, a Google key, prices or a
+  workspace ceiling switched every paid service off on the desktop. A checkout
+  keeps the free stand-ins.
 - **The budget stop switches Vertex AI, Translation and Text-to-Speech off**
   for the rest of the month once a project passes ₹5,000. If staging's AI is
   off, check `deckastra-budget-stop` logs before suspecting the code.
