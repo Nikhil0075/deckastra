@@ -31,8 +31,26 @@ export interface LayoutIssue extends SemanticIssue {
     | { kind: "contrast"; ratio: number; required: number; behind: string; foreground: string; target: "text" | "label" | "tableHeader" | "tableBody" | "chart" }
     | { kind: "contrastUnknown"; reason: "picture" }
     | { kind: "diagram"; coverage: number; labelSize: number; used: { x: number; y: number; width: number; height: number } }
-    | { kind: "glyphs"; script: Script; families: string[] };
+    | { kind: "glyphs"; script: Script; families: string[] }
+    /** This object should sit behind `otherId`, by their layer roles. */
+    | { kind: "layerOrder"; otherId: string; role: string; otherRole: string };
 }
+
+/**
+ * Depth by layer role, back to front (2026-10-13). Only the order matters: a
+ * subject belongs in front of a decoration meant to sit behind it, and text in
+ * front of the subject.
+ */
+export const LAYER_DEPTH: Readonly<Record<string, number>> = {
+  background: 0,
+  scene: 1,
+  "decoration-behind-subject": 2,
+  subject: 3,
+  content: 4,
+  foreground: 5,
+};
+
+const depthOf = (node: SceneNode): number | undefined => (node.layerRole ? LAYER_DEPTH[node.layerRole] : undefined);
 
 export interface LayoutCheckOptions {
   /** Smallest readable text in slide pixels; defaults to 16px on a 1920-wide slide, scaled. */
@@ -85,7 +103,9 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
   // --- collisions (W110), between siblings.
   const visitSiblings = (siblings: SceneNode[], laidOut: boolean): void => {
     if (!laidOut) {
-      const candidates = siblings.filter(collides);
+      // A decoration never collides, but one with a layer role still has a
+      // place in the depth, and a subject behind its own ring is a mistake.
+      const candidates = siblings.filter((node) => collides(node) || (!node.flags.hidden && depthOf(node) !== undefined));
       for (let i = 0; i < candidates.length; i += 1) {
         for (let j = i + 1; j < candidates.length; j += 1) {
           const a = candidates[i]!;
@@ -93,11 +113,31 @@ export function checkLayout(slide: SlideScene, options: LayoutCheckOptions = {})
           const overlapX = Math.min(a.bounds.x + a.bounds.width, b.bounds.x + b.bounds.width) - Math.max(a.bounds.x, b.bounds.x);
           const overlapY = Math.min(a.bounds.y + a.bounds.height, b.bounds.y + b.bounds.height) - Math.max(a.bounds.y, b.bounds.y);
           if (overlapX <= tolerance || overlapY <= tolerance) continue;
+          const [under, over] = (paintIndex.get(a.id) ?? 0) <= (paintIndex.get(b.id) ?? 0) ? [a, b] : [b, a];
+          // Layer roles say the overlap is the composition: a subject over its
+          // ring, a headline over the subject. In the right order that is the
+          // design and not a collision; in the wrong order it is W219.
+          const underDepth = depthOf(under);
+          const overDepth = depthOf(over);
+          if (underDepth !== undefined && overDepth !== undefined && underDepth !== overDepth) {
+            if (underDepth > overDepth) {
+              issues.push({
+                code: "W219",
+                severity: "warning",
+                slideId: slide.slideId,
+                elementId: over.id,
+                message: `${describe(over, "This")} is marked ${roleWords(over.layerRole!)} but sits in front of ${describe(under, "a")}, marked ${roleWords(under.layerRole!)}.`,
+                suggestedFix: "Put it behind.",
+                detail: { kind: "layerOrder", otherId: under.id, role: over.layerRole!, otherRole: under.layerRole! },
+              });
+            }
+            continue;
+          }
+          if (!collides(a) || !collides(b)) continue;
           // A card: a filled box that wholly holds the other object is a
           // background for it, which is the commonest deliberate overlap there is.
           if (isBacking(a) && contains(a, b)) continue;
           if (isBacking(b) && contains(b, a)) continue;
-          const [under, over] = (paintIndex.get(a.id) ?? 0) <= (paintIndex.get(b.id) ?? 0) ? [a, b] : [b, a];
           // Move the upper one clear along whichever axis needs less travel.
           const right = under.bounds.x + under.bounds.width - over.bounds.x;
           const left = over.bounds.x + over.bounds.width - under.bounds.x;
@@ -511,4 +551,24 @@ function describe(node: SceneNode, article: "This" | "a"): string {
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
+}
+
+/** A layer role in words, for a finding a person reads. */
+function roleWords(role: string): string {
+  switch (role) {
+    case "decoration-behind-subject":
+      return "a decoration behind the subject";
+    case "subject":
+      return "the subject";
+    case "background":
+      return "the background";
+    case "scene":
+      return "the scene";
+    case "content":
+      return "content";
+    case "foreground":
+      return "foreground";
+    default:
+      return `"${role}"`;
+  }
 }

@@ -721,17 +721,58 @@
 .dk-layers__row {
   display: flex;
   align-items: center;
-  gap: var(--dk-space-2);
   width: 100%;
+  min-height: 28px;
+  padding-right: var(--dk-space-2);
+  color: var(--dk-ink);
+  font-size: var(--dk-text-sm);
+}
+/* The row's main button selects; its two small ones lock and hide. */
+.dk-layers__pick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--dk-space-2);
+  min-width: 0;
   height: 28px;
-  padding-right: var(--dk-space-3);
   border: 0;
   background: transparent;
-  color: var(--dk-ink);
+  color: inherit;
   font: inherit;
-  font-size: var(--dk-text-sm);
   text-align: left;
   cursor: pointer;
+}
+.dk-layers__pick--static {
+  cursor: default;
+  opacity: 0.7;
+}
+.dk-layers__toggle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.dk-layers__toggle[aria-pressed="true"],
+.dk-layers__toggle:hover,
+.dk-layers__toggle:focus-visible {
+  opacity: 1;
+}
+.dk-layers__role {
+  flex: none;
+  padding: 0 var(--dk-space-1);
+  border: var(--dk-line) solid currentColor;
+  font-size: var(--dk-text-xs);
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.dk-layers__row--fixed {
+  border-top: var(--dk-line) solid var(--dk-rule-soft);
 }
 .dk-layers__row:hover {
   background: var(--dk-sunk);

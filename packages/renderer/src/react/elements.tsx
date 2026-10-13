@@ -2,6 +2,14 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { toCss } from "../matrix";
 import { maskImageCss } from "../masks";
+import {
+  GRAIN_TILE,
+  duotoneFilterId,
+  duotoneFilterMarkup,
+  grainOpacity,
+  treatmentFilterCss,
+  vignetteCss,
+} from "../treatments";
 import type {
   ChartPayload,
   DiagramPayload,
@@ -334,9 +342,9 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       // The mask is drawn by the browser from the scene's outlines, the same
       // outlines PowerPoint receives. It clips the placeholder too, so a
       // picture that has not loaded still shows the shape the slide is built on.
-      const maskStyle: CSSProperties = payload.mask
+      const maskStyle: CSSProperties = payload.mask || payload.feather
         ? (() => {
-            const image = maskImageCss(payload.mask, node.localBounds.width, node.localBounds.height);
+            const image = maskImageCss(payload.mask, node.localBounds.width, node.localBounds.height, payload.feather ?? 0);
             return {
               maskImage: image,
               WebkitMaskImage: image,
@@ -366,12 +374,23 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
               ...maskStyle,
             }}
           >
-            {payload.altText ?? "Image unavailable"}
+            {/* A missing cut-out changes the composition, not just one picture:
+                the subject that should stand in front of the scene is gone. */}
+            {node.layerRole === "subject"
+              ? `Cut-out missing${payload.altText ? `: ${payload.altText}` : ""}`
+              : payload.altText ?? "Image unavailable"}
           </div>
         );
       }
 
-      return (
+      // The treatment: exposure, contrast, saturation, monochrome and duotone are
+      // filters on the picture itself; the vignette and the grain are layers
+      // over it, so a picture that has them is wrapped and the mask moves to the
+      // wrapper, cutting the layers to the same outline as the photograph.
+      const treatment = payload.treatment;
+      const filter = treatment ? treatmentFilterCss(treatment) : undefined;
+      const layered = treatment !== undefined && (treatment.vignette > 0 || treatment.grain > 0);
+      const picture = (
         <img
           src={src}
           alt={payload.altText ?? ""}
@@ -382,16 +401,51 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
           // can read back to an id.
           data-asset-id={payload.assetId}
           data-mask={payload.mask ? "true" : undefined}
+          data-treatment={treatment ? "true" : undefined}
           style={{
             width: "100%",
             height: "100%",
             objectFit: payload.objectFit as CSSProperties["objectFit"],
             objectPosition: payload.objectPosition,
-            borderRadius: payload.mask ? undefined : node.resolvedStyle.cornerRadius,
+            borderRadius: payload.mask || layered ? undefined : node.resolvedStyle.cornerRadius,
             display: "block",
-            ...maskStyle,
+            ...(filter ? { filter } : {}),
+            ...(layered ? {} : maskStyle),
           }}
         />
+      );
+      const duotone = treatment?.duotone ? <DuotoneFilter duotone={treatment.duotone} /> : null;
+      if (!layered) return duotone ? <>{duotone}{picture}</> : picture;
+      return (
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            overflow: "hidden",
+            borderRadius: payload.mask ? undefined : node.resolvedStyle.cornerRadius,
+            ...maskStyle,
+          }}
+        >
+          {duotone}
+          {picture}
+          {treatment.vignette > 0 ? (
+            <div aria-hidden="true" data-treatment-layer="vignette" style={{ position: "absolute", inset: 0, background: vignetteCss(treatment.vignette) }} />
+          ) : null}
+          {treatment.grain > 0 ? (
+            <div
+              aria-hidden="true"
+              data-treatment-layer="grain"
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `url("${GRAIN_TILE}")`,
+                backgroundSize: "160px 160px",
+                opacity: grainOpacity(treatment.grain),
+              }}
+            />
+          ) : null}
+        </div>
       );
     }
 
@@ -1081,4 +1135,25 @@ export function positionStyle(
     // making them inert there means nothing on the canvas is ever selectable.
     pointerEvents: interactive ? "auto" : "none",
   };
+}
+
+/**
+ * A duotone's SVG filter, beside the picture that uses it. Its id is derived
+ * from the two colours, so a second picture (or a thumbnail) with the same
+ * duotone defines the same filter under the same id.
+ */
+function DuotoneFilter({ duotone }: { duotone: readonly [string, string] }) {
+  const { matrix, tables } = duotoneFilterMarkup(duotone);
+  return (
+    <svg aria-hidden="true" width="0" height="0" style={{ position: "absolute", width: 0, height: 0 }}>
+      <filter id={duotoneFilterId(duotone)} colorInterpolationFilters="sRGB">
+        <feColorMatrix type="matrix" values={matrix} />
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues={tables.r} />
+          <feFuncG type="table" tableValues={tables.g} />
+          <feFuncB type="table" tableValues={tables.b} />
+        </feComponentTransfer>
+      </filter>
+    </svg>
+  );
 }

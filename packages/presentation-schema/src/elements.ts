@@ -105,10 +105,32 @@ export type ElementType = z.infer<typeof ElementTypeSchema>;
  * A minimal valid element is `id`, `type`, `transform`. Everything else earns its
  * place — semantic richness is optional by design so the model stays usable.
  */
+/**
+ * Where an element sits in an image-led composition's depth (2026-10-13): the
+ * photograph at the back, a scene, decorations meant to sit behind a cut-out
+ * subject, the subject itself, the slide's content, and annotations in front.
+ *
+ * An intent, not an order. Array position stays the only ordering authority
+ * (doc 02 §8.4); Design Check says when the stacking contradicts the roles and
+ * offers to move the object, and it stops calling an overlap the roles explain
+ * a collision. Open, so a role from a newer build is kept.
+ */
+export const LAYER_ROLES = [
+  "background",
+  "scene",
+  "decoration-behind-subject",
+  "subject",
+  "content",
+  "foreground",
+] as const;
+export const LayerRoleSchema = openEnum(LAYER_ROLES);
+export type LayerRole = (typeof LAYER_ROLES)[number];
+
 const baseElementShape = {
   id: prefixedId("el"),
   name: z.string().optional(),
   semanticRole: SemanticRoleSchema.optional(),
+  layerRole: LayerRoleSchema.optional(),
   transform: TransformSchema,
   style: CommonStyleSchema.optional(),
   /** Default 1. */
@@ -393,6 +415,33 @@ export const MaskDefinitionSchema = z.discriminatedUnion("type", [
 ]);
 export type MaskDefinition = z.infer<typeof MaskDefinitionSchema>;
 
+/**
+ * A photograph's treatment (2026-10-13): reversible adjustments stored as
+ * numbers, never baked into the file, so the original is always one change
+ * away. Applied in a fixed order: exposure, contrast and saturation, then
+ * monochrome, then duotone (which maps the picture's lightness between its two
+ * colours), then the vignette and the grain over the top.
+ *
+ * Kept apart from the generic `style.filters` because a picture's treatment has
+ * a native form in PowerPoint (`a:lum`, `a:hsl`, `a:grayscl`, `a:duotone`) that
+ * stays adjustable there; a list of CSS filters in any order does not.
+ */
+export const ImageTreatmentSchema = z.object({
+  /** -1 to 1; 0 leaves the picture as it is. */
+  exposure: FiniteNumber.min(-1).max(1).optional(),
+  contrast: FiniteNumber.min(-1).max(1).optional(),
+  saturation: FiniteNumber.min(-1).max(1).optional(),
+  /** 0 to 1: how far towards black and white. */
+  monochrome: NormalizedSchema.optional(),
+  /** Shadow colour, then highlight colour. Theme tokens follow the theme. */
+  duotone: z.array(ColorValueSchema).length(2).optional(),
+  /** 0 to 1: how dark the corners fall. */
+  vignette: NormalizedSchema.optional(),
+  /** 0 to 1: film grain over the picture. */
+  grain: NormalizedSchema.optional(),
+});
+export type ImageTreatment = z.infer<typeof ImageTreatmentSchema>;
+
 export const ImageElementSchema = z.looseObject({
   ...baseElementShape,
   type: z.literal("image"),
@@ -402,6 +451,13 @@ export const ImageElementSchema = z.looseObject({
   focalPoint: PointSchema.optional(),
   altText: z.string().optional(),
   mask: MaskDefinitionSchema.optional(),
+  /**
+   * Softens the picture's edge over this many pixels, along its mask's
+   * outline or its box (2026-10-13). For a cut-out sitting on a scene, where a
+   * hard edge reads as pasted on.
+   */
+  edgeFeather: FiniteNumber.min(0).max(200).optional(),
+  treatment: ImageTreatmentSchema.optional(),
   placeholder: z.enum(["blurhash", "color", "none"]).optional(),
 });
 
@@ -790,6 +846,7 @@ export type BaseElement = {
   type: ElementType | string;
   name?: string;
   semanticRole?: z.infer<typeof SemanticRoleSchema>;
+  layerRole?: string;
   transform: Transform;
   style?: z.infer<typeof CommonStyleSchema>;
   opacity?: number;

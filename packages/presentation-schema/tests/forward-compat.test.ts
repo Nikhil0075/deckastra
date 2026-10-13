@@ -186,3 +186,39 @@ describe("image masks", () => {
     expect(validateDocument(withMask({ type: "compound", parts: [] })).errors.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Layer roles and cut-outs (2026-10-13). A role from a newer build is kept
+ * and warned about; the cut-out's provenance and transparency are part of the
+ * asset entry and survive a save.
+ */
+describe("layer roles and cut-outs", () => {
+  it("accepts every layer role, a softened edge and a cut-out's provenance", () => {
+    const doc = baseDoc();
+    const image = doc.slides.flatMap((slide) => slide.elements).find((element) => element.type === "image") as Record<string, unknown>;
+    image.layerRole = "subject";
+    image.edgeFeather = 12;
+    const asset = doc.assets.find((entry) => entry.type === "image") as Record<string, unknown>;
+    asset.hasAlpha = true;
+    asset.derivedFrom = newId("ast");
+    const report = validateDocument(doc);
+    expect(report.errors).toEqual([]);
+    const saved = JSON.parse(serializeDocument(doc));
+    expect(saved.assets.find((entry: { id: string }) => entry.id === asset.id)).toMatchObject({ hasAlpha: true, derivedFrom: asset.derivedFrom });
+  });
+
+  it("keeps an unknown layer role and warns", () => {
+    const doc = baseDoc();
+    (doc.slides[0]!.elements[0] as Record<string, unknown>).layerRole = "hologram";
+    const report = validateDocument(doc);
+    expect(report.errors).toEqual([]);
+    expect(report.warnings.some((warning) => warning.code === "W241" && /hologram/.test(warning.message))).toBe(true);
+  });
+
+  it("refuses a softened edge out of range", () => {
+    const doc = baseDoc();
+    const image = doc.slides.flatMap((slide) => slide.elements).find((element) => element.type === "image") as Record<string, unknown>;
+    image.edgeFeather = -3;
+    expect(validateDocument(doc).errors.length).toBeGreaterThan(0);
+  });
+});

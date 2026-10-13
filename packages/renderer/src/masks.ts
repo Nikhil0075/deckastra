@@ -462,16 +462,29 @@ export function resolveImageMask(mask: MaskDefinition | undefined, width: number
  * to it. The picture shows where the SVG is opaque. Inverted, the outlines are
  * cut out of a full box with an SVG mask, which keeps overlapping parts a
  * single hole rather than toggling them back in as an even-odd fill would.
+ *
+ * `feather` softens the edge over that many pixels (`edgeFeather`). Without a
+ * mask the outline is the box, inset by the feather so the picture fades to
+ * nothing exactly at its edge rather than half a feather outside it.
  */
-export function maskImageCss(mask: ImageMaskPayload, width: number, height: number): string {
+export function maskImageCss(mask: ImageMaskPayload | undefined, width: number, height: number, feather = 0): string {
   const w = round(Math.max(1, width));
   const h = round(Math.max(1, height));
-  const shapes = mask.paths.map((d) => `<path d="${d}"/>`).join("");
-  const body = mask.invert
-    ? `<defs><mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">` +
-      `<rect width="${w}" height="${h}" fill="#fff"/><g fill="#000">${shapes}</g></mask></defs>` +
+  const soft = Math.max(0, Math.min(feather, w / 2, h / 2));
+  const outline: ImageMaskPayload =
+    mask ?? { paths: [`M${round(soft)},${round(soft)} L${round(w - soft)},${round(soft)} L${round(w - soft)},${round(h - soft)} L${round(soft)},${round(h - soft)} Z`], invert: false };
+  const shapes = outline.paths.map((d) => `<path d="${d}"/>`).join("");
+  // Two-thirds of the feather as the blur's spread reaches about the whole
+  // feather visibly; a standard deviation of the full width looks twice as soft.
+  const filter = soft > 0
+    ? `<filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${round((soft * 2) / 3)}"/></filter>`
+    : "";
+  const blur = soft > 0 ? ' filter="url(#f)"' : "";
+  const body = outline.invert
+    ? `<defs>${filter}<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}">` +
+      `<rect width="${w}" height="${h}" fill="#fff"/><g fill="#000"${blur}>${shapes}</g></mask></defs>` +
       `<rect width="${w}" height="${h}" fill="#000" mask="url(#m)"/>`
-    : `<g fill="#000">${shapes}</g>`;
+    : `${filter ? `<defs>${filter}</defs>` : ""}<g fill="#000"${blur}>${shapes}</g>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${body}</svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }

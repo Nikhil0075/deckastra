@@ -58,6 +58,7 @@ import { ConflictRecovery } from "./ConflictRecovery";
 import { MotionPanel } from "./MotionPanel";
 import { MotionPreview } from "./MotionPreview";
 import { Inspector, type ReorderDirection } from "./inspector/Inspector";
+import { reorderOperations } from "../lib/reorder";
 import { AppBar } from "./shell/AppBar";
 import { ExternalChangeBanner } from "./shell/SaveIndicator";
 import type { AccountIdentity } from "./shell/AccountMenu";
@@ -554,28 +555,9 @@ export function EditorShell(props: EditorShellProps) {
     (direction: ReorderDirection) => {
       const id = selection.primaryId ?? selection.selectedIds[0];
       if (!id || !slide) return;
-
-      const found = resolveElementById(doc, id);
-      if (!found) return;
-
-      const siblings =
-        found.ancestors.length > 0
-          ? (found.ancestors.at(-1) as { children: PresentationElement[] }).children
-          : slide.elements;
-
-      const last = siblings.length - 1;
-      const target =
-        direction === "forward"
-          ? Math.min(found.index + 1, last)
-          : direction === "backward"
-            ? Math.max(found.index - 1, 0)
-            : direction === "front"
-              ? last
-              : 0;
-
-      // Array position is the ordering authority; zIndex is an override for
-      // pinning, not for reordering (doc 02 §8.4).
-      apply(moveElement(doc, { elementId: id, toIndex: target }), { label: "Reorder" });
+      // Within the object's own parent: a grouped object stays in its group.
+      const operations = reorderOperations(doc, id, direction);
+      if (operations.length > 0) apply(operations, { label: "Reorder" });
     },
     [apply, doc, selection, slide],
   );

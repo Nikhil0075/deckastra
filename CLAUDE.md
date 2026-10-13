@@ -4322,6 +4322,98 @@ Rules that are easy to undo:
   (`apps/worker/tests/masks.browser.test.ts`) and by `python-pptx`
   (`apps/api/tests/test_pptx_masks.py`).
 
+### Subject cut-outs and layer roles (2026-10-13)
+
+A cut-out is a second, transparent picture of the same photograph stacked over
+it, so a person or product stands in front of decorations meant to sit behind
+it. Deckastra does not remove backgrounds yet (a decision for later); a person
+or agent brings the transparent PNG. Rules that are easy to undo:
+
+- **`layerRole` is an intent, never an order** (`LAYER_ROLES`, open): background,
+  scene, decoration-behind-subject, subject, content, foreground, back to front.
+  Array position stays the ordering authority (doc 02 §8.4). Design Check reads
+  the roles (`LAYER_DEPTH` in `layout-check.ts`): a stacking that contradicts
+  them is W219 with a "Put it behind" fix that is one array move, refused with a
+  reason when a `zIndex` pin would make the move change nothing; an overlap the
+  roles explain is no longer W110. Decorations with a role take part even
+  though decorations never collide.
+- **Transparency is read from the file's header, never guessed**
+  (`pictureHasAlpha`, `readPictureFacts`): PNG alpha or `tRNS`, WebP's alpha bit,
+  JPEG never. Stored as the asset's `hasAlpha`; absent means nobody looked, and
+  W221 (an opaque subject) speaks only about `false`.
+- **Adding a cut-out is one patch** (`addCutoutOperations`): the manifest entry
+  with `derivedFrom` and `hasAlpha`, the new picture directly above its source
+  with the same box, fit, focal point and alt text, and the source marked as the
+  scene if it had no role.
+- **`edgeFeather`** softens a picture's edge: a blurred mask on the canvas and in
+  the PDF (the box inset by the feather, so it fades to nothing at the edge), and
+  PowerPoint's own `softEdge` effect.
+- **A missing cut-out says so** ("Cut-out missing: …") rather than looking like
+  an ordinary missing picture, because its absence changes the composition.
+- **Template media may ship a PNG only as a cut-out** (`preset_media`): it must
+  have transparency (an opaque PNG is refused), may be 900 KB, and a placement
+  may name its `layer`. It is served, stored and adopted as `image/png`.
+
+### Layer controls (2026-10-13)
+
+- **Reordering stays inside the object's parent** (`lib/reorder.ts`). The shell
+  used to call `moveElement` without the group, which lifts a grouped object out
+  onto the slide. Keyboard, inspector menu and Layers all go through
+  `reorderOperations`.
+- **Layers run front to back** (`layerRows`), each level reversed from the
+  document's back-to-front arrays, ending at a fixed "Slide background" row. A
+  row selects (even a covered object), shows its depth role, and locks or hides
+  it in one change each. `data-layer-id` stays on the select button for the
+  harness.
+- **Picture-filled text has controls** (`TextSection`, `lib/picture-fill.ts`):
+  any picture in the deck or a new upload, its position, and the fallback
+  colour. Changing the picture keeps its placement.
+
+### Picture treatments (2026-10-13)
+
+`image.treatment` holds reversible adjustments as numbers: `exposure`,
+`contrast` and `saturation` (-1 to 1), `monochrome`, `vignette` and `grain`
+(0 to 1), and `duotone` (shadow colour, then highlight colour). The photograph
+is never changed; Original removes the treatment. Rules that are easy to undo:
+
+- **Kept apart from `style.filters`.** A picture's treatment has a native form
+  in PowerPoint and a fixed order (adjustments, black and white, duotone, then
+  vignette and grain); a list of CSS filters has neither.
+- **Resolved once in the scene** (`renderer/src/treatments.ts`): duotone tokens
+  become hex there, so a duotone follows the theme, and an unresolved one draws
+  nothing rather than a guessed colour (the validator names it, E202). A
+  treatment that changes nothing carries no payload and no digest line, so no
+  baseline moves.
+- **The canvas and PDF** draw the adjustments as one CSS `filter`, the duotone
+  as an SVG filter beside the picture (its id derived from the two colours), and
+  the vignette and grain as layers over it. A picture with layers is wrapped and
+  its mask moves to the wrapper, so the layers are cut to the same outline.
+- **PowerPoint** writes `a:grayscl`, `a:duotone`, `a:hsl` (saturation and
+  partial black and white combined into one change) and `a:lum` on the blip, so
+  they stay adjustable in Picture Format; brightness, contrast and saturation
+  are reported `approximated`, because PowerPoint computes them differently. A
+  vignette or grain has no adjustment, so the worker captures the picture
+  (`pictureNeedsCapture`, shared with masks) and the report says `rasterized`.
+- **Grain is black and white specks laid on normally**, each as opaque as the
+  noise is far from its middle (`GRAIN_TILE`, seeded). The first version was
+  grey noise under an `overlay` blend, which scales with the picture's own
+  brightness: it vanished on a night photograph, and only a look at a real
+  picture showed it.
+- **The Duotone look puts the theme's darker colour in the shadows**
+  (`treatmentPresets`): on a dark theme the text colour is near white, and in
+  the shadows it inverts the picture.
+- **The duotone's colours are colours to the Colours panel** (`duotone` joins
+  `palette` and `chartSeries` in `findColors`), so renaming or deleting a named
+  colour rewrites them in the same patch.
+- **Blend mode is the existing `style.blendMode`**, set from the same panel;
+  PowerPoint has none and the hint says so before export.
+- **A style filter PowerPoint cannot carry is now reported whatever it is.**
+  Only a blur used to be; brightness and the rest were dropped without a line.
+- Checked in real Chromium (`apps/worker/tests/treatments.browser.test.ts`:
+  white to the duotone's highlight, red to grey, dark corners and a bright
+  centre, grain on a flat dark picture, and the capture carrying the vignette) and by `python-pptx`
+  (`apps/api/tests/test_pptx_treatments.py`).
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

@@ -251,7 +251,7 @@ def preset_media_file(file_name: str, principal: Principal = Depends(current_pri
         data = preset_media.read(file_name)
     except (preset_media.PresetMediaError, OSError) as exc:
         raise HTTPException(status_code=404, detail="No such template picture.") from exc
-    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+    return Response(content=data, media_type=preset_media.content_type(file_name), headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.post("/v1/presets/{template_id}/preview", response_model=TemplatePreviewResponse)

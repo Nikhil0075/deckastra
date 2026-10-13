@@ -48,7 +48,37 @@ MAX_FILES = 30
 MAX_FILE_BYTES = 400 * 1024
 MAX_TOTAL_BYTES = 12 * 1024 * 1024
 MAX_LONG_EDGE = 1920
-FILE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}\.jpg$")
+FILE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}\.(jpg|png)$")
+#: A transparent cut-out is a PNG and may be larger than a JPEG photograph,
+#: because an alpha channel does not compress the way a photograph does
+#: (subject cut-outs, 2026-10-13). An opaque PNG is a JPEG that should have
+#: been one, and is refused.
+MAX_PNG_BYTES = 900 * 1024
+#: The depths a template may give a picture it places (`layerRole`).
+LAYERS = ("background", "scene", "decoration-behind-subject", "subject", "content", "foreground")
+
+
+def content_type(file_name: str) -> str:
+    """The media type a template picture is served and stored as, by its name."""
+    return "image/png" if file_name.endswith(".png") else "image/jpeg"
+
+
+def png_has_alpha(raw: bytes) -> bool:
+    """A PNG with an alpha channel, or a transparency chunk before its pixels."""
+    if not raw.startswith(b"\x89PNG\r\n\x1a\n") or len(raw) < 26:
+        return False
+    if raw[25] in (4, 6):
+        return True
+    offset = 8
+    while offset + 8 <= len(raw):
+        length = int.from_bytes(raw[offset:offset + 4], "big")
+        kind = raw[offset + 4:offset + 8]
+        if kind == b"tRNS":
+            return True
+        if kind in (b"IDAT", b"IEND"):
+            return False
+        offset += 12 + length
+    return False
 ROLES = ("hero", "scene")
 
 #: The frames a language draws for a photograph, by element name.
@@ -156,7 +186,7 @@ def attach(document: dict[str, Any], template_id: str) -> dict[str, Any]:
                 asset = assets.get(entry["file"])
                 if asset is None:
                     asset = assets[entry["file"]] = _asset_entry(entry)
-                placed.append((index + 1, _picture(element, asset, entry)))
+                placed.append((index + 1, _picture(element, asset, entry, use)))
                 fill_target = str(use.get("textFillTarget") or "")
                 if fill_target:
                     for target in elements:
@@ -183,14 +213,16 @@ def _asset_entry(entry: dict[str, Any]) -> dict[str, Any]:
         "type": "image",
         "storageKey": KEY_PREFIX + entry["file"],
         "fileName": entry["file"],
-        "mimeType": "image/jpeg",
+        "mimeType": content_type(entry["file"]),
         "byteSize": int(entry["bytes"]),
         "width": int(entry["width"]),
         "height": int(entry["height"]),
+        # A PNG here is a cut-out, and `problems` refuses one without alpha.
+        "hasAlpha": entry["file"].endswith(".png"),
     }
 
 
-def _picture(frame: dict[str, Any], asset: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
+def _picture(frame: dict[str, Any], asset: dict[str, Any], entry: dict[str, Any], use: dict[str, Any] | None = None) -> dict[str, Any]:
     box = dict(frame["transform"])
     radius = (frame.get("style") or {}).get("cornerRadius") or 0
     if frame.get("shape") == "pill":
@@ -209,6 +241,13 @@ def _picture(frame: dict[str, Any], asset: dict[str, Any], entry: dict[str, Any]
     }
     if frame.get("metadata"):
         picture["metadata"] = dict(frame["metadata"])
+    # A subject cut-out stands in front of the decorations meant to sit behind
+    # it and behind the slide's text; the template says which depth it has.
+    layer = (use or {}).get("layer")
+    if layer in LAYERS:
+        picture["layerRole"] = layer
+        if layer == "subject":
+            picture["name"] = "Template subject"
     return picture
 
 
@@ -239,15 +278,17 @@ def adopt(session, document: dict[str, Any], *, workspace_id: str, created_by: s
         file_name = key[len(KEY_PREFIX):]
         data = read(file_name)
         digest = hashlib.sha256(data).hexdigest()[:16]
-        stored_key = f"workspaces/{workspace_id}/assets/template-{digest}-{new_id('blob')[-10:].lower()}.jpg"
-        object_storage.put(stored_key, data, "image/jpeg")
+        kind = content_type(file_name)
+        suffix = ".png" if kind == "image/png" else ".jpg"
+        stored_key = f"workspaces/{workspace_id}/assets/template-{digest}-{new_id('blob')[-10:].lower()}{suffix}"
+        object_storage.put(stored_key, data, kind)
         row = asset_service.register(
             session,
             workspace_id=workspace_id,
             created_by=created_by,
             storage_key=stored_key,
             filename=file_name,
-            content_type="image/jpeg",
+            content_type=kind,
             size_bytes=len(data),
             width=asset.get("width"),
             height=asset.get("height"),
@@ -349,7 +390,7 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
         name = str(entry.get("file") or "")
         label = name or "(no file)"
         if not FILE_NAME.match(name):
-            out.append(f"{label}: file names are lower-case words and hyphens ending .jpg.")
+            out.append(f"{label}: file names are lower-case words and hyphens ending .jpg, or .png for a cut-out.")
             continue
         if name in seen:
             out.append(f"{label} is listed twice.")
@@ -360,13 +401,20 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
             continue
         raw = path.read_bytes()
         total += len(raw)
-        if len(raw) > MAX_FILE_BYTES:
-            out.append(f"{label} is {len(raw) // 1024} KB; each picture may be {MAX_FILE_BYTES // 1024} KB.")
+        limit = MAX_PNG_BYTES if name.endswith(".png") else MAX_FILE_BYTES
+        if len(raw) > limit:
+            kind = "cut-out" if name.endswith(".png") else "picture"
+            out.append(f"{label} is {len(raw) // 1024} KB; each {kind} may be {limit // 1024} KB.")
         if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
             out.append(f"{label} does not match its recorded sha256: the file changed after review.")
         if int(entry.get("bytes") or -1) != len(raw):
             out.append(f"{label}: recorded size {entry.get('bytes')} is not the file's {len(raw)}.")
-        if not raw.startswith(b"\xff\xd8"):
+        if name.endswith(".png"):
+            if not raw.startswith(b"\x89PNG\r\n\x1a\n"):
+                out.append(f"{label} is not a PNG.")
+            elif not png_has_alpha(raw):
+                out.append(f"{label} is a PNG with no transparency; a photograph ships as a JPEG, and a PNG only as a cut-out.")
+        elif not raw.startswith(b"\xff\xd8"):
             out.append(f"{label} is not a JPEG.")
         if max(int(entry.get("width") or 0), int(entry.get("height") or 0)) > MAX_LONG_EDGE:
             out.append(f"{label} is larger than {MAX_LONG_EDGE}px on its long edge.")
@@ -399,7 +447,8 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
             out.append(f"{label} does not record the terms it was made under.")
         uses = entry.get("templates") or []
         invalid_use = any(
-            not use.get("template")
+            (use.get("layer") is not None and use.get("layer") not in LAYERS)
+            or not use.get("template")
             or not (
                 use.get("role") in ROLES
                 or (isinstance(use.get("slideIndex"), int) and use.get("slideIndex") >= 0 and use.get("frame"))
