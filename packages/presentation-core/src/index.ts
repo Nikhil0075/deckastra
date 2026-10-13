@@ -17,3 +17,4 @@ export * from "./starter-elements";
 export * from "./groups";
 export * from "./locales";
 export * from "./narration";
+export * from "./media-slots";

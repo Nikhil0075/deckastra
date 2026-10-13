@@ -946,7 +946,10 @@ def compose_slide(
 
     if plan.speaker_notes:
         slide["speakerNotes"] = plan.speaker_notes
-    return slide
+    # What each picture frame is for (2026-10-13): agents and the editor read it.
+    from .media_slots import annotate
+
+    return annotate(slide, language)
 
 
 def compose_document(

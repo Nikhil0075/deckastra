@@ -83,3 +83,51 @@ it("forgets a price when the description changes", async () => {
   fireEvent.change(field, { target: { value: "One, but at night" } });
   await waitFor(() => expect(screen.queryByTestId("generate-price")).toBeNull());
 });
+
+/** A slide's picture frame says what it needs, and its brief is the description to price (2026-10-13). */
+it("offers the frame's brief, says what it needs, and prices exactly that", async () => {
+  const fetcher = vi.fn(async (url: string) => {
+    const path = String(url);
+    if (path.includes("/v1/assistant/capabilities")) return json(capabilities({ available: true, reason: null }));
+    if (path.endsWith("/v1/media/quotes/image")) return json({ quote_token: "q".repeat(24), expires_at: 0, task: "image", provider: "vertex", units: 1, estimated_usd: 0.04, credit_cost: 8 });
+    return json({}, 404);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  const slide = {
+    id: "sld_1",
+    elements: [{
+      id: "el_frame", type: "shape", shape: "rectangle", name: "Portrait frame",
+      transform: { x: 0, y: 0, width: 600, height: 900, rotation: 0 },
+      mediaSlot: { role: "subject", transparentRequired: true, orientation: "portrait" },
+    }],
+  };
+  render(
+    <GenerateMedia presentationId="pres_1" slideId="sld_1" currentVersionId={() => "ver_1"} saveNow={vi.fn(async () => true)} slide={slide as never} />,
+    { wrapper: withWorkspaceClient() },
+  );
+  const box = await screen.findByTestId("generate-slot");
+  expect(box.getAttribute("data-slot-kind")).toBe("cut-out");
+  expect(box.textContent).toContain("it needs a cut-out, 3:4");
+  expect(box.textContent).toContain("Hands, feet and the top of the head");
+
+  fireEvent.change(screen.getByTestId("generate-prompt"), { target: { value: "A runner mid-stride" } });
+  fireEvent.click(screen.getByTestId("generate-use-brief"));
+  const prompt = (screen.getByTestId("generate-prompt") as HTMLTextAreaElement).value;
+  expect(prompt).toMatch(/^A runner mid-stride, the whole figure in frame/);
+  expect(prompt).toContain("Complete hands and feet visible");
+
+  fireEvent.click(screen.getByTestId("generate-price-check"));
+  await screen.findByTestId("generate-price");
+  const quote = fetcher.mock.calls.find(([url]) => String(url).endsWith("/quotes/image"))!;
+  expect(JSON.parse(String((quote as unknown as [string, RequestInit])[1].body)).prompt).toBe(prompt);
+});
+
+it("shows no frame brief for a video clip or a slide without a frame", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => json(capabilities({ available: true, reason: null }))));
+  render(
+    <GenerateMedia presentationId="pres_1" slideId="sld_1" currentVersionId={() => "ver_1"} saveNow={vi.fn(async () => true)} slide={{ id: "sld_1", elements: [] } as never} />,
+    { wrapper: withWorkspaceClient() },
+  );
+  await screen.findByTestId("generate-prompt");
+  expect(screen.queryByTestId("generate-slot")).toBeNull();
+});

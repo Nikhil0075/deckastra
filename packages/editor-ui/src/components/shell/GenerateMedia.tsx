@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { AssistantCapabilities, AssistantRun } from "@deckastra/workspace-contracts";
+import type { Slide } from "@deckastra/presentation-schema";
+import { mediaSlotBrief, slideMediaSlots } from "@deckastra/presentation-core";
 
 import { serviceWords } from "../../lib/assistant-words";
+import { MEDIA_SLOT_LABELS } from "../../lib/media-slot-words";
 import { Button, InlineError, Segmented, Skeleton } from "../../ui";
 
 /**
@@ -35,9 +38,11 @@ export interface GenerateMediaProps {
   slideId?: string;
   currentVersionId?: () => string;
   saveNow?: () => Promise<boolean>;
+  /** The slide pictures are made for, so a picture frame on it can say what it needs (2026-10-13). */
+  slide?: Slide;
 }
 
-export function GenerateMedia({ presentationId, slideId, currentVersionId, saveNow }: GenerateMediaProps) {
+export function GenerateMedia({ presentationId, slideId, currentVersionId, saveNow, slide }: GenerateMediaProps) {
   const client = useOptionalWorkspaceClient();
   const assistant = client?.assistant;
   const [kind, setKind] = useState<Kind>("image");
@@ -83,6 +88,10 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
   }
 
   const task = capabilities && capabilities !== "failed" ? capabilities.tasks[kind] : null;
+  // The frame a generated picture goes in: the first empty one, else the first.
+  const slots = slide ? slideMediaSlots(slide) : [];
+  const frame = slots.find((one) => !one.filled) ?? slots[0];
+  const brief = frame ? mediaSlotBrief(frame.slot, frame, prompt.length > 0 && prompt.length <= 200 ? prompt : undefined) : undefined;
   const unavailable = task && !task.available;
   const noun = kind === "image" ? "picture" : "video clip";
 
@@ -163,6 +172,28 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
         </p>
       ) : (
         <>
+          {kind === "image" && frame && brief ? (
+            <div className="dk-generate__slot" data-testid="generate-slot" data-slot-kind={brief.kind}>
+              <p className="dk-field__hint">
+                This slide has a {MEDIA_SLOT_LABELS[frame.slot.role] ?? "picture"} frame: it needs a {brief.kind}, {brief.aspectRatio}
+                {frame.slot.mask ? `, cut to ${frame.slot.mask === "arch" ? "an arch" : `a ${frame.slot.mask}`}` : ""}.
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setPrompt(brief.prompt.slice(0, 2000))}
+                data-testid="generate-use-brief"
+              >
+                {prompt.trim() ? "Add the frame's brief to my description" : "Use the frame's brief"}
+              </Button>
+              <ul className="dk-generate__checks" aria-label="Check the picture for">
+                {brief.checks.map((check) => (
+                  <li key={check}>{check}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <label className="dk-field dk-generate__field">
             <span className="dk-label">Describe the {noun}</span>
             <textarea

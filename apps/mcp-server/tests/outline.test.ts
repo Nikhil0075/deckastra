@@ -46,3 +46,19 @@ it("reports semantic preset patterns and the applied motion style", () => {
   expect(outline.motionStyle).toBe("restrained");
   expect(outline.slides[0]!.pattern).toBe("agenda");
 });
+
+/** An agent learns what each picture frame needs before it brings a picture (2026-10-13). */
+it("lists each slide's picture frames with what they need and a brief", () => {
+  const document = structuredClone(loadFixture("technical"));
+  const slide = document.slides[0]!;
+  const box = { x: 0, y: 0, width: 1920, height: 1080, rotation: 0 };
+  (slide.elements as unknown[]).unshift({
+    id: "el_01JB8Z9K2QW4RN7F3XG5HTMDF1", type: "shape", shape: "rectangle", name: "Image frame", transform: box,
+    mediaSlot: { role: "background", orientation: "landscape", textSafeArea: { x: 0.05, y: 0.3, width: 0.4, height: 0.4 }, focalRegion: { x: 0.7, y: 0.5 } },
+  });
+  const outline = outlineDocument(document, { presentationId: document.id, versionId: "ver_01JB8Z9K2QW4RN7F3X00000001" });
+  const [slot] = outline.slides[0]!.mediaSlots!;
+  expect(slot).toMatchObject({ frameId: "el_01JB8Z9K2QW4RN7F3XG5HTMDF1", role: "background", kind: "scene", aspectRatio: "16:9", filled: false });
+  expect(slot!.brief).toContain("Keep the left calm and uncluttered");
+  expect(outline.slides[1]!.mediaSlots).toBeUndefined();
+});
