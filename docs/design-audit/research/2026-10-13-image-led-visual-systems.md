@@ -99,7 +99,12 @@ capability gaps are:
    edges, and PNG cut-outs in template media. Automatic background removal is
    a separate, later decision (cloud, credits or on-device).
 3. Image treatments as native, reversible properties: monochrome, duotone,
-   exposure/contrast, blend mode and film grain/material texture.
+   exposure/contrast, blend mode and film grain/material texture. **Done
+   2026-10-13:** `image.treatment` (brightness, contrast, saturation, black and
+   white, a duotone in theme or named colours, vignette, grain) with looks to
+   start from and a blend mode. PowerPoint gets its own greyscale, duotone,
+   HSL and brightness/contrast adjustments; a vignette or grain arrives as a
+   reported capture. See CLAUDE.md, "Picture treatments".
 4. Geographic/bubble-map and scatter primitives for Data Desk; current native
    charts cover the common business chart families but not its map composition.
 5. Perspective/isometric diagram helpers for System Terminal's exploded wireframe

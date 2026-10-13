@@ -1,4 +1,5 @@
 import type { DocumentScene, SceneNode, SlideScene } from "./scene";
+import type { ResolvedTreatment } from "./treatments";
 
 /**
  * Render digests — the visual-regression harness (doc 04 §34).
@@ -60,7 +61,9 @@ function summarisePayload(node: SceneNode): string {
       return `line ${n(payload.x1)},${n(payload.y1)}->${n(payload.x2)},${n(payload.y2)}`;
 
     case "image":
-      return `image ${payload.assetId} fit=${payload.objectFit} at=${payload.objectPosition}`;
+      // The treatment only when there is one, so an untreated picture's line
+      // and every existing baseline stay as they were.
+      return `image ${payload.assetId} fit=${payload.objectFit} at=${payload.objectPosition}${payload.treatment ? ` treatment=${treatmentDigest(payload.treatment)}` : ""}`;
 
     case "video":
       return `video ${payload.assetId} poster=${payload.posterAssetId ?? "-"} fit=${payload.objectFit} range=${payload.startTimeMs}-${payload.endTimeMs ?? "end"}`;
@@ -199,4 +202,16 @@ export function digestHash(text: string): string {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return hash.toString(16).padStart(8, "0");
+}
+
+function treatmentDigest(treatment: ResolvedTreatment): string {
+  return [
+    `e${treatment.exposure}`,
+    `c${treatment.contrast}`,
+    `s${treatment.saturation}`,
+    `m${treatment.monochrome}`,
+    treatment.duotone ? `d${treatment.duotone.join("/")}` : "",
+    `v${treatment.vignette}`,
+    `g${treatment.grain}`,
+  ].filter(Boolean).join(",");
 }

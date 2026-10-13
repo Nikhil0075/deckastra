@@ -26,7 +26,7 @@ import { buildDocumentScene } from "@deckastra/renderer";
 import { DegradationLedger, fontManifest, type ExportInput } from "@deckastra/export-core";
 import { describe, expect, it } from "vitest";
 
-import { buildPptx, maskNeedsPicture, maskedImageKey } from "../src/index";
+import { buildPptx, maskNeedsPicture, maskedImageKey, pictureNeedsCapture } from "../src/index";
 import { transitionFor } from "../src/timing";
 import { hex, rotation, unitsFor, xml } from "../src/units";
 import { createZip } from "../src/zip";
@@ -1513,5 +1513,94 @@ describe("a cut-out", () => {
     expect([...unzipRaw(bytes).get("ppt/media/image1.png")!]).toEqual([...cutout]);
     const pic = [...unzip(bytes).values()].find((body) => body.includes("<p:pic>"))!.match(/<p:pic>[\s\S]*?<\/p:pic>/)![0];
     expect(pic).toMatch(/<a:effectLst><a:softEdge rad="\d+"\/><\/a:effectLst>/);
+  });
+});
+
+/**
+ * Picture treatments (item 4, 2026-10-13): PowerPoint's own picture
+ * adjustments where it has one, a captured picture where it has none.
+ */
+describe("a treated picture", () => {
+  const assetId = imageAssetId(TECHNICAL);
+  const png = pngBytes();
+
+  function exportWith(treatment: unknown, images: [string, { bytes: Uint8Array; contentType: string }][] = []) {
+    const document = structuredClone(TECHNICAL);
+    const element = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "image")!;
+    element.treatment = treatment;
+    const built = buildPptx({ ...inputFor(document), images: new Map([[assetId, { bytes: png, contentType: "image/png" }], ...images]) });
+    const pic = [...unzip(built.bytes).values()].find((body) => body.includes("<p:pic>"))!.match(/<p:pic>[\s\S]*?<\/p:pic>/)![0];
+    return { pic, report: built.result.report, id: element.id as string };
+  }
+  const treatmentWarnings = (report: { warnings: { feature: string; action: string }[] }) => report.warnings.filter((one) => one.feature === "image treatment");
+
+  it("writes black and white as PowerPoint's own greyscale, with nothing to report", () => {
+    const { pic, report } = exportWith({ monochrome: 1 });
+    expect(pic).toMatch(/<a:blip r:embed="[^"]+"><a:grayscl\/><\/a:blip>/);
+    expect(treatmentWarnings(report)).toEqual([]);
+  });
+
+  it("writes a duotone with its two resolved colours", () => {
+    const { pic, report } = exportWith({ duotone: ["#102030", "#F0E0D0"] });
+    expect(pic).toContain('<a:duotone><a:srgbClr val="102030"/><a:srgbClr val="F0E0D0"/></a:duotone>');
+    expect(treatmentWarnings(report)).toEqual([]);
+  });
+
+  it("writes brightness, contrast and saturation as corrections, and says they are close", () => {
+    const { pic, report } = exportWith({ exposure: 0.2, contrast: -0.3, saturation: -0.5 });
+    expect(pic).toContain('<a:hsl hue="0" sat="-50000" lum="0"/>');
+    expect(pic).toContain('<a:lum bright="20000" contrast="-30000"/>');
+    expect(treatmentWarnings(report).map((one) => one.action)).toEqual(["approximated"]);
+  });
+
+  it("combines partial monochrome with saturation into one saturation change", () => {
+    // Half the colour, then half of what is left: a quarter remains.
+    const { pic } = exportWith({ saturation: -0.5, monochrome: 0.5 });
+    expect(pic).toContain('<a:hsl hue="0" sat="-75000" lum="0"/>');
+  });
+
+  it("leaves an untreated picture's blip exactly as it was", () => {
+    const { pic } = exportWith(undefined);
+    expect(pic).toMatch(/<a:blip r:embed="[^"]+"\/>/);
+  });
+
+  it("embeds the captured picture for a vignette or grain, and says the treatment is fixed", () => {
+    const document = structuredClone(TECHNICAL);
+    const id = document.slides.flatMap((slide) => slide.elements).find((one) => one.type === "image")!.id;
+    const { pic, report } = exportWith({ vignette: 0.5, monochrome: 1 }, [[maskedImageKey(id), { bytes: pngBytes(), contentType: "image/png" }]]);
+    // The capture already carries every adjustment, so none is written twice.
+    expect(pic).not.toContain("<a:grayscl/>");
+    expect(treatmentWarnings(report).map((one) => one.action)).toEqual(["rasterized"]);
+  });
+
+  it("says a vignette it could not capture was dropped, and keeps the rest native", () => {
+    const { pic, report } = exportWith({ grain: 0.4, monochrome: 1 });
+    expect(pic).toContain("<a:grayscl/>");
+    expect(treatmentWarnings(report).map((one) => one.action)).toEqual(["dropped"]);
+  });
+
+  it("needs a capture for exactly a vignette or grain", () => {
+    const node = (treatment: unknown) => {
+      const document = structuredClone(TECHNICAL);
+      const element = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "image")!;
+      element.treatment = treatment;
+      for (const slide of buildDocumentScene(document).slides) {
+        const found = slide.nodes.find((candidate) => candidate.id === element.id);
+        if (found) return found;
+      }
+      throw new Error("no image node");
+    };
+    expect(pictureNeedsCapture(node({ monochrome: 1, duotone: ["#000000", "#ffffff"] }))).toBe(false);
+    expect(pictureNeedsCapture(node({ vignette: 0.2 }))).toBe(true);
+    expect(pictureNeedsCapture(node({ grain: 0.2 }))).toBe(true);
+    expect(pictureNeedsCapture(node(undefined))).toBe(false);
+  });
+
+  it("reports a style filter it cannot carry, not only a blur", () => {
+    const document = structuredClone(TECHNICAL);
+    const element = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "image")!;
+    element.style = { ...(element.style as object), filters: [{ type: "brightness", amount: 1.4 }] };
+    const built = buildPptx({ ...inputFor(document), images: new Map([[assetId, { bytes: png, contentType: "image/png" }]]) });
+    expect(built.result.report.warnings.some((one) => one.feature === "filter" && one.elementId === element.id)).toBe(true);
   });
 });

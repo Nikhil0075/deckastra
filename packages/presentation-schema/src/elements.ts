@@ -415,6 +415,33 @@ export const MaskDefinitionSchema = z.discriminatedUnion("type", [
 ]);
 export type MaskDefinition = z.infer<typeof MaskDefinitionSchema>;
 
+/**
+ * A photograph's treatment (2026-10-13): reversible adjustments stored as
+ * numbers, never baked into the file, so the original is always one change
+ * away. Applied in a fixed order: exposure, contrast and saturation, then
+ * monochrome, then duotone (which maps the picture's lightness between its two
+ * colours), then the vignette and the grain over the top.
+ *
+ * Kept apart from the generic `style.filters` because a picture's treatment has
+ * a native form in PowerPoint (`a:lum`, `a:hsl`, `a:grayscl`, `a:duotone`) that
+ * stays adjustable there; a list of CSS filters in any order does not.
+ */
+export const ImageTreatmentSchema = z.object({
+  /** -1 to 1; 0 leaves the picture as it is. */
+  exposure: FiniteNumber.min(-1).max(1).optional(),
+  contrast: FiniteNumber.min(-1).max(1).optional(),
+  saturation: FiniteNumber.min(-1).max(1).optional(),
+  /** 0 to 1: how far towards black and white. */
+  monochrome: NormalizedSchema.optional(),
+  /** Shadow colour, then highlight colour. Theme tokens follow the theme. */
+  duotone: z.array(ColorValueSchema).length(2).optional(),
+  /** 0 to 1: how dark the corners fall. */
+  vignette: NormalizedSchema.optional(),
+  /** 0 to 1: film grain over the picture. */
+  grain: NormalizedSchema.optional(),
+});
+export type ImageTreatment = z.infer<typeof ImageTreatmentSchema>;
+
 export const ImageElementSchema = z.looseObject({
   ...baseElementShape,
   type: z.literal("image"),
@@ -430,6 +457,7 @@ export const ImageElementSchema = z.looseObject({
    * hard edge reads as pasted on.
    */
   edgeFeather: FiniteNumber.min(0).max(200).optional(),
+  treatment: ImageTreatmentSchema.optional(),
   placeholder: z.enum(["blurhash", "color", "none"]).optional(),
 });
 

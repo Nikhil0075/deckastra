@@ -4369,6 +4369,51 @@ or agent brings the transparent PNG. Rules that are easy to undo:
   any picture in the deck or a new upload, its position, and the fallback
   colour. Changing the picture keeps its placement.
 
+### Picture treatments (2026-10-13)
+
+`image.treatment` holds reversible adjustments as numbers: `exposure`,
+`contrast` and `saturation` (-1 to 1), `monochrome`, `vignette` and `grain`
+(0 to 1), and `duotone` (shadow colour, then highlight colour). The photograph
+is never changed; Original removes the treatment. Rules that are easy to undo:
+
+- **Kept apart from `style.filters`.** A picture's treatment has a native form
+  in PowerPoint and a fixed order (adjustments, black and white, duotone, then
+  vignette and grain); a list of CSS filters has neither.
+- **Resolved once in the scene** (`renderer/src/treatments.ts`): duotone tokens
+  become hex there, so a duotone follows the theme, and an unresolved one draws
+  nothing rather than a guessed colour (the validator names it, E202). A
+  treatment that changes nothing carries no payload and no digest line, so no
+  baseline moves.
+- **The canvas and PDF** draw the adjustments as one CSS `filter`, the duotone
+  as an SVG filter beside the picture (its id derived from the two colours), and
+  the vignette and grain as layers over it. A picture with layers is wrapped and
+  its mask moves to the wrapper, so the layers are cut to the same outline.
+- **PowerPoint** writes `a:grayscl`, `a:duotone`, `a:hsl` (saturation and
+  partial black and white combined into one change) and `a:lum` on the blip, so
+  they stay adjustable in Picture Format; brightness, contrast and saturation
+  are reported `approximated`, because PowerPoint computes them differently. A
+  vignette or grain has no adjustment, so the worker captures the picture
+  (`pictureNeedsCapture`, shared with masks) and the report says `rasterized`.
+- **Grain is black and white specks laid on normally**, each as opaque as the
+  noise is far from its middle (`GRAIN_TILE`, seeded). The first version was
+  grey noise under an `overlay` blend, which scales with the picture's own
+  brightness: it vanished on a night photograph, and only a look at a real
+  picture showed it.
+- **The Duotone look puts the theme's darker colour in the shadows**
+  (`treatmentPresets`): on a dark theme the text colour is near white, and in
+  the shadows it inverts the picture.
+- **The duotone's colours are colours to the Colours panel** (`duotone` joins
+  `palette` and `chartSeries` in `findColors`), so renaming or deleting a named
+  colour rewrites them in the same patch.
+- **Blend mode is the existing `style.blendMode`**, set from the same panel;
+  PowerPoint has none and the hint says so before export.
+- **A style filter PowerPoint cannot carry is now reported whatever it is.**
+  Only a blur used to be; brightness and the rest were dropped without a line.
+- Checked in real Chromium (`apps/worker/tests/treatments.browser.test.ts`:
+  white to the duotone's highlight, red to grey, dark corners and a bright
+  centre, grain on a flat dark picture, and the capture carrying the vignette) and by `python-pptx`
+  (`apps/api/tests/test_pptx_treatments.py`).
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,
