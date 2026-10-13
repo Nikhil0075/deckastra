@@ -471,7 +471,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
         }}
       />
       <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG. You can also paste a picture or drop one on the slide.</p>
-      <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} />
+      <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} slide={document?.slides.find((one) => one.id === afterSlideId)} />
       <h4 className="dk-library__heading">Objects</h4>
       <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
     </>

@@ -1,4 +1,5 @@
-import { localeSlots, localeTextHash, sourceLocale, type PresentationDocument } from "@deckastra/presentation-schema";
+import { localeSlots, localeTextHash, sourceLocale, type PresentationDocument, type Slide } from "@deckastra/presentation-schema";
+import { mediaSlotBrief, slideMediaSlots } from "@deckastra/presentation-core";
 
 /**
  * A deck, small enough to read (milestone D2.2).
@@ -48,6 +49,23 @@ export interface SlideOutline {
   /** Narration lines by click step (integration plan 01 §3.3), and which languages have recordings. */
   narration?: { id: string; step: number; text: string; voice?: string; advanceOnWord?: number; recordedIn: string[] }[];
   soundCount?: number;
+  /**
+   * The slide's picture frames and what each needs (2026-10-13): a scene, a
+   * cut-out, a product render, a texture or a close-up, at what shape, with a
+   * brief to make or choose it by and what to check in the result. Whether a
+   * picture already fills the frame is said, so an agent knows where one is
+   * still missing.
+   */
+  mediaSlots?: {
+    frameId: string;
+    role: string;
+    kind: string;
+    aspectRatio: string;
+    filled: boolean;
+    transparentRequired?: boolean;
+    brief: string;
+    checks: string[];
+  }[];
 }
 
 /** One language a deck has, and how far along it is (integration plan 01 §3.11). */
@@ -159,6 +177,22 @@ export function outlineDocument(
         elements: (Array.isArray(slide.elements) ? slide.elements : []).map(outlineElement),
         animationTrackCount: Array.isArray(slide.animations) ? slide.animations.length : 0,
       };
+      const slots = slideMediaSlots(slide as Slide);
+      if (slots.length) {
+        summary.mediaSlots = slots.map((one) => {
+          const brief = mediaSlotBrief(one.slot, one);
+          return {
+            frameId: one.elementId,
+            role: String(one.slot.role),
+            kind: brief.kind,
+            aspectRatio: brief.aspectRatio,
+            filled: one.filled,
+            ...(one.slot.transparentRequired ? { transparentRequired: true } : {}),
+            brief: brief.prompt,
+            checks: brief.checks,
+          };
+        });
+      }
       if (slide.name) summary.name = String(slide.name);
       if (slide.semanticIntent) summary.intent = String(slide.semanticIntent);
       if (slide.keyMessage) summary.keyMessage = String(slide.keyMessage);

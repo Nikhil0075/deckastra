@@ -124,6 +124,14 @@ capability gaps are:
    document/renderer/export capability now exists for picture-filled type, while
    the current flagship binds it from reviewed template media.
 
+7. Template media slots that say what a picture is for. **Done 2026-10-13:**
+   every picture frame carries a `mediaSlot` (role, orientation, mask, focal
+   region, text-safe area, cut-out, treatment, layer), set by the composer and
+   turned into a brief for the editor's picture generation and for agents. A
+   test holds every template picture to its slot; two portrait pictures in
+   landscape frames are listed as known misfits until replaced. See CLAUDE.md,
+   "Picture slots".
+
 These are engine features, not agent-prompt geometry. The eight language packs
 should consume them after they are stable, with each pack retaining editable
 text, charts and diagrams and using generated imagery only for the visual scene.

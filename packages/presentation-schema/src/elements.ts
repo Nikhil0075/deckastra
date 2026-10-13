@@ -124,6 +124,44 @@ export const LAYER_ROLES = [
   "foreground",
 ] as const;
 export const LayerRoleSchema = openEnum(LAYER_ROLES);
+
+/**
+ * What a picture slot is for (template media slots, 2026-10-13). A frame a
+ * template or language draws says what belongs in it, not only where: a scene
+ * behind the words, a subject that will be cut out and stand in front, a
+ * product render, a texture, a close-up. Agents read it to know what to bring,
+ * and the editor turns it into a generation brief. Open, like every
+ * descriptive enum: a role from a newer build is kept (W241).
+ */
+export const MEDIA_SLOT_ROLES = ["background", "subject", "product", "texture", "detail"] as const;
+export const MediaSlotRoleSchema = openEnum(MEDIA_SLOT_ROLES);
+
+/** A region of the frame, 0 to 1 of its box. */
+const UnitRectSchema = z.object({
+  x: NormalizedSchema,
+  y: NormalizedSchema,
+  width: NormalizedSchema,
+  height: NormalizedSchema,
+});
+
+export const MediaSlotSchema = z.looseObject({
+  role: MediaSlotRoleSchema,
+  orientation: z.enum(["portrait", "landscape", "square"]).optional(),
+  /** The outline the picture will be cut to, a mask shape name (`MASK_SHAPES`). */
+  mask: z.string().max(40).optional(),
+  /** Where the picture's subject should sit, 0 to 1 of the frame. */
+  focalRegion: z.object({ x: NormalizedSchema, y: NormalizedSchema }).optional(),
+  /** Where words sit over the frame and the picture must stay calm. */
+  textSafeArea: UnitRectSchema.optional(),
+  /** The slot needs a transparent cut-out, not a rectangle of photograph. */
+  transparentRequired: z.boolean().optional(),
+  /** A treatment look the picture will be shown with (`image.treatment`). */
+  treatmentPreset: z.string().max(40).optional(),
+  layerRole: LayerRoleSchema.optional(),
+  /** What the picture should show, in a few words, when the template knows. */
+  subject: z.string().max(200).optional(),
+});
+export type MediaSlot = z.infer<typeof MediaSlotSchema>;
 export type LayerRole = (typeof LAYER_ROLES)[number];
 
 const baseElementShape = {
@@ -245,6 +283,8 @@ export const ShapeElementSchema = z.looseObject({
   ...baseElementShape,
   type: z.literal("shape"),
   shape: ShapeKindSchema,
+  /** A frame for a picture says what the picture is for (2026-10-13). */
+  mediaSlot: MediaSlotSchema.optional(),
   /** Required when shape === "customPath". */
   pathData: PathDataSchema.optional(),
   /** star / polygon point count. */

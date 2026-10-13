@@ -4493,6 +4493,39 @@ are easy to undo:
   writes `layoutHint` in one change and never leaves a projection and an
   arrangement set together. Agents pass `view` in a diagram plan.
 
+### Picture slots (2026-10-13)
+
+A frame a language or template draws for a photograph carries `mediaSlot`:
+what belongs in it (`role`: background, subject, product, texture, detail;
+open), `orientation`, `mask`, `focalRegion`, `textSafeArea`,
+`transparentRequired`, `treatmentPreset`, `layerRole` and an optional
+`subject`. Rules that are easy to undo:
+
+- **One table, applied after composition** (`media_slots.annotate`, called at
+  the end of `compose_slide`), so no layout has to remember it. A frame that
+  already has a slot is left alone. It is recognised by name
+  (`preset_media.FRAME_NAMES`); a new frame name needs a row in `FRAME_SLOTS`.
+- **Geometry-derived facts are computed, never declared**: orientation from
+  the frame's box, the text-safe area from the text placed over the frame (as
+  a share of it), the focal region on the side those words leave free, the
+  mask from the frame's shape (a portrait pill is an arch).
+- **The neutral golden moved, deliberately and only by the slot**: the four
+  patterns with picture frames (`biography`, `full-bleed-photo`, `profile`,
+  `story-beat`) re-hashed, and with annotation switched off the digests equal
+  the previous golden exactly.
+- **One brief, two readers** (`mediaSlotBrief` and `slideMediaSlots` in
+  presentation-core): the editor's Generate panel shows what the frame needs
+  and fills the description with the brief, which is then priced and generated
+  exactly as written; the MCP outline lists every slide's `mediaSlots` with the
+  same brief and checks. The brief asks for what slots fail on: complete hands
+  and feet, a product's edges inside the picture, the words' side calm.
+- **A generated picture is opaque.** A cut-out slot's brief and checklist say
+  so: Deckastra does not remove backgrounds, the person adds a transparent PNG.
+- **Every template picture is held to its slot** (`test_media_slots.py`): a
+  picture the wrong way round (portrait in landscape, or the reverse) fails,
+  except the listed `KNOWN_MISFITS`, and fixing one fails until it is removed
+  from the list. A cut-out slot must be filled by a picture with transparency.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

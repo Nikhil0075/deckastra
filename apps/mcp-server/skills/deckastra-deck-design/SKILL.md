@@ -74,6 +74,15 @@ words: it is both alt text and generation direction. Use `image_quote` then
 clip. Do not generate until the exact quote is accepted. The result remains a
 proposal for the person to approve.
 
+Each slide in the outline lists its picture frames as `mediaSlots`: what the
+frame needs (a scene, a cut-out, a product render, a texture or a close-up),
+at what shape, whether a picture already fills it, a `brief` and the
+`checks` to make on the result. Use the brief as the image prompt, with what
+the picture should show in front of it: it keeps hands, feet and product
+edges inside the picture and the words' side of the frame calm. A slot with
+`transparentRequired` needs a cut-out the person adds; a generated picture is
+opaque. Tell the person the quoted credits before you generate.
+
 ## 5. Check before you answer
 
 1. `slide_preview` every slide you made or changed and look at it: clipped

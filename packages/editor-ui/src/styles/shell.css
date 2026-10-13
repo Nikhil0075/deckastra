@@ -4999,6 +4999,21 @@
   gap: var(--dk-space-2);
   font-size: var(--dk-text-sm);
 }
+/* What the slide's picture frame needs, and what to check in the result (2026-10-13). */
+.dk-generate__slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+}
+.dk-generate__checks {
+  margin: 0;
+  padding-left: var(--dk-space-4);
+  font-size: var(--dk-text-xs);
+  color: var(--dk-ink-muted);
+}
 
 /* The image mask's custom outline, folded away beneath the picker. */
 .dk-details > summary {
