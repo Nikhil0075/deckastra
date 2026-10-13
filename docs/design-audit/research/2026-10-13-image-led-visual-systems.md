@@ -104,7 +104,9 @@ capability gaps are:
    charts cover the common business chart families but not its map composition.
 5. Perspective/isometric diagram helpers for System Terminal's exploded wireframe
    and Spatial Future's orbital/volumetric scenes.
-6. Editor controls for text picture fill, media masks and subject layers. The
+6. Editor controls for text picture fill, media masks and subject layers.
+   **Done 2026-10-13:** masks and cut-outs on pictures, depth under Arrange,
+   picture fill on text, and a front-to-back Layers panel with lock and hide. The
    document/renderer/export capability now exists for picture-filled type, while
    the current flagship binds it from reviewed template media.
 

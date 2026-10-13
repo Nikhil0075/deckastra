@@ -1,12 +1,14 @@
 import type { PatchOperation, PresentationDocument, RichTextDocument, TextElement } from "@deckastra/presentation-schema";
 import { setPropertyDeep } from "@deckastra/presentation-core";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { uploadFont } from "../../lib/font-file";
+import { manifestOperations, uploadPicture } from "../../lib/insert-image";
+import { deckPictures, pictureFillOperations, pictureFillWithAsset, type PictureFill } from "../../lib/picture-fill";
 import { applyPlainTextEdit, richTextToPlain } from "@deckastra/editor";
 
-import { NumberField, Section, Segmented, Select } from "../../ui";
+import { Button, NumberField, Section, Segmented, Select } from "../../ui";
 import { FontPicker, previewFamily } from "./FontPicker";
 import { ColorField, Hint } from "./controls";
 
@@ -183,6 +185,7 @@ export function TextSection({
         data-testid="text-color"
         onChange={(v) => set("typography.color", v, "Change text colour")}
       />
+      <PictureFillControls document={document} element={element} edit={edit} disabled={disabled} />
       <span className="dk-label">Align</span>
       <Segmented
         label="Horizontal alignment"
@@ -232,5 +235,115 @@ export function TextSection({
         </div>
       ) : null}
     </Section>
+  );
+}
+
+/**
+ * Fill the words with a picture (2026-10-13). They stay editable text; the
+ * fallback colour is what shows wherever the picture cannot be drawn.
+ */
+function PictureFillControls({
+  document,
+  element,
+  edit,
+  disabled,
+}: {
+  document: PresentationDocument;
+  element: TextElement;
+  edit: Edit;
+  disabled: boolean;
+}) {
+  const client = useWorkspaceClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<string | undefined>();
+  const fill = element.pictureFill as PictureFill | undefined;
+  const pictures = deckPictures(document);
+  const textColour = element.typography.color && !element.typography.color.startsWith("token:") ? element.typography.color : undefined;
+  const write = (next: PictureFill | undefined, label: string, key = "pictureFill") =>
+    edit(pictureFillOperations(document, element.id, next), label, `inspector:${element.id}:${key}`);
+  const focal = fill?.focalPoint ?? { x: 0.5, y: 0.5 };
+
+  const upload = async (file: File) => {
+    setMessage("Uploading picture…");
+    try {
+      const asset = await uploadPicture(client, file);
+      edit(
+        [...manifestOperations(document, asset), ...pictureFillOperations(document, element.id, pictureFillWithAsset(fill, asset.id, textColour))],
+        "Fill text with a picture",
+      );
+      setMessage(undefined);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "That picture could not be used.");
+    }
+  };
+
+  return (
+    <>
+      <Select
+        label="Picture fill"
+        value={fill?.assetId ?? "none"}
+        disabled={disabled}
+        options={[{ value: "none", label: "None" }, ...pictures.map((picture) => ({ value: picture.id, label: picture.label }))]}
+        onChange={(value) =>
+          write(pictureFillWithAsset(fill, value === "none" ? undefined : value, textColour), value === "none" ? "Remove picture fill" : "Fill text with a picture")
+        }
+        data-testid="text-picture-fill"
+      />
+      <Button size="sm" variant="ghost" disabled={disabled} onClick={() => input.current?.click()} data-testid="text-picture-fill-upload">
+        Use another picture…
+      </Button>
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void upload(file);
+        }}
+      />
+      {fill ? (
+        <>
+          <div className="dk-grid2">
+            <NumberField
+              label="Across"
+              ariaLabel="Horizontal position of the picture inside the words"
+              unit="%"
+              value={Math.round(focal.x * 100)}
+              min={0}
+              max={100}
+              integer
+              disabled={disabled}
+              onCommit={(v) => write({ ...fill, focalPoint: { x: v / 100, y: focal.y } }, "Reposition picture fill", "pictureFill-focal")}
+            />
+            <NumberField
+              label="Down"
+              ariaLabel="Vertical position of the picture inside the words"
+              unit="%"
+              value={Math.round(focal.y * 100)}
+              min={0}
+              max={100}
+              integer
+              disabled={disabled}
+              onCommit={(v) => write({ ...fill, focalPoint: { x: focal.x, y: v / 100 } }, "Reposition picture fill", "pictureFill-focal")}
+            />
+          </div>
+          <ColorField
+            label="Fallback colour"
+            value={fill.fallbackColor}
+            theme={document.theme}
+            allowNone
+            disabled={disabled}
+            onChange={(v) => {
+              const { fallbackColor: _previous, ...rest } = fill;
+              write(v ? { ...rest, fallbackColor: v } : rest, "Change fallback colour");
+            }}
+          />
+          <Hint>The words stay editable in the editor, the PDF and PowerPoint. The fallback colour shows wherever the picture cannot be drawn.</Hint>
+        </>
+      ) : null}
+      {message ? <p className="dk-field__hint" role="status">{message}</p> : null}
+    </>
   );
 }

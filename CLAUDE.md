@@ -4354,6 +4354,21 @@ or agent brings the transparent PNG. Rules that are easy to undo:
   have transparency (an opaque PNG is refused), may be 900 KB, and a placement
   may name its `layer`. It is served, stored and adopted as `image/png`.
 
+### Layer controls (2026-10-13)
+
+- **Reordering stays inside the object's parent** (`lib/reorder.ts`). The shell
+  used to call `moveElement` without the group, which lifts a grouped object out
+  onto the slide. Keyboard, inspector menu and Layers all go through
+  `reorderOperations`.
+- **Layers run front to back** (`layerRows`), each level reversed from the
+  document's back-to-front arrays, ending at a fixed "Slide background" row. A
+  row selects (even a covered object), shows its depth role, and locks or hides
+  it in one change each. `data-layer-id` stays on the select button for the
+  harness.
+- **Picture-filled text has controls** (`TextSection`, `lib/picture-fill.ts`):
+  any picture in the deck or a new upload, its position, and the fallback
+  colour. Changing the picture keeps its placement.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,
