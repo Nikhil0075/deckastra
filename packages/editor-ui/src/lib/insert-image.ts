@@ -23,7 +23,7 @@ import type { UploadedAsset, WorkspaceClient } from "@deckastra/workspace-contra
  */
 export function insertImageOperations(
   document: PresentationDocument,
-  input: { slideId: string; asset: UploadedAsset; at?: { x: number; y: number } },
+  input: { slideId: string; asset: UploadedAsset; at?: { x: number; y: number }; facts?: PictureFacts },
 ): { operations: PatchOperation[]; elementId: string } {
   const elementId = newId("el");
   const { asset } = input;
@@ -45,6 +45,8 @@ export function insertImageOperations(
         ...(asset.bytes ? { byteSize: asset.bytes } : {}),
         ...(asset.width ? { width: asset.width } : {}),
         ...(asset.height ? { height: asset.height } : {}),
+        ...(input.facts?.hasAlpha !== undefined ? { hasAlpha: input.facts.hasAlpha } : {}),
+        ...(input.facts?.derivedFrom ? { derivedFrom: input.facts.derivedFrom } : {}),
       },
     },
     {
@@ -132,7 +134,8 @@ export async function uploadAndInsertImage(
     workspaceId: session.workspaceId,
     ...(await imageSize(input.file)),
   });
-  return insertImageOperations(input.document, { slideId: input.slideId, asset, ...(input.at ? { at: input.at } : {}) });
+  const facts = await readPictureFacts(input.file);
+  return insertImageOperations(input.document, { slideId: input.slideId, asset, facts, ...(input.at ? { at: input.at } : {}) });
 }
 
 /** A start coordinate that puts a box of `size` centred on `at` (or the middle), inside `extent`. */
@@ -164,14 +167,14 @@ function placeAlong(at: number | undefined, size: number, extent: number): numbe
  */
 export function replaceImageOperations(
   document: PresentationDocument,
-  input: { elementId: string; asset: UploadedAsset; box: "keep" | "match" },
+  input: { elementId: string; asset: UploadedAsset; box: "keep" | "match"; facts?: PictureFacts },
 ): { operations: PatchOperation[]; altTextNeedsReview: boolean } {
   const found = resolveElementById(document, input.elementId);
   if (!found || found.element.type !== "image") return { operations: [], altTextNeedsReview: false };
   const element = found.element as { assetId: string; altText?: string; transform: PresentationElement["transform"] };
   const { asset } = input;
 
-  const operations: PatchOperation[] = [...manifestOperations(document, asset)];
+  const operations: PatchOperation[] = [...manifestOperations(document, asset, input.facts)];
   operations.push({ op: "replace", path: `${found.path}/assetId`, value: asset.id });
 
   if (input.box === "match" && asset.width && asset.height) {
@@ -198,7 +201,7 @@ export function replaceImageOperations(
  * nothing when the deck already lists it. A citation without its entry is a
  * picture nothing can resolve, so every path that cites an upload starts here.
  */
-export function manifestOperations(document: PresentationDocument, asset: UploadedAsset): PatchOperation[] {
+export function manifestOperations(document: PresentationDocument, asset: UploadedAsset, facts: PictureFacts = {}): PatchOperation[] {
   if (document.assets.some((existing) => existing.id === asset.id)) return [];
   return [
     {
@@ -213,9 +216,65 @@ export function manifestOperations(document: PresentationDocument, asset: Upload
         ...(asset.bytes ? { byteSize: asset.bytes } : {}),
         ...(asset.width ? { width: asset.width } : {}),
         ...(asset.height ? { height: asset.height } : {}),
+        ...(facts.hasAlpha !== undefined ? { hasAlpha: facts.hasAlpha } : {}),
+        ...(facts.derivedFrom ? { derivedFrom: facts.derivedFrom } : {}),
       },
     },
   ];
+}
+
+/** What the editor knows about a picture beyond what the upload records. */
+export interface PictureFacts {
+  /** Read from the file's own header; absent when the format does not say. */
+  hasAlpha?: boolean;
+  /** For a cut-out: the picture it was cut from. */
+  derivedFrom?: string;
+}
+
+/**
+ * Whether a picture file has transparency, from its header alone (2026-10-13):
+ * a PNG with an alpha channel or a transparency chunk, a WebP whose header
+ * says it uses alpha. A JPEG never does. Undefined for a format that cannot
+ * say without decoding every pixel (GIF, SVG) — "nobody looked" is a different
+ * fact from "opaque", and Design Check only speaks about the second.
+ */
+export function pictureHasAlpha(bytes: Uint8Array): boolean | undefined {
+  const at = (offset: number) => bytes[offset] ?? 0;
+  const ascii = (offset: number, length: number) => String.fromCharCode(...bytes.subarray(offset, offset + length));
+  if (at(0) === 0x89 && ascii(1, 3) === "PNG") {
+    const colourType = at(25);
+    if (colourType === 4 || colourType === 6) return true;
+    // A palette or truecolour PNG is transparent when it carries tRNS, which
+    // comes before the first IDAT.
+    let offset = 8;
+    while (offset + 8 <= bytes.length) {
+      const length = (at(offset) << 24) | (at(offset + 1) << 16) | (at(offset + 2) << 8) | at(offset + 3);
+      const type = ascii(offset + 4, 4);
+      if (type === "tRNS") return true;
+      if (type === "IDAT" || type === "IEND" || length < 0) return false;
+      offset += 12 + length;
+    }
+    return undefined;
+  }
+  if (at(0) === 0xff && at(1) === 0xd8) return false;
+  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") {
+    const chunk = ascii(12, 4);
+    if (chunk === "VP8X") return (at(20) & 0x10) !== 0;
+    if (chunk === "VP8L") return ((at(24) >> 4) & 1) === 1;
+    if (chunk === "VP8 ") return false;
+  }
+  return undefined;
+}
+
+/** The facts read from a file before it is uploaded. */
+export async function readPictureFacts(file: Blob): Promise<PictureFacts> {
+  try {
+    const head = new Uint8Array(await file.slice(0, 65_536).arrayBuffer());
+    const hasAlpha = pictureHasAlpha(head);
+    return hasAlpha === undefined ? {} : { hasAlpha };
+  } catch {
+    return {};
+  }
 }
 
 /** Upload a picture into the deck's workspace, measured first, and hand back the stored asset. */
@@ -234,7 +293,8 @@ export async function uploadAndReplaceImage(
 ): Promise<{ operations: PatchOperation[]; altTextNeedsReview: boolean }> {
   const session = await client.session.ensure();
   const asset = await client.assets.upload(input.file, { workspaceId: session.workspaceId, ...(await imageSize(input.file)) });
-  return replaceImageOperations(input.document, { elementId: input.elementId, asset, box: input.box });
+  const facts = await readPictureFacts(input.file);
+  return replaceImageOperations(input.document, { elementId: input.elementId, asset, box: input.box, facts });
 }
 
 /**

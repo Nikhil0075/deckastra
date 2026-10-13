@@ -126,6 +126,8 @@ export interface SceneNode {
   type: string;
   name?: string;
   semanticRole?: string;
+  /** The element's place in an image-led composition's depth, when it names one. */
+  layerRole?: string;
   worldTransform: Matrix;
   localTransform: Matrix;
   /** Axis-aligned world bounds, post-rotation. */
@@ -146,7 +148,7 @@ export type RenderPayload =
   | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets; direction?: "rtl"; pictureFill?: { assetId: string; storageKey?: string; objectFit: string; objectPosition: string; fallbackColor?: string } }
   | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets; direction?: "rtl" }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
-  | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string; mask?: ImageMaskPayload; maskWarning?: string }
+  | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string; mask?: ImageMaskPayload; maskWarning?: string; feather?: number }
   | { kind: "video"; assetId: string; posterAssetId?: string; objectFit: string; autoplay: boolean; loop: boolean; muted: boolean; controls: boolean; startTimeMs: number; endTimeMs?: number; label?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
   | EquationPayload
@@ -677,6 +679,7 @@ function buildNode(
     type: element.type,
     name: element.name,
     semanticRole: element.semanticRole,
+    ...(element.layerRole ? { layerRole: element.layerRole } : {}),
     worldTransform: world,
     localTransform: local,
     bounds,
@@ -897,6 +900,7 @@ function buildPayload(
         focalPoint?: { x: number; y: number };
         altText?: string;
         mask?: MaskDefinition;
+        edgeFeather?: number;
       };
       const focal = el.focalPoint ?? { x: 0.5, y: 0.5 };
       // The mask is the box's outline, independent of the picture: the fit and
@@ -912,6 +916,7 @@ function buildPayload(
         altText: el.altText,
         ...(masked.mask ? { mask: masked.mask } : {}),
         ...(masked.warning ? { maskWarning: masked.warning } : {}),
+        ...(el.edgeFeather && el.edgeFeather > 0 ? { feather: Math.round(el.edgeFeather * 1000) / 1000 } : {}),
       };
     }
 

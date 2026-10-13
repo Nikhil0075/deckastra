@@ -671,6 +671,9 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     `<a:ext cx="${units.px(Math.max(1, placed.box.width))}" cy="${units.px(Math.max(1, placed.box.height))}"/>` +
     "</a:xfrm>" +
     pictureGeometry(node, context) +
+    // A softened edge is PowerPoint's own soft-edge effect, which stays
+    // editable there (Picture Format, Effects).
+    (payload.feather ? `<a:effectLst><a:softEdge rad="${units.px(payload.feather)}"/></a:effectLst>` : "") +
     "</p:spPr>" +
     "</p:pic>"
   );

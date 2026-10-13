@@ -94,7 +94,10 @@ capability gaps are:
    CLAUDE.md, "Image masks".
 2. Transparent subject cutouts/foreground mattes so a person or product can sit
    between editable decorative layers without baking the whole slide into one
-   image.
+   image. **Done 2026-10-13, bring-your-own:** transparent PNG cut-outs placed
+   over their source, layer roles that Design Check holds the stacking to, soft
+   edges, and PNG cut-outs in template media. Automatic background removal is
+   a separate, later decision (cloud, credits or on-device).
 3. Image treatments as native, reversible properties: monochrome, duotone,
    exposure/contrast, blend mode and film grain/material texture.
 4. Geographic/bubble-map and scatter primitives for Data Desk; current native

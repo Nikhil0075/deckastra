@@ -65,6 +65,18 @@ export const AssetReferenceSchema = z.looseObject({
   fontWeight: z.union([z.number().int().min(1).max(1000), z.string().regex(/^\d{1,4}( \d{1,4})?$/)]).optional(),
   fontStyle: z.enum(["normal", "italic"]).optional(),
   createdBy: z.enum(["upload", "generated", "import", "integration"]).optional(),
+  /**
+   * A cut-out's source (2026-10-13): the picture this one was cut from, so the
+   * same photograph can sit behind as the scene and in front as the subject,
+   * and the editor can say which cut-out belongs to which picture.
+   */
+  derivedFrom: prefixedId("ast").optional(),
+  /**
+   * Whether the picture has transparent pixels, read from the file when it was
+   * added. Absent when nobody looked. A subject that is opaque covers whatever
+   * was meant to show around it, which Design Check says.
+   */
+  hasAlpha: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type AssetReference = z.infer<typeof AssetReferenceSchema>;

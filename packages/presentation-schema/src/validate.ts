@@ -5,6 +5,7 @@ import {
   CHART_KINDS,
   DIAGRAM_KINDS,
   ELEMENT_SCHEMA_BY_TYPE,
+  LAYER_ROLES,
   MASK_SHAPES,
   SHAPE_KINDS,
   isKnownElementType,
@@ -168,6 +169,8 @@ export const RULES: Record<string, { severity: Severity; summary: string }> = {
   W216: { severity: "warning", summary: "Text is smaller than the minimum readable size" },
   W217: { severity: "warning", summary: "Diagram uses little of its frame or shrinks its labels" },
   W218: { severity: "warning", summary: "Text over a picture; its contrast cannot be measured" },
+  W219: { severity: "warning", summary: "Stacking contradicts layer roles" },
+  W221: { severity: "warning", summary: "Subject picture has no transparency" },
 
   // Languages, narration and sound (integration plan 01 §3.1–§3.5). In their own
   // range rather than among the patch codes (E30x), which name a different layer.
@@ -213,6 +216,8 @@ export const REQUIRES_RENDER_CONTEXT = [
   "W216",
   "W217",
   "W218",
+  "W219",
+  "W221",
   "W250",
   // Glyph coverage needs fonts. (W323 is judged from the document: `clickStepCount`.)
   "W325",
@@ -500,6 +505,7 @@ function validateElements(doc: PresentationDocument, c: IssueCollector, ids: Set
       const openEnumChecks: [readonly string[], unknown, string][] = [
         [SEMANTIC_ROLES, element.semanticRole, "semanticRole"],
         [SHAPE_KINDS, (element as { shape?: unknown }).shape, "shape"],
+        [LAYER_ROLES, (element as { layerRole?: unknown }).layerRole, "layerRole"],
         [CHART_KINDS, (element as { chartType?: unknown }).chartType, "chartType"],
         [DIAGRAM_KINDS, (element as { diagramType?: unknown }).diagramType, "diagramType"],
       ];

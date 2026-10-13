@@ -1,8 +1,12 @@
 import { useState } from "react";
 
+import { LAYER_ROLES } from "@deckastra/presentation-schema";
+import { resolveElementById } from "@deckastra/presentation-core";
+
 import { alignOperations, distributeOperations, type AlignEdge, type Boxed } from "../../lib/align";
+import { LAYER_ROLE_LABELS, layerRoleOperations } from "../../lib/cutouts";
 import type { EditorApi } from "../../lib/useEditor";
-import { Button, Section } from "../../ui";
+import { Button, Section, Select } from "../../ui";
 import { Hint } from "./controls";
 
 /**
@@ -93,6 +97,37 @@ export function ArrangeSection({ editor }: { editor: EditorApi }) {
           {message}
         </p>
       ) : null}
+      {count === 1 ? <DepthRole editor={editor} elementId={selection.selectedIds[0]!} /> : null}
     </Section>
+  );
+}
+
+/**
+ * Where one object sits in an image-led composition's depth (2026-10-13). A
+ * role does not move the object; Design Check uses it to tell a subject
+ * standing in front of its ring from one hidden behind it, and offers the move.
+ */
+function DepthRole({ editor, elementId }: { editor: EditorApi; elementId: string }) {
+  const element = resolveElementById(editor.document, elementId)?.element;
+  if (!element) return null;
+  const value = element.layerRole ?? "none";
+  const known = (LAYER_ROLES as readonly string[]).includes(value) || value === "none";
+  return (
+    <>
+      <Select
+        label="Depth"
+        value={value}
+        options={[
+          { value: "none", label: "Not set" },
+          ...LAYER_ROLES.map((role) => ({ value: role, label: LAYER_ROLE_LABELS[role] })),
+          ...(known ? [] : [{ value, label: value }]),
+        ]}
+        onChange={(next) =>
+          editor.apply(layerRoleOperations(editor.document, elementId, next === "none" ? undefined : next), { label: "Set depth" })
+        }
+        data-testid="layer-role"
+      />
+      <Hint>Back to front: background, scene, behind the subject, subject, content, in front. Design Check warns when the stacking disagrees.</Hint>
+    </>
   );
 }

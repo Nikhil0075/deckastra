@@ -1476,3 +1476,42 @@ describe("a masked picture", () => {
     expect(one.pic).toBe(two.pic);
   });
 });
+
+/**
+ * Subject cut-outs (2026-10-13): a transparent PNG is embedded byte for byte,
+ * so its transparency reaches PowerPoint, and a softened edge is PowerPoint's
+ * own soft-edge effect rather than a picture with the blur baked in.
+ */
+describe("a cut-out", () => {
+  const assetId = imageAssetId(TECHNICAL);
+
+  function rgbaPng(): Uint8Array {
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(2, 0);
+    header.writeUInt32BE(2, 4);
+    header[8] = 8;
+    header[9] = 6; // truecolour with alpha
+    const chunk = (type: string, body: Buffer) => {
+      const head = Buffer.alloc(8);
+      head.writeUInt32BE(body.length, 0);
+      head.write(type, 4, "ascii");
+      const tail = Buffer.alloc(4);
+      tail.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), body])) >>> 0, 0);
+      return Buffer.concat([head, body, tail]);
+    };
+    const raw = Buffer.from([0, 255, 0, 0, 0, 255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 255, 0, 0, 255]);
+    return new Uint8Array(Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]));
+  }
+
+  it("keeps the transparent picture byte for byte and softens its edge natively", () => {
+    const document = structuredClone(TECHNICAL);
+    const element = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "image")!;
+    element.layerRole = "subject";
+    element.edgeFeather = 10;
+    const cutout = rgbaPng();
+    const { bytes } = buildPptx({ ...inputFor(document), images: new Map([[assetId, { bytes: cutout, contentType: "image/png" }]]) });
+    expect([...unzipRaw(bytes).get("ppt/media/image1.png")!]).toEqual([...cutout]);
+    const pic = [...unzip(bytes).values()].find((body) => body.includes("<p:pic>"))!.match(/<p:pic>[\s\S]*?<\/p:pic>/)![0];
+    expect(pic).toMatch(/<a:effectLst><a:softEdge rad="\d+"\/><\/a:effectLst>/);
+  });
+});

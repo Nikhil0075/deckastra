@@ -6,6 +6,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { resolveImageMask } from "@deckastra/renderer";
 
 import { uploadAndReplaceImage } from "../../lib/insert-image";
+import { uploadAndAddCutout } from "../../lib/cutouts";
 import {
   MASK_CHOICES,
   maskChoice,
@@ -123,6 +124,7 @@ export function ImageSection({
       ) : null}
 
       <MaskControls element={element} fit={fit} disabled={disabled} edit={edit} document={document} />
+      <CutoutControls element={element} disabled={disabled} edit={edit} document={document} />
 
       {canReposition ? (
         <>
@@ -375,5 +377,95 @@ function MaskThumb({ choice, mask }: { choice: MaskChoice; mask?: ImageElement["
         <rect width={44} height={28} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
       )}
     </svg>
+  );
+}
+
+/**
+ * A subject cut-out (2026-10-13): a transparent copy of the photograph stacked
+ * over it, so a person or product can stand in front of what sits behind them.
+ * Deckastra does not cut backgrounds out yet; this takes the transparent PNG
+ * someone made and lines it up exactly over its source. And a soft edge, for
+ * a cut-out that would otherwise read as pasted on.
+ */
+function CutoutControls({
+  document,
+  element,
+  disabled,
+  edit,
+}: {
+  document: PresentationDocument;
+  element: ImageElement;
+  disabled: boolean;
+  edit: Edit;
+}) {
+  const client = useWorkspaceClient();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ tone: "info" | "error"; text: string } | undefined>();
+  const asset = document.assets.find((candidate) => candidate.id === element.assetId) as { derivedFrom?: string; hasAlpha?: boolean } | undefined;
+  const source = asset?.derivedFrom ? (document.assets.find((candidate) => candidate.id === asset.derivedFrom) as { fileName?: string } | undefined) : undefined;
+  const isSubject = element.layerRole === "subject";
+
+  const add = async (file: File) => {
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      const result = await uploadAndAddCutout(client, { document, sourceElementId: element.id, file });
+      edit(result.operations, "Add a cut-out");
+      setMessage(
+        result.opaque
+          ? { tone: "info", text: "That picture has no transparent background, so it will hide the picture behind it. Use a PNG with its background removed." }
+          : { tone: "info", text: "The cut-out sits exactly over this picture. Put decorations between them with Depth: Behind the subject." },
+      );
+    } catch (caught) {
+      setMessage({ tone: "error", text: caught instanceof Error ? caught.message : "That picture could not be used." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <NumberField
+        label="Soften edge"
+        ariaLabel="Soften the picture's edge, in pixels"
+        unit="px"
+        value={Math.round(element.edgeFeather ?? 0)}
+        min={0}
+        max={200}
+        integer
+        disabled={disabled}
+        onCommit={(value) => edit(setPropertyDeep(document, element.id, "edgeFeather", value > 0 ? value : undefined), "Soften picture edge", `inspector:${element.id}:edgeFeather`)}
+      />
+      {isSubject ? (
+        <Hint>
+          {source ? `A cut-out of ${source.fileName ?? "another picture"}. ` : "The subject of this slide. "}
+          {asset?.hasAlpha === false ? "Its picture has no transparent background." : "Objects marked Behind the subject sit between it and the scene."}
+        </Hint>
+      ) : (
+        <>
+          <Button size="sm" variant="ghost" disabled={disabled || busy} onClick={() => input.current?.click()} data-testid="image-add-cutout">
+            {busy ? "Uploading…" : "Add a cut-out of this picture…"}
+          </Button>
+          <input
+            ref={input}
+            type="file"
+            accept="image/png,image/webp"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void add(file);
+            }}
+          />
+          <Hint>A PNG of the same photograph with its background removed. It is placed exactly over this one, as the subject.</Hint>
+        </>
+      )}
+      {message ? (
+        <p className={message.tone === "error" ? "dk-field__hint dk-field__hint--error" : "dk-field__hint"} role={message.tone === "error" ? "alert" : "status"}>
+          {message.text}
+        </p>
+      ) : null}
+    </>
   );
 }

@@ -158,7 +158,7 @@ describe("masks in the scene and on the slide", () => {
     const { found, index } = node(document, id);
     const scene = buildSlideScene(document, document.slides[index]!, index, resolveTheme(document.theme));
     const html = renderToStaticMarkup(<SlideView scene={scene} mode="export" resolveAssetUrl={() => "data:image/png;base64,AA=="} />);
-    const expected = maskImageCss((found.renderPayload as { mask: never }).mask, found.localBounds.width, found.localBounds.height);
+    const expected = maskImageCss((found.renderPayload as unknown as { mask: never }).mask, found.localBounds.width, found.localBounds.height);
     expect(html).toContain('data-mask="true"');
     expect(html).toContain("mask-size:100% 100%");
     // React escapes the quotes in the url; the outline itself is in it.

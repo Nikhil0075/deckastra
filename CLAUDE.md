@@ -4322,6 +4322,38 @@ Rules that are easy to undo:
   (`apps/worker/tests/masks.browser.test.ts`) and by `python-pptx`
   (`apps/api/tests/test_pptx_masks.py`).
 
+### Subject cut-outs and layer roles (2026-10-13)
+
+A cut-out is a second, transparent picture of the same photograph stacked over
+it, so a person or product stands in front of decorations meant to sit behind
+it. Deckastra does not remove backgrounds yet (a decision for later); a person
+or agent brings the transparent PNG. Rules that are easy to undo:
+
+- **`layerRole` is an intent, never an order** (`LAYER_ROLES`, open): background,
+  scene, decoration-behind-subject, subject, content, foreground, back to front.
+  Array position stays the ordering authority (doc 02 §8.4). Design Check reads
+  the roles (`LAYER_DEPTH` in `layout-check.ts`): a stacking that contradicts
+  them is W219 with a "Put it behind" fix that is one array move, refused with a
+  reason when a `zIndex` pin would make the move change nothing; an overlap the
+  roles explain is no longer W110. Decorations with a role take part even
+  though decorations never collide.
+- **Transparency is read from the file's header, never guessed**
+  (`pictureHasAlpha`, `readPictureFacts`): PNG alpha or `tRNS`, WebP's alpha bit,
+  JPEG never. Stored as the asset's `hasAlpha`; absent means nobody looked, and
+  W221 (an opaque subject) speaks only about `false`.
+- **Adding a cut-out is one patch** (`addCutoutOperations`): the manifest entry
+  with `derivedFrom` and `hasAlpha`, the new picture directly above its source
+  with the same box, fit, focal point and alt text, and the source marked as the
+  scene if it had no role.
+- **`edgeFeather`** softens a picture's edge: a blurred mask on the canvas and in
+  the PDF (the box inset by the feather, so it fades to nothing at the edge), and
+  PowerPoint's own `softEdge` effect.
+- **A missing cut-out says so** ("Cut-out missing: …") rather than looking like
+  an ordinary missing picture, because its absence changes the composition.
+- **Template media may ship a PNG only as a cut-out** (`preset_media`): it must
+  have transparency (an opaque PNG is refused), may be 900 KB, and a placement
+  may name its `layer`. It is served, stored and adopted as `image/png`.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

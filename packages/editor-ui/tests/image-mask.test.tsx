@@ -89,7 +89,7 @@ it("changes the mask from the inspector in one undo step", () => {
   const { document, image } = withImage();
   const edits: { operations: PatchOperation[]; label: string }[] = [];
   render(
-    <WorkspaceClientProvider client={testWorkspaceClient(() => new Response("{}"))}>
+    <WorkspaceClientProvider client={testWorkspaceClient()}>
       <ImageSection document={document} element={image} edit={(operations, label) => edits.push({ operations, label })} disabled={false} resolveAssetUrl={() => undefined} />
     </WorkspaceClientProvider>,
   );

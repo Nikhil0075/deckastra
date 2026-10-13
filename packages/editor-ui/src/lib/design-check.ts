@@ -1,6 +1,6 @@
 import type { PatchOperation, PresentationDocument, PresentationElement } from "@deckastra/presentation-schema";
 import { newId } from "@deckastra/presentation-schema";
-import { resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
+import { moveElement, resolveElementById, setPropertyDeep } from "@deckastra/presentation-core";
 import {
   buildDocumentScene,
   checkAccessibility,
@@ -46,7 +46,9 @@ export type FindingChange =
   /** Give an object a new box outright (a diagram's frame fitted to its boxes). */
   | { elementId: string; frame: { x: number; y: number; width: number; height: number } }
   /** Put an opaque card, in the theme's surface colour, behind a text box. */
-  | { elementId: string; cardBehind: true };
+  | { elementId: string; cardBehind: true }
+  /** Move an object to directly behind another in the same stack (an array move). */
+  | { elementId: string; placeBelow: string };
 
 export interface FindingFix {
   label: string;
@@ -86,6 +88,8 @@ const TITLES: Record<string, string> = {
   W216: "Text too small",
   W217: "Diagram too small in its frame",
   W218: "Contrast cannot be measured",
+  W219: "In front of what it should be behind",
+  W221: "Subject is not a cut-out",
   A101: "No alternative text",
   A102: "Low contrast",
   A103: "Reading order",
@@ -222,7 +226,38 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
           });
           break;
         }
+        case "layerOrder": {
+          // Array position is the ordering authority (doc 02 §8.4), so the fix
+          // is a move. A `zIndex` pin overrides position, and moving would not
+          // change what is drawn, so the finding then says to remove the pin.
+          const element = resolveElementById(document, id)?.element;
+          const other = resolveElementById(document, detail.otherId)?.element;
+          const pinned = element?.zIndex !== undefined || other?.zIndex !== undefined;
+          push({
+            ...base,
+            fix: pinned ? undefined : { label: "Put it behind", changes: [{ elementId: id, placeBelow: detail.otherId }] },
+            message: pinned ? `${base.message} One of them is pinned in front with a stacking override; remove it under Arrange first.` : base.message,
+            alternative: ignore,
+          });
+          break;
+        }
       }
+    }
+
+    // A subject meant to stand in front of a scene, whose picture has no
+    // transparency, covers the scene with its own background (W221).
+    for (const element of walk(bySlide.elements)) {
+      if (element.type !== "image" || element.layerRole !== "subject") continue;
+      const asset = document.assets.find((candidate) => candidate.id === (element as { assetId?: string }).assetId) as { hasAlpha?: boolean } | undefined;
+      if (asset?.hasAlpha !== false) continue;
+      push({
+        code: "W221",
+        severity: "warning",
+        slideId: slide.slideId,
+        elementId: element.id,
+        message: `${nameOf(document, element.id)} is marked as the subject, but its picture has no transparent background, so it hides what is behind it. Replace it with a cut-out (a PNG with a transparent background).`,
+        alternative: { label: "It's intended", changes: [ignoreChange(document, element.id, "W221")] },
+      });
     }
 
     // Alt text from the editor's own audit, which knows the document's field
@@ -342,6 +377,8 @@ export function fixOperations(document: PresentationDocument, fixes: readonly Fi
             )
           : "cardBehind" in change
           ? cardBehindOperations(working, change.elementId)
+          : "placeBelow" in change
+          ? placeBelowOperations(working, change.elementId, change.placeBelow)
           : "move" in change
           ? [
               ...setPropertyDeep(working, change.elementId, "transform.x", Math.round(found.element.transform.x + change.move.dx)),
@@ -388,6 +425,26 @@ function narrowInstead(
     return { x: box.x, y: dy > 0 ? box.y + dy : box.y, width: box.width, height: box.height - Math.abs(dy) };
   }
   return undefined;
+}
+
+/**
+ * Move an object to directly behind another that shares its parent: one
+ * array move, so it undoes like any reorder. Nothing when they do not share a
+ * parent (the person reorders groups themselves) or it is already behind.
+ */
+function placeBelowOperations(document: PresentationDocument, elementId: string, otherId: string): PatchOperation[] {
+  const found = resolveElementById(document, elementId);
+  const other = resolveElementById(document, otherId);
+  if (!found || !other || found.slide.id !== other.slide.id) return [];
+  const parent = (ancestors: readonly PresentationElement[]) => ancestors[ancestors.length - 1]?.id;
+  if (parent(found.ancestors) !== parent(other.ancestors)) return [];
+  if (found.index < other.index) return [];
+  return moveElement(document, {
+    elementId,
+    toSlideId: found.slide.id,
+    ...(parent(found.ancestors) ? { toGroupId: parent(found.ancestors) } : {}),
+    toIndex: other.index,
+  });
 }
 
 /** Scale an object uniformly so its box fits `area`, then move it inside. */

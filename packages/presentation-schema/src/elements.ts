@@ -105,10 +105,32 @@ export type ElementType = z.infer<typeof ElementTypeSchema>;
  * A minimal valid element is `id`, `type`, `transform`. Everything else earns its
  * place — semantic richness is optional by design so the model stays usable.
  */
+/**
+ * Where an element sits in an image-led composition's depth (2026-10-13): the
+ * photograph at the back, a scene, decorations meant to sit behind a cut-out
+ * subject, the subject itself, the slide's content, and annotations in front.
+ *
+ * An intent, not an order. Array position stays the only ordering authority
+ * (doc 02 §8.4); Design Check says when the stacking contradicts the roles and
+ * offers to move the object, and it stops calling an overlap the roles explain
+ * a collision. Open, so a role from a newer build is kept.
+ */
+export const LAYER_ROLES = [
+  "background",
+  "scene",
+  "decoration-behind-subject",
+  "subject",
+  "content",
+  "foreground",
+] as const;
+export const LayerRoleSchema = openEnum(LAYER_ROLES);
+export type LayerRole = (typeof LAYER_ROLES)[number];
+
 const baseElementShape = {
   id: prefixedId("el"),
   name: z.string().optional(),
   semanticRole: SemanticRoleSchema.optional(),
+  layerRole: LayerRoleSchema.optional(),
   transform: TransformSchema,
   style: CommonStyleSchema.optional(),
   /** Default 1. */
@@ -402,6 +424,12 @@ export const ImageElementSchema = z.looseObject({
   focalPoint: PointSchema.optional(),
   altText: z.string().optional(),
   mask: MaskDefinitionSchema.optional(),
+  /**
+   * Softens the picture's edge over this many pixels, along its mask's
+   * outline or its box (2026-10-13). For a cut-out sitting on a scene, where a
+   * hard edge reads as pasted on.
+   */
+  edgeFeather: FiniteNumber.min(0).max(200).optional(),
   placeholder: z.enum(["blurhash", "color", "none"]).optional(),
 });
 
@@ -790,6 +818,7 @@ export type BaseElement = {
   type: ElementType | string;
   name?: string;
   semanticRole?: z.infer<typeof SemanticRoleSchema>;
+  layerRole?: string;
   transform: Transform;
   style?: z.infer<typeof CommonStyleSchema>;
   opacity?: number;

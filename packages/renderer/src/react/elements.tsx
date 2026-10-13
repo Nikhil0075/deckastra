@@ -334,9 +334,9 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       // The mask is drawn by the browser from the scene's outlines, the same
       // outlines PowerPoint receives. It clips the placeholder too, so a
       // picture that has not loaded still shows the shape the slide is built on.
-      const maskStyle: CSSProperties = payload.mask
+      const maskStyle: CSSProperties = payload.mask || payload.feather
         ? (() => {
-            const image = maskImageCss(payload.mask, node.localBounds.width, node.localBounds.height);
+            const image = maskImageCss(payload.mask, node.localBounds.width, node.localBounds.height, payload.feather ?? 0);
             return {
               maskImage: image,
               WebkitMaskImage: image,
@@ -366,7 +366,11 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
               ...maskStyle,
             }}
           >
-            {payload.altText ?? "Image unavailable"}
+            {/* A missing cut-out changes the composition, not just one picture:
+                the subject that should stand in front of the scene is gone. */}
+            {node.layerRole === "subject"
+              ? `Cut-out missing${payload.altText ? `: ${payload.altText}` : ""}`
+              : payload.altText ?? "Image unavailable"}
           </div>
         );
       }
