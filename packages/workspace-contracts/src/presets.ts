@@ -40,7 +40,7 @@ export type PresetSlotValue =
   | string[]
   | Array<{ value: string; label: string }>
   | ChartPlanInput
-  | { kind?: string; direction?: "LR" | "TB"; nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>; edges?: Array<{ source: string; target: string; label?: string }> }
+  | { kind?: string; direction?: "LR" | "TB"; view?: "flat" | "isometric" | "stack" | "orbit"; nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>; edges?: Array<{ source: string; target: string; label?: string }> }
   | Array<{ when: string; label: string; detail?: string }>;
 export type PresetSlotKind = "text" | "text-list" | "metrics" | "chart" | "diagram" | "timeline";
 export type MotionStyleId = "restrained" | "dynamic" | "cinematic" | "editorial" | "energetic" | "technical" | "playful";
@@ -175,6 +175,7 @@ export interface StoryPlanSlide {
   diagram?: {
     kind?: string;
     direction?: "LR" | "TB";
+    view?: "flat" | "isometric" | "stack" | "orbit";
     nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>;
     edges?: Array<{ source: string; target: string; label?: string }>;
   };

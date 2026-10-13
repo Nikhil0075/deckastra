@@ -653,8 +653,24 @@ export const DiagramGroupSchema = z.looseObject({
 });
 export type DiagramGroup = z.infer<typeof DiagramGroupSchema>;
 
+/**
+ * How a diagram's nodes are arranged. Open (2026-10-13): `stack` and `orbit`
+ * arrived after the first five, and a deck that names an arrangement from a
+ * newer build is kept and drawn in layers (W241) rather than refused.
+ *
+ * - `stack`: an exploded view, each rank a raised plate above the next.
+ * - `orbit`: the first node at the centre, the rest on tilted rings by distance.
+ */
+export const DIAGRAM_ALGORITHMS = ["layered", "radial", "grid", "force", "manual", "stack", "orbit"] as const;
+export const DiagramAlgorithmSchema = openEnum(DIAGRAM_ALGORITHMS);
+
+/** `isometric` draws an automatic layout's boxes as blocks on a tilted plane (2026-10-13). */
+export const DIAGRAM_PROJECTIONS = ["flat", "isometric"] as const;
+export const DiagramProjectionSchema = openEnum(DIAGRAM_PROJECTIONS);
+
 export const DiagramLayoutHintSchema = z.looseObject({
-  algorithm: z.enum(["layered", "radial", "grid", "force", "manual"]).optional(),
+  algorithm: DiagramAlgorithmSchema.optional(),
+  projection: DiagramProjectionSchema.optional(),
   /** Default "LR" for architecture. */
   direction: z.enum(["TB", "BT", "LR", "RL"]).optional(),
   nodeSpacing: FiniteNumber.min(0).optional(),

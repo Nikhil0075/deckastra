@@ -137,3 +137,30 @@ def test_a_bubble_chart_carries_its_axis_titles_and_sizes():
 def test_a_point_chart_without_usable_points_is_refused_where_it_is_written(chart, reason):
     with pytest.raises(ValidationError, match=reason):
         _plan({"layout": "chart", "purpose": "p", "key_message": "k", "headline": "H", "chart": chart})
+
+
+# -------------------------------------------------------------- diagram views
+# A diagram can be seen as blocks, an exploded stack or an orbit (2026-10-13).
+
+
+@pytest.mark.parametrize("view, hint", [
+    ("flat", {"algorithm": "layered", "direction": "LR", "mode": "managed"}),
+    ("isometric", {"algorithm": "layered", "direction": "LR", "mode": "managed", "projection": "isometric"}),
+    ("stack", {"algorithm": "stack", "direction": "LR", "mode": "managed"}),
+    ("orbit", {"algorithm": "orbit", "direction": "LR", "mode": "managed"}),
+])
+def test_a_diagram_view_becomes_its_layout_hint(view, hint):
+    document = compose_document(_plan({
+        "layout": "diagram", "purpose": "p", "key_message": "k", "headline": "How it fits together",
+        "diagram": {"view": view, "nodes": [{"key": "a", "label": "Interface"}, {"key": "b", "label": "Engine"}, {"key": "c", "label": "Store"}],
+                    "edges": [{"source": "a", "target": "b"}, {"source": "b", "target": "c"}]},
+    }))
+    assert validate_document(document) == []
+    diagram = next(e for e in document["slides"][0]["elements"] if e["type"] == "diagram")
+    assert diagram["layoutHint"] == hint
+
+
+def test_an_unknown_diagram_view_is_refused_where_it_is_written():
+    with pytest.raises(ValidationError, match="view"):
+        _plan({"layout": "diagram", "purpose": "p", "key_message": "k", "headline": "H",
+               "diagram": {"view": "helix", "nodes": [{"key": "a", "label": "A"}, {"key": "b", "label": "B"}]}})

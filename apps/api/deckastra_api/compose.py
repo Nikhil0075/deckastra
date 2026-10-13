@@ -744,6 +744,16 @@ def _point_chart(plan: SlidePlan, y: float, width: float, bottom: float) -> dict
     }
 
 
+def _diagram_hint(diagram: Any) -> dict[str, Any]:
+    """The layout hint for a planned diagram; a flat one is exactly what it always was."""
+    hint: dict[str, Any] = {"algorithm": "layered", "direction": diagram.direction, "mode": "managed"}
+    if diagram.view in ("stack", "orbit"):
+        hint["algorithm"] = diagram.view
+    elif diagram.view == "isometric":
+        hint["projection"] = "isometric"
+    return hint
+
+
 def _layout_diagram(plan: SlidePlan) -> list[dict[str, Any]]:
     diagram = plan.diagram
     assert diagram is not None
@@ -780,7 +790,7 @@ def _layout_diagram(plan: SlidePlan) -> list[dict[str, Any]]:
         "transform": {"x": CONTENT_X, "y": round(y + 10, 2), "width": CONTENT_W, "height": round(bottom - y - 10, 2)},
         "nodes": nodes,
         "edges": edges,
-        "layoutHint": {"algorithm": "layered", "direction": diagram.direction, "mode": "managed"},
+        "layoutHint": _diagram_hint(diagram),
         "altText": (f"{diagram.kind.capitalize()} diagram of " + ", ".join(n.label for n in diagram.nodes)
                     + (f". Connections: {described}." if described else "."))[:900],
     })

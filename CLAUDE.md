@@ -4458,6 +4458,41 @@ Rules that are easy to undo:
   written; `compose._point_chart` writes the rows. The neutral golden did not
   move.
 
+### Diagrams with depth (2026-10-13)
+
+`layoutHint.projection: "isometric"` draws any automatic layout's boxes as
+blocks; `layoutHint.algorithm` gains `stack` (an exploded view, one raised
+plate per rank, the first rank on top) and `orbit` (the first source node in
+the middle, the rest on tilted rings by distance). Both enums are now open:
+an arrangement from a newer build is a W241 and draws in layers. The geometry
+is `renderer/src/diagram-spatial.ts`, run after the flat layout. Rules that
+are easy to undo:
+
+- **Isometric keeps the flat layout's screen positions**; each node stands on
+  the tilted ground as a square block with a diamond top. Projecting the whole
+  layout instead turned a left-to-right flow into a diagonal that filled a
+  third of its box, which only a render showed.
+- **Faces leave as paths, in paint order** (`outline` and `sides` on node and
+  group marks, back to front), so the canvas, PDF and PowerPoint draw the same
+  depth with no 3D downstream. Side faces are the node's own fill darkened.
+- **Edges run over the block tops** and the payload says `edgesAbove`: a block
+  painted after an edge hid the arrow arriving from behind it. React and
+  PowerPoint both honour it; a flat diagram is unchanged, and no baseline moved.
+- **A group in isometric is the hull of its members' footprints** on the ground,
+  named under its lowest point. A box aligned to the tilted ground was a huge
+  diamond covering nodes outside the group.
+- **A stack plate is named only by a group whose members are exactly that
+  layer**; any other group is reported, not guessed onto a plate. Plates are
+  raised by their own on-screen depth plus the blocks, so no plate covers the
+  layer below. A connector leaves the upper block's near bottom edge and lands
+  on the lower block's far top edge, clear of both labels.
+- **An orbit's ring spacing comes from the widest node**, so a node beside the
+  centre clears it at the ring's widest tilt. Nearer nodes are drawn larger and
+  later; a node joined to nothing goes on the outer ring with a warning.
+- The editor's diagram section has a View control (`lib/diagram-view.ts`) that
+  writes `layoutHint` in one change and never leaves a projection and an
+  arrangement set together. Agents pass `view` in a diagram plan.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,
