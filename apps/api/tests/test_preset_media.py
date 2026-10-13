@@ -142,18 +142,29 @@ def test_with_no_pictures_a_frame_stays_a_frame(tmp_path, monkeypatch):
 
 
 def test_every_shipped_template_with_a_frame_is_releasable():
-    """All 22 pictures fill their frames and carry complete release evidence."""
+    """Approved and candidate pictures fill their explicitly reviewed frames.
+
+    V2 also permits an empty media placeholder: providers are optional, and a
+    person may generate or insert that picture later. Only templates that ship
+    bundled media must have every such frame filled.
+    """
     from deckastra_api import presets
 
     preset_media._load.cache_clear()
     for preset in presets.public_catalog()["presets"]:
         document = template_compose.compose_template(preset["id"])
         frames = [e for s in document["slides"] for e in s["elements"] if e.get("name") in preset_media.FRAME_NAMES]
-        assert len(_pictures(document)) == len(frames), preset["id"]
+        chosen = preset_media.for_template(preset["id"])
+        if chosen:
+            assert len(_pictures(document)) == len(frames), preset["id"]
+            used = {asset["storageKey"] for asset in document.get("assets") or []}
+            assert {preset_media.KEY_PREFIX + entry["file"] for entry in chosen.values()} <= used, preset["id"]
         assert validate_document(document) == [], preset["id"]
     assert preset_media.demo_only(SHIPPED) == []
-    assert len(preset_media.entries()) == 22
-    assert preset_media.problems(SHIPPED, release=True) == []
+    assert len(preset_media.entries()) == 30
+    assert sum(entry.get("status") == "candidate" for entry in preset_media.entries()) == 8
+    release_problems = preset_media.problems(SHIPPED, release=True)
+    assert len([problem for problem in release_problems if "candidate image" in problem]) == 8
 
 
 def test_openai_terms_are_valid_commercial_evidence(media):

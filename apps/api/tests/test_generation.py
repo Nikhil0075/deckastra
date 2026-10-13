@@ -136,7 +136,7 @@ def test_every_reviewed_preset_composes_a_valid_document(preset):
 
     assert validate_document(document) == []
     assert len(document["slides"]) == len(preset["slides"])
-    assert len(document["slides"]) == 10
+    assert len(document["slides"]) >= 8
     assert [slide["layout"]["styleLabel"] for slide in document["slides"]] == [
         slide["pattern"] for slide in preset["slides"]
     ]
@@ -156,7 +156,7 @@ def test_seven_motion_styles_resolve_to_bounded_semantic_plans():
     for preset in catalog["presets"]:
         plan = presets.motion_plan_from_preset(preset)
         assert plan["style"] == preset["motionStyle"]
-        assert len(plan["slides"]) == 10
+        assert len(plan["slides"]) == len(preset["slides"])
         assert all(slide["sequence"] and slide["entrance"] and slide["pacing"] for slide in plan["slides"])
 
 

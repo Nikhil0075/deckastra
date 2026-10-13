@@ -8,6 +8,7 @@ import {
   type Script,
   type BackgroundDefinition,
   type CommonStyle,
+  type MaskDefinition,
   type PresentationDocument,
   type PresentationElement,
   type Rect,
@@ -22,6 +23,7 @@ import { applyScriptRules, italicAllowed, mirrorAlign } from "./script-rules";
 import { IDENTITY, localMatrix, multiply, transformedBounds, type Matrix } from "./matrix";
 import { paintToCss, resolveTheme, resolveTypography, resolveValue, themeForMode, type ResolvedTheme } from "./theme";
 import { shapeGeometry } from "./shapes";
+import { resolveImageMask, type ImageMaskPayload } from "./masks";
 import { contrastRatio, parseColor } from "./semantic";
 import {
   defaultTextMeasurer,
@@ -141,10 +143,10 @@ export interface SceneNode {
 }
 
 export type RenderPayload =
-  | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets; direction?: "rtl" }
+  | { kind: "text"; blocks: TextBlockPayload[]; metrics: TextMetrics; typography: TypographyStyle; align?: string; verticalAlign?: string; padding?: Insets; direction?: "rtl"; pictureFill?: { assetId: string; storageKey?: string; objectFit: string; objectPosition: string; fallbackColor?: string } }
   | { kind: "shape"; pathData: string; preferRect: boolean; radius: number; label?: TextBlockPayload[]; labelTypography?: TypographyStyle; labelVerticalAlign?: string; labelPadding?: Insets; direction?: "rtl" }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; startMarker?: string; endMarker?: string }
-  | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string }
+  | { kind: "image"; assetId: string; storageKey?: string; objectFit: string; objectPosition: string; altText?: string; mask?: ImageMaskPayload; maskWarning?: string }
   | { kind: "video"; assetId: string; posterAssetId?: string; objectFit: string; autoplay: boolean; loop: boolean; muted: boolean; controls: boolean; startTimeMs: number; endTimeMs?: number; label?: string }
   | { kind: "code"; code: string; language: string; lines: CodeLine[]; colors: CodeColors; showLineNumbers: boolean; startLineNumber: number; fileName?: string; typography: TypographyStyle }
   | EquationPayload
@@ -763,6 +765,12 @@ function buildPayload(
         maxFontSize?: number;
         padding?: Insets;
         verticalAlign?: string;
+        pictureFill?: {
+          assetId: string;
+          fit?: string;
+          focalPoint?: { x: number; y: number };
+          fallbackColor?: string;
+        };
       };
 
       const typography = applyScriptRules(resolveTypography(theme, el.typography), ctx.script);
@@ -783,6 +791,7 @@ function buildPayload(
       flags.measured = true;
       flags.metricsEstimated = metrics.estimated;
       flags.overflow = metrics.overflow;
+      const pictureFocal = el.pictureFill?.focalPoint ?? { x: 0.5, y: 0.5 };
 
       return {
         kind: "text",
@@ -792,6 +801,17 @@ function buildPayload(
         align: mirrorAlign(el.paragraph?.align, ctx.direction),
         verticalAlign: el.verticalAlign,
         padding,
+        ...(el.pictureFill ? {
+          pictureFill: {
+            assetId: el.pictureFill.assetId,
+            storageKey: ctx.assetKeys.get(el.pictureFill.assetId),
+            objectFit: el.pictureFill.fit ?? "cover",
+            objectPosition: `${(pictureFocal.x * 100).toFixed(1)}% ${(pictureFocal.y * 100).toFixed(1)}%`,
+            ...(el.pictureFill.fallbackColor ? {
+              fallbackColor: String(resolveValue(theme, el.pictureFill.fallbackColor, typography.color ?? "#111")),
+            } : {}),
+          },
+        } : {}),
         ...(ctx.direction === "rtl" ? { direction: "rtl" as const } : {}),
       };
     }
@@ -876,8 +896,12 @@ function buildPayload(
         fit?: string;
         focalPoint?: { x: number; y: number };
         altText?: string;
+        mask?: MaskDefinition;
       };
       const focal = el.focalPoint ?? { x: 0.5, y: 0.5 };
+      // The mask is the box's outline, independent of the picture: the fit and
+      // focal point still choose which part of the photograph shows through it.
+      const masked = resolveImageMask(el.mask, width, height);
 
       return {
         kind: "image",
@@ -886,6 +910,8 @@ function buildPayload(
         objectFit: el.fit ?? "cover",
         objectPosition: `${(focal.x * 100).toFixed(1)}% ${(focal.y * 100).toFixed(1)}%`,
         altText: el.altText,
+        ...(masked.mask ? { mask: masked.mask } : {}),
+        ...(masked.warning ? { maskWarning: masked.warning } : {}),
       };
     }
 

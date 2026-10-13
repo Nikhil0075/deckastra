@@ -1,6 +1,6 @@
 """Design languages in the composer (UI audit 2026-10-10, unit 5).
 
-Four properties: the neutral composer did not move by a byte; each pilot
+Four properties: the reviewed neutral V2 baseline stays byte-stable; each pilot
 composes a valid deck that records its language; a pilot deck is structurally
 unlike a neutral one, not a recolour; and nothing a language draws leaves the
 slide.
@@ -31,13 +31,26 @@ PILOTS = {
 }
 
 
-def _walk(elements):
+def _walk(elements, offset_x=0, offset_y=0):
     for element in elements:
-        yield element
-        yield from _walk(element.get("children") or [])
+        transform = element.get("transform") or {}
+        absolute = {
+            **element,
+            "transform": {
+                **transform,
+                "x": float(transform.get("x") or 0) + offset_x,
+                "y": float(transform.get("y") or 0) + offset_y,
+            },
+        }
+        yield absolute
+        yield from _walk(
+            element.get("children") or [],
+            absolute["transform"]["x"],
+            absolute["transform"]["y"],
+        )
 
 
-def test_the_neutral_composer_has_not_moved_a_byte():
+def test_the_reviewed_neutral_v2_composer_has_not_moved_a_byte():
     recorded = json.loads(compose_golden.GOLDEN.read_text(encoding="utf-8"))
     assert compose_golden.neutral_digests() == recorded
 

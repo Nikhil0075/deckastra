@@ -34,7 +34,7 @@ import { SlideView } from "@deckastra/renderer/react";
 import { buildCriticReport, type CriticRenderReport } from "./critic-report";
 import { compileTimeline, finalSample, sampleAt, toStyle } from "@deckastra/animation-engine";
 import type { ExportImage, ExportWarning, FontSpec } from "@deckastra/export-core";
-import { equationImageKey } from "@deckastra/export-pptx";
+import { equationImageKey, maskNeedsPicture, maskedImageKey } from "@deckastra/export-pptx";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
 import { buildBrowserScene } from "./text-measurement";
 import { AssetLibrary, type InlineAsset } from "./assets";
@@ -761,13 +761,19 @@ export async function captureEquations(
   slides: readonly SlideScene[],
   page: RenderPage,
   fontCss = "",
+  /**
+   * Masked pictures PowerPoint cannot crop to their outline (`maskNeedsPicture`)
+   * are captured the same way, cut to shape with transparency around them, so
+   * they need their bytes on the page.
+   */
+  resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
 ): Promise<Map<string, ExportImage>> {
   const captured = new Map<string, ExportImage>();
   for (const slide of slides) {
     const equations: SceneNode[] = [];
     const walk = (nodes: readonly SceneNode[] | undefined): void => {
       for (const node of nodes ?? []) {
-        if (node.renderPayload.kind === "equation") equations.push(node);
+        if (node.renderPayload.kind === "equation" || (resolveAssetUrl && maskNeedsPicture(node))) equations.push(node);
         walk(node.children);
       }
     };
@@ -775,7 +781,7 @@ export async function captureEquations(
 
     for (const node of equations) {
       const alone: SlideScene = { ...slide, background: undefined, nodes: [node] } as SlideScene;
-      await page.setContent(slideHtml(alone, "final", [], undefined, fontCss), { waitUntil: "load" });
+      await page.setContent(slideHtml(alone, "final", [], resolveAssetUrl, fontCss), { waitUntil: "load" });
       await settle(page);
       const clip = {
         x: Math.max(0, Math.floor(node.bounds.x)),
@@ -784,7 +790,8 @@ export async function captureEquations(
         height: Math.max(1, Math.ceil(node.bounds.height)),
       };
       const bytes = await page.screenshot({ type: "png", clip, omitBackground: true, animations: "disabled" });
-      captured.set(equationImageKey(node.id), { bytes, contentType: "image/png" });
+      const key = node.renderPayload.kind === "equation" ? equationImageKey(node.id) : maskedImageKey(node.id);
+      captured.set(key, { bytes, contentType: "image/png" });
     }
   }
   return captured;

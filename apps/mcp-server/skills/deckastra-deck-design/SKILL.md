@@ -1,23 +1,25 @@
 ---
 name: deckastra-deck-design
-description: Design a presentation in Deckastra over its MCP server — choose a design language, give each slide one claim and one visual (chart, diagram, timeline, photograph), vary the structure and transitions, and check every slide before answering. Use when building, restyling or translating a Deckastra deck.
+description: Direct a presentation in Deckastra over MCP — select reviewed structural patterns and a design language, enforce real layout variety, use quoted media safely, and inspect every slide before completion. Use when building, restyling or translating a Deckastra deck.
 ---
 
-# Designing a deck in Deckastra
+# Deck Director: designing in Deckastra
 
 Deckastra composes geometry; you decide what each slide is *for* and which
 structure carries it. Correct and monotonous is the failure to avoid.
 
-## 1. Art direction first
+## 1. Read the system before composing
 
 Before writing any slide:
 
-1. Pick a design language with `design_language_get` (or a template's own).
-   Follow its rules, forbid list and density limits.
-2. Set the palette and faces if the person has a brand: `theme_propose` with
+1. Call `preset_list`. Read each pattern's `family`, `contentKinds`, named
+   slots and example; choose patterns for the content, not for their names.
+2. Pick a design language with `design_language_get` (or a template's own).
+   Follow its rules, forbid list, density limits and default motion.
+3. Set the palette and faces if the person has a brand: `theme_propose` with
    background, foreground, accent and two bundled faces. It refuses text below
    4.5:1, so fix the colours rather than retrying.
-3. Plan the deck as a list of slides, each with **one claim** and **one
+4. Plan the deck as a list of slides, each with **one claim** and **one
    visual** that proves it: a number, a chart, a diagram, a dated sequence, a
    photograph or a quotation. Words alone are the last resort, not the default.
 
@@ -25,48 +27,57 @@ Before writing any slide:
 
 | The slide has | Use |
 | --- | --- |
-| Values compared side by side | `chart` (column or bar), the takeaway in `body` |
-| A measure over time | `chart` with `line` or `area` |
-| A start, changes and an end total | `chart` with `waterfall` |
-| Where several things started and ended | `chart` with `slope` |
-| Parts of a whole (at most five) | `chart` with `donut` |
-| Parts of a system and how they connect | `diagram` (`architecture`) |
-| Steps something goes through | `diagram` (`flow`) or `timeline` |
-| Dated milestones | `timeline` |
-| One or two headline numbers | `metrics` |
-| A moment, a place, a person | `image`, described in `picture` |
-| A sentence to remember | `statement` or `quote` |
-| Two to five parallel points | `bullets` or `split` |
+| Values compared side by side | `bar-chart` or `comparison` |
+| A measure over time | `trend-chart` |
+| A start, changes and an end total | `waterfall-chart` |
+| Where several things started and ended | `slope-chart` |
+| Parts of a whole (at most five) | `share-chart` |
+| Parts of a system and how they connect | `system-diagram` or `architecture` |
+| Steps something goes through | `process-flow` or `process` |
+| Dated milestones | `milestones`, `timeline` or `roadmap` |
+| One decisive number | `big-number` |
+| A moment, place or person | `full-bleed-photo`, `profile` or `gallery` |
+| A choice or contrast | `comparison`, `pros-cons` or `decision` |
+| A sentence to remember | `statement`, `quote` or `reflection` |
+
+With `deck_compose`, put the selected pattern in `pattern_id` and its
+legacy geometry in `layout`. When revising a deck, prefer
+`slide_insert_pattern`; it uses the same reviewed slot contract as the editor.
 
 The headline states the conclusion ("Revenue grew every quarter"), never a
 label ("Revenue"). A chart's `unit` and a `caption` naming the source go
 with every number. Never invent a number or a source: ask, or leave the slide
 as words.
 
-## 3. Variety rules
+## 3. Variety and pacing
 
-- No structure three slides running. `deck_compose` warns when you do; fix
-  it before you answer.
+- Never repeat a structural family on adjacent slides.
+- A ten-slide deck uses at least eight structural families. A shorter deck uses
+  as many families as its story reasonably supports.
 - A deck of six slides or more has evidence on at least a third of them
   (chart, diagram, timeline, photograph or table).
+- Use a full-slide composition at the opening or chapter turn; do not make every
+  slide a bordered card grid.
 - Transitions come from the language, with accents by slide kind. Change one
   with `transition_propose` only when the moment asks for it; never set every
   slide to the same showy kind.
 - Motion is by role and pacing (`motion_propose`), never in milliseconds.
 
-## 4. Pictures
+## 4. Media
 
-For an `image` slide, write `picture` as what the photograph shows, in
-plain words: it is the alt text and the prompt. Generate it with
-`image_quote` then `image_generate` for that slide; the picture fills the
-slide's frame, under the headline. The person approves the cost.
+For a media pattern, write `picture` as what the photograph shows in plain
+words: it is both alt text and generation direction. Use `image_quote` then
+`image_generate` for a still, or `media_quote` then `media_generate` for a
+clip. Do not generate until the exact quote is accepted. The result remains a
+proposal for the person to approve.
 
 ## 5. Check before you answer
 
-1. `slide_preview` every slide you made or changed, and look at it: clipped
+1. `slide_preview` every slide you made or changed and look at it: clipped
    words, a chart whose labels collide, a picture covering text.
 2. `design_check`, and fix what it names.
-3. Numbers on a slide agree with the labels and the speaker notes.
+3. Re-read the deck: adjacent families differ, claims agree with evidence, and
+   numbers agree with labels and speaker notes.
 4. Narration runs about 130 words a minute: a 10-minute talk is about 1,300
    words across the deck. Count before you voice it.
 5. Translation: `locale_propose` returns `coverage`. A language is done only

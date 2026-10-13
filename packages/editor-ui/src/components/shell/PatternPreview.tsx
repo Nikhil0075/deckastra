@@ -25,24 +25,25 @@ export function forgetPatternPreviews(): void {
 }
 
 /** Every pattern's example slide in this deck's language, read once per language. */
-export function usePatternPreviews(client: WorkspaceClient | null | undefined, language: string, active: boolean): PatternPreviews | null {
+export function usePatternPreviews(client: WorkspaceClient | null | undefined, language: string, active: boolean, catalogVersion = 1): PatternPreviews | null {
   const [previews, setPreviews] = useState<PatternPreviews | null>(null);
   useEffect(() => {
     const read = client?.presets.previewPatterns;
     if (!active || !read) return;
     let live = true;
-    let pending = answers.get(language);
+    const cacheKey = `${catalogVersion}:${language}`;
+    let pending = answers.get(cacheKey);
     if (!pending) {
       pending = read.call(client.presets, language);
-      answers.set(language, pending);
+      answers.set(cacheKey, pending);
       // A failed read is forgotten, so the next time the library opens asks again.
-      pending.catch(() => answers.delete(language));
+      pending.catch(() => answers.delete(cacheKey));
     }
     pending.then((value) => live && setPreviews(value)).catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [client, language, active]);
+  }, [client, language, active, catalogVersion]);
   return previews;
 }
 

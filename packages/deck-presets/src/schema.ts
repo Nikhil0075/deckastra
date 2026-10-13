@@ -9,6 +9,22 @@ export type BaseSlidePattern = (typeof BASE_SLIDE_PATTERNS)[number];
 export const DATA_LAYOUTS = ["chart", "diagram", "timeline", "image"] as const;
 export type DataLayout = (typeof DATA_LAYOUTS)[number];
 
+/**
+ * What a slide looks like at thumbnail distance. A narrative pattern answers
+ * "what is this slide doing?"; its layout family answers "what shape does it
+ * take?". Keeping the two separate prevents sixty pattern names collapsing
+ * back into the same row of cards.
+ */
+export const LAYOUT_FAMILIES = [
+  "cover", "statement", "agenda", "section", "comparison", "process",
+  "practice", "timeline", "roadmap", "checklist", "big-number", "profile",
+  "case-study", "decision", "closing", "summary", "feature-grid", "journey",
+  "pricing", "gallery", "reflection", "data-chart", "architecture", "system-flow",
+  "code-demo", "media", "metrics", "quote", "split", "list",
+] as const;
+export type LayoutFamily = (typeof LAYOUT_FAMILIES)[number];
+export type PatternContentKind = "text" | "metrics" | "chart" | "diagram" | "timeline" | "media" | "code";
+
 export const SLIDE_PATTERNS = [
   ...BASE_SLIDE_PATTERNS,
   "agenda",
@@ -115,11 +131,23 @@ export interface SlidePatternDefinition {
   summary: string;
   /** The deterministic geometry family used to compose this semantic pattern. */
   composerLayout: BaseSlidePattern | DataLayout;
+  /** The V2 thumbnail-level structure. Unlike composerLayout, this is semantic-pattern aware. */
+  family: LayoutFamily;
+  /** A stable visual variant key within the family. */
+  variant: string;
+  /** The kinds of content this pattern can carry, for filtering and agent selection. */
+  contentKinds: PatternContentKind[];
+  /** Stable cache key for rendered previews. */
+  previewKey: string;
+  /** Bumped when the pattern's composition contract changes. */
+  version: number;
   slots: Record<string, SlotDefinition>;
   /** At least one named slot in each group must contain content. */
   requiresOneOf?: string[][];
   exampleSlots: Record<string, SlotValue>;
 }
+
+type PatternAuthoringDefinition = Omit<SlidePatternDefinition, "family" | "variant" | "contentKinds" | "previewKey" | "version">;
 
 const text = (
   label: string,
@@ -137,7 +165,7 @@ const common = {
  * Named content slots are the public authoring contract. They deliberately say
  * nothing about x/y coordinates: the deterministic composer owns geometry.
  */
-export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> = {
+const RAW_PATTERN_DEFINITIONS: Record<SlidePattern, PatternAuthoringDefinition> = {
   title: {
     name: "Title",
     summary: "A calm opening with one promise and an optional supporting line.",
@@ -264,6 +292,7 @@ export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> =
       headline: text("Headline", "The person's role or contribution.", { required: true, recommendedMaxChars: 80 }),
       quote: text("Quote", "A short first-person point of view.", { required: true, recommendedMaxChars: 220 }),
       attribution: text("Attribution", "Name and role.", { required: true, recommendedMaxChars: 80 }),
+      picture: text("Picture", "Optional portrait description for a generated or template image.", { recommendedMaxChars: 300 }),
     },
     exampleSlots: { eyebrow: "MEET THE TEAM", headline: "The operator behind the change", quote: "Make the safe path the easy path.", attribution: "Maya Chen · Platform lead" },
   },
@@ -397,7 +426,105 @@ export const PATTERN_DEFINITIONS: Record<SlidePattern, SlidePatternDefinition> =
   },
 };
 
-function listPattern(name: string, summary: string, eyebrow: string, headline: string, bullets: string[]): SlidePatternDefinition {
+/** Every reviewed pattern has a genuinely named structural family. */
+export const PATTERN_FAMILIES: Record<SlidePattern, LayoutFamily> = {
+  title: "cover",
+  statement: "statement",
+  bullets: "list",
+  metrics: "metrics",
+  quote: "quote",
+  code: "code-demo",
+  split: "split",
+  agenda: "agenda",
+  section: "section",
+  comparison: "comparison",
+  process: "process",
+  timeline: "timeline",
+  roadmap: "roadmap",
+  checklist: "checklist",
+  "pros-cons": "comparison",
+  "big-number": "big-number",
+  profile: "profile",
+  "case-study": "case-study",
+  decision: "decision",
+  closing: "closing",
+  "executive-summary": "summary",
+  problem: "statement",
+  opportunity: "big-number",
+  market: "metrics",
+  financials: "metrics",
+  risks: "checklist",
+  recommendation: "decision",
+  appendix: "closing",
+  "feature-grid": "feature-grid",
+  "user-journey": "journey",
+  "release-plan": "roadmap",
+  pricing: "pricing",
+  feedback: "quote",
+  demo: "code-demo",
+  changelog: "checklist",
+  "learning-objectives": "agenda",
+  concept: "statement",
+  example: "case-study",
+  exercise: "practice",
+  quiz: "checklist",
+  reflection: "reflection",
+  resources: "checklist",
+  architecture: "architecture",
+  "system-flow": "system-flow",
+  "api-contract": "code-demo",
+  "data-model": "architecture",
+  incident: "case-study",
+  "root-cause": "system-flow",
+  benchmark: "metrics",
+  "team-update": "summary",
+  wins: "metrics",
+  blockers: "checklist",
+  responsibilities: "feature-grid",
+  retrospective: "case-study",
+  "shout-outs": "quote",
+  gallery: "gallery",
+  biography: "profile",
+  "event-schedule": "timeline",
+  "story-beat": "media",
+  "thank-you": "closing",
+  "bar-chart": "data-chart",
+  "trend-chart": "data-chart",
+  "waterfall-chart": "data-chart",
+  "slope-chart": "data-chart",
+  "share-chart": "data-chart",
+  "system-diagram": "architecture",
+  "process-flow": "system-flow",
+  milestones: "timeline",
+  "full-bleed-photo": "media",
+};
+
+function contentKinds(definition: (typeof RAW_PATTERN_DEFINITIONS)[SlidePattern]): PatternContentKind[] {
+  const found = new Set<PatternContentKind>(["text"]);
+  for (const slot of Object.values(definition.slots)) {
+    if (slot.kind === "metrics" || slot.kind === "chart" || slot.kind === "diagram" || slot.kind === "timeline") found.add(slot.kind);
+  }
+  if (definition.composerLayout === "code") found.add("code");
+  if (definition.composerLayout === "image" || "picture" in definition.slots) found.add("media");
+  return [...found];
+}
+
+export const PATTERN_DEFINITIONS = Object.fromEntries(
+  SLIDE_PATTERNS.map((pattern) => {
+    const definition = RAW_PATTERN_DEFINITIONS[pattern];
+    const family = PATTERN_FAMILIES[pattern];
+    return [pattern, {
+      ...definition,
+      family,
+      variant: pattern,
+      contentKinds: contentKinds(definition),
+      previewKey: `v2.${family}.${pattern}`,
+      version: 2,
+    }];
+  }),
+) as Record<SlidePattern, SlidePatternDefinition>;
+
+function listPattern(name: string, summary: string, eyebrow: string, headline: string, bullets: string[]): PatternAuthoringDefinition {
   return {
     name,
     summary,
@@ -413,7 +540,7 @@ function listPattern(name: string, summary: string, eyebrow: string, headline: s
   };
 }
 
-function splitPattern(name: string, summary: string, eyebrow: string, headline: string, body: string, bullets: string[]): SlidePatternDefinition {
+function splitPattern(name: string, summary: string, eyebrow: string, headline: string, body: string, bullets: string[]): PatternAuthoringDefinition {
   return {
     name,
     summary,
@@ -429,7 +556,7 @@ function splitPattern(name: string, summary: string, eyebrow: string, headline: 
   };
 }
 
-function statementPattern(name: string, summary: string, eyebrow: string, headline: string): SlidePatternDefinition {
+function statementPattern(name: string, summary: string, eyebrow: string, headline: string): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "statement",
     slots: { ...common, headline: text("Headline", "The claim to remember.", { required: true, recommendedMaxChars: 120 }), subtitle: text("Subtitle", "Optional clarification.", { recommendedMaxChars: 140 }), body: text("Body", "Supporting context.", { recommendedMaxChars: 240 }) },
@@ -437,7 +564,7 @@ function statementPattern(name: string, summary: string, eyebrow: string, headli
   };
 }
 
-function metricPattern(name: string, summary: string, eyebrow: string, headline: string, metrics: MetricSlotValue[]): SlidePatternDefinition {
+function metricPattern(name: string, summary: string, eyebrow: string, headline: string, metrics: MetricSlotValue[]): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "metrics",
     slots: { ...common, headline: text("Headline", "The conclusion supported by the measures.", { required: true, recommendedMaxChars: 100 }), metrics: { kind: "metrics", label: "Metrics", description: "One to four comparable measures.", required: true, minItems: 1, maxItems: 4, itemRecommendedMaxChars: 48 }, caption: text("Caption", "Source or qualifier.", { recommendedMaxChars: 120 }) },
@@ -445,7 +572,7 @@ function metricPattern(name: string, summary: string, eyebrow: string, headline:
   };
 }
 
-function quotePattern(name: string, summary: string, eyebrow: string, headline: string, quote: string, attribution: string): SlidePatternDefinition {
+function quotePattern(name: string, summary: string, eyebrow: string, headline: string, quote: string, attribution: string): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "quote",
     slots: { ...common, headline: text("Headline", "An accessible label for the quotation.", { required: true, recommendedMaxChars: 80 }), quote: text("Quote", "The quotation or prompt.", { required: true, recommendedMaxChars: 240 }), attribution: text("Attribution", "Speaker, source or prompt type.", { recommendedMaxChars: 80 }) },
@@ -453,7 +580,7 @@ function quotePattern(name: string, summary: string, eyebrow: string, headline: 
   };
 }
 
-function codePattern(name: string, summary: string, eyebrow: string, headline: string, code: string): SlidePatternDefinition {
+function codePattern(name: string, summary: string, eyebrow: string, headline: string, code: string): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "code",
     slots: { ...common, headline: text("Headline", "What the example demonstrates.", { required: true, recommendedMaxChars: 100 }), code: text("Code", "The literal sample.", { required: true }), language: text("Language", "Syntax language key.", { recommendedMaxChars: 24 }), caption: text("Caption", "Optional explanation.", { recommendedMaxChars: 120 }) },
@@ -461,7 +588,7 @@ function codePattern(name: string, summary: string, eyebrow: string, headline: s
   };
 }
 
-function chartPattern(name: string, summary: string, eyebrow: string, headline: string, chart: ChartSlotValue, body?: string): SlidePatternDefinition {
+function chartPattern(name: string, summary: string, eyebrow: string, headline: string, chart: ChartSlotValue, body?: string): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "chart",
     slots: {
@@ -476,7 +603,7 @@ function chartPattern(name: string, summary: string, eyebrow: string, headline: 
   };
 }
 
-function diagramPattern(name: string, summary: string, eyebrow: string, headline: string, diagram: DiagramSlotValue): SlidePatternDefinition {
+function diagramPattern(name: string, summary: string, eyebrow: string, headline: string, diagram: DiagramSlotValue): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "diagram",
     slots: {
@@ -490,7 +617,7 @@ function diagramPattern(name: string, summary: string, eyebrow: string, headline
   };
 }
 
-function titlePattern(name: string, summary: string, eyebrow: string, headline: string, subtitle: string): SlidePatternDefinition {
+function titlePattern(name: string, summary: string, eyebrow: string, headline: string, subtitle: string): PatternAuthoringDefinition {
   return {
     name, summary, composerLayout: "title",
     slots: { ...common, headline: text("Headline", "The central promise.", { required: true, recommendedMaxChars: 90 }), subtitle: text("Subtitle", "Supporting context.", { recommendedMaxChars: 120 }) },

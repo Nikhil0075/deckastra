@@ -41,6 +41,7 @@ if (missedControls.length > 0) {
 }
 
 const body = `${JSON.stringify({
+  catalogVersion: 2,
   description: "Generated from @deckastra/deck-presets src/index.ts. Do not edit by hand: run npm run presets:emit.",
   purposeGroups: PURPOSE_GROUPS,
   slidePatterns: SLIDE_PATTERNS,

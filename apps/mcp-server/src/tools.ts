@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { WorkspaceClient } from "@deckastra/workspace-contracts";
+import type { SlidePattern, WorkspaceClient } from "@deckastra/workspace-contracts";
 
 import type { Attached } from "./attach";
 import { languagesOf, outlineDocument, slideOf } from "./outline";
@@ -324,6 +324,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
 
   const storySlide = z.object({
     layout: z.enum(["title", "statement", "bullets", "metrics", "quote", "code", "split", "chart", "diagram", "timeline", "image"]),
+    pattern_id: z.string().min(1).max(80).transform((value): SlidePattern => value as SlidePattern).optional().describe("A reviewed V2 pattern from preset_list. The layout remains its compatibility fallback."),
     purpose: z.string(),
     key_message: z.string(),
     headline: z.string(),
@@ -348,7 +349,8 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     {
       title: "Compose a deck from a StoryPlan",
       description:
-        "Create a deck from narrative intent, words and fixed layout names. Do not send coordinates, " +
+        "Create a deck from narrative intent, words and fixed layout names. Prefer a concrete pattern_id from preset_list " +
+        "for V2 structural variety; layout remains its compatibility fallback. Do not send coordinates, " +
         "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry. " +
         "Name a design_language (see design_language_get) to compose in its grammar and theme; " +
         "its density limits apply, and anything trimmed or too long comes back as warnings. " +

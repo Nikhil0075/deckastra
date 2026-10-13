@@ -108,7 +108,8 @@ it("imports a theme file, and refuses one that is not a theme", async () => {
   const pastel = findPreset("playful-pastel")!.theme;
   const good = new File([JSON.stringify({ kind: "deckastra.theme", version: 1, theme: pastel })], "pastel.theme.json", { type: "application/json" });
   fireEvent.change(input, { target: { files: [good] } });
-  expect(await screen.findByText(/Imported Playful Pastel/)).toBeTruthy();
+  // The preset's own name, so renaming the preset does not break the test.
+  expect(await screen.findByText(`Imported ${pastel.name}`, { exact: false })).toBeTruthy();
   expect(editor.document.theme.colors).toEqual(pastel.colors);
   // A fresh id: two decks that imported one file are not one saved theme.
   expect(editor.document.theme.id).not.toBe(pastel.id);

@@ -273,13 +273,13 @@ export const TEMPLATE_LANGUAGE: Record<string, DesignLanguageId> = {
  * address `deck_from_template` content is written against.
  */
 export const LANGUAGE_RHYTHM: Partial<Record<DesignLanguageId, Partial<Record<SlidePattern, SlidePattern>>>> = {
-  "swiss-signal": { "executive-summary": "statement", market: "big-number", agenda: "section", changelog: "big-number" },
-  "cinema-noir": { "learning-objectives": "quote", exercise: "story-beat", quiz: "reflection", "event-schedule": "story-beat" },
-  "play-lab": { "team-update": "wins", blockers: "pros-cons", checklist: "shout-outs" },
-  "system-terminal": { decision: "demo", "root-cause": "system-flow", incident: "data-model" },
-  "quiet-luxe": { "event-schedule": "story-beat", "case-study": "gallery" },
-  "data-desk": { problem: "big-number", opportunity: "market", blockers: "big-number", "shout-outs": "wins" },
-  "earth-story": { "feature-grid": "story-beat", demo: "case-study", quiz: "reflection", "learning-objectives": "concept" },
+  "swiss-signal": { "executive-summary": "agenda", market: "share-chart", agenda: "section", changelog: "big-number" },
+  "cinema-noir": { "learning-objectives": "quote", exercise: "story-beat", "event-schedule": "story-beat" },
+  "play-lab": { blockers: "pros-cons" },
+  "system-terminal": { "root-cause": "system-flow" },
+  "quiet-luxe": { "event-schedule": "story-beat" },
+  "data-desk": { problem: "big-number", opportunity: "comparison", financials: "trend-chart", blockers: "big-number", "shout-outs": "wins" },
+  "earth-story": { "feature-grid": "story-beat", demo: "case-study" },
   "spatial-future": { problem: "big-number", "api-contract": "feature-grid", "data-model": "architecture", changelog: "feature-grid", appendix: "closing" },
 };
 

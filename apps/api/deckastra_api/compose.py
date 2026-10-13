@@ -804,14 +804,45 @@ _LAYOUTS = {
 }
 
 
-def compose_slide(plan: SlidePlan, index: int, language: str = "neutral") -> dict[str, Any]:
+def compose_slide(
+    plan: SlidePlan,
+    index: int,
+    language: str = "neutral",
+    *,
+    preserve_language_media: bool = False,
+    visual_system: str | None = None,
+) -> dict[str, Any]:
     # A design language (UI audit unit 5) may lay a layout out its own way;
     # anything it does not supply is the composer's own, below. Imported here
     # because the languages build on this module's helpers.
     from .languages import layout_for
 
-    builder = layout_for(language, plan.layout) or _LAYOUTS[plan.layout]
-    elements = builder(plan)
+    from .pattern_layouts_v2 import layout_for_pattern
+
+    pattern_layout = layout_for_pattern(plan, language, visual_system=visual_system)
+    language_builder = layout_for(language, plan.layout)
+    language_elements = language_builder(plan) if language_builder else None
+    media_frame_names = {"Image frame", "Portrait frame", "Arch frame", "Hologram frame", "Picture blob"}
+    language_has_media = bool(
+        language_elements
+        and any(element.get("name") in media_frame_names for element in language_elements)
+    )
+    if pattern_layout is None:
+        elements = language_elements if language_elements is not None else _LAYOUTS[plan.layout](plan)
+        family = plan.layout.value
+    elif visual_system == "asterloop-energy":
+        # A flagship pairs an exact composition with exact media selectors.
+        # Letting a broad language frame replace it would collapse the product
+        # render, split comparison or photo journey back into one generic card.
+        elements, family = pattern_layout
+    elif preserve_language_media and language_has_media:
+        # Reviewed templates with bundled pictures keep the language's
+        # signature media composition. The semantic family is still recorded
+        # for discovery and pacing; templates without bundled media use V2.
+        elements = language_elements
+        family = pattern_layout[1]
+    else:
+        elements, family = pattern_layout
 
     slide: dict[str, Any] = {
         "id": new_id("sld"),
@@ -825,6 +856,7 @@ def compose_slide(plan: SlidePlan, index: int, language: str = "neutral") -> dic
         "layout": {
             "styleLabel": plan.pattern_id or plan.layout.value,
             "templateId": f"preset.{plan.pattern_id or plan.layout.value}",
+            "family": family,
         },
         "elements": elements,
         "transition": {"type": "fade", "durationMs": 300},
@@ -845,6 +877,8 @@ def compose_document(
     theme_id: str | None = None,
     language: str = "neutral",
     language_version: int | None = None,
+    preserve_language_media: bool = False,
+    visual_system: str | None = None,
 ) -> dict[str, Any]:
     """Compose a document, and animate it if the Motion Agent had an opinion.
 
@@ -862,7 +896,13 @@ def compose_document(
     slides: list[dict[str, Any]] = []
     motion_warnings: list[str] = []
     for index, slide_plan in enumerate(plan.slides):
-        slide = compose_slide(slide_plan, index, language)
+        slide = compose_slide(
+            slide_plan,
+            index,
+            language,
+            preserve_language_media=preserve_language_media,
+            visual_system=visual_system,
+        )
         motion_warnings.extend(animate_slide(slide, intents.get(index)))
         slides.append(slide)
     theme = deepcopy(theme_definition) if theme_definition is not None else neo_technical_theme()

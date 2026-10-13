@@ -77,7 +77,7 @@ def scene_findings(directory: Path) -> dict[str, list[dict]]:
 
 
 def cover_signature(document: dict) -> dict:
-    """The cover's grammar rather than its colour: headline size and alignment, and its shapes."""
+    """The cover's grammar rather than its colour: type hierarchy and geometry."""
     def walk(elements):
         for element in elements:
             yield element
@@ -90,6 +90,17 @@ def cover_signature(document: dict) -> dict:
         "headline_align": (headline.get("paragraph") or {}).get("align") or "left",
         "headline_x": round((headline.get("transform") or {}).get("x") or 0),
         "shapes": sorted(one.get("name", "") for one in elements if one.get("type") == "shape"),
+        "topology": sorted(
+            (
+                str(one.get("type") or ""),
+                str(one.get("semanticRole") or ""),
+                round(float((one.get("transform") or {}).get("x") or 0) / 20),
+                round(float((one.get("transform") or {}).get("y") or 0) / 20),
+                round(float((one.get("transform") or {}).get("width") or 0) / 20),
+                round(float((one.get("transform") or {}).get("height") or 0) / 20),
+            )
+            for one in elements
+        ),
     }
 
 
@@ -140,6 +151,98 @@ GATE_OUTLINE = [
     {"layout": "quote", "headline": "In their words", "eyebrow": "Customer", "quote": "We stopped rebuilding the same story.", "attribution": "Pilot customer"},
     {"layout": "split", "headline": "Focus beats breadth", "eyebrow": "Trade-off", "body": "A narrow first scope teaches faster.", "bullets": ["Faster learning", "Clear ownership"]},
 ]
+
+
+def pattern_family_gate(out: Path, duplicate_bits: int) -> dict:
+    """Render one reviewed representative of every V2 structural family.
+
+    The sheet is a geometry review, not a content beauty contest: fixed theme,
+    fixed language, and each pattern's own example slots make structure the
+    meaningful difference. Exact grammar duplicates and extremely close image
+    hashes fail in strict mode.
+    """
+    from deckastra_api.compose import compose_document
+
+    catalog = presets.catalog()
+    definitions = catalog.get("patternDefinitions") or {}
+    representatives: dict[str, tuple[str, dict]] = {}
+    for pattern_id, definition in sorted(definitions.items()):
+        family = str(definition.get("family") or "")
+        if family and family not in representatives:
+            representatives[family] = (pattern_id, definition)
+
+    documents = out / "family-documents"
+    covers = out / "family-covers"
+    documents.mkdir(parents=True, exist_ok=True)
+    covers.mkdir(parents=True, exist_ok=True)
+    theme, theme_id = presets.resolve_theme("asterloop-energy")
+    rendered: dict[str, dict] = {}
+    for family, (pattern_id, definition) in sorted(representatives.items()):
+        source = {
+            "name": f"Family {family}",
+            "summary": str(definition.get("summary") or ""),
+            "motionStyle": "restrained",
+            "slides": [{
+                "key": pattern_id,
+                "pattern": pattern_id,
+                "purpose": str(definition.get("name") or family),
+                "slots": definition.get("exampleSlots") or {},
+            }],
+        }
+        plan = presets.story_plan_from_preset(source)
+        document = compose_document(
+            plan,
+            instruction=f"Pattern family gate: {family}",
+            theme_definition=theme,
+            theme_id=theme_id,
+        )
+        (documents / f"{family}.json").write_text(json.dumps(document), encoding="utf-8")
+        picture = export_service.render_slide_png(document, document["slides"][0]["id"])
+        (covers / f"{family}.png").write_bytes(picture["bytes"])
+        rendered[family] = {
+            "pattern": pattern_id,
+            "hash": difference_hash(picture["bytes"]),
+            "signature": cover_signature(document),
+        }
+        print(f"family {family} ({pattern_id})", file=sys.stderr)
+
+    close = []
+    shared = []
+    for (left, a), (right, b) in combinations(sorted(rendered.items()), 2):
+        distance = bin(a["hash"] ^ b["hash"]).count("1")
+        if distance <= duplicate_bits:
+            close.append({"families": [left, right], "distance": distance})
+        if a["signature"] == b["signature"]:
+            shared.append({"families": [left, right]})
+    findings = scene_findings(documents)
+    blocked = {
+        name: [one for one in issues if one["code"] in {"W103", "W104", "W110"}]
+        for name, issues in findings.items()
+    }
+    blocked = {name: issues for name, issues in blocked.items() if issues}
+    cards = "\n".join(
+        f'<figure><img src="family-covers/{html.escape(family)}.png" width="384">'
+        f'<figcaption>{html.escape(family)} · {html.escape(one["pattern"])}</figcaption></figure>'
+        for family, one in sorted(rendered.items())
+    )
+    (out / "index.html").write_text(
+        "<!doctype html><meta charset=utf-8><title>V2 layout families</title>"
+        "<style>body{font:13px system-ui;display:flex;flex-wrap:wrap;gap:12px;padding:16px;background:#111;color:#eee}"
+        "figure{margin:0}img{display:block;border:1px solid #555}</style>" + cards,
+        encoding="utf-8",
+    )
+    report = {
+        "catalog_version": catalog.get("catalogVersion"),
+        "families": len(rendered),
+        "representatives": {family: one["pattern"] for family, one in sorted(rendered.items())},
+        "duplicate_threshold_bits": duplicate_bits,
+        "near_duplicates": close,
+        "shared_grammar": shared,
+        "layout_findings": blocked,
+        "passed": len(rendered) >= 20 and not (close or shared or blocked),
+    }
+    (out / "family-gate.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return report
 
 
 def language_gate(out: Path, min_bits: int) -> dict:
@@ -194,6 +297,17 @@ def language_gate(out: Path, min_bits: int) -> dict:
         f"{left}|{right}": bin(a["hash"] ^ b["hash"]).count("1")
         for (left, a), (right, b) in combinations(sorted(rendered.items()), 2)
     }
+    cards = "\n".join(
+        f'<figure><img src="language-covers/{html.escape(language)}.png" width="384">'
+        f'<figcaption>{html.escape(language)}</figcaption></figure>'
+        for language in sorted(rendered)
+    )
+    (out / "index.html").write_text(
+        "<!doctype html><meta charset=utf-8><title>Deckastra design languages</title>"
+        "<style>body{font:13px system-ui;display:flex;flex-wrap:wrap;gap:12px;padding:16px;background:#111;color:#eee}"
+        "figure{margin:0}img{display:block;border:1px solid #555}</style>" + cards,
+        encoding="utf-8",
+    )
     return {
         "languages": used,
         "min_bits": min_bits,
@@ -211,8 +325,25 @@ def main() -> int:
     parser.add_argument("--duplicate-bits", type=int, default=24, help="covers this close (of 256 bits) are near-duplicates")
     parser.add_argument("--strict", action="store_true", help="exit 1 on any finding")
     parser.add_argument("--languages", action="store_true", help="run only the design-language gate (unit 7b)")
+    parser.add_argument("--patterns", action="store_true", help="render one representative of every V2 layout family")
     parser.add_argument("--language-bits", type=int, default=40, help="language covers must differ by more than this")
     args = parser.parse_args()
+    # The script is invoked both from the repository root and as an npm
+    # workspace command. Downstream Node checks run from ROOT, so keep the
+    # output directory absolute instead of resolving the same relative path
+    # against two different working directories on Windows.
+    args.out = args.out.resolve()
+
+    if args.patterns:
+        args.out.mkdir(parents=True, exist_ok=True)
+        gate = pattern_family_gate(args.out, args.duplicate_bits)
+        print(
+            f"{gate['families']} layout families; {len(gate['near_duplicates'])} near-duplicate pairs; "
+            f"{len(gate['shared_grammar'])} shared grammars; "
+            f"{sum(len(v) for v in gate['layout_findings'].values())} blocked layout findings. "
+            f"{'PASSED' if gate['passed'] else 'FAILED'}"
+        )
+        return 0 if gate["passed"] or not args.strict else 1
 
     if args.languages:
         args.out.mkdir(parents=True, exist_ok=True)

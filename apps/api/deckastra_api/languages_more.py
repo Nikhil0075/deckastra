@@ -91,12 +91,44 @@ def _play_display(text: str, *, y: float, size: float, height: float, minimum: f
 
 
 def play_title(plan: SlidePlan) -> Elements:
-    elements = _play_bubbles()
+    words = plan.headline.split()
+    pivot = max(1, (len(words) + 1) // 2)
+    top_line = " ".join(words[:pivot])
+    bottom_line = " ".join(words[pivot:])
+    elements = [
+        _shape("Play Lab hero frame", x=0, y=0, width=VIEWPORT_W, height=VIEWPORT_H,
+               fill=_solid("token:colors.background"), role="background"),
+        _shape("Play Lab readability wash", x=0, y=0, width=1120, height=VIEWPORT_H,
+               fill={"type": "linearGradient", "angle": 0, "stops": [
+                   {"offset": 0, "color": "#0757EFF2"},
+                   {"offset": 0.72, "color": "#0757EFC7"},
+                   {"offset": 1, "color": "#0757EF00"},
+               ]}),
+        # The reviewed hero already carries its yellow ring behind the subject.
+        # A second foreground sun covered her hand and broke the intended depth.
+        _shape("Play coral", kind="ellipse", x=0, y=820, width=340, height=260,
+               fill=_solid("token:colors.secondary"), opacity=0.94),
+    ]
+    elements[0]["metadata"] = {"designCheckIgnore": ["W104"]}
     if plan.eyebrow:
-        elements += _play_sticker(plan.eyebrow, y=200)
-    elements.append(_play_display(plan.headline, y=310, size=136, height=400, minimum=72))
+        elements += _play_sticker(plan.eyebrow, x=84, y=106)
+    elements.append(_text(
+        role="headline", x=76, y=236, width=950, height=210,
+        content=_rich_text(top_line), token="display", size=148, weight=800,
+        color="#FFFFFF", fit="shrinkToFit", min_font_size=76,
+        line_height=0.9, letter_spacing=-4, align="left",
+    ))
+    if bottom_line:
+        elements.append(_text(
+            role="headline", x=76, y=458, width=950, height=250,
+            content=_rich_text(bottom_line), token="display", size=148, weight=800,
+            color="token:colors.accent", fit="shrinkToFit", min_font_size=76,
+            line_height=0.9, letter_spacing=-4, align="left",
+        ))
     if plan.subtitle:
-        elements.append(_text(role="subtitle", x=CONTENT_X, y=760, width=1100, height=110, content=_rich_text(plan.subtitle), token="body", size=34, color="token:colors.foregroundMuted", line_height=1.35, align="left"))
+        elements.append(_text(role="subtitle", x=84, y=770, width=820, height=110, content=_rich_text(plan.subtitle), token="body", size=30, weight=650, color="#FFFFFF", line_height=1.35, align="left"))
+    elements.append(_shape("Play arrow arc", kind="ellipse", x=1000, y=600, width=360, height=220,
+                           fill=_none(), stroke=_line("#FFFFFF", 5), rotation=-12))
     return elements
 
 
@@ -654,13 +686,31 @@ SPACE_RADIUS = 32
 
 def _space_glow() -> Elements:
     return [
-        _shape("Glow", kind="ellipse", x=1200, y=0, width=720, height=720, fill=_radial("token:colors.accent", "token:colors.background"), opacity=0.35),
-        _shape("Glow", kind="ellipse", x=0, y=520, width=560, height=560, fill=_radial("token:colors.secondary", "token:colors.background"), opacity=0.3),
+        _shape("Cyan light volume", kind="ellipse", x=1120, y=0, width=800, height=800, fill=_radial("token:colors.accent", "token:colors.background"), opacity=0.58),
+        _shape("Magenta light volume", kind="ellipse", x=0, y=520, width=600, height=560, fill=_radial("token:colors.secondary", "token:colors.background"), opacity=0.48),
+        _shape("Lens orb", kind="ellipse", x=1220, y=610, width=250, height=250, fill=_radial("#FFFFFF99", "#7DD3FC00"), opacity=0.72),
     ]
 
 
 def _space_glass(name: str, x: float, y: float, width: float, height: float) -> dict[str, Any]:
-    return _shape(name, x=x, y=y, width=width, height=height, fill=_solid("token:colors.overlay"), radius=SPACE_RADIUS, stroke=_line("token:colors.border", 1), opacity=0.55)
+    panel = _shape(
+        name, x=x, y=y, width=width, height=height,
+        fill=_solid("#FFFFFF1F"), radius=SPACE_RADIUS,
+        stroke=_line("#FFFFFF70", 1.2), opacity=0.92,
+    )
+    # A real material layer: the image below is blurred, the border catches a
+    # highlight, an inner rim gives thickness, and the outer shadow separates
+    # this plane from the next one.  PowerPoint keeps the translucent fill,
+    # rim and shadows even though backdrop blur itself has no native equivalent.
+    panel["style"]["backdropFilters"] = [
+        {"type": "blur", "radius": 26},
+        {"type": "saturate", "amount": 1.18},
+    ]
+    panel["style"]["shadow"] = [
+        {"type": "drop", "offsetX": 0, "offsetY": 26, "blur": 56, "spread": -12, "color": "#050818A6"},
+        {"type": "inner", "offsetX": 0, "offsetY": 2, "blur": 0, "spread": 0, "color": "#FFFFFF55"},
+    ]
+    return panel
 
 
 def _space_eyebrow(text: str, *, y: float, x: float = CONTENT_X, width: float = CONTENT_W, align: str = "center") -> dict[str, Any]:
@@ -684,6 +734,12 @@ def space_title(plan: SlidePlan) -> Elements:
 
 def space_statement(plan: SlidePlan) -> Elements:
     elements = _space_glow()
+    elements.append(_space_glass("Rear glass plane", 300, 166, VIEWPORT_W - 600, 690))
+    elements[-1]["opacity"] = 0.42
+    elements[-1]["transform"]["rotation"] = -2.2
+    elements.append(_space_glass("Middle glass plane", 238, 224, VIEWPORT_W - 476, 660))
+    elements[-1]["opacity"] = 0.56
+    elements[-1]["transform"]["rotation"] = 1.4
     elements.append(_space_glass("Glass panel", 260, 200, VIEWPORT_W - 520, 680))
     if plan.eyebrow:
         elements.append(_space_eyebrow(plan.eyebrow, y=280, x=320, width=VIEWPORT_W - 640))

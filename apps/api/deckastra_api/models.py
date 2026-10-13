@@ -18,7 +18,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 
 class SlideLayout(str, Enum):
@@ -120,7 +120,9 @@ class SlidePlan(BaseModel):
     layout: SlideLayout
     pattern_id: str | None = Field(
         default=None,
+        validation_alias=AliasChoices("pattern_id", "patternId"),
         description="The author-facing preset pattern when it refines a geometry family.",
+        max_length=80,
     )
     purpose: str = Field(description="Why this slide exists in the narrative.")
     key_message: str = Field(

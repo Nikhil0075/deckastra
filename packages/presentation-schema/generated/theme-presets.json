@@ -838,19 +838,19 @@
             "lineHeight": 1.2
           },
           "body": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 24,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "bodySmall": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 20,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "caption": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 16,
             "fontWeight": 400,
             "lineHeight": 1.4
@@ -2856,51 +2856,51 @@
         },
         "typography": {
           "display": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 96,
             "fontWeight": 700,
             "lineHeight": 1.05,
             "letterSpacing": -2
           },
           "h1": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 64,
             "fontWeight": 700,
             "lineHeight": 1.1,
             "letterSpacing": -1
           },
           "h2": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 44,
             "fontWeight": 700,
             "lineHeight": 1.15
           },
           "h3": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 32,
             "fontWeight": 600,
             "lineHeight": 1.2
           },
           "body": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 24,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "bodySmall": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 20,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "caption": {
-            "fontFamily": "Inter",
+            "fontFamily": "Manrope",
             "fontSize": 16,
             "fontWeight": 400,
             "lineHeight": 1.4
           },
           "quote": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 32,
             "fontWeight": 400,
             "fontStyle": "italic",
@@ -2913,7 +2913,7 @@
             "lineHeight": 1.5
           },
           "metric": {
-            "fontFamily": "Playfair Display",
+            "fontFamily": "Fraunces",
             "fontSize": 88,
             "fontWeight": 700,
             "lineHeight": 1,
@@ -4353,69 +4353,69 @@
     },
     {
       "key": "playful-pastel",
-      "name": "Playful Pastel",
-      "summary": "Soft candy colours, round shapes and friendly type for workshops and kickoffs.",
+      "name": "Play Lab",
+      "summary": "Electric primary colour, oversized friendly type and kinetic geometry for workshops and launches.",
       "category": "Classic",
       "theme": {
         "id": "thm_01JB8Z9K2QW4RN7F3XP0000011",
-        "name": "Playful Pastel",
-        "description": "Soft candy colours, round shapes and friendly type for workshops and kickoffs.",
-        "mode": "light",
+        "name": "Play Lab",
+        "description": "Electric primary colour, oversized friendly type and kinetic geometry for workshops and launches.",
+        "mode": "dark",
         "colors": {
-          "background": "#FFF7F0",
-          "surface": "#FFFFFF",
-          "surfaceAlt": "#FFE4E6",
-          "overlay": "#FFFFFFCC",
-          "foreground": "#2D1B3D",
-          "foregroundMuted": "#4F3D5F",
-          "foregroundSubtle": "#6E5C80",
-          "accent": "#6D28D9",
-          "accentForeground": "#FFFFFF",
-          "accentMuted": "#FFE4E6",
-          "secondary": "#F472B6",
-          "secondaryForeground": "#2D1B3D",
-          "border": "#F5D0E0",
-          "borderStrong": "#D8A7C4",
-          "divider": "#F5D0E0",
-          "success": "#15803D",
-          "warning": "#B45309",
-          "danger": "#B91C1C",
-          "info": "#6D28D9",
+          "background": "#0757EF",
+          "surface": "#0A348C",
+          "surfaceAlt": "#1548A8",
+          "overlay": "#000000B3",
+          "foreground": "#FFFFFF",
+          "foregroundMuted": "#E3ECFF",
+          "foregroundSubtle": "#C3D4FA",
+          "accent": "#FFE33D",
+          "accentForeground": "#081A46",
+          "accentMuted": "#1548A8",
+          "secondary": "#FF654F",
+          "secondaryForeground": "#081A46",
+          "border": "#5F8FF0",
+          "borderStrong": "#FFFFFF",
+          "divider": "#5F8FF0",
+          "success": "#3DDC97",
+          "warning": "#F2C14E",
+          "danger": "#FF6B6B",
+          "info": "#FFE33D",
           "chartSeries": [
-            "#6D28D9",
-            "#F472B6",
-            "#22C55E",
-            "#F59E0B",
-            "#0EA5E9",
-            "#EF4444"
+            "#FFE33D",
+            "#FF654F",
+            "#0757EF",
+            "#35C9C2",
+            "#A66CFF",
+            "#081A46"
           ],
-          "chartPositive": "#15803D",
-          "chartNegative": "#B91C1C",
-          "chartNeutral": "#6E5C80"
+          "chartPositive": "#3DDC97",
+          "chartNegative": "#FF6B6B",
+          "chartNeutral": "#C3D4FA"
         },
         "typography": {
           "display": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 96,
             "fontWeight": 800,
             "lineHeight": 1.05,
             "letterSpacing": -2
           },
           "h1": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 64,
             "fontWeight": 800,
             "lineHeight": 1.1,
             "letterSpacing": -1
           },
           "h2": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 44,
             "fontWeight": 700,
             "lineHeight": 1.15
           },
           "h3": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 32,
             "fontWeight": 600,
             "lineHeight": 1.2
@@ -4439,7 +4439,7 @@
             "lineHeight": 1.4
           },
           "quote": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 32,
             "fontWeight": 400,
             "fontStyle": "italic",
@@ -4452,7 +4452,7 @@
             "lineHeight": 1.5
           },
           "metric": {
-            "fontFamily": "Nunito",
+            "fontFamily": "Baloo 2",
             "fontSize": 88,
             "fontWeight": 800,
             "lineHeight": 1,
@@ -4492,7 +4492,7 @@
               "offsetX": 0,
               "offsetY": 1,
               "blur": 3,
-              "color": "#0000001F"
+              "color": "#00000059"
             }
           ],
           "md": [
@@ -4501,7 +4501,7 @@
               "offsetX": 0,
               "offsetY": 6,
               "blur": 18,
-              "color": "#00000024"
+              "color": "#00000073"
             }
           ],
           "lg": [
@@ -4510,7 +4510,7 @@
               "offsetX": 0,
               "offsetY": 18,
               "blur": 48,
-              "color": "#0000002E"
+              "color": "#00000099"
             }
           ]
         },
@@ -4523,15 +4523,15 @@
         },
         "chart": {
           "series": [
-            "#6D28D9",
-            "#F472B6",
-            "#22C55E",
-            "#F59E0B",
-            "#0EA5E9",
-            "#EF4444"
+            "#FFE33D",
+            "#FF654F",
+            "#0757EF",
+            "#35C9C2",
+            "#A66CFF",
+            "#081A46"
           ],
-          "gridlineColor": "#F5D0E0",
-          "axisColor": "#6E5C80",
+          "gridlineColor": "#5F8FF0",
+          "axisColor": "#C3D4FA",
           "showGridlines": true,
           "barCornerRadius": 8,
           "lineWidth": 3,
@@ -4673,10 +4673,10 @@
                 {
                   "type": "drop",
                   "offsetX": 0,
-                  "offsetY": 10,
-                  "blur": 24,
+                  "offsetY": 14,
+                  "blur": 0,
                   "spread": 0,
-                  "color": "#F472B633"
+                  "color": "#081A46"
                 }
               ]
             }
@@ -4726,10 +4726,10 @@
             {
               "type": "drop",
               "offsetX": 0,
-              "offsetY": 10,
-              "blur": 24,
+              "offsetY": 14,
+              "blur": 0,
               "spread": 0,
-              "color": "#F472B633"
+              "color": "#081A46"
             }
           ],
           "backdropFilters": []
@@ -5186,19 +5186,19 @@
             "lineHeight": 1.2
           },
           "body": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 24,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "bodySmall": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 20,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "caption": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 16,
             "fontWeight": 400,
             "lineHeight": 1.4
@@ -7858,27 +7858,27 @@
         },
         "typography": {
           "display": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 96,
             "fontWeight": 800,
             "lineHeight": 1.05,
             "letterSpacing": -2
           },
           "h1": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 64,
             "fontWeight": 800,
             "lineHeight": 1.1,
             "letterSpacing": -1
           },
           "h2": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 44,
             "fontWeight": 700,
             "lineHeight": 1.15
           },
           "h3": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 32,
             "fontWeight": 600,
             "lineHeight": 1.2
@@ -7902,7 +7902,7 @@
             "lineHeight": 1.4
           },
           "quote": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 32,
             "fontWeight": 400,
             "fontStyle": "italic",
@@ -7915,7 +7915,7 @@
             "lineHeight": 1.5
           },
           "metric": {
-            "fontFamily": "Inter",
+            "fontFamily": "Work Sans",
             "fontSize": 88,
             "fontWeight": 800,
             "lineHeight": 1,
@@ -8644,19 +8644,19 @@
             "lineHeight": 1.2
           },
           "body": {
-            "fontFamily": "IBM Plex Mono",
+            "fontFamily": "Inter",
             "fontSize": 24,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "bodySmall": {
-            "fontFamily": "IBM Plex Mono",
+            "fontFamily": "Inter",
             "fontSize": 20,
             "fontWeight": 400,
             "lineHeight": 1.45
           },
           "caption": {
-            "fontFamily": "IBM Plex Mono",
+            "fontFamily": "Inter",
             "fontSize": 16,
             "fontWeight": 400,
             "lineHeight": 1.4
@@ -8951,6 +8951,425 @@
           "cornerRadius": 0,
           "shadow": [],
           "backdropFilters": []
+        }
+      }
+    },
+    {
+      "key": "asterloop-energy",
+      "name": "AsterLoop Energy",
+      "summary": "Midnight industrial depth, electric-lime signals and copper heat for a premium clean-energy story.",
+      "category": "Styles",
+      "theme": {
+        "id": "thm_01JB8Z9K2QW4RN7F3XP0000023",
+        "name": "AsterLoop Energy",
+        "description": "Midnight industrial depth, electric-lime signals and copper heat for a premium clean-energy story.",
+        "mode": "dark",
+        "colors": {
+          "background": "#06101F",
+          "surface": "#0D1A2C",
+          "surfaceAlt": "#15263A",
+          "overlay": "#000000B3",
+          "foreground": "#F7F3E8",
+          "foregroundMuted": "#C7D0DC",
+          "foregroundSubtle": "#91A0B2",
+          "accent": "#C8FF3D",
+          "accentForeground": "#081109",
+          "accentMuted": "#15263A",
+          "secondary": "#2456D6",
+          "secondaryForeground": "#FFFFFF",
+          "border": "#26384E",
+          "borderStrong": "#50647C",
+          "divider": "#26384E",
+          "success": "#3DDC97",
+          "warning": "#F2C14E",
+          "danger": "#FF6B6B",
+          "info": "#C8FF3D",
+          "chartSeries": [
+            "#C8FF3D",
+            "#3975FF",
+            "#FF8A3D",
+            "#42D6D0",
+            "#F7F3E8",
+            "#72C58A"
+          ],
+          "chartPositive": "#3DDC97",
+          "chartNegative": "#FF6B6B",
+          "chartNeutral": "#91A0B2"
+        },
+        "typography": {
+          "display": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 96,
+            "fontWeight": 700,
+            "lineHeight": 1.05,
+            "letterSpacing": -2
+          },
+          "h1": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "lineHeight": 1.1,
+            "letterSpacing": -1
+          },
+          "h2": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 44,
+            "fontWeight": 700,
+            "lineHeight": 1.15
+          },
+          "h3": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 32,
+            "fontWeight": 600,
+            "lineHeight": 1.2
+          },
+          "body": {
+            "fontFamily": "Manrope",
+            "fontSize": 24,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "bodySmall": {
+            "fontFamily": "Manrope",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.45
+          },
+          "caption": {
+            "fontFamily": "Manrope",
+            "fontSize": 16,
+            "fontWeight": 400,
+            "lineHeight": 1.4
+          },
+          "quote": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 32,
+            "fontWeight": 400,
+            "fontStyle": "italic",
+            "lineHeight": 1.35
+          },
+          "code": {
+            "fontFamily": "JetBrains Mono",
+            "fontSize": 20,
+            "fontWeight": 400,
+            "lineHeight": 1.5
+          },
+          "metric": {
+            "fontFamily": "Space Grotesk",
+            "fontSize": 88,
+            "fontWeight": 700,
+            "lineHeight": 1,
+            "fontFeatures": [
+              "tnum"
+            ]
+          },
+          "scaleRatio": 1.25
+        },
+        "spacing": {
+          "base": 8,
+          "xs": 4,
+          "sm": 8,
+          "md": 16,
+          "lg": 32,
+          "xl": 64,
+          "xxl": 96,
+          "slideMargin": {
+            "top": 80,
+            "right": 120,
+            "bottom": 80,
+            "left": 120
+          }
+        },
+        "radii": {
+          "none": 0,
+          "sm": 6,
+          "md": 14,
+          "lg": 24,
+          "full": 9999
+        },
+        "shadows": {
+          "none": [],
+          "sm": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 1,
+              "blur": 3,
+              "color": "#00000059"
+            }
+          ],
+          "md": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 6,
+              "blur": 18,
+              "color": "#00000073"
+            }
+          ],
+          "lg": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 18,
+              "blur": 48,
+              "color": "#00000099"
+            }
+          ]
+        },
+        "grid": {
+          "columns": 12,
+          "gutter": 24,
+          "margin": 120,
+          "baseUnit": 8,
+          "baselineGrid": 8
+        },
+        "chart": {
+          "series": [
+            "#C8FF3D",
+            "#3975FF",
+            "#FF8A3D",
+            "#42D6D0",
+            "#F7F3E8",
+            "#72C58A"
+          ],
+          "gridlineColor": "#26384E",
+          "axisColor": "#91A0B2",
+          "showGridlines": true,
+          "barCornerRadius": 6,
+          "lineWidth": 3,
+          "pointSize": 6
+        },
+        "diagram": {
+          "nodeFill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "nodeStroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "nodeRadius": 14,
+          "nodePadding": {
+            "top": 16,
+            "right": 20,
+            "bottom": 16,
+            "left": 20
+          },
+          "roleStyles": {
+            "service": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              }
+            },
+            "datastore": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surfaceAlt"
+              }
+            },
+            "external": {
+              "fill": {
+                "type": "none"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.borderStrong"
+                },
+                "width": 1,
+                "dash": [
+                  6,
+                  4
+                ]
+              }
+            }
+          }
+        },
+        "imagery": {
+          "treatment": "none",
+          "defaultCornerRadius": 14
+        },
+        "motion": {
+          "personality": "technical",
+          "defaultEntrance": "fadeUp",
+          "defaultDurationMs": 400,
+          "defaultEasing": "emphasized",
+          "staggerMs": 70,
+          "reducedMotionFallback": "fade",
+          "maxSlideDurationMs": 2500
+        },
+        "contrastPairs": [
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foreground",
+            "background": "colors.surface",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.accentForeground",
+            "background": "colors.accent",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.secondaryForeground",
+            "background": "colors.secondary",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundMuted",
+            "background": "colors.background",
+            "minimumRatio": 4.5
+          },
+          {
+            "foreground": "colors.foregroundSubtle",
+            "background": "colors.background",
+            "minimumRatio": 3
+          }
+        ],
+        "brandRules": [
+          {
+            "id": "type-sizes",
+            "kind": "must-not",
+            "scope": "typography",
+            "statement": "Use no more than three type sizes on a single slide.",
+            "check": {
+              "type": "maxFontSizesPerSlide",
+              "value": 3
+            }
+          },
+          {
+            "id": "no-literals",
+            "kind": "should",
+            "scope": "color",
+            "statement": "Reference theme tokens rather than literal hex values so the deck re-themes cleanly.",
+            "check": {
+              "type": "forbiddenColorLiterals",
+              "value": true
+            }
+          },
+          {
+            "id": "whitespace",
+            "kind": "should",
+            "scope": "layout",
+            "statement": "Use whitespace aggressively. A crowded technical slide reads as an unconsidered one."
+          }
+        ],
+        "objectStyles": {
+          "Card": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.surface"
+              },
+              "stroke": {
+                "paint": {
+                  "type": "solid",
+                  "color": "token:colors.border"
+                },
+                "width": 1
+              },
+              "cornerRadius": 14,
+              "shadow": [
+                {
+                  "type": "drop",
+                  "offsetX": 0,
+                  "offsetY": 18,
+                  "blur": 42,
+                  "spread": -10,
+                  "color": "#00000080"
+                }
+              ]
+            }
+          },
+          "Callout": {
+            "appliesTo": "shape",
+            "style": {
+              "fill": {
+                "type": "solid",
+                "color": "token:colors.accent"
+              },
+              "cornerRadius": 14
+            },
+            "typography": {
+              "color": "token:colors.accentForeground",
+              "fontWeight": 600
+            }
+          },
+          "Big number": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.metric.fontFamily",
+              "fontSize": 72,
+              "fontWeight": 700,
+              "color": "token:colors.foreground",
+              "letterSpacing": -1
+            }
+          },
+          "Caption": {
+            "appliesTo": "text",
+            "typography": {
+              "fontFamily": "token:typography.caption.fontFamily",
+              "fontSize": 18,
+              "color": "token:colors.foregroundMuted"
+            }
+          }
+        }
+      },
+      "kit": {
+        "card": {
+          "fill": {
+            "type": "solid",
+            "color": "token:colors.surface"
+          },
+          "stroke": {
+            "paint": {
+              "type": "solid",
+              "color": "token:colors.border"
+            },
+            "width": 1
+          },
+          "cornerRadius": 14,
+          "shadow": [
+            {
+              "type": "drop",
+              "offsetX": 0,
+              "offsetY": 18,
+              "blur": 42,
+              "spread": -10,
+              "color": "#00000080"
+            }
+          ],
+          "backdropFilters": []
+        },
+        "background": {
+          "paint": {
+            "type": "linearGradient",
+            "angle": 135,
+            "stops": [
+              {
+                "offset": 0,
+                "color": "#06101F"
+              },
+              {
+                "offset": 0.62,
+                "color": "#0D1A2C"
+              },
+              {
+                "offset": 1,
+                "color": "#123046"
+              }
+            ]
+          }
         }
       }
     }

@@ -31,7 +31,7 @@ describe("design languages (UI audit unit 5)", () => {
 
   it("the pilots are clean: known languages, no redundant override, headlines within the language's limit", () => {
     expect(validatePresetSources(PILOT_SOURCES)).toEqual([]);
-    expect(PILOT_SOURCES.map((pilot) => pilot.designLanguage).sort()).toEqual(["cinema-noir", "cinema-noir", "swiss-signal", "swiss-signal"]);
+    expect(PILOT_SOURCES.map((pilot) => pilot.designLanguage).sort()).toEqual(["cinema-noir", "cinema-noir", "spatial-future", "swiss-signal", "swiss-signal"]);
   });
 
   it("a template's style comes from its language, and an override wins", () => {
@@ -60,6 +60,7 @@ describe("design languages (UI audit unit 5)", () => {
     expect(counts.get("neutral") ?? 0).toBe(0);
     for (const id of DESIGN_LANGUAGE_IDS.filter((one) => one !== "neutral")) expect(counts.get(id) ?? 0, id).toBeGreaterThanOrEqual(3);
     expect(Object.keys(TEMPLATE_LANGUAGE)).toHaveLength(24);
+    expect(DECK_PRESETS.some((preset) => preset.id === "asterloop-energy")).toBe(true);
   });
 
   it("takes a template's theme, motion and transition from its language", () => {
@@ -73,7 +74,7 @@ describe("design languages (UI audit unit 5)", () => {
   it("swaps a pattern for the language's rhythm but keeps the slide's key", () => {
     const quarterly = DECK_PRESETS.find((preset) => preset.id === "quarterly-review")!;
     const market = quarterly.slides.find((slide) => slide.key === "market-5")!;
-    expect(market.pattern).toBe("big-number");
+    expect(market.pattern).toBe("share-chart");
     // The founding templates keep the sequence they were written with.
     expect(DECK_PRESETS.find((preset) => preset.id === "business-pitch")!.slides.map((slide) => slide.key)[0]).toBe("opening");
   });

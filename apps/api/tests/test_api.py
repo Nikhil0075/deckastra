@@ -137,8 +137,8 @@ def test_reviewed_presets_create_a_deterministic_deck(client: TestClient, auth: 
     assert {preset["purpose"] for preset in listed["presets"]} == {
         "business", "product", "teaching", "technical", "team", "personal"
     }
-    assert len(listed["presets"]) == 28
-    assert len(listed["themes"]) == 23
+    assert len(listed["presets"]) == 29
+    assert len(listed["themes"]) == 24
     # 60 word patterns and nine that carry data.
     assert len(listed["slidePatterns"]) == 69
     assert set(listed["motionStyles"]) == {

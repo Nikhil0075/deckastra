@@ -26,7 +26,7 @@ import { buildDocumentScene } from "@deckastra/renderer";
 import { DegradationLedger, fontManifest, type ExportInput } from "@deckastra/export-core";
 import { describe, expect, it } from "vitest";
 
-import { buildPptx } from "../src/index";
+import { buildPptx, maskNeedsPicture, maskedImageKey } from "../src/index";
 import { transitionFor } from "../src/timing";
 import { hex, rotation, unitsFor, xml } from "../src/units";
 import { createZip } from "../src/zip";
@@ -993,6 +993,25 @@ describe("a picture the exporter was given", () => {
   });
 });
 
+it("keeps picture-filled text editable in PowerPoint", () => {
+  const document = structuredClone(TECHNICAL);
+  const assetId = imageAssetId(document);
+  const text = document.slides[0]!.elements.find((element) => element.type === "text")!;
+  (text as typeof text & { pictureFill: unknown }).pictureFill = {
+    assetId,
+    fit: "cover",
+    fallbackColor: "#F7F3E8",
+  };
+  const { bytes, result } = buildPptx({
+    ...inputFor(document),
+    images: new Map([[assetId, { bytes: pngBytes(), contentType: "image/png" }]]),
+  });
+  const slide = unzip(bytes).get("ppt/slides/slide1.xml")!;
+
+  expect(slide).toMatch(/<a:rPr[^>]*><a:blipFill[^>]*><a:blip r:embed="rId\d+"\/>/);
+  expect(result.report.warnings.filter((entry) => entry.feature === "text-picture-fill")).toEqual([]);
+});
+
 /**
  * A slide background that is a photograph.
  *
@@ -1346,5 +1365,114 @@ describe("narration and sound in PowerPoint (integration plan 01 §3.10)", () =>
     audio.set(first.id, { bytes: new Uint8Array([79, 103, 103, 83]), contentType: "audio/ogg" });
     const artifact = buildPptx({ ...input, audio });
     expect(artifact.result.report.warnings.some((entry) => entry.feature === `audio:${first.id}` && entry.action === "dropped")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------- image masks
+
+/**
+ * Image masks in PowerPoint (2026-10-13).
+ *
+ * A picture's crop shape is part of the picture there, so an ellipse or a
+ * rounded rectangle stays a preset crop that can still be changed in
+ * PowerPoint, and any other outline is written as custom geometry with its
+ * curves intact. What a crop shape cannot be — a hole, several outlines, an
+ * outline over a frame that a `contain` fit shrank — arrives as the picture
+ * the exporter captured, and the report says so.
+ */
+describe("a masked picture", () => {
+  const assetId = imageAssetId(TECHNICAL);
+  const png = pngBytes();
+
+  function exportWith(mask: unknown, extra: Record<string, unknown> = {}, images: [string, { bytes: Uint8Array; contentType: string }][] = []) {
+    const document = structuredClone(TECHNICAL);
+    const element = document.slides
+      .flatMap((slide) => slide.elements as Record<string, unknown>[])
+      .find((one) => one.type === "image")!;
+    element.mask = mask;
+    // Cover, like most masked pictures; the fixture's own picture is contained.
+    element.fit = "cover";
+    Object.assign(element, extra);
+    const built = buildPptx({
+      ...inputFor(document),
+      images: new Map([[assetId, { bytes: png, contentType: "image/png" }], ...images]),
+    });
+    const picture = [...unzip(built.bytes).values()].find((body) => body.includes("<p:pic>"))!;
+    const pic = picture.match(/<p:pic>[\s\S]*?<\/p:pic>/)![0];
+    return { pic, report: built.result.report, id: element.id as string };
+  }
+
+  it("crops to an ellipse PowerPoint can still change", () => {
+    const { pic, report } = exportWith({ type: "ellipse" });
+    expect(pic).toContain('<a:prstGeom prst="ellipse">');
+    expect(report.warnings.filter((one) => one.feature === "image mask")).toEqual([]);
+  });
+
+  it("crops a pill to a rounded rectangle with the corner it has", () => {
+    const { pic } = exportWith({ type: "shape", shape: "pill" });
+    expect(pic).toMatch(/<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 50000"\/>/);
+  });
+
+  it("writes an arch as its own outline, curves and all", () => {
+    const { pic, report } = exportWith({ type: "shape", shape: "arch" });
+    expect(pic).toContain("<a:custGeom>");
+    expect(pic).toContain("<a:cubicBezTo>");
+    expect(pic).not.toContain('prst="rect"');
+    expect(report.warnings.filter((one) => one.feature === "image mask")).toEqual([]);
+  });
+
+  it("embeds the captured picture for an inverted mask and says so", () => {
+    const captured = pngBytes();
+    const document = structuredClone(TECHNICAL);
+    const id = (document.slides.flatMap((slide) => slide.elements).find((one) => one.type === "image")!).id;
+    const { pic, report } = exportWith(
+      { type: "shape", shape: "circle", invert: true },
+      {},
+      [[maskedImageKey(id), { bytes: captured, contentType: "image/png" }]],
+    );
+    expect(pic).toContain('<a:prstGeom prst="rect">');
+    const warning = report.warnings.find((one) => one.feature === "image mask")!;
+    expect(warning.action).toBe("rasterized");
+    expect(warning.message).toMatch(/already cut to shape/);
+  });
+
+  it("says a mask it could not capture is approximated, and never crops to the hole", () => {
+    const { pic, report } = exportWith({ type: "shape", shape: "circle", invert: true });
+    // Cropping to the outline of an inverted mask would show the hole itself.
+    expect(pic).toContain('<a:prstGeom prst="rect">');
+    expect(report.warnings.find((one) => one.feature === "image mask")!.action).toBe("approximated");
+  });
+
+  it("needs a captured picture for exactly the masks a crop shape cannot be", () => {
+    const scene = (mask: unknown, fit = "cover") => {
+      const document = structuredClone(TECHNICAL);
+      const element = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "image")!;
+      element.mask = mask;
+      element.fit = fit;
+      const slides = buildDocumentScene(document).slides;
+      for (const slide of slides) {
+        const found = slide.nodes.find((node) => node.id === element.id);
+        if (found) return found;
+      }
+      throw new Error("no image node");
+    };
+    expect(maskNeedsPicture(scene({ type: "shape", shape: "arch" }))).toBe(false);
+    expect(maskNeedsPicture(scene({ type: "shape", shape: "arch", invert: true }))).toBe(true);
+    expect(maskNeedsPicture(scene({ type: "compound", parts: [{ type: "ellipse" }, { type: "shape", shape: "blob" }] }))).toBe(true);
+    expect(maskNeedsPicture(scene({ type: "ellipse" }, "contain"))).toBe(true);
+    expect(maskNeedsPicture(scene(undefined))).toBe(false);
+  });
+
+  it("reports a mask it cannot draw at all, and keeps the picture", () => {
+    const { pic, report } = exportWith({ type: "shapeRef", elementId: "el_01J0000000000000000000000X" });
+    expect(pic).toContain('<a:prstGeom prst="rect">');
+    const warning = report.warnings.find((one) => one.feature === "image mask")!;
+    expect(warning.action).toBe("dropped");
+  });
+
+  it("keeps the export byte-stable with a mask", () => {
+    const one = exportWith({ type: "shape", shape: "blob", rotation: 20 });
+    const two = exportWith({ type: "shape", shape: "blob", rotation: 20 });
+    expect(one.pic).toBe(two.pic);
   });
 });
