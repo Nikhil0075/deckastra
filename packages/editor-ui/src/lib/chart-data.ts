@@ -23,6 +23,49 @@ export interface ChartGrid {
   /** One per series, in order; each is a row field holding numbers. */
   series: string[];
   rows: { category: string; values: (number | null)[] }[];
+  /**
+   * A chart that places points by their numbers (scatter on a numeric axis,
+   * bubble, bubble map) has fixed columns, one per role, rather than series.
+   * Absent for every other chart.
+   */
+  roles?: PointRole[];
+}
+
+/** What a point chart's column is for (2026-10-13). */
+export type PointRole = "x" | "y" | "size" | "latitude" | "longitude";
+
+export const POINT_ROLE_LABELS: Record<PointRole, string> = {
+  x: "Across",
+  y: "Up",
+  size: "Size",
+  latitude: "Latitude",
+  longitude: "Longitude",
+};
+
+/**
+ * The role columns a point chart is edited with, as [role, field] pairs, or
+ * undefined for a chart edited by series. A scatter without its own X field
+ * is the older banded scatter, edited by series as before.
+ */
+export function pointColumns(element: ChartElement): [PointRole, string][] | undefined {
+  const encoding = element.encoding;
+  const value = Array.isArray(encoding.value) ? encoding.value[0]! : encoding.value;
+  if (element.chartType === "bubbleMap") {
+    return [
+      ["latitude", encoding.latitude ?? "Latitude"],
+      ["longitude", encoding.longitude ?? "Longitude"],
+      ["size", encoding.size ?? value],
+    ];
+  }
+  if (element.chartType === "bubble") {
+    return [
+      ["x", encoding.x ?? "X"],
+      ["y", value],
+      ["size", encoding.size ?? "Size"],
+    ];
+  }
+  if (element.chartType === "scatter" && encoding.x) return [["x", encoding.x], ["y", value]];
+  return undefined;
 }
 
 export type ChartGridResult =
@@ -49,6 +92,19 @@ export function chartGrid(element: ChartElement): ChartGridResult {
   const encoding = element.encoding;
   const categoryField = encoding.category;
   const rows = data.rows;
+
+  const columns = pointColumns(element);
+  if (columns) {
+    return {
+      editable: true,
+      grid: {
+        categoryField,
+        series: columns.map(([, field]) => field),
+        roles: columns.map(([role]) => role),
+        rows: rows.map((row) => ({ category: label(row[categoryField]), values: columns.map(([, field]) => toNumber(row[field])) })),
+      },
+    };
+  }
 
   if (encoding.series && typeof encoding.value === "string") {
     // Long form: pivot to one column per series, first appearance order.
@@ -101,6 +157,7 @@ export function chartGridOperations(
   element: ChartElement,
   grid: ChartGrid,
 ): PatchOperation[] {
+  if (grid.roles) return pointGridOperations(document, element, grid, grid.roles);
   const rows = grid.rows.map((row) => {
     const record: Record<string, unknown> = { [grid.categoryField]: row.category };
     grid.series.forEach((field, index) => {
@@ -117,6 +174,82 @@ export function chartGridOperations(
   };
   delete encoding.series;
   return [
+    ...setPropertyDeep(document, element.id, "data", { type: "inline", rows }),
+    ...setPropertyDeep(document, element.id, "encoding", encoding),
+  ];
+}
+
+/**
+ * A point chart's grid written back. Each row keeps the fields the grid does
+ * not show (a series column such as a region, a note), so editing a number
+ * never drops the grouping someone set up; the encoding names each role's
+ * field.
+ */
+function pointGridOperations(document: PresentationDocument, element: ChartElement, grid: ChartGrid, roles: PointRole[]): PatchOperation[] {
+  const previous = element.data.type === "inline" ? element.data.rows : [];
+  const rows = grid.rows.map((row, index) => {
+    const record: Record<string, unknown> = { ...(previous[index] ?? {}), [grid.categoryField]: row.category };
+    grid.series.forEach((field, column) => {
+      record[field] = row.values[column] ?? null;
+    });
+    return record;
+  });
+  const encoding: Record<string, unknown> = { ...element.encoding, category: grid.categoryField };
+  roles.forEach((role, column) => {
+    const field = grid.series[column]!;
+    if (role === "y") encoding.value = field;
+    else encoding[role] = field;
+  });
+  // A bubble map's bubbles are sized by `value` when there is no size field.
+  if (element.chartType === "bubbleMap") encoding.value = encoding.size;
+  return [
+    ...setPropertyDeep(document, element.id, "data", { type: "inline", rows }),
+    ...setPropertyDeep(document, element.id, "encoding", encoding),
+  ];
+}
+
+/**
+ * Change a chart's type. Into a point chart, the columns it needs are named
+ * from what the chart already has (its first two series become across and up)
+ * and any it lacks are added empty, so the grid shows exactly what to fill in;
+ * nothing a person typed is removed.
+ */
+export function chartTypeOperations(document: PresentationDocument, element: ChartElement, chartType: string): PatchOperation[] {
+  const typeChange = setPropertyDeep(document, element.id, "chartType", chartType);
+  if (!(chartType === "scatter" || chartType === "bubble" || chartType === "bubbleMap") || element.data.type !== "inline") return typeChange;
+  const values = Array.isArray(element.encoding.value) ? element.encoding.value : [element.encoding.value];
+  const fields = Object.keys(element.data.rows[0] ?? {}).filter((key) => key !== element.encoding.category);
+  const taken = [element.encoding.category, ...fields];
+  const fresh = (name: string) => {
+    const unique = uniqueName(name, taken);
+    taken.push(unique);
+    return unique;
+  };
+  const encoding: Record<string, unknown> = { ...element.encoding };
+  if (chartType === "bubbleMap") {
+    encoding.latitude ??= fresh("Latitude");
+    encoding.longitude ??= fresh("Longitude");
+    encoding.size ??= values[0];
+    encoding.value = encoding.size;
+  } else {
+    // Across from the first series and up from the second, when there are two.
+    const x = (encoding.x as string | undefined) ?? (values.length > 1 ? values[0]! : fresh("X"));
+    const y = values.find((field) => field !== x) ?? values[0]!;
+    encoding.x = x;
+    encoding.value = y;
+    if (chartType === "bubble") encoding.size ??= values.find((field) => field !== x && field !== y) ?? fresh("Size");
+  }
+  // Columns the rows do not have yet are added empty, so they show in the grid.
+  const needed = [encoding.x, encoding.size, encoding.latitude, encoding.longitude, encoding.value].filter(
+    (field): field is string => typeof field === "string",
+  );
+  const rows = element.data.rows.map((row) => {
+    const next: Record<string, unknown> = { ...row };
+    for (const field of needed) if (!(field in next)) next[field] = null;
+    return next;
+  });
+  return [
+    ...typeChange,
     ...setPropertyDeep(document, element.id, "data", { type: "inline", rows }),
     ...setPropertyDeep(document, element.id, "encoding", encoding),
   ];
@@ -208,6 +341,9 @@ export function pasteRange(
       if (column === 0) {
         next = setCategory(next, row, cell.trim());
         continue;
+      }
+      if (next.roles && next.series.length < column) {
+        return { ok: false, message: `This chart has ${next.series.length} number columns; the paste is wider than that.` };
       }
       while (next.series.length < column) next = addSeries(next);
       const parsed = parseChartValue(cell);

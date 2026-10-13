@@ -38,6 +38,8 @@ Before writing any slide:
 | A start, changes and an end total | \`waterfall-chart\` |
 | Where several things started and ended | \`slope-chart\` |
 | Parts of a whole (at most five) | \`share-chart\` |
+| Two measures for many items, or three with size | \`chart\` layout, \`type\` \`scatter\` or \`bubble\`, with \`points\` |
+| Values by place | \`chart\` layout, \`type\` \`bubbleMap\`, with \`points\` carrying latitude and longitude |
 | Parts of a system and how they connect | \`system-diagram\` or \`architecture\` |
 | Steps something goes through | \`process-flow\` or \`process\` |
 | Dated milestones | \`milestones\`, \`timeline\` or \`roadmap\` |

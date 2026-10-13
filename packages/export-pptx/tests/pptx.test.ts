@@ -1604,3 +1604,38 @@ describe("a treated picture", () => {
     expect(built.result.report.warnings.some((one) => one.feature === "filter" && one.elementId === element.id)).toBe(true);
   });
 });
+
+/**
+ * Bubbles and the bubble map (item 5, 2026-10-13): drawn from the scene's own
+ * marks, so the file shows what the slide shows.
+ */
+describe("a bubble map", () => {
+  const slideOne = (withMap: boolean) => {
+    const document = structuredClone(TECHNICAL);
+    if (withMap) {
+      (document.slides[0]!.elements as unknown[]).push({
+        id: "el_01JB8Z9K2QW4RN7F3XG5HTMDZZ",
+        type: "chart",
+        name: "Map",
+        chartType: "bubbleMap",
+        transform: { x: 100, y: 100, width: 1200, height: 600, rotation: 0 },
+        data: { type: "inline", rows: [{ city: "London", lat: 51.5, lon: -0.13, v: 42 }, { city: "Tokyo", lat: 35.68, lon: 139.69, v: 47 }] },
+        encoding: { category: "city", value: "v", latitude: "lat", longitude: "lon" },
+        chartStyle: { mapExtent: "world" },
+        altText: "Revenue by city",
+      });
+    }
+    return unzip(buildPptx(inputFor(document)).bytes).get("ppt/slides/slide1.xml")!;
+  };
+
+  it("writes the land as one outline and each bubble as a translucent, ringed oval", () => {
+    const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
+    const before = slideOne(false);
+    const after = slideOne(true);
+    expect(count(after, /<a:prstGeom prst="ellipse">/g) - count(before, /<a:prstGeom prst="ellipse">/g)).toBe(2);
+    expect(count(after, /<a:alpha val="72000"\/>/g) - count(before, /<a:alpha val="72000"\/>/g)).toBe(2);
+    // The land: one custom outline with a move for each landmass.
+    const outlines = after.match(/<a:custGeom>[\s\S]*?<\/a:custGeom>/g) ?? [];
+    expect(outlines.some((outline) => count(outline, /<a:moveTo>/g) > 20)).toBe(true);
+  });
+});

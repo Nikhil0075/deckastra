@@ -2605,6 +2605,15 @@
   display: flex;
   align-items: center;
 }
+/* A point chart's column role (Across, Up, Size, Latitude, Longitude), above the field's name. */
+.dk-datagrid__role {
+  display: block;
+  padding: 0 var(--dk-space-1);
+  font-size: var(--dk-text-xs);
+  font-weight: 400;
+  color: var(--dk-ink-muted);
+  text-align: left;
+}
 .dk-cell {
   width: 100%;
   min-width: 56px;

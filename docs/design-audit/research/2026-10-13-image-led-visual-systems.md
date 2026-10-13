@@ -107,6 +107,11 @@ capability gaps are:
    reported capture. See CLAUDE.md, "Picture treatments".
 4. Geographic/bubble-map and scatter primitives for Data Desk; current native
    charts cover the common business chart families but not its map composition.
+   **Done 2026-10-13:** a scatter on two numeric axes, a bubble chart sized by
+   area, and a bubble map on a bundled Natural Earth outline (Equal Earth,
+   zoomed to the data or the whole world), in the editor's grid, through
+   `deck_compose` as points, and drawn as shapes in PowerPoint. See CLAUDE.md,
+   "Scatter, bubble and bubble map".
 5. Perspective/isometric diagram helpers for System Terminal's exploded wireframe
    and Spatial Future's orbital/volumetric scenes.
 6. Editor controls for text picture fill, media masks and subject layers.

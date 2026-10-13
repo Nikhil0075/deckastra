@@ -463,7 +463,11 @@ export function chartShape(node: SceneNode, context: ShapeContext): string | und
       addPath(writer, path.d, { fill: path.fill, fillOpacity: path.fillOpacity, stroke: path.stroke, strokeWidth: path.strokeWidth, dash: path.dash });
     }
     for (const point of payload.points) {
-      addBox(writer, { x: point.cx - point.r, y: point.cy - point.r, width: point.r * 2, height: point.r * 2 }, { fill: point.fill, ellipse: true });
+      addBox(
+        writer,
+        { x: point.cx - point.r, y: point.cy - point.r, width: point.r * 2, height: point.r * 2 },
+        { fill: point.fill, fillOpacity: point.fillOpacity, stroke: point.stroke, strokeWidth: point.strokeWidth, ellipse: true },
+      );
     }
     for (const text of payload.texts) {
       addText(writer, { text: text.text, x: text.x, y: text.y, size: text.fontSize, color: text.fill, anchor: text.anchor, bold: (text.weight ?? 400) >= 600, rotate: text.rotate });

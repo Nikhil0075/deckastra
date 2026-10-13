@@ -7,6 +7,8 @@ import {
   addSeries,
   chartGrid,
   chartGridOperations,
+  chartTypeOperations,
+  POINT_ROLE_LABELS,
   parseChartValue,
   pasteRange,
   removeRow,
@@ -43,6 +45,8 @@ const CHARTS: { value: string; label: string }[] = [
   { value: "combo", label: "Combo" },
   { value: "waterfall", label: "Waterfall" },
   { value: "slope", label: "Slope" },
+  { value: "bubble", label: "Bubble" },
+  { value: "bubbleMap", label: "Bubble map" },
 ];
 
 export function ChartSection({
@@ -73,7 +77,21 @@ export function ChartSection({
   return (
     <>
       <Section title="Chart" defaultOpen meta={CHARTS.find((c) => c.value === element.chartType)?.label ?? element.chartType}>
-        <Select label="Type" value={element.chartType} options={chartTypes} disabled={disabled} onChange={(v) => set("chartType", v, "Change chart type")} />
+        <Select label="Type" value={element.chartType} options={chartTypes} disabled={disabled} onChange={(v) => edit(chartTypeOperations(document, element, v), "Change chart type")} data-testid="chart-type" />
+        {element.chartType === "bubbleMap" ? (
+          <>
+            <span className="dk-label">Map shows</span>
+            <Segmented
+              label="Map shows"
+              size="sm"
+              value={style.mapExtent ?? "data"}
+              onChange={(v) => set("chartStyle.mapExtent", v === "data" ? undefined : v, "Change map extent")}
+              items={[{ value: "data", label: "Where the data is", disabled }, { value: "world", label: "The whole world", disabled }]}
+            />
+            <Hint>Each place needs a latitude and longitude in degrees; its value sets the bubble's area.</Hint>
+          </>
+        ) : null}
+        {element.chartType === "bubble" ? <Hint>Size sets each bubble's area, so a value twice as large looks twice as large.</Hint> : null}
         <TextField
           label="Horizontal axis title"
           value={style.axisX?.title ?? ""}
@@ -153,6 +171,7 @@ function ChartGridEditor({
             </th>
             {grid.series.map((name, index) => (
               <th scope="col" key={`${index}:${name}`}>
+                {grid.roles ? <span className="dk-datagrid__role">{POINT_ROLE_LABELS[grid.roles[index]!]}</span> : null}
                 <span className="dk-datagrid__head">
                   <CellInput
                     header
@@ -165,14 +184,16 @@ function ChartGridEditor({
                       onCommit(next, "Rename series");
                     }}
                   />
-                  {grid.series.length > 1 ? (
+                  {grid.series.length > 1 && !grid.roles ? (
                     <IconButton icon="close" label={`Remove series ${name}`} size="sm" disabled={disabled} onClick={() => onCommit(removeSeries(grid, index), "Remove series")} />
                   ) : null}
                 </span>
               </th>
             ))}
             <th scope="col">
-              <IconButton icon="plus" label="Add series" size="sm" disabled={disabled} onClick={() => onCommit(addSeries(grid), "Add series")} />
+              {grid.roles ? null : (
+                <IconButton icon="plus" label="Add series" size="sm" disabled={disabled} onClick={() => onCommit(addSeries(grid), "Add series")} />
+              )}
             </th>
           </tr>
         </thead>

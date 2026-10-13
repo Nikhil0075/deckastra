@@ -8,6 +8,7 @@ import type {
 import { formatNumber, toLabel, toNumber } from "./format";
 import { bandScale, estimateLabelWidth, linearScale, round } from "./scale";
 import { resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
+import { buildPointChart, hasNumericX } from "./point-charts";
 
 /**
  * Chart layout (doc 04 §21).
@@ -50,6 +51,11 @@ export interface ChartPointMark {
   cy: number;
   r: number;
   fill: string;
+  /** Bubbles are translucent so the ones beneath still show (2026-10-13). */
+  fillOpacity?: number;
+  /** A thin ring in the slide's colour, so overlapping bubbles stay apart. */
+  stroke?: string;
+  strokeWidth?: number;
 }
 
 export interface ChartTextMark {
@@ -116,6 +122,9 @@ const KNOWN_KINDS = new Set([
   "waterfall",
   // Each series' first and last value, joined, labelled at both ends (2026-10-11).
   "slope",
+  // Points sized by a third value, and the same on a world outline (2026-10-13).
+  "bubble",
+  "bubbleMap",
 ]);
 
 interface SeriesPoint {
@@ -291,7 +300,7 @@ const LEGEND_GAP = 8;
 const LEGEND_ITEM_GAP = 24;
 const AXIS_LABEL_GAP = 10;
 
-function legendItems(
+export function legendItems(
   series: Series[],
   position: string,
   box: { width: number; height: number },
@@ -500,6 +509,14 @@ export function buildChartPayload(
   };
 
   const rows = extractRows(element, ctx, warnings);
+
+  // Scatter with numeric positions, bubbles and bubble maps place each row by
+  // its own numbers rather than in a category band (2026-10-13). A scatter whose
+  // horizontal values are not numbers keeps the banded layout below.
+  if (chartType === "bubble" || chartType === "bubbleMap" || (chartType === "scatter" && hasNumericX(element, rows))) {
+    return buildPointChart(element, rows, { width, height, palette, fontSize, labelColor, theme, pointSize, empty, warnings });
+  }
+
   const { series, categories } = buildSeries(element, rows, palette, warnings);
 
   if (series.length === 0 || categories.length === 0) {

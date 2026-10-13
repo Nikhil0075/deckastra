@@ -20,11 +20,26 @@ export type SlidePattern = BaseSlidePattern
   | "gallery" | "biography" | "event-schedule" | "story-beat" | "thank-you"
   | "bar-chart" | "trend-chart" | "waterfall-chart" | "slope-chart" | "share-chart"
   | "system-diagram" | "process-flow" | "milestones" | "full-bleed-photo";
+/**
+ * A chart's data as a plan carries it: categories and named series, or, for a
+ * scatter, bubble chart or bubble map, the points themselves (2026-10-13). The
+ * server checks which a type needs.
+ */
+export interface ChartPlanInput {
+  type?: string;
+  categories?: string[];
+  series?: Array<{ name: string; values: number[] }>;
+  points?: Array<{ label?: string; x?: number; y?: number; size?: number; latitude?: number; longitude?: number; group?: string }>;
+  x_title?: string;
+  y_title?: string;
+  unit?: string;
+}
+
 export type PresetSlotValue =
   | string
   | string[]
   | Array<{ value: string; label: string }>
-  | { type?: string; categories: string[]; series: Array<{ name: string; values: number[] }>; unit?: string }
+  | ChartPlanInput
   | { kind?: string; direction?: "LR" | "TB"; nodes: Array<{ key: string; label: string; sublabel?: string; role?: string }>; edges?: Array<{ source: string; target: string; label?: string }> }
   | Array<{ when: string; label: string; detail?: string }>;
 export type PresetSlotKind = "text" | "text-list" | "metrics" | "chart" | "diagram" | "timeline";
@@ -155,7 +170,7 @@ export interface StoryPlanSlide {
   caption?: string;
   speaker_notes?: string;
   /** Required by the chart layout. */
-  chart?: { type?: string; categories: string[]; series: Array<{ name: string; values: number[] }>; unit?: string };
+  chart?: ChartPlanInput;
   /** Required by the diagram layout; edges name nodes by key. */
   diagram?: {
     kind?: string;

@@ -505,6 +505,10 @@ export const CHART_KINDS = [
   "combo",
   "waterfall",
   "slope",
+  /** A scatter whose points' areas carry a third value (`encoding.size`). */
+  "bubble",
+  /** Bubbles placed by `encoding.latitude` and `encoding.longitude` on a world outline. */
+  "bubbleMap",
 ] as const;
 
 /** Open: an unrecognized chart type renders as a bar chart with a capability warning. */
@@ -526,6 +530,14 @@ export const ChartEncodingSchema = z.looseObject({
   series: z.string().optional(),
   color: z.string().optional(),
   size: z.string().optional(),
+  /**
+   * Scatter and bubble: the field read as each point's horizontal position.
+   * Without it the category is read, as a number where it is one (2026-10-13).
+   */
+  x: z.string().optional(),
+  /** Bubble map: the fields holding each point's position, in degrees. */
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
   sort: z
     .object({ by: z.enum(["category", "value"]), direction: z.enum(["asc", "desc"]) })
     .optional(),
@@ -559,6 +571,11 @@ export const ChartStyleSchema = z.looseObject({
   axisY: AxisStyleSchema.optional(),
   stacking: z.enum(["none", "normal", "percent"]).optional(),
   smoothing: NormalizedSchema.optional(),
+  /**
+   * Bubble map: frame the bubbles ("data", the default) or show the whole
+   * world. A data frame never narrows below a continent's width.
+   */
+  mapExtent: z.enum(["data", "world"]).optional(),
 });
 export type ChartStyle = z.infer<typeof ChartStyleSchema>;
 

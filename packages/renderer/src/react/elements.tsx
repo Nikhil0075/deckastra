@@ -817,7 +817,16 @@ function ChartContent({
       ))}
 
       {payload.points.map((point) => (
-        <circle key={point.id} cx={point.cx} cy={point.cy} r={point.r} fill={point.fill} />
+        <circle
+          key={point.id}
+          cx={point.cx}
+          cy={point.cy}
+          r={point.r}
+          fill={point.fill}
+          fillOpacity={point.fillOpacity}
+          stroke={point.stroke}
+          strokeWidth={point.strokeWidth}
+        />
       ))}
 
       {payload.texts.map((text) => (
