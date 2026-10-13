@@ -144,7 +144,7 @@ function escape(segment: string): string {
  * Every string that is a colour, with an id-addressed path to it.
  *
  * "Is a colour" is decided by where it sits rather than by what it looks like:
- * a `color` property, or an item of a `palette` or `chartSeries` list. A slide
+ * a `color` property, or an item of a `palette`, `chartSeries` or `duotone` list. A slide
  * of text that happens to say "#1E4BD2" is words, and replacing it would edit
  * what someone wrote.
  */
@@ -167,7 +167,7 @@ function findColors(value: unknown, path: string, inPalette: boolean, out: Found
     if (typeof inner === "string") {
       if (key === "color") out.push({ path: next, value: inner });
     } else {
-      findColors(inner, next, key === "palette" || key === "chartSeries" || key === "series", out);
+      findColors(inner, next, key === "palette" || key === "chartSeries" || key === "series" || key === "duotone", out);
     }
   }
 }

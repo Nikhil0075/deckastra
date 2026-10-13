@@ -17,7 +17,16 @@ import {
   type MaskChoice,
 } from "../../lib/image-mask";
 import { Button, NumberField, Popover, Section, Segmented, Select, TextField, cx } from "../../ui";
-import { Hint } from "./controls";
+import { ColorField, Hint } from "./controls";
+import {
+  treatmentExportNote,
+  treatmentOperations,
+  treatmentPercent,
+  treatmentPreset,
+  treatmentPresets,
+  treatmentWith,
+  type TreatmentAmount,
+} from "../../lib/image-treatment";
 
 /**
  * A picture: swap it for another (MA-21) and choose which part of it shows
@@ -125,6 +134,7 @@ export function ImageSection({
 
       <MaskControls element={element} fit={fit} disabled={disabled} edit={edit} document={document} />
       <CutoutControls element={element} disabled={disabled} edit={edit} document={document} />
+      <TreatmentControls element={element} disabled={disabled} edit={edit} document={document} />
 
       {canReposition ? (
         <>
@@ -467,5 +477,119 @@ function CutoutControls({
         </p>
       ) : null}
     </>
+  );
+}
+
+const BLEND_MODES = [
+  { value: "normal", label: "Normal" },
+  { value: "multiply", label: "Multiply" },
+  { value: "screen", label: "Screen" },
+  { value: "overlay", label: "Overlay" },
+  { value: "darken", label: "Darken" },
+  { value: "lighten", label: "Lighten" },
+  { value: "luminosity", label: "Luminosity" },
+  { value: "color", label: "Colour" },
+] as const;
+
+const SLIDERS: readonly { key: TreatmentAmount; label: string; min: number }[] = [
+  { key: "exposure", label: "Brightness", min: -100 },
+  { key: "contrast", label: "Contrast", min: -100 },
+  { key: "saturation", label: "Saturation", min: -100 },
+  { key: "monochrome", label: "Black and white", min: 0 },
+  { key: "vignette", label: "Vignette", min: 0 },
+  { key: "grain", label: "Grain", min: 0 },
+];
+
+/**
+ * A picture's treatment (2026-10-13): a few looks to start from, then each
+ * adjustment on its own, a duotone in theme or named colours, and how the
+ * picture blends with what is behind it. Every change is one undo step, and
+ * Original removes the treatment, because the photograph was never changed.
+ */
+function TreatmentControls({
+  document,
+  element,
+  disabled,
+  edit,
+}: {
+  document: PresentationDocument;
+  element: ImageElement;
+  disabled: boolean;
+  edit: Edit;
+}) {
+  const current = element.treatment;
+  const presets = treatmentPresets(document);
+  const preset = treatmentPreset(document, element);
+  const write = (next: ImageElement["treatment"], label: string, key: string) =>
+    edit(treatmentOperations(document, element.id, next), label, `inspector:${element.id}:treatment:${key}`);
+  const blend = (element.style?.blendMode as string | undefined) ?? "normal";
+  const note = treatmentExportNote(current);
+  const duotone = current?.duotone;
+
+  return (
+    <details className="dk-details" open={current !== undefined || blend !== "normal" ? true : undefined}>
+      <summary>Treatment</summary>
+      <Select
+        label="Look"
+        value={preset}
+        data-testid="image-treatment"
+        options={[
+          ...presets.map((entry) => ({ value: entry.value, label: entry.label })),
+          ...(preset === "custom" ? [{ value: "custom", label: "Custom" }] : []),
+        ]}
+        disabled={disabled}
+        onChange={(value) => {
+          const chosen = presets.find((entry) => entry.value === value);
+          if (chosen) write(chosen.treatment ? treatmentWith(chosen.treatment, {}) : undefined, chosen.value === "none" ? "Remove picture treatment" : "Treat picture", "preset");
+        }}
+      />
+      <div className="dk-grid2">
+        {SLIDERS.map(({ key, label, min }) => (
+          <NumberField
+            key={key}
+            label={label}
+            ariaLabel={`${label} of the picture`}
+            unit="%"
+            value={treatmentPercent(element, key)}
+            min={min}
+            max={100}
+            integer
+            disabled={disabled}
+            data-testid={`image-treatment-${key}`}
+            onCommit={(value) => write(treatmentWith(current, { [key]: value / 100 }), `Change picture ${label.toLowerCase()}`, key)}
+          />
+        ))}
+      </div>
+      {duotone ? (
+        <div className="dk-grid2">
+          <ColorField
+            label="Duotone shadows"
+            value={duotone[0]}
+            theme={document.theme}
+            disabled={disabled}
+            onChange={(value) => value && write(treatmentWith(current, { duotone: [value, duotone[1]!] }), "Change duotone", "duotone")}
+          />
+          <ColorField
+            label="Duotone highlights"
+            value={duotone[1]}
+            theme={document.theme}
+            disabled={disabled}
+            onChange={(value) => value && write(treatmentWith(current, { duotone: [duotone[0]!, value] }), "Change duotone", "duotone")}
+          />
+        </div>
+      ) : null}
+      <Select
+        label="Blend with what is behind"
+        value={blend}
+        options={BLEND_MODES.map((entry) => ({ value: entry.value, label: entry.label }))}
+        disabled={disabled}
+        data-testid="image-blend"
+        onChange={(value) =>
+          edit(setPropertyDeep(document, element.id, "style.blendMode", value === "normal" ? undefined : value), "Change blend mode", `inspector:${element.id}:blendMode`)
+        }
+      />
+      {blend !== "normal" ? <Hint>PowerPoint has no blend modes, so the picture arrives there blending normally.</Hint> : null}
+      {note ? <Hint>{note}</Hint> : null}
+    </details>
   );
 }

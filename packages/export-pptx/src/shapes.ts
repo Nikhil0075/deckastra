@@ -601,9 +601,11 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
   const payload = node.renderPayload;
   if (payload.kind !== "image") return unsupported(node, context);
 
-  if (maskNeedsPicture(node)) {
+  if (pictureNeedsCapture(node)) {
     const captured = capturedMaskShape(node, context);
     if (captured) return captured;
+  }
+  if (maskNeedsPicture(node)) {
     // No capture reached the adapter (a caller that does not capture): the
     // photograph is still embedded, cropped to the first outline where it can
     // be, and the report says the mask is not as drawn.
@@ -664,7 +666,7 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
     "<p:nvPr/>" +
     "</p:nvPicPr>" +
-    `<p:blipFill><a:blip r:embed="${claim.placed.relationshipId}"/>` +
+    `<p:blipFill>${blip(claim.placed.relationshipId, pictureAdjustments(node, context))}` +
     `${placed.srcRect ?? ""}<a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
     `<p:spPr><a:xfrm${attributes}>` +
     `<a:off x="${units.px(placed.box.x)}" y="${units.px(placed.box.y)}"/>` +
@@ -677,6 +679,79 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     "</p:spPr>" +
     "</p:pic>"
   );
+}
+
+function blip(relationshipId: string, effects: string): string {
+  return effects ? `<a:blip r:embed="${relationshipId}">${effects}</a:blip>` : `<a:blip r:embed="${relationshipId}"/>`;
+}
+
+/**
+ * A picture's treatment as PowerPoint's own picture adjustments, which stay
+ * adjustable there (Picture Format, Corrections and Color).
+ *
+ * Monochrome and duotone are the same operations in both. Exposure, contrast
+ * and partial saturation are PowerPoint's brightness, contrast and HSL
+ * saturation, which compute slightly differently from the browser's filters,
+ * so the report says the picture is close rather than identical. The vignette
+ * and the grain have no adjustment; a picture with either is captured instead
+ * (`pictureNeedsCapture`), and only reaches here when no capture was made.
+ */
+function pictureAdjustments(node: SceneNode, context: ShapeContext): string {
+  const payload = node.renderPayload;
+  if (payload.kind !== "image" || !payload.treatment) return "";
+  const treatment = payload.treatment;
+  const percent = (value: number): number => Math.round(Math.max(-1, Math.min(1, value)) * 100_000);
+  let effects = "";
+
+  // What is left of the colour after saturation and monochrome, 0 being grey.
+  const colour = (1 + treatment.saturation) * (1 - treatment.monochrome);
+  if (treatment.duotone) {
+    const [shadow, highlight] = treatment.duotone.map((value) => value.slice(1).toUpperCase());
+    effects += `<a:duotone><a:srgbClr val="${shadow}"/><a:srgbClr val="${highlight}"/></a:duotone>`;
+  } else if (colour <= 0) {
+    effects += "<a:grayscl/>";
+  } else if (colour !== 1) {
+    effects += `<a:hsl hue="0" sat="${percent(colour - 1)}" lum="0"/>`;
+  }
+  if (treatment.exposure !== 0 || treatment.contrast !== 0) {
+    effects += `<a:lum bright="${percent(treatment.exposure)}" contrast="${percent(treatment.contrast)}"/>`;
+  }
+
+  if (treatment.exposure !== 0 || treatment.contrast !== 0 || (!treatment.duotone && colour > 0 && colour !== 1)) {
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image treatment",
+      action: "approximated",
+      message:
+        "This picture's brightness, contrast or saturation uses PowerPoint's own picture corrections, " +
+        "which stay adjustable there and look close to, not exactly like, the slide.",
+    });
+  }
+  if (treatment.vignette > 0 || treatment.grain > 0) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image treatment",
+      action: "dropped",
+      message: "PowerPoint has no vignette or film grain for a picture, so this one arrives without them.",
+    });
+  }
+  return effects;
+}
+
+/**
+ * Whether a picture reaches PowerPoint as the exporter's capture of it: a mask
+ * PowerPoint cannot crop to (`maskNeedsPicture`), or a vignette or grain, which
+ * PowerPoint has no adjustment for. Shared with the worker, which captures.
+ */
+export function pictureNeedsCapture(node: SceneNode): boolean {
+  const payload = node.renderPayload;
+  if (payload.kind !== "image") return false;
+  if (maskNeedsPicture(node)) return true;
+  return payload.treatment !== undefined && (payload.treatment.vignette > 0 || payload.treatment.grain > 0);
 }
 
 /** The key a masked picture's capture travels under in `ExportInput.images`. */
@@ -745,17 +820,30 @@ function pictureGeometry(node: SceneNode, context: ShapeContext): string {
 function capturedMaskShape(node: SceneNode, context: ShapeContext): string | undefined {
   const claim = context.placePicture?.(maskedImageKey(node.id));
   if (!claim || "refused" in claim) return undefined;
-  context.ledger.record({
-    severity: "warning",
-    slideId: context.scene.slideId,
-    elementId: node.id,
-    feature: "image mask",
-    action: "rasterized",
-    message:
-      "PowerPoint cannot crop a picture to this mask (an inverted or combined outline, or a picture " +
-      "fitted inside its box), so it is embedded as a picture already cut to shape. It looks the " +
-      "same; the crop cannot be changed in PowerPoint.",
-  });
+  if (maskNeedsPicture(node)) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image mask",
+      action: "rasterized",
+      message:
+        "PowerPoint cannot crop a picture to this mask (an inverted or combined outline, or a picture " +
+        "fitted inside its box), so it is embedded as a picture already cut to shape. It looks the " +
+        "same; the crop cannot be changed in PowerPoint.",
+    });
+  } else {
+    context.ledger.record({
+      severity: "info",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image treatment",
+      action: "rasterized",
+      message:
+        "PowerPoint has no vignette or film grain for a picture, so this one is embedded with its " +
+        "treatment already applied. It looks the same; the treatment cannot be changed in PowerPoint.",
+    });
+  }
   const { units } = context;
   return (
     "<p:pic>" +
@@ -867,7 +955,10 @@ function unsupported(node: SceneNode, context: ShapeContext, because?: string): 
 function reportUnsupportedStyling(node: SceneNode, context: ShapeContext): void {
   const style = node.resolvedStyle;
 
-  if (style.filter && style.filter.includes("blur")) {
+  // Any filter, not only a blur: brightness, contrast and the rest have no shape
+  // equivalent either, and used to be dropped without a word. A picture's own
+  // treatment is not a style filter; it is written natively (`pictureAdjustments`).
+  if (style.filter) {
     context.ledger.record({
       severity: "warning",
       slideId: context.scene.slideId,

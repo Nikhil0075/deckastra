@@ -863,6 +863,10 @@ function validateThemeTokens(doc: PresentationDocument, c: IssueCollector): void
           `${elementPath(slide.id, element.id)}/typography`,
         );
       }
+      // A duotone in theme colours: an unresolved one draws no duotone at all.
+      if (element.type === "image") {
+        walkValue((element as { treatment?: unknown }).treatment, `${elementPath(slide.id, element.id)}/treatment`);
+      }
     }
   }
 }

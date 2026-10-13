@@ -34,7 +34,7 @@ import { SlideView } from "@deckastra/renderer/react";
 import { buildCriticReport, type CriticRenderReport } from "./critic-report";
 import { compileTimeline, finalSample, sampleAt, toStyle } from "@deckastra/animation-engine";
 import type { ExportImage, ExportWarning, FontSpec } from "@deckastra/export-core";
-import { equationImageKey, maskNeedsPicture, maskedImageKey } from "@deckastra/export-pptx";
+import { equationImageKey, maskedImageKey, pictureNeedsCapture } from "@deckastra/export-pptx";
 import { fontManifest, sceneUsedEstimatedMetrics } from "@deckastra/export-core";
 import { buildBrowserScene } from "./text-measurement";
 import { AssetLibrary, type InlineAsset } from "./assets";
@@ -762,7 +762,8 @@ export async function captureEquations(
   page: RenderPage,
   fontCss = "",
   /**
-   * Masked pictures PowerPoint cannot crop to their outline (`maskNeedsPicture`)
+   * Masked pictures PowerPoint cannot crop to their outline, and pictures with a
+   * vignette or grain (`pictureNeedsCapture`),
    * are captured the same way, cut to shape with transparency around them, so
    * they need their bytes on the page.
    */
@@ -773,7 +774,7 @@ export async function captureEquations(
     const equations: SceneNode[] = [];
     const walk = (nodes: readonly SceneNode[] | undefined): void => {
       for (const node of nodes ?? []) {
-        if (node.renderPayload.kind === "equation" || (resolveAssetUrl && maskNeedsPicture(node))) equations.push(node);
+        if (node.renderPayload.kind === "equation" || (resolveAssetUrl && pictureNeedsCapture(node))) equations.push(node);
         walk(node.children);
       }
     };
