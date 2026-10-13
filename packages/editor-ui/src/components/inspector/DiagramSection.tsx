@@ -12,6 +12,7 @@ import {
   setNodeLabelOperations,
 } from "../../lib/diagram-data";
 import { Button, IconButton, Section, Select } from "../../ui";
+import { DIAGRAM_VIEW_HINTS, DIAGRAM_VIEWS, diagramView, diagramViewOperations, type DiagramView } from "../../lib/diagram-view";
 import { CellInput, ColorField, Hint } from "./controls";
 import { setAtOperations } from "../../lib/nested";
 
@@ -164,10 +165,18 @@ export function DiagramSection({
         disabled={disabled}
         onChange={(v) => edit(setPropertyDeep(document, element.id, "layoutHint.direction", v), "Change diagram direction")}
       />
+      <Select
+        label="View"
+        value={diagramView(element)}
+        options={DIAGRAM_VIEWS.map((view) => ({ value: view.value, label: view.label }))}
+        disabled={disabled}
+        data-testid="diagram-view"
+        onChange={(v) => edit(diagramViewOperations(document, element, v as DiagramView), "Change diagram view")}
+      />
       <Hint>
         {element.layoutHint?.mode === "manual" || element.layoutHint?.algorithm === "manual"
           ? "This diagram is placed by hand, so a new box goes to the right of the one it follows."
-          : "The diagram lays itself out again after each change."}
+          : DIAGRAM_VIEW_HINTS[diagramView(element)]}
       </Hint>
       <DiagramColors document={document} element={element} edit={edit} disabled={disabled} />
     </Section>

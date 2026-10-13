@@ -303,6 +303,9 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   const diagramData = z.object({
     kind: z.enum(["architecture", "flow", "sequence", "network", "mindmap"]).optional(),
     direction: z.enum(["LR", "TB"]).optional(),
+    // How it is seen (2026-10-13): isometric blocks, an exploded stack of
+    // layers (one per rank), or an orbit around the first node.
+    view: z.enum(["flat", "isometric", "stack", "orbit"]).optional(),
     nodes: z.array(z.object({
       key: z.string().min(1).max(40),
       label: z.string().min(1).max(60),

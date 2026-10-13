@@ -113,7 +113,11 @@ capability gaps are:
    `deck_compose` as points, and drawn as shapes in PowerPoint. See CLAUDE.md,
    "Scatter, bubble and bubble map".
 5. Perspective/isometric diagram helpers for System Terminal's exploded wireframe
-   and Spatial Future's orbital/volumetric scenes.
+   and Spatial Future's orbital/volumetric scenes. **Done 2026-10-13:** a
+   diagram can be seen as isometric blocks (`layoutHint.projection`), an
+   exploded stack of layers or an orbit (`layoutHint.algorithm`), from the
+   editor's View control and `deck_compose`'s `view`, drawn as faces in
+   PowerPoint. See CLAUDE.md, "Diagrams with depth".
 6. Editor controls for text picture fill, media masks and subject layers.
    **Done 2026-10-13:** masks and cut-outs on pictures, depth under Arrange,
    picture fill on text, and a front-to-back Layers panel with lock and hide. The

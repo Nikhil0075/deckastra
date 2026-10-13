@@ -136,6 +136,9 @@ class DiagramEdgePlan(BaseModel):
 class DiagramPlan(BaseModel):
     kind: Literal["architecture", "flow", "sequence", "network", "mindmap"] = "architecture"
     direction: Literal["LR", "TB"] = "LR"
+    #: How it is seen (2026-10-13): flat boxes, isometric blocks, an exploded
+    #: stack of layers (one per rank), or an orbit around the first node.
+    view: Literal["flat", "isometric", "stack", "orbit"] = "flat"
     nodes: list[DiagramNodePlan] = Field(min_length=2, max_length=12)
     edges: list[DiagramEdgePlan] = Field(default_factory=list, max_length=24)
 

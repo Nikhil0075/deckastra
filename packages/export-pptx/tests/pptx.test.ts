@@ -1639,3 +1639,34 @@ describe("a bubble map", () => {
     expect(outlines.some((outline) => count(outline, /<a:moveTo>/g) > 20)).toBe(true);
   });
 });
+
+/**
+ * Diagrams with depth (item 6, 2026-10-13): PowerPoint gets the same faces,
+ * in the same order, with each label as editable text over its block.
+ */
+describe("an isometric diagram", () => {
+  const slideOne = (projection?: string) => {
+    const document = structuredClone(TECHNICAL);
+    const diagram = document.slides.flatMap((slide) => slide.elements as Record<string, unknown>[]).find((one) => one.type === "diagram")!;
+    if (projection) diagram.layoutHint = { ...(diagram.layoutHint as object), projection };
+    const slideId = document.slides.find((slide) => slide.elements.some((one) => one.id === diagram.id))!.id;
+    const index = document.slides.findIndex((slide) => slide.id === slideId);
+    return { xml: unzip(buildPptx(inputFor(document)).bytes).get(`ppt/slides/slide${index + 1}.xml`)!, labels: (diagram.nodes as { label: string }[]).map((one) => one.label) };
+  };
+
+  it("writes each block as two faces and a top, and keeps every label as text", () => {
+    const flat = slideOne();
+    const iso = slideOne("isometric");
+    const count = (text: string, pattern: RegExp) => (text.match(pattern) ?? []).length;
+    // Three custom outlines per node more than the flat diagram draws.
+    expect(count(iso.xml, /<a:custGeom>/g) - count(flat.xml, /<a:custGeom>/g)).toBeGreaterThanOrEqual(flat.labels.length * 3);
+    for (const label of iso.labels) expect(iso.xml).toContain(`<a:t>${label.replace(/&/g, "&amp;")}</a:t>`);
+  });
+
+  it("draws the edges after the blocks, as the slide does", () => {
+    const { xml, labels } = slideOne("isometric");
+    const lastLabel = Math.max(...labels.map((label) => xml.lastIndexOf(`<a:t>${label.replace(/&/g, "&amp;")}</a:t>`)));
+    // The last thing drawn is a connector with an arrowhead, after every label.
+    expect(xml.lastIndexOf("<a:tailEnd")).toBeGreaterThan(lastLabel);
+  });
+});

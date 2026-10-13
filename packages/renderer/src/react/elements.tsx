@@ -887,6 +887,36 @@ function DiagramContent({
   // node id so two diagrams on one slide cannot collide in the shared defs scope.
   const markerId = `arrow-${payload.nodes[0]?.id ?? "d"}`;
   const arrowColor = payload.edges[0]?.stroke ?? "currentColor";
+  // Beneath the nodes for a flat diagram; above them for blocks, whose tops the
+  // edges run across (2026-10-13).
+  const edgeMarks = (
+    <>
+      {payload.edges.map((edge) => (
+        <g key={edge.id}>
+          <path
+            d={edge.d}
+            fill="none"
+            stroke={edge.stroke}
+            strokeWidth={edge.strokeWidth}
+            strokeDasharray={edge.dash}
+            markerEnd={edge.markerEnd ? `url(#${markerId})` : undefined}
+            markerStart={edge.markerStart ? `url(#${markerId})` : undefined}
+          />
+          {edge.label ? (
+            <text
+              x={edge.label.x}
+              y={edge.label.y}
+              textAnchor="middle"
+              fontSize={edge.label.size}
+              fill={edge.label.color}
+            >
+              {edge.label.text}
+            </text>
+          ) : null}
+        </g>
+      ))}
+    </>
+  );
 
   return (
     <svg
@@ -912,17 +942,31 @@ function DiagramContent({
 
       {payload.groups.map((group) => (
         <g key={group.id}>
-          <rect
-            x={group.x}
-            y={group.y}
-            width={group.width}
-            height={group.height}
-            rx={group.radius}
-            fill={group.fill ?? "none"}
-            stroke={group.stroke}
-            strokeWidth={group.strokeWidth}
-            strokeDasharray={group.dash}
-          />
+          {group.sides?.map((side, index) => (
+            <path key={index} d={side.d} fill={side.fill} stroke={group.stroke} strokeWidth={group.strokeWidth} strokeLinejoin="round" />
+          ))}
+          {group.outline ? (
+            <path
+              d={group.outline}
+              fill={group.fill ?? "none"}
+              stroke={group.stroke}
+              strokeWidth={group.strokeWidth}
+              strokeDasharray={group.dash}
+              strokeLinejoin="round"
+            />
+          ) : (
+            <rect
+              x={group.x}
+              y={group.y}
+              width={group.width}
+              height={group.height}
+              rx={group.radius}
+              fill={group.fill ?? "none"}
+              stroke={group.stroke}
+              strokeWidth={group.strokeWidth}
+              strokeDasharray={group.dash}
+            />
+          )}
           {group.label ? (
             <text
               x={group.label.x}
@@ -937,44 +981,28 @@ function DiagramContent({
         </g>
       ))}
 
-      {payload.edges.map((edge) => (
-        <g key={edge.id}>
-          <path
-            d={edge.d}
-            fill="none"
-            stroke={edge.stroke}
-            strokeWidth={edge.strokeWidth}
-            strokeDasharray={edge.dash}
-            markerEnd={edge.markerEnd ? `url(#${markerId})` : undefined}
-            markerStart={edge.markerStart ? `url(#${markerId})` : undefined}
-          />
-          {edge.label ? (
-            <text
-              x={edge.label.x}
-              y={edge.label.y}
-              textAnchor="middle"
-              fontSize={edge.label.size}
-              fill={edge.label.color}
-            >
-              {edge.label.text}
-            </text>
-          ) : null}
-        </g>
-      ))}
+      {payload.edgesAbove ? null : edgeMarks}
 
       {payload.nodes.map((n) => (
         <g key={n.id} data-diagram-node={n.id} data-role={n.role}>
-          <rect
-            x={n.x}
-            y={n.y}
-            width={n.width}
-            height={n.height}
-            rx={n.radius}
-            fill={n.fill}
-            stroke={n.stroke}
-            strokeWidth={n.strokeWidth}
-            strokeDasharray={n.dash}
-          />
+          {n.sides?.map((side, index) => (
+            <path key={index} d={side.d} fill={side.fill} stroke={n.stroke} strokeWidth={n.strokeWidth} strokeLinejoin="round" />
+          ))}
+          {n.outline ? (
+            <path d={n.outline} fill={n.fill} stroke={n.stroke} strokeWidth={n.strokeWidth} strokeDasharray={n.dash} strokeLinejoin="round" />
+          ) : (
+            <rect
+              x={n.x}
+              y={n.y}
+              width={n.width}
+              height={n.height}
+              rx={n.radius}
+              fill={n.fill}
+              stroke={n.stroke}
+              strokeWidth={n.strokeWidth}
+              strokeDasharray={n.dash}
+            />
+          )}
           <text
             x={n.x + n.width / 2}
             y={n.sublabel ? n.y + n.height / 2 - 2 : n.y + n.height / 2}
@@ -1001,6 +1029,8 @@ function DiagramContent({
           ) : null}
         </g>
       ))}
+
+      {payload.edgesAbove ? edgeMarks : null}
     </svg>
   );
 }

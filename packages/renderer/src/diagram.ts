@@ -8,6 +8,7 @@ import type {
 import { estimateLabelWidth, round } from "./scale";
 import { paintToCss, resolveTypography, resolveValue, type ResolvedTheme } from "./theme";
 import { contrastRatio, parseColor } from "./semantic";
+import { spatialDiagram, type SpatialMode } from "./diagram-spatial";
 
 /**
  * Diagram layout (doc 04 §20).
@@ -37,6 +38,13 @@ export interface DiagramNodeMark {
   labelSize: number;
   sublabelSize: number;
   role?: string;
+  /**
+   * A node drawn with depth (2026-10-13): its top face as a path, which replaces
+   * the rounded box, and the faces below it, painted before it. The box above
+   * is then the top face's bounds, where the label is centred.
+   */
+  outline?: string;
+  sides?: { d: string; fill: string }[];
 }
 
 export interface DiagramEdgeMark {
@@ -62,6 +70,9 @@ export interface DiagramGroupMark {
   strokeWidth: number;
   dash?: string;
   label?: { text: string; x: number; y: number; size: number; color: string };
+  /** A plate or a ring with depth, drawn as this path instead of the box (2026-10-13). */
+  outline?: string;
+  sides?: { d: string; fill: string }[];
 }
 
 export interface DiagramPayload {
@@ -74,6 +85,12 @@ export interface DiagramPayload {
   typography: TypographyStyle;
   warnings: string[];
   notice?: string;
+  /**
+   * Draw edges after the nodes rather than before. Isometric and stacked views
+   * run their edges across the tops of the blocks, where a block painted after
+   * them would hide the arrow that arrives from behind it.
+   */
+  edgesAbove?: boolean;
 }
 
 const MIN_NODE_WIDTH = 140;
@@ -605,7 +622,14 @@ export function buildDiagramPayload(
   const nodeSpacing = hint.nodeSpacing ?? 40;
   const rankSpacing = hint.rankSpacing ?? 90;
 
-  let algorithm = hint.algorithm ?? "layered";
+  // Stack and orbit arrange the nodes themselves, from the layered result's
+  // sizes; an arrangement this build does not know is drawn in layers (W241).
+  const requested = hint.algorithm ?? "layered";
+  let algorithm: string = requested === "stack" || requested === "orbit" ? "layered" : requested;
+  if (!["layered", "radial", "grid", "force", "manual"].includes(algorithm)) {
+    warnings.push(`Layout "${algorithm}" is not known here; laid out in layers instead.`);
+    algorithm = "layered";
+  }
   if (algorithm === "force" && typeof hint.seed !== "number") {
     // Doc 02 §18.5 makes the seed mandatory precisely so this cannot happen
     // silently. Falling back to layered is better than inventing a seed and
@@ -930,6 +954,42 @@ export function buildDiagramPayload(
       break;
     }
     if (!found) warnings.push(`Edge ${edge.id} has no clear space for its label; enlarge or rearrange the diagram.`);
+  }
+
+  // Depth (2026-10-13): the flat result above, projected or rearranged.
+  const projection = hint.projection ?? "flat";
+  const spatial: SpatialMode | undefined =
+    requested === "stack" || requested === "orbit" ? requested : projection === "isometric" ? "isometric" : undefined;
+  if (projection !== "flat" && projection !== "isometric") {
+    warnings.push(`Projection "${projection}" is not known here; drawn flat.`);
+  }
+  if (spatial) {
+    const result = spatialDiagram({
+      element,
+      mode: spatial,
+      nodes,
+      edges,
+      groups,
+      ranks: assignRanks(element.nodes, element.edges),
+      width,
+      height,
+      warnings,
+      lineColor: defaultStrokeColor,
+      plateFill: String(resolveValue(theme, "token:colors.surfaceAlt", defaultFill)),
+      labelColor: edgeLabelColor,
+      labelSize: sublabelSize,
+    });
+    return {
+      kind: "diagram",
+      diagramType: element.diagramType,
+      algorithm: spatial === "isometric" ? `${algorithm}:isometric` : spatial,
+      nodes: result.nodes,
+      edges: result.edges,
+      groups: result.groups,
+      typography: { ...nodeTypography, fontSize: result.nodes[0]?.labelSize ?? nodeLabelSize },
+      warnings,
+      ...(result.edgesAbove ? { edgesAbove: true } : {}),
+    };
   }
 
   return {

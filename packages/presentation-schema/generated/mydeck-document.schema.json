@@ -4437,14 +4437,10 @@
               "type": "object",
               "properties": {
                 "algorithm": {
-                  "type": "string",
-                  "enum": [
-                    "layered",
-                    "radial",
-                    "grid",
-                    "force",
-                    "manual"
-                  ]
+                  "type": "string"
+                },
+                "projection": {
+                  "type": "string"
                 },
                 "direction": {
                   "type": "string",

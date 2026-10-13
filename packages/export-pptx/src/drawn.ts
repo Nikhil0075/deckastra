@@ -503,19 +503,34 @@ export function diagramShape(node: SceneNode, context: ShapeContext): string | u
     addText(writer, { text: payload.notice, x: node.localBounds.width / 2, y: node.localBounds.height / 2, size: 18, color: "#808080", anchor: "middle", middle: true });
   }
   for (const box of payload.groups) {
-    addBox(writer, box, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash, radius: box.radius });
+    // A plate or ring with depth is its faces and outline (2026-10-13).
+    for (const side of box.sides ?? []) addPath(writer, side.d, { fill: side.fill, stroke: box.stroke, strokeWidth: box.strokeWidth });
+    if (box.outline) addPath(writer, box.outline, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash });
+    else addBox(writer, box, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash, radius: box.radius });
     if (box.label) addText(writer, { text: box.label.text, x: box.label.x, y: box.label.y, size: box.label.size, color: box.label.color, anchor: "start" });
   }
-  for (const edge of payload.edges) {
-    addPath(writer, edge.d, { stroke: edge.stroke, strokeWidth: edge.strokeWidth, dash: edge.dash, head: edge.markerStart, tail: edge.markerEnd });
-    if (edge.label) addText(writer, { text: edge.label.text, x: edge.label.x, y: edge.label.y, size: edge.label.size, color: edge.label.color, anchor: "middle" });
-  }
+  const drawEdges = () => {
+    for (const edge of payload.edges) {
+      addPath(writer, edge.d, { stroke: edge.stroke, strokeWidth: edge.strokeWidth, dash: edge.dash, head: edge.markerStart, tail: edge.markerEnd });
+      if (edge.label) addText(writer, { text: edge.label.text, x: edge.label.x, y: edge.label.y, size: edge.label.size, color: edge.label.color, anchor: "middle" });
+    }
+  };
+  // The same order as the slide: blocks' edges run over their tops.
+  if (!payload.edgesAbove) drawEdges();
   for (const box of payload.nodes) {
     // The label is the node's own text, so a recipient edits it in the box.
     const lines = [{ text: box.label, size: box.labelSize, color: box.labelColor, bold: true }];
     if (box.sublabel) lines.push({ text: box.sublabel, size: box.sublabelSize, color: box.labelColor, bold: false });
-    addBox(writer, box, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash, radius: box.radius }, { lines });
+    if (box.outline) {
+      // A block: its side faces, its top face, and the label in a clear box over the top.
+      for (const side of box.sides ?? []) addPath(writer, side.d, { fill: side.fill, stroke: box.stroke, strokeWidth: box.strokeWidth });
+      addPath(writer, box.outline, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash });
+      addBox(writer, box, {}, { lines });
+    } else {
+      addBox(writer, box, { fill: box.fill, stroke: box.stroke, strokeWidth: box.strokeWidth, dash: box.dash, radius: box.radius }, { lines });
+    }
   }
+  if (payload.edgesAbove) drawEdges();
 
   context.ledger.record({
     severity: "info",

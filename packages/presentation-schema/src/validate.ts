@@ -3,7 +3,9 @@ import { type PatchOperation } from "./patch";
 import { checkLimit, LIMITS } from "./limits";
 import {
   CHART_KINDS,
+  DIAGRAM_ALGORITHMS,
   DIAGRAM_KINDS,
+  DIAGRAM_PROJECTIONS,
   ELEMENT_SCHEMA_BY_TYPE,
   LAYER_ROLES,
   MASK_SHAPES,
@@ -508,6 +510,8 @@ function validateElements(doc: PresentationDocument, c: IssueCollector, ids: Set
         [LAYER_ROLES, (element as { layerRole?: unknown }).layerRole, "layerRole"],
         [CHART_KINDS, (element as { chartType?: unknown }).chartType, "chartType"],
         [DIAGRAM_KINDS, (element as { diagramType?: unknown }).diagramType, "diagramType"],
+        [DIAGRAM_ALGORITHMS, (element as { layoutHint?: { algorithm?: unknown } }).layoutHint?.algorithm, "layoutHint/algorithm"],
+        [DIAGRAM_PROJECTIONS, (element as { layoutHint?: { projection?: unknown } }).layoutHint?.projection, "layoutHint/projection"],
       ];
       for (const [known, value, property] of openEnumChecks) {
         if (value !== undefined && isUnknownEnumValue(known, value)) {

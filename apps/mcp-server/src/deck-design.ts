@@ -41,6 +41,7 @@ Before writing any slide:
 | Two measures for many items, or three with size | \`chart\` layout, \`type\` \`scatter\` or \`bubble\`, with \`points\` |
 | Values by place | \`chart\` layout, \`type\` \`bubbleMap\`, with \`points\` carrying latitude and longitude |
 | Parts of a system and how they connect | \`system-diagram\` or \`architecture\` |
+| Layers of a system, or a hub and what circles it | a diagram with \`view\` \`stack\` or \`orbit\`; \`isometric\` for blocks |
 | Steps something goes through | \`process-flow\` or \`process\` |
 | Dated milestones | \`milestones\`, \`timeline\` or \`roadmap\` |
 | One decisive number | \`big-number\` |
