@@ -27,7 +27,7 @@ from typing import Any
 
 from .ids import new_id
 from .motion import animate_slide
-from .models import SlideLayout, SlidePlan, StoryPlan
+from .models import POINT_CHARTS, SlideLayout, SlidePlan, StoryPlan
 from .theme import neo_technical_theme
 
 SCHEMA_VERSION = "1.1.0"
@@ -606,6 +606,17 @@ def _chart_alt_text(plan: SlidePlan) -> str:
     chart = plan.chart
     assert chart is not None
     unit = f" {chart.unit}" if chart.unit else ""
+    if chart.type in POINT_CHARTS:
+        kind = {"bubbleMap": "Bubble map", "bubble": "Bubble chart", "scatter": "Scatter chart"}[chart.type]
+        described = []
+        for index, point in enumerate(chart.points):
+            name = point.label or f"Point {index + 1}"
+            if chart.type == "bubbleMap":
+                described.append(f"{name} {point.size:g}{unit}")
+            else:
+                size = f", size {point.size:g}" if chart.type == "bubble" and point.size is not None else ""
+                described.append(f"{name} at {point.x:g}, {point.y:g}{size}")
+        return f"{kind}. " + "; ".join(described)[:900]
     parts = []
     for series in chart.series:
         values = ", ".join(f"{category} {value:g}{unit}" for category, value in zip(chart.categories, series.values))
@@ -624,6 +635,17 @@ def _layout_chart(plan: SlidePlan) -> list[dict[str, Any]]:
     # A takeaway beside the chart when there is one: the number is the
     # evidence, the sentence is the point.
     width = CONTENT_W * (0.66 if plan.body else 1.0)
+    if chart.type in POINT_CHARTS:
+        elements.append(_point_chart(plan, y, width, bottom))
+        if plan.body:
+            side_x = CONTENT_X + CONTENT_W * 0.70
+            elements.append(
+                _text(role="body", x=side_x, y=y + 40, width=CONTENT_W * 0.30, height=bottom - y - 40,
+                      content=_rich_text(plan.body), token="body", size=28, line_height=1.4)
+            )
+        if plan.caption:
+            elements.append(_caption(plan.caption, CONTENT_BOTTOM - 48))
+        return elements
     keys = [f"s{index}" for index in range(len(chart.series))]
     rows = [
         {"category": category, **{key: series.values[i] for key, series in zip(keys, chart.series)}}
@@ -670,6 +692,56 @@ def _layout_chart(plan: SlidePlan) -> list[dict[str, Any]]:
     if plan.caption:
         elements.append(_caption(plan.caption, CONTENT_BOTTOM - 48))
     return elements
+
+
+def _point_chart(plan: SlidePlan, y: float, width: float, bottom: float) -> dict[str, Any]:
+    """A scatter, bubble chart or bubble map from the plan's points (2026-10-13).
+
+    The points become rows with fixed field names; the renderer projects and
+    places them. Groups become the series, so a region shares a colour.
+    """
+    chart = plan.chart
+    assert chart is not None
+    grouped = any(point.group for point in chart.points)
+    rows: list[dict[str, Any]] = []
+    for index, point in enumerate(chart.points):
+        row: dict[str, Any] = {"label": point.label or f"Point {index + 1}"}
+        if chart.type == "bubbleMap":
+            row.update({"latitude": point.latitude, "longitude": point.longitude, "size": point.size})
+        else:
+            row.update({"x": point.x, "y": point.y})
+            if chart.type == "bubble":
+                row["size"] = point.size
+        if grouped:
+            row["group"] = point.group or "Other"
+        rows.append(row)
+    if chart.type == "bubbleMap":
+        encoding: dict[str, Any] = {"category": "label", "value": "size", "size": "size", "latitude": "latitude", "longitude": "longitude"}
+    else:
+        encoding = {"category": "label", "x": "x", "value": "y"}
+        if chart.type == "bubble":
+            encoding["size"] = "size"
+    if grouped:
+        encoding["series"] = "group"
+    style: dict[str, Any] = {"showLegend": grouped, "showDataLabels": len(chart.points) <= 12}
+    if chart.unit:
+        style["numberFormat"] = {"suffix": chart.unit if chart.unit.startswith("%") else f" {chart.unit}"}
+    if chart.x_title:
+        style["axisX"] = {"title": chart.x_title}
+    if chart.y_title:
+        style["axisY"] = {"title": chart.y_title}
+    return {
+        "id": new_id("el"),
+        "type": "chart",
+        "name": "Chart",
+        "semanticRole": "chart",
+        "chartType": chart.type,
+        "transform": {"x": CONTENT_X, "y": round(y + 10, 2), "width": round(width, 2), "height": round(bottom - y - 10, 2)},
+        "data": {"type": "inline", "rows": rows},
+        "encoding": encoding,
+        "chartStyle": style,
+        "altText": _chart_alt_text(plan),
+    }
 
 
 def _layout_diagram(plan: SlidePlan) -> list[dict[str, Any]]:

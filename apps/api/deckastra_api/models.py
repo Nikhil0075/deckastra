@@ -55,17 +55,58 @@ class ChartSeriesPlan(BaseModel):
     values: list[float] = Field(min_length=1, max_length=24)
 
 
+class ChartPointPlan(BaseModel):
+    """One point on a scatter, bubble or bubble map: numbers and a name, never a position on the slide."""
+
+    label: str = Field(default="", max_length=40)
+    x: float | None = None
+    y: float | None = None
+    #: A bubble's value: its area is proportional to it.
+    size: float | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    #: Points in the same group share a colour and a legend entry.
+    group: str = Field(default="", max_length=40)
+
+
+#: Charts that place points by their own numbers (2026-10-13).
+POINT_CHARTS = ("scatter", "bubble", "bubbleMap")
+
+
 class ChartPlan(BaseModel):
     """The numbers, never the drawing: the renderer lays the chart out."""
 
-    type: Literal["column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope"] = "column"
-    categories: list[str] = Field(min_length=1, max_length=24)
-    series: list[ChartSeriesPlan] = Field(min_length=1, max_length=6)
+    type: Literal[
+        "column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope",
+        "scatter", "bubble", "bubbleMap",
+    ] = "column"
+    #: Category charts: the labels along the axis, and one value per label in each series.
+    categories: list[str] = Field(default_factory=list, max_length=24)
+    series: list[ChartSeriesPlan] = Field(default_factory=list, max_length=6)
+    #: Scatter, bubble and bubble map: the points themselves.
+    points: list[ChartPointPlan] = Field(default_factory=list, max_length=60)
+    #: Axis titles for a scatter or bubble chart.
+    x_title: str = Field(default="", max_length=40, validation_alias=AliasChoices("x_title", "xTitle"))
+    y_title: str = Field(default="", max_length=40, validation_alias=AliasChoices("y_title", "yTitle"))
     #: Shown after each number ("%", "₹ cr"). Empty for none.
     unit: str = Field(default="", max_length=12)
 
     @model_validator(mode="after")
     def _one_value_per_category(self) -> "ChartPlan":
+        if self.type in POINT_CHARTS:
+            if not self.points:
+                raise ValueError(f"A {self.type} chart needs points.")
+            for index, point in enumerate(self.points):
+                where = point.label or f"Point {index + 1}"
+                if self.type == "bubbleMap":
+                    if point.latitude is None or point.longitude is None or point.size is None:
+                        raise ValueError(f"{where} needs a latitude, a longitude and a size for a bubble map.")
+                elif point.x is None or point.y is None or (self.type == "bubble" and point.size is None):
+                    needs = "x, y and size" if self.type == "bubble" else "x and y"
+                    raise ValueError(f"{where} needs {needs} for a {self.type} chart.")
+            return self
+        if not self.categories or not self.series:
+            raise ValueError(f"A {self.type} chart needs categories and at least one series.")
         for series in self.series:
             if len(series.values) != len(self.categories):
                 raise ValueError(

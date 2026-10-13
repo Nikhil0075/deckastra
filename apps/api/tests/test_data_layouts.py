@@ -92,3 +92,48 @@ def test_a_data_pattern_refuses_a_slot_of_the_wrong_shape():
         presets.slide_plan_from_pattern("bar-chart", {"chart": ["not", "a", "chart"]})
     with pytest.raises(presets.PresetError, match="wrong number of items"):
         presets.slide_plan_from_pattern("milestones", {"timeline": [{"when": "Q1", "label": "Only"}]})
+
+
+# ---------------------------------------------------------------- point charts
+# Scatter, bubble and bubble map take points rather than categories (2026-10-13).
+
+
+def _point_chart(chart: dict) -> dict:
+    document = compose_document(_plan({"layout": "chart", "purpose": "p", "key_message": "k", "headline": "Where it sells", "chart": chart}))
+    assert validate_document(document) == []
+    return next(e for e in document["slides"][0]["elements"] if e["type"] == "chart")
+
+
+def test_a_bubble_map_composes_from_places_and_groups_them():
+    chart = _point_chart({"type": "bubbleMap", "unit": "$M", "points": [
+        {"label": "London", "latitude": 51.5, "longitude": -0.13, "size": 42, "group": "Europe"},
+        {"label": "Tokyo", "latitude": 35.68, "longitude": 139.69, "size": 47, "group": "Asia"},
+    ]})
+    assert chart["chartType"] == "bubbleMap"
+    assert chart["encoding"] == {"category": "label", "value": "size", "size": "size", "latitude": "latitude", "longitude": "longitude", "series": "group"}
+    assert chart["data"]["rows"][0] == {"label": "London", "latitude": 51.5, "longitude": -0.13, "size": 42, "group": "Europe"}
+    assert chart["chartStyle"]["showLegend"] is True
+    assert chart["altText"] == "Bubble map. London 42 $M; Tokyo 47 $M"
+
+
+def test_a_bubble_chart_carries_its_axis_titles_and_sizes():
+    chart = _point_chart({"type": "bubble", "x_title": "GDP per person", "y_title": "Life expectancy", "points": [
+        {"label": "A", "x": 12, "y": 71, "size": 140}, {"label": "B", "x": 45, "y": 81, "size": 60},
+    ]})
+    assert chart["encoding"] == {"category": "label", "x": "x", "value": "y", "size": "size"}
+    assert chart["chartStyle"]["axisX"] == {"title": "GDP per person"}
+    assert chart["chartStyle"]["showLegend"] is False
+    assert "A at 12, 71, size 140" in chart["altText"]
+
+
+@pytest.mark.parametrize("chart, reason", [
+    ({"type": "scatter"}, "needs points"),
+    ({"type": "scatter", "points": [{"label": "A", "x": 1}]}, "A needs x and y"),
+    ({"type": "bubble", "points": [{"x": 1, "y": 2}]}, "Point 1 needs x, y and size"),
+    ({"type": "bubbleMap", "points": [{"label": "Paris", "latitude": 48.9, "size": 3}]}, "Paris needs a latitude, a longitude and a size"),
+    ({"type": "bubbleMap", "points": [{"latitude": 91, "longitude": 0, "size": 1}]}, "less than or equal to 90"),
+    ({"type": "column", "points": [{"x": 1, "y": 1}]}, "needs categories"),
+])
+def test_a_point_chart_without_usable_points_is_refused_where_it_is_written(chart, reason):
+    with pytest.raises(ValidationError, match=reason):
+        _plan({"layout": "chart", "purpose": "p", "key_message": "k", "headline": "H", "chart": chart})

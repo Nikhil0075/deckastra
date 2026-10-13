@@ -4414,6 +4414,50 @@ is never changed; Original removes the treatment. Rules that are easy to undo:
   centre, grain on a flat dark picture, and the capture carrying the vignette) and by `python-pptx`
   (`apps/api/tests/test_pptx_treatments.py`).
 
+### Scatter, bubble and bubble map (2026-10-13)
+
+`chartType` gains `bubble` and `bubbleMap`; `encoding` gains `x`, `latitude`
+and `longitude`; `chartStyle.mapExtent` is `data` (default) or `world`. Their
+layout is `renderer/src/point-charts.ts`, the same contract as every chart:
+rounded geometry in the payload, nothing computed in React or an exporter.
+Rules that are easy to undo:
+
+- **A scatter is numeric when its numbers are.** `encoding.x`, or the category
+  when every value is a number, places points on a real axis; a scatter of
+  words keeps the older banded layout, so no existing deck moves.
+- **A bubble's area carries its value**, not its radius (`radiusFor`, square
+  root). Bubbles are drawn largest first, translucent with a ring in the
+  slide's colour, so a small one over a big one stays visible. A row with no
+  positive size, or a place with no usable latitude and longitude, is left out
+  and counted in the warnings.
+- **The map is Equal Earth, an equal-area projection**, so a bubble is not
+  enlarged by its distance from the equator. The world frame runs from 84°N
+  to 58°S (Antarctica below it); a data frame grows to the bubbles plus 30%,
+  never narrower than 45° of longitude, fitted without distortion.
+- **The outline is generated, not fetched** (`scripts/build-world-map.mjs` →
+  `renderer/src/world-map.ts`): Natural Earth 1:110m land, public domain, from
+  the `world-atlas` development dependency (ISC, listed under `VENDORED` in
+  `notices.mjs`). The script decodes the TopoJSON itself. Land only: borders
+  are noise at slide size and date.
+- **A ring crossing the 180° meridian is unwrapped in the generator** and drawn
+  twice by the renderer, shifted by 360° and clipped to ±180. Drawn as stored,
+  Fiji was a hairline across the whole map; only a look at the render showed
+  it. Antarctica's single crossing is its own edge along the pole and is left.
+- **The land is projected and clipped to the plot in the scene build**, as one
+  path with a move per landmass, so PowerPoint receives one custom outline that
+  already fits rather than one drawn past the chart.
+- **Labels never sit on each other**: placed largest bubble first, a label that
+  would overlap one already placed is left off, and the warnings say how many.
+- **The editor grid has role columns** for these charts (Across, Up, Size, or
+  Latitude, Longitude, Size; `ChartGrid.roles`) instead of series. Changing a
+  chart to one of them (`chartTypeOperations`) names its columns from the
+  series it had and adds missing ones empty; an edit keeps row fields the grid
+  does not show, such as a region used as the series.
+- **Agents send points** (`ChartPlan.points`: label, x, y, size, latitude,
+  longitude, group, plus `x_title`, `y_title`), validated where the plan is
+  written; `compose._point_chart` writes the rows. The neutral golden did not
+  move.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

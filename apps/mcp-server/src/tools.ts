@@ -274,9 +274,30 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
   // Data a slide carries rather than words (2026-10-11). Names and numbers only:
   // the renderer lays out the chart, the layout engine places the diagram.
   const chartData = z.object({
-    type: z.enum(["column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope"]).optional(),
-    categories: z.array(z.string().min(1).max(40)).min(1).max(24),
-    series: z.array(z.object({ name: z.string().min(1).max(60), values: z.array(z.number()).min(1).max(24) })).min(1).max(6),
+    type: z
+      .enum(["column", "bar", "line", "area", "pie", "donut", "stackedColumn", "stackedBar", "combo", "waterfall", "slope", "scatter", "bubble", "bubbleMap"])
+      .optional(),
+    // Category charts: labels and one value per label in each series.
+    categories: z.array(z.string().min(1).max(40)).max(24).optional(),
+    series: z.array(z.object({ name: z.string().min(1).max(60), values: z.array(z.number()).min(1).max(24) })).max(6).optional(),
+    // Scatter (x, y), bubble (x, y, size) and bubble map (latitude, longitude,
+    // size): the points themselves, named and grouped (2026-10-13).
+    points: z
+      .array(
+        z.object({
+          label: z.string().max(40).optional(),
+          x: z.number().optional(),
+          y: z.number().optional(),
+          size: z.number().optional(),
+          latitude: z.number().min(-90).max(90).optional(),
+          longitude: z.number().min(-180).max(180).optional(),
+          group: z.string().max(40).optional(),
+        }),
+      )
+      .max(60)
+      .optional(),
+    x_title: z.string().max(40).optional(),
+    y_title: z.string().max(40).optional(),
     unit: z.string().max(12).optional(),
   });
   const diagramData = z.object({
@@ -354,7 +375,8 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         "font sizes or colours: the deterministic composer supplies them and guarantees valid geometry. " +
         "Name a design_language (see design_language_get) to compose in its grammar and theme; " +
         "its density limits apply, and anything trimmed or too long comes back as warnings. " +
-        "Data layouts: chart (with chart: categories, named series, unit; types include waterfall and slope), " +
+        "Data layouts: chart (with chart: categories, named series, unit; types include waterfall and slope; " +
+          "scatter, bubble and bubbleMap take points instead: x, y and size, or latitude, longitude and size, with a label and an optional group), " +
         "diagram (with diagram: nodes by key and edges between keys), timeline (with two or more dated entries) " +
         "and image (a full-bleed photograph, described in picture). Vary layouts: do not use one three slides running.",
       inputSchema: {

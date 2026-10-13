@@ -70,9 +70,15 @@ function npmComponents() {
  * into `packages/renderer/src/icon-library.ts` by `scripts/build-icon-library.mjs`
  * (design review, 2026-09-27). Its licence (ISC, with MIT for the icons that
  * came from Feather) has to travel with the copy all the same, so it is read
- * from the development dependency the generator used.
+ * from the development dependency the generator used. The bubble map's world
+ * outline is the same case (2026-10-13): Natural Earth's land, public domain,
+ * redistributed by world-atlas (ISC) and generated into
+ * `packages/renderer/src/world-map.ts` by `scripts/build-world-map.mjs`.
  */
-const VENDORED = [{ name: "lucide-static", license: "ISC AND MIT", usedFor: "icon library geometry" }];
+const VENDORED = [
+  { name: "lucide-static", license: "ISC AND MIT", usedFor: "icon library geometry" },
+  { name: "world-atlas", license: "ISC", usedFor: "bubble map world outline (Natural Earth, public domain)" },
+];
 
 function vendoredComponents() {
   const components = [];

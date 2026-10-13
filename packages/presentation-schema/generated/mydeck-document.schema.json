@@ -4152,6 +4152,15 @@
                 "size": {
                   "type": "string"
                 },
+                "x": {
+                  "type": "string"
+                },
+                "latitude": {
+                  "type": "string"
+                },
+                "longitude": {
+                  "type": "string"
+                },
                 "sort": {
                   "type": "object",
                   "properties": {
@@ -4243,6 +4252,13 @@
                 },
                 "smoothing": {
                   "$ref": "#/$defs/__schema34"
+                },
+                "mapExtent": {
+                  "type": "string",
+                  "enum": [
+                    "data",
+                    "world"
+                  ]
                 }
               },
               "additionalProperties": {}
