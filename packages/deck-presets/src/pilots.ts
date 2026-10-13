@@ -97,6 +97,122 @@ const index = (n: number) => String(n).padStart(2, "0");
 
 export const PILOT_SOURCES: readonly PresetSource[] = [
   {
+    id: "asterloop-energy",
+    name: "AsterLoop Energy — Series A",
+    summary: "A premium clean-energy fundraising story from industrial urgency to system proof and scale.",
+    purpose: "business",
+    tags: ["energy", "climate", "fundraising", "series a", "industrial"],
+    designLanguage: "spatial-future",
+    overrides: { themeKey: "asterloop-energy", voiceStyle: "confident" },
+    slides: [
+      {
+        pattern: "full-bleed-photo",
+        purpose: "Open on the industrial transformation",
+        eyebrow: "ASTERLOOP ENERGY",
+        headline: "Industrial heat, reinvented",
+        slots: {
+          subtitle: "Series A · clean, dispatchable heat for heavy industry",
+          picture: "A monumental thermal-energy installation at blue hour, copper heat glowing through insulated industrial pipework",
+        },
+      },
+      {
+        pattern: "big-number",
+        purpose: "Make the emissions gap impossible to ignore",
+        eyebrow: "THE 42% GAP",
+        headline: "Heat is the hard part",
+        slots: {
+          metrics: [{ value: "42%", label: "of industrial emissions are tied to process heat" }],
+          caption: "Illustrative market framing; replace with a sourced figure before external use.",
+        },
+      },
+      {
+        pattern: "trend-chart",
+        purpose: "Show commercial momentum",
+        eyebrow: "COMMERCIAL MOMENTUM",
+        headline: "Deployments turn proof into pipeline",
+        slots: {
+          chart: {
+            type: "line",
+            categories: ["2023", "2024", "2025", "2026E"],
+            series: [
+              { name: "Revenue", values: [4, 14, 28, 48] },
+              { name: "Deployments", values: [2, 5, 8, 12] },
+            ],
+            unit: "$M",
+          },
+          body: "Signed sites and repeatable commissioning are expanding together.",
+          caption: "Illustrative company data for template demonstration.",
+        },
+      },
+      {
+        pattern: "roadmap",
+        purpose: "Connect the round to scale",
+        eyebrow: "ROAD TO SCALE",
+        headline: "Each milestone removes a scale constraint",
+        slots: {
+          bullets: [
+            "2026 — scale manufacturing",
+            "2027 — expand delivery network",
+            "2028 — enter three industrial clusters",
+            "2030 — avoid one gigatonne pathway",
+          ],
+        },
+      },
+      {
+        pattern: "system-diagram",
+        purpose: "Explain the thermal loop",
+        eyebrow: "THERMAL LOOP ARCHITECTURE",
+        headline: "Modular hardware closes the loop",
+        slots: {
+          diagram: {
+            kind: "architecture",
+            direction: "LR",
+            nodes: [
+              { key: "input", label: "Heat input", sublabel: "renewable electricity", role: "external" },
+              { key: "store", label: "Thermal store", sublabel: "modular media", role: "datastore" },
+              { key: "exchange", label: "Heat exchange", sublabel: "closed loop", role: "service" },
+              { key: "process", label: "Industrial process", sublabel: "dispatchable output", role: "external" },
+            ],
+            edges: [
+              { source: "input", target: "store" },
+              { source: "store", target: "exchange" },
+              { source: "exchange", target: "process" },
+              { source: "process", target: "store", label: "recover" },
+            ],
+          },
+        },
+      },
+      {
+        pattern: "comparison",
+        purpose: "Contrast conventional heat with AsterLoop",
+        eyebrow: "WHY ASTERLOOP WINS",
+        headline: "Cleaner heat without operational compromise",
+        slots: {
+          body: "Conventional systems lock operators into fuel volatility, emissions exposure and inflexible capacity.",
+          bullets: ["Clean, reliable heat", "Lower lifecycle cost", "Flexible modular expansion", "Designed for industrial uptime"],
+        },
+      },
+      {
+        pattern: "profile",
+        purpose: "Let an operator validate the benefit",
+        eyebrow: "BUILT WITH OPERATORS",
+        headline: "Reliability earns adoption",
+        slots: {
+          quote: "AsterLoop gives us the reliable heat we need without the emissions trade-off.",
+          attribution: "Operations manager · cement manufacturer",
+          picture: "An experienced industrial operations manager in safety glasses and a hard hat inside a clean modern plant",
+        },
+      },
+      {
+        pattern: "closing",
+        purpose: "Close with the investment invitation",
+        eyebrow: "SERIES A",
+        headline: "Power the next industrial era",
+        slots: { subtitle: "Partner with AsterLoop to make clean industrial heat inevitable." },
+      },
+    ],
+  },
+  {
     id: "swiss-strategy-brief",
     name: "Strategy brief",
     summary: "A strategy told in short, numbered statements on an asymmetric grid, with one red signal per slide.",

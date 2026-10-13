@@ -4285,6 +4285,43 @@ Rules that are easy to undo:
   for the rest of the month once a project passes ₹5,000. If staging's AI is
   off, check `deckastra-budget-stop` logs before suspecting the code.
 
+### Image masks (2026-10-13)
+
+`image.mask` (`MaskDefinitionSchema`) is `rounded`, `ellipse`, `path`
+(normalized 0..1 to the box), `shape` (circle, ellipse, pill, arch, blob, torn,
+triangle, diamond, star, polygon, chevron, parallelogram, speechBubble; open,
+so an unknown one is a W241 and draws unmasked), `compound` (up to 16 parts
+shown together) or `shapeRef`. Every outline may carry `invert` and `rotation`.
+Rules that are easy to undo:
+
+- **One resolution, every consumer** (`renderer/src/masks.ts`). The scene build
+  turns a mask into absolute outlines in the element's own box, rotation applied
+  and arcs and quadratics turned into cubics. The canvas, thumbnails, the PDF and
+  PowerPoint all read those paths; nothing re-derives a mask.
+- **The outline belongs to the box, not the photograph.** Turning a mask leaves
+  the picture upright, and the fit and focal point still choose what shows
+  through it. Replacing the picture changes only `assetId`, so the mask, fit and
+  focal point survive (`replaceImageOperations`).
+- **The browser draws it with `mask-image`**, an SVG data URL the size of the box.
+  Inverted is an SVG `<mask>`, not an even-odd fill, so overlapping parts stay one
+  hole. The missing-picture placeholder is masked too. Chromium writes the masked
+  picture into the PDF under an alpha soft mask.
+- **PowerPoint keeps a crop wherever a crop can be the mask**: an ellipse or a
+  rounded rectangle is a preset crop (`preset` on the payload), any other single
+  outline is `custGeom` with its curves. Inverted, compound and `contain`/`none`
+  fitted masks (`maskNeedsPicture`, shared with the worker) are captured as a
+  transparent PNG under `maskedImageKey` and reported `rasterized`; without a
+  capture the report says `approximated`, and an inverted mask is never cropped
+  to its own hole.
+- **A mask that cannot be drawn says so** (`maskWarning`): an empty path, an
+  unknown shape, or `shapeRef`, which is not drawn yet. The picture shows
+  unmasked and PowerPoint's report names it.
+- The inspector's Mask control (`ImageSection`, `lib/image-mask.ts`) keeps a
+  mask's turn and inversion when its outline changes, and writes the whole
+  `mask` in one patch. Masks are checked in real Chromium
+  (`apps/worker/tests/masks.browser.test.ts`) and by `python-pptx`
+  (`apps/api/tests/test_pptx_masks.py`).
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

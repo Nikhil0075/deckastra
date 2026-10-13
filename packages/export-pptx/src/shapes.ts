@@ -313,8 +313,24 @@ function textShape(node: SceneNode, context: ShapeContext): string {
   if (payload.kind !== "text") return "";
 
   const { units } = context;
+  let pictureFillRelationshipId: string | undefined;
+  if (payload.pictureFill) {
+    const claim = context.placePicture?.(payload.pictureFill.assetId);
+    if (claim && "placed" in claim) {
+      pictureFillRelationshipId = claim.placed.relationshipId;
+    } else {
+      context.ledger.record({
+        severity: "warning",
+        slideId: context.scene.slideId,
+        elementId: node.id,
+        feature: "text-picture-fill",
+        action: "approximated",
+        message: `The picture inside this text was replaced by its fallback colour because ${claim && "refused" in claim ? claim.refused : "the exporter received no image registry"}.`,
+      });
+    }
+  }
   const paragraphs = payload.blocks
-    .map((block) => paragraph(block, payload.typography, units, payload.align))
+    .map((block) => paragraph(block, payload.typography, units, payload.align, pictureFillRelationshipId, payload.pictureFill?.fallbackColor))
     .join("");
 
   return (
@@ -369,6 +385,8 @@ function paragraph(
   typography: { fontFamily?: string; fontSize?: number; color?: string; fontWeight?: number },
   units: Units,
   alignment: string | undefined,
+  pictureFillRelationshipId?: string,
+  pictureFillFallback?: string,
 ): string {
   const isList = block.type === "bullet" || block.type === "numbered" || block.type === "number";
   const level = isList ? (block.indentLevel ?? 0) : undefined;
@@ -380,7 +398,7 @@ function paragraph(
     (level === undefined ? "><a:buNone/></a:pPr>" : "/>");
 
   const runs = block.spans
-    .map((span) => run(span, typography, units))
+    .map((span) => run(span, typography, units, pictureFillRelationshipId, pictureFillFallback))
     .join("");
 
   return `<a:p>${properties}${runs}</a:p>`;
@@ -390,6 +408,8 @@ function run(
   span: TextBlockLike["spans"][number],
   typography: { fontFamily?: string; fontSize?: number; color?: string; fontWeight?: number },
   units: Units,
+  pictureFillRelationshipId?: string,
+  pictureFillFallback?: string,
 ): string {
   if (!span.text) return "";
 
@@ -397,11 +417,13 @@ function run(
   const bold = span.bold || (typography.fontWeight ?? 400) >= 600 ? ' b="1"' : "";
   const italic = span.italic ? ' i="1"' : "";
   const underline = span.underline ? ' u="sng"' : "";
-  const colour = hex(span.color ?? typography.color);
+  const runFill = pictureFillRelationshipId
+    ? `<a:blipFill dpi="0" rotWithShape="1"><a:blip r:embed="${pictureFillRelationshipId}"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>`
+    : `<a:solidFill><a:srgbClr val="${hex(span.color ?? pictureFillFallback ?? typography.color)}"/></a:solidFill>`;
 
   return (
     `<a:r><a:rPr lang="en-US" sz="${units.fontSize(typography.fontSize ?? 18)}"${bold}${italic}${underline}>` +
-    `<a:solidFill><a:srgbClr val="${colour}"/></a:solidFill>` +
+    runFill +
     `<a:latin typeface="${xml(family)}"/><a:cs typeface="${xml(family)}"/>` +
     `</a:rPr><a:t>${xml(span.text)}</a:t></a:r>`
   );
@@ -579,6 +601,22 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
   const payload = node.renderPayload;
   if (payload.kind !== "image") return unsupported(node, context);
 
+  if (maskNeedsPicture(node)) {
+    const captured = capturedMaskShape(node, context);
+    if (captured) return captured;
+    // No capture reached the adapter (a caller that does not capture): the
+    // photograph is still embedded, cropped to the first outline where it can
+    // be, and the report says the mask is not as drawn.
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image mask",
+      action: "approximated",
+      message: "This picture's mask is inverted, combined or fitted inside its box, which PowerPoint cannot crop to, so the file shows a simpler crop.",
+    });
+  }
+
   const claim = context.placePicture?.(payload.assetId);
   if (!claim || "refused" in claim) {
     return unsupported(node, context, claim?.refused);
@@ -607,6 +645,17 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
   const rotate = rotationOf(node);
   const attributes = rotate !== 0 ? ` rot="${rotation(rotate)}"` : "";
 
+  if (payload.maskWarning) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image mask",
+      action: "dropped",
+      message: payload.maskWarning,
+    });
+  }
+
   return (
     "<p:pic>" +
     "<p:nvPicPr>" +
@@ -620,6 +669,103 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     `<p:spPr><a:xfrm${attributes}>` +
     `<a:off x="${units.px(placed.box.x)}" y="${units.px(placed.box.y)}"/>` +
     `<a:ext cx="${units.px(Math.max(1, placed.box.width))}" cy="${units.px(Math.max(1, placed.box.height))}"/>` +
+    "</a:xfrm>" +
+    pictureGeometry(node, context) +
+    "</p:spPr>" +
+    "</p:pic>"
+  );
+}
+
+/** The key a masked picture's capture travels under in `ExportInput.images`. */
+export function maskedImageKey(elementId: string): string {
+  return `masked:${elementId}`;
+}
+
+/**
+ * Whether a masked picture has to reach PowerPoint as the exporter's capture
+ * of it rather than as the photograph cropped to an outline.
+ *
+ * A picture's crop shape in PowerPoint is one outline, filled, over the whole
+ * picture frame. An inverted mask is a hole, several parts are several
+ * outlines, and a `contain` or `none` fit shrinks the frame away from the box
+ * the outline was drawn for. Those three are captured as they look. Shared
+ * with the worker, which does the capturing, so the two cannot disagree about
+ * which pictures it should have captured.
+ */
+export function maskNeedsPicture(node: SceneNode): boolean {
+  const payload = node.renderPayload;
+  if (payload.kind !== "image" || !payload.mask) return false;
+  return payload.mask.invert || payload.mask.paths.length > 1 || payload.objectFit === "contain" || payload.objectFit === "none";
+}
+
+/**
+ * A picture's crop shape: a preset where the outline is one (an ellipse, a
+ * rounded rectangle), so PowerPoint shows it as an ordinary crop that can be
+ * changed there; otherwise the outline itself as custom geometry, curves and
+ * all. The geometry is in the element's own box and PowerPoint stretches it to
+ * the frame, which is the same box.
+ */
+function pictureGeometry(node: SceneNode, context: ShapeContext): string {
+  const payload = node.renderPayload;
+  const rect = '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
+  // An inverted mask is a hole; cropping to its outline would show the hole.
+  if (payload.kind !== "image" || !payload.mask || payload.mask.invert) return rect;
+  const mask = payload.mask;
+  if (mask.preset?.geometry === "ellipse") return '<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom>';
+  const width = Math.max(1, node.localBounds.width);
+  const height = Math.max(1, node.localBounds.height);
+  if (mask.preset?.geometry === "roundRect") {
+    // `adj` is the corner as a share of the shorter side, 50000 being a pill.
+    const adj = Math.round(Math.min(50_000, (mask.preset.radius / Math.min(width, height)) * 100_000));
+    return `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${adj}"/></a:avLst></a:prstGeom>`;
+  }
+  const custom = mask.paths[0] ? pathGeometry(mask.paths[0], width, height, context.units) : undefined;
+  if (!custom) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image mask",
+      action: "dropped",
+      message: "This picture's mask could not be written as a PowerPoint crop shape, so it shows as a rectangle.",
+    });
+    return rect;
+  }
+  return custom.xml;
+}
+
+/**
+ * A masked picture PowerPoint cannot crop to its outline, as the picture the
+ * exporter captured of it: the photograph already cut to the mask, with
+ * transparency where it is cut away.
+ */
+function capturedMaskShape(node: SceneNode, context: ShapeContext): string | undefined {
+  const claim = context.placePicture?.(maskedImageKey(node.id));
+  if (!claim || "refused" in claim) return undefined;
+  context.ledger.record({
+    severity: "warning",
+    slideId: context.scene.slideId,
+    elementId: node.id,
+    feature: "image mask",
+    action: "rasterized",
+    message:
+      "PowerPoint cannot crop a picture to this mask (an inverted or combined outline, or a picture " +
+      "fitted inside its box), so it is embedded as a picture already cut to shape. It looks the " +
+      "same; the crop cannot be changed in PowerPoint.",
+  });
+  const { units } = context;
+  return (
+    "<p:pic>" +
+    "<p:nvPicPr>" +
+    `<p:cNvPr id="${context.nextId()}" ` +
+    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
+    "<p:nvPr/>" +
+    "</p:nvPicPr>" +
+    `<p:blipFill><a:blip r:embed="${claim.placed.relationshipId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+    "<p:spPr><a:xfrm>" +
+    `<a:off x="${units.px(node.bounds.x)}" y="${units.px(node.bounds.y)}"/>` +
+    `<a:ext cx="${units.px(Math.max(1, node.bounds.width))}" cy="${units.px(Math.max(1, node.bounds.height))}"/>` +
     "</a:xfrm>" +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
     "</p:spPr>" +

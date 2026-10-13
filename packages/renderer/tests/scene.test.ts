@@ -21,6 +21,29 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 const technical = loadFixture("technical");
 const animation = loadFixture("animation");
 
+it("carries an editable text picture fill into the scene", () => {
+  const document = structuredClone(technical);
+  const asset = document.assets.find((candidate) => candidate.type === "image")!;
+  const text = document.slides[0]!.elements.find((element) => element.type === "text")!;
+  (text as typeof text & { pictureFill: unknown }).pictureFill = {
+    assetId: asset.id,
+    fit: "cover",
+    focalPoint: { x: 0.7, y: 0.4 },
+    fallbackColor: "#F7F3E8",
+  };
+
+  const node = flattenScene(buildSlideScene(document, document.slides[0]!, 0, resolveTheme(document.theme))).find((candidate) => candidate.id === text.id)!;
+  expect(node.renderPayload).toMatchObject({
+    kind: "text",
+    pictureFill: {
+      assetId: asset.id,
+      objectFit: "cover",
+      objectPosition: "70.0% 40.0%",
+      fallbackColor: "#F7F3E8",
+    },
+  });
+});
+
 describe("matrix", () => {
   it("places an unrotated element at its top-left", () => {
     const m = localMatrix({ x: 100, y: 50, width: 200, height: 80 });

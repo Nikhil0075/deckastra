@@ -3361,6 +3361,38 @@
   text-align: left;
   overflow-wrap: anywhere;
 }
+.dk-library__pattern-family {
+  color: var(--dk-ink-muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: left;
+}
+.dk-library__pattern-detail {
+  display: grid;
+  gap: var(--dk-space-2);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule);
+  background: var(--dk-ground);
+}
+.dk-library__pattern-detail-copy {
+  display: grid;
+  gap: var(--dk-space-1);
+}
+.dk-library__pattern-detail-copy > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--dk-space-2);
+}
+.dk-library__pattern-detail-copy > div span {
+  color: var(--dk-ink-muted);
+  font-size: 10px;
+}
+.dk-library__pattern-detail-copy p {
+  margin: 0;
+  font-size: var(--dk-text-xs);
+  line-height: 1.4;
+}
 /* The library scrolls as one column. Its tabs must take the height of what
    they hold: shrunk to fit (a flex item's default), the grid overflowed its
    own box and Recent and Favourites were drawn on top of it. */
@@ -4916,4 +4948,22 @@
   align-items: center;
   gap: var(--dk-space-2);
   font-size: var(--dk-text-sm);
+}
+
+/* The image mask's custom outline, folded away beneath the picker. */
+.dk-details > summary {
+  cursor: pointer;
+  font-size: var(--dk-text-sm);
+  color: var(--dk-ink-muted);
+}
+.dk-details > summary:focus-visible {
+  outline: var(--dk-line-strong) solid var(--dk-blue);
+  outline-offset: 2px;
+}
+.dk-details[open] > summary {
+  margin-bottom: var(--dk-space-2);
+}
+.dk-details[open] {
+  display: grid;
+  gap: var(--dk-space-2);
 }

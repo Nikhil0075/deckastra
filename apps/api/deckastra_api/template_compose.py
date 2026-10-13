@@ -52,6 +52,8 @@ def compose_template(
         theme_id=theme_id,
         language=language,
         language_version=presets.language_version(language),
+        preserve_language_media=bool(preset_media.for_template(template_id)),
+        visual_system=template_id,
     )
     document.setdefault("metadata", {})["templateId"] = template_id
     document["metadata"]["motionStyle"] = str(preset["motionStyle"])

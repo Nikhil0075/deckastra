@@ -5,7 +5,7 @@ frame, Quiet Luxe's portrait, Earth Story's arch, Spatial Future's hologram and
 Play Lab's picture blob. A template can ship the picture that goes in it. This
 page covers what may ship, how a picture is added, and where things stand.
 
-## Status, 2026-10-11: 22 commercial-release images approved
+## Status, 2026-10-13: 22 approved images and 8 V2 candidates
 
 All 22 OpenArt Starter demo pictures have been replaced. The current set was
 generated with OpenAI image generation through Codex. The official OpenAI
@@ -33,12 +33,20 @@ owner's review:
 | --- | --- |
 | Terms | <https://openai.com/policies/row-terms-of-use/>, retrieved 2026-10-11; normalized retrieved-text SHA-256 `003722930ecfc18be07390656ae93d6c40189231f6abc2d135590db619688e3b` |
 | Model | OpenAI image generation through Codex, text-to-image |
-| Pictures | 22, 4.68 MB in all (largest 374 KB), 1600px on the long edge, JPEG quality 79–82 |
-| Review | Codex inspected every image; the product owner approved all 22 from the contact sheet on 2026-10-11. Recorded as `by: "person"`. |
+| Pictures | 30 total: 22 approved release images and 8 V2 candidates; all stay within the 400 KB / 1920px file ceiling |
+| Review | The product owner approved the original 22 on 2026-10-11. The eight V2 candidates await a new contact-sheet decision. |
 
 The release-review contact sheet is
 `concepts/unit10-release-media/contact-sheet.jpg`. The earlier OpenArt demo
 audit remains in `concepts/unit7b-media/` as historical evidence only.
+
+Eight new image-led V2 candidates were generated on 2026-10-13: seven for the
+AsterLoop flagship and one for Play Lab. They are wired into test/template
+previews, but each manifest entry remains `status: "candidate"` with
+`review.result: "pending"`. A normal design check accepts them so the complete
+composition can be judged. `problems(release=True)` deliberately rejects all
+eight until the product owner reviews the new contact sheet; they must not be
+used in a public installer before that decision is recorded.
 
 ## What may ship
 
@@ -53,12 +61,14 @@ It refuses:
   recorded size is wrong;
 - an entry without its provenance: `model`, `generatedAt`, the exact
   `prompt`, `sourceSha256` (the file as downloaded), and `alt` text;
-- an entry without a review: `review.result: "approved"`, a named `reviewer`
-  and a `date`;
+- a release entry without a review: `review.result: "approved"`, a named
+  `reviewer` and a `date`; candidate media may be tested but release mode
+  refuses it;
 - an entry without provider-specific licence evidence:
   `license.commercialUse: true`, a provider and plan/workflow accepted by the
   validator, plus `termsUrl`, `termsRetrievedAt` and `termsSha256`;
-- an entry that names no template and role (`hero` or `scene`).
+- an entry that names no template and either a broad role (`hero` or `scene`)
+  or an exact `slideIndex` plus named `frame` selector.
 
 JPEG, not WebP: PowerPoint does not open WebP, and the PPTX exporter refuses it
 rather than embed a broken picture.
@@ -71,9 +81,10 @@ with no picture folder.
 
 1. **Composition.** `template_compose.compose_template` composes the template,
    then `preset_media.attach` puts the template's pictures in the frames its
-   language drew. Title slides take the `hero` picture and other slides the
-   `scene`; either one stands in when the other is missing. The asset's storage
-   key is `preset-media/<file>`. The geometry code never changes.
+   language drew. Existing templates use `hero` and `scene`; an art-directed
+   flagship can target an exact slide and frame so a roadmap, product render
+   and portrait do not collapse to the same scene. The asset's storage key is
+   `preset-media/<file>`. The geometry code never changes.
 2. **Preview.** A template preview stores nothing, so its pictures are read
    from the build through `GET /v1/presets/media/{file}`. That route needs a
    signed-in caller and takes a file name the manifest lists, never a path.

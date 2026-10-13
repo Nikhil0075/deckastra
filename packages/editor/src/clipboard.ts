@@ -65,6 +65,8 @@ export function copy(
     for (const { element } of walkElements([root])) {
       const assetId = (element as { assetId?: unknown }).assetId;
       if (typeof assetId === "string") cited.add(assetId);
+      const pictureFillAssetId = (element as { pictureFill?: { assetId?: unknown } }).pictureFill?.assetId;
+      if (typeof pictureFillAssetId === "string") cited.add(pictureFillAssetId);
     }
   }
   const assets = document.assets.filter((asset) => cited.has(asset.id)).map((asset) => structuredClone(asset));

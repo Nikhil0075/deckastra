@@ -3,8 +3,19 @@ import type { ImageElement, PatchOperation, PresentationDocument } from "@deckas
 import { setPropertyDeep } from "@deckastra/presentation-core";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 
+import { resolveImageMask } from "@deckastra/renderer";
+
 import { uploadAndReplaceImage } from "../../lib/insert-image";
-import { Button, NumberField, Section, Segmented, Select } from "../../ui";
+import {
+  MASK_CHOICES,
+  maskChoice,
+  maskExportNote,
+  maskWithChoice,
+  maskWithOptions,
+  maskWithPath,
+  type MaskChoice,
+} from "../../lib/image-mask";
+import { Button, NumberField, Popover, Section, Segmented, Select, TextField, cx } from "../../ui";
 import { Hint } from "./controls";
 
 /**
@@ -111,6 +122,8 @@ export function ImageSection({
         </div>
       ) : null}
 
+      <MaskControls element={element} fit={fit} disabled={disabled} edit={edit} document={document} />
+
       {canReposition ? (
         <>
           <div className="dk-grid2">
@@ -208,4 +221,159 @@ export function visibleWindow(
   }
   const height = imageRatio / boxRatio;
   return { x: 0, y: (1 - height) * focal.y, width: 1, height };
+}
+
+/**
+ * The picture's mask (2026-10-13): the outline the picture shows through.
+ *
+ * The outline belongs to the box, not the photograph, so changing it keeps the
+ * fit and the focal point, and turning it leaves the photograph upright.
+ * Every change writes the whole `mask` once, so it is one undo step.
+ */
+function MaskControls({
+  document,
+  element,
+  fit,
+  disabled,
+  edit,
+}: {
+  document: PresentationDocument;
+  element: ImageElement;
+  fit: string;
+  disabled: boolean;
+  edit: Edit;
+}) {
+  const [open, setOpen] = useState(false);
+  const [path, setPath] = useState("");
+  const [pathError, setPathError] = useState<string | undefined>();
+  const mask = element.mask;
+  const choice = maskChoice(mask);
+  const write = (next: typeof mask, label: string, key = "mask") =>
+    edit(setPropertyDeep(document, element.id, "mask", next), label, `inspector:${element.id}:${key}`);
+  const label =
+    choice === "custom" ? "Custom outline" : choice === "compound" ? "Combined outline" : MASK_CHOICES.find((entry) => entry.value === choice)?.label ?? String(choice);
+  const warning = resolveImageMask(mask, element.transform.width, element.transform.height).warning;
+  const note = maskExportNote(mask, fit);
+  const rotation = mask && mask.type !== "shapeRef" ? mask.rotation ?? 0 : 0;
+  const inverted = Boolean(mask && mask.type !== "shapeRef" && mask.invert);
+
+  return (
+    <>
+      <div className="dk-field">
+        <span className="dk-label">Mask</span>
+        <Popover
+          label="Mask shapes"
+          align="end"
+          open={open}
+          onOpenChange={setOpen}
+          className="dk-visualpicker"
+          trigger={(props) => (
+            <button type="button" className="dk-input dk-visualpicker__trigger" aria-label={`Mask: ${label}`} disabled={disabled} data-testid="image-mask" {...props}>
+              <span className="dk-visualpicker__thumb">
+                <MaskThumb choice={choice} mask={mask} />
+              </span>
+              {label}
+            </button>
+          )}
+        >
+          <div className="dk-library__grid" role="listbox" aria-label="Mask shape">
+            {MASK_CHOICES.map((entry) => (
+              <button
+                key={entry.value}
+                type="button"
+                role="option"
+                aria-selected={entry.value === choice}
+                aria-label={entry.label}
+                title={entry.label}
+                data-testid={`image-mask-${entry.value}`}
+                className={cx("dk-library__add", entry.value === choice && "dk-visualpicker__on")}
+                onClick={() => {
+                  setOpen(false);
+                  if (entry.value !== choice) write(maskWithChoice(mask, entry.value), entry.value === "none" ? "Remove image mask" : "Mask image");
+                }}
+              >
+                <MaskThumb choice={entry.value} />
+                <span className="dk-library__caption">{entry.label}</span>
+              </button>
+            ))}
+          </div>
+        </Popover>
+      </div>
+
+      {mask && mask.type !== "shapeRef" ? (
+        <>
+          <div className="dk-grid2">
+            <NumberField
+              label="Turn"
+              ariaLabel="Mask rotation. The picture stays upright."
+              unit="°"
+              value={Math.round(rotation)}
+              min={-360}
+              max={360}
+              integer
+              disabled={disabled}
+              onCommit={(value) => write(maskWithOptions(mask, { rotation: value }), "Turn image mask", "mask-rotation")}
+            />
+          </div>
+          <Segmented
+            label="Show the picture"
+            size="sm"
+            value={inverted ? "outside" : "inside"}
+            onChange={(value) => write(maskWithOptions(mask, { invert: value === "outside" }), "Invert image mask")}
+            items={[
+              { value: "inside", label: "Inside the outline", disabled },
+              { value: "outside", label: "Outside it", disabled, "data-testid": "image-mask-invert" },
+            ]}
+          />
+        </>
+      ) : null}
+
+      <details className="dk-details">
+        <summary>Custom outline</summary>
+        <TextField
+          label="Path, 0 to 1 across the box"
+          value={path}
+          placeholder="M0,1 L0,0.4 C0,0 1,0 1,0.4 L1,1 Z"
+          onChange={(value) => {
+            setPath(value);
+            setPathError(undefined);
+          }}
+          error={pathError}
+          disabled={disabled}
+          data-testid="image-mask-path"
+        />
+        <Button
+          size="sm"
+          disabled={disabled || !path.trim()}
+          onClick={() => {
+            const result = maskWithPath(mask, path);
+            if ("error" in result) setPathError(result.error);
+            else write(result.mask, "Mask image");
+          }}
+        >
+          Use this outline
+        </Button>
+      </details>
+
+      {warning ? <Hint>{warning}</Hint> : null}
+      {note ? <Hint>{note}</Hint> : null}
+    </>
+  );
+}
+
+/** A mask choice drawn from the outline the renderer will use, at thumbnail size. */
+function MaskThumb({ choice, mask }: { choice: MaskChoice; mask?: ImageElement["mask"] }) {
+  const definition = choice === "custom" || choice === "compound" ? mask : maskWithChoice(undefined, choice);
+  const resolved = resolveImageMask(definition, 44, 28).mask;
+  return (
+    <svg viewBox="-2 -2 48 32" aria-hidden="true" className="dk-library__art">
+      {resolved ? (
+        resolved.paths.map((d, index) => (
+          <path key={index} d={d} fill="currentColor" fillOpacity={resolved.invert ? 0.15 : 0.5} stroke="currentColor" strokeWidth="1.5" />
+        ))
+      ) : (
+        <rect width={44} height={28} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+      )}
+    </svg>
+  );
 }

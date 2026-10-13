@@ -31,6 +31,9 @@ def _walk(elements: list[dict[str, Any]]):
 
 def structure(slide: dict[str, Any]) -> str:
     """The slide's shape: its pattern or layout when composed, else what it holds."""
+    recorded_family = str((slide.get("layout") or {}).get("family") or "")
+    if recorded_family:
+        return recorded_family
     template = str((slide.get("layout") or {}).get("templateId") or "")
     if template.startswith("preset."):
         name = template.removeprefix("preset.")
@@ -39,7 +42,7 @@ def structure(slide: dict[str, Any]) -> str:
         from . import presets
 
         definition = (presets.catalog().get("patternDefinitions") or {}).get(name) or {}
-        return str(definition.get("composerLayout") or name)
+        return str(definition.get("family") or definition.get("composerLayout") or name)
     kinds = sorted({str(e.get("type")) for e in _walk(slide.get("elements") or []) if e.get("type") != "group"})
     return "+".join(kinds) or "empty"
 

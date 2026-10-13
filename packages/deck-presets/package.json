@@ -20,7 +20,9 @@
     "presets:emit": "tsx scripts/emit.ts",
     "presets:catalog": "tsx scripts/emit.ts --check",
     "presets:exports": "python -m pytest ../../apps/api/tests/test_preset_exports.py -q",
-    "presets:check": "npm run presets:catalog && npm run presets:exports",
+    "presets:patterns": "python scripts/preview-sheet.py --patterns --strict --duplicate-bits 8 --out ../../.artifacts/design-system-v2-families",
+    "presets:languages": "python scripts/preview-sheet.py --languages --strict --out ../../.artifacts/design-language-gate",
+    "presets:check": "npm run presets:catalog && npm run presets:patterns && npm run presets:languages && npm run presets:exports",
     "contact-sheet": "tsx scripts/emit.ts"
   },
   "devDependencies": {

@@ -52,7 +52,13 @@ FILE_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}\.jpg$")
 ROLES = ("hero", "scene")
 
 #: The frames a language draws for a photograph, by element name.
-FRAME_NAMES = {"Image frame", "Portrait frame", "Arch frame", "Hologram frame", "Picture blob"}
+FRAME_NAMES = {
+    "Image frame", "Portrait frame", "Arch frame", "Hologram frame", "Picture blob",
+    "Play Lab hero frame",
+    "AsterLoop hero frame", "AsterLoop emissions frame", "AsterLoop roadmap frame",
+    "AsterLoop module frame", "AsterLoop comparison frame", "AsterLoop operator frame",
+    "AsterLoop closing frame",
+}
 
 
 class PresetMediaError(ValueError):
@@ -84,13 +90,26 @@ def entries() -> list[dict[str, Any]]:
 
 
 def for_template(template_id: str) -> dict[str, dict[str, Any]]:
-    """The pictures a template brings, by role."""
+    """The pictures a template brings, by broad role or exact slide selector."""
     out: dict[str, dict[str, Any]] = {}
     for entry in entries():
         for use in entry.get("templates") or []:
-            if use.get("template") == template_id and use.get("role") in ROLES:
-                out[use["role"]] = entry
+            if use.get("template") != template_id:
+                continue
+            if use.get("role") in ROLES:
+                out[str(use["role"])] = entry
+            elif isinstance(use.get("slideIndex"), int) and use.get("frame"):
+                out[f"slide:{use['slideIndex']}:{use['frame']}"] = entry
     return out
+
+
+def _placements(template_id: str) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    return [
+        (entry, use)
+        for entry in entries()
+        for use in entry.get("templates") or []
+        if use.get("template") == template_id
+    ]
 
 
 def read(file_name: str) -> bytes:
@@ -110,24 +129,46 @@ def _is_title_slide(slide: dict[str, Any]) -> bool:
 
 def attach(document: dict[str, Any], template_id: str) -> dict[str, Any]:
     """Put the template's pictures in the frames its language drew. Returns the document."""
-    chosen = for_template(template_id)
-    if not chosen:
+    placements = _placements(template_id)
+    if not placements:
         return document
     assets: dict[str, dict[str, Any]] = {}
-    for slide in document.get("slides") or []:
+    for slide_index, slide in enumerate(document.get("slides") or []):
         role = "hero" if _is_title_slide(slide) else "scene"
-        entry = chosen.get(role) or chosen.get("scene") or chosen.get("hero")
-        if entry is None:
-            continue
         elements = slide.get("elements") or []
         placed: list[tuple[int, dict[str, Any]]] = []
-        for index, element in enumerate(elements):
-            if element.get("type") != "shape" or element.get("name") not in FRAME_NAMES:
-                continue
-            asset = assets.get(entry["file"])
-            if asset is None:
-                asset = assets[entry["file"]] = _asset_entry(entry)
-            placed.append((index + 1, _picture(element, asset, entry)))
+        exact = [pair for pair in placements if pair[1].get("slideIndex") == slide_index]
+        selected = exact or [pair for pair in placements if pair[1].get("role") == role]
+        if not selected:
+            selected = [pair for pair in placements if pair[1].get("role") == "scene"]
+        if not selected:
+            selected = [pair for pair in placements if pair[1].get("role") == "hero"]
+        for entry, use in selected:
+            frame_name = str(use.get("frame") or "")
+            for index, element in enumerate(elements):
+                if element.get("type") != "shape":
+                    continue
+                if frame_name:
+                    if element.get("name") != frame_name:
+                        continue
+                elif element.get("name") not in FRAME_NAMES:
+                    continue
+                asset = assets.get(entry["file"])
+                if asset is None:
+                    asset = assets[entry["file"]] = _asset_entry(entry)
+                placed.append((index + 1, _picture(element, asset, entry)))
+                fill_target = str(use.get("textFillTarget") or "")
+                if fill_target:
+                    for target in elements:
+                        if target.get("type") == "text" and target.get("name") == fill_target:
+                            target["pictureFill"] = {
+                                "assetId": asset["id"],
+                                "fit": "cover",
+                                "focalPoint": use.get("textFillFocalPoint") or {"x": 0.5, "y": 0.5},
+                                "fallbackColor": use.get("textFillFallback") or "#F7F3E8",
+                            }
+                if frame_name:
+                    break
         # Each picture directly above its frame, so the frame stays its backing.
         for offset, (at, picture) in enumerate(placed):
             elements.insert(at + offset, picture)
@@ -155,17 +196,20 @@ def _picture(frame: dict[str, Any], asset: dict[str, Any], entry: dict[str, Any]
     if frame.get("shape") == "pill":
         # An arch: rounded as far as the shorter side allows, like the pill it fills.
         radius = min(box["width"], box["height"]) / 2
-    return {
+    picture = {
         "id": new_id("el"),
         "type": "image",
         "name": "Template picture",
-        "semanticRole": "supportingVisual",
+        "semanticRole": frame.get("semanticRole") or "supportingVisual",
         "assetId": asset["id"],
         "altText": str(entry.get("alt") or ""),
         "fit": "cover",
         "transform": box,
         "style": {"cornerRadius": radius},
     }
+    if frame.get("metadata"):
+        picture["metadata"] = dict(frame["metadata"])
+    return picture
 
 
 # ------------------------------------------------------------------ adoption
@@ -330,7 +374,11 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
             if not entry.get(field):
                 out.append(f"{label} has no {field}: provenance is incomplete.")
         review = entry.get("review") or {}
-        if review.get("result") != "approved" or not review.get("reviewer") or not review.get("date"):
+        candidate = entry.get("status") == "candidate"
+        if candidate:
+            if release:
+                out.append(f"{label} is a candidate image and needs a person's approval before release.")
+        elif review.get("result") != "approved" or not review.get("reviewer") or not review.get("date"):
             out.append(f"{label} has no recorded approval by a named reviewer.")
         licence = entry.get("license") or {}
         use = licence.get("use")
@@ -343,15 +391,23 @@ def problems(directory: Path | None = None, *, release: bool = False) -> list[st
             )
         elif release and use != "commercial":
             out.append(f"{label} was made for demo use (plan {licence.get('plan')!r}) and may not ship in a release.")
-        if release and review.get("by") != "person":
+        if release and not candidate and review.get("by") != "person":
             # An agent's look is recorded honestly as one; selling a picture
             # needs a person to have looked at it.
             out.append(f"{label} has not been reviewed by a person, which a release needs.")
         if not licence.get("termsUrl") or not licence.get("termsRetrievedAt") or not licence.get("termsSha256"):
             out.append(f"{label} does not record the terms it was made under.")
         uses = entry.get("templates") or []
-        if not uses or any(use.get("role") not in ROLES or not use.get("template") for use in uses):
-            out.append(f"{label} names no template and role (hero or scene).")
+        invalid_use = any(
+            not use.get("template")
+            or not (
+                use.get("role") in ROLES
+                or (isinstance(use.get("slideIndex"), int) and use.get("slideIndex") >= 0 and use.get("frame"))
+            )
+            for use in uses
+        )
+        if not uses or invalid_use:
+            out.append(f"{label} names no valid template media selector.")
     if total > MAX_TOTAL_BYTES:
         out.append(f"Template pictures total {total // 1024} KB; the budget is {MAX_TOTAL_BYTES // 1024} KB.")
     return out

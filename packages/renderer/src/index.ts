@@ -14,6 +14,7 @@
 export * from "./matrix";
 export * from "./theme";
 export * from "./shapes";
+export * from "./masks";
 export * from "./text-metrics";
 export * from "./dom-measurer";
 export * from "./format";

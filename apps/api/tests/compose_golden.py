@@ -1,10 +1,9 @@
 """Deterministic composition, for the neutral-language regression guard.
 
-Design languages (UI audit 2026-10-10, unit 5) add geometry beside the
-composer's own; the composer's own must not move. This composes every slide pattern's example in
-the neutral language with ids from a counter and a fixed clock, and hashes the
-canonical JSON, so "neutral is unchanged" is a byte comparison rather than a
-belief.
+The Design-System V2 composer deliberately gives semantic patterns distinct
+geometry. This composes every slide pattern's example in the neutral language
+with ids from a counter and a fixed clock, and hashes the canonical JSON, so
+later accidental drift remains a byte comparison rather than a belief.
 
 Run as a script to (re)record `goldens/compose_neutral.json`. Re-recording is a
 deliberate act after a reviewed change to the neutral look, never a way to make

@@ -18,6 +18,8 @@ export type PresetIssueCode =
   | "E_PRESET_THEME"
   | "E_PRESET_MOTION"
   | "E_PRESET_SLIDES"
+  | "E_PRESET_LAYOUT_VARIETY"
+  | "E_PRESET_LAYOUT_REPEAT"
   | "E_SLIDE_KEY_DUPLICATE"
   | "E_SLIDE_PATTERN"
   | "E_SLOT_UNKNOWN"
@@ -118,6 +120,25 @@ export function validateDeckPresets(
       issues.push({ code: "E_PRESET_SLIDES", path: `${base}/slides`, message: "A preset must contain at least one slide." });
     }
 
+    const families = preset.slides
+      .map((slide) => PATTERN_DEFINITIONS[slide.pattern]?.family)
+      .filter((family): family is NonNullable<typeof family> => Boolean(family));
+    if (preset.slides.length >= 8 && new Set(families).size < 8) {
+      issues.push({
+        code: "E_PRESET_LAYOUT_VARIETY",
+        path: `${base}/slides`,
+        message: `${preset.id} uses ${new Set(families).size} structural families; a reviewed deck of this length needs at least eight.`,
+      });
+    }
+    const repeatedAt = families.findIndex((family, index) => index > 0 && family === families[index - 1]);
+    if (repeatedAt >= 0) {
+      issues.push({
+        code: "E_PRESET_LAYOUT_REPEAT",
+        path: `${base}/slides/${repeatedAt}`,
+        message: `${preset.id} repeats the ${families[repeatedAt]} family on adjacent slides.`,
+      });
+    }
+
     const slideKeys = new Set<string>();
     for (const [slideIndex, slide] of preset.slides.entries()) {
       const slidePath = `${base}/slides/${slideIndex}`;
@@ -193,6 +214,12 @@ export function runNegativeControls(
     { name: "unknown theme", expected: "E_PRESET_THEME", break: (copy) => { copy[0]!.themeKey = "missing-theme"; } },
     { name: "unknown motion style", expected: "E_PRESET_MOTION", break: (copy) => { copy[0]!.motionStyle = "missing-motion" as DeckPreset["motionStyle"]; } },
     { name: "empty slide list", expected: "E_PRESET_SLIDES", break: (copy) => { copy[0]!.slides = []; } },
+    { name: "too few structural families", expected: "E_PRESET_LAYOUT_VARIETY", break: (copy) => {
+      copy[0]!.slides = copy[0]!.slides.map((slide) => ({ ...slide, pattern: "title", slots: structuredClone(PATTERN_DEFINITIONS.title.exampleSlots) }));
+    } },
+    { name: "adjacent structural repeat", expected: "E_PRESET_LAYOUT_REPEAT", break: (copy) => {
+      copy[0]!.slides[1] = { ...copy[0]!.slides[1]!, pattern: copy[0]!.slides[0]!.pattern, slots: structuredClone(copy[0]!.slides[0]!.slots) };
+    } },
     { name: "duplicate slide key", expected: "E_SLIDE_KEY_DUPLICATE", break: (copy) => { copy[0]!.slides[1]!.key = copy[0]!.slides[0]!.key; } },
     { name: "unknown pattern", expected: "E_SLIDE_PATTERN", break: (copy) => { copy[0]!.slides[0]!.pattern = "unknown" as DeckPreset["slides"][number]["pattern"]; } },
     { name: "unknown slot", expected: "E_SLOT_UNKNOWN", break: (copy) => { copy[0]!.slides[0]!.slots.geometry = "forbidden"; } },

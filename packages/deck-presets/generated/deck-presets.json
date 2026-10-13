@@ -1,4 +1,5 @@
 {
+  "catalogVersion": 2,
   "description": "Generated from @deckastra/deck-presets src/index.ts. Do not edit by hand: run npm run presets:emit.",
   "purposeGroups": [
     "business",
@@ -120,7 +121,14 @@
         "eyebrow": "OPENING",
         "headline": "Make the important work visible",
         "subtitle": "A practical path from intent to outcome"
-      }
+      },
+      "family": "cover",
+      "variant": "title",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.cover.title",
+      "version": 2
     },
     "statement": {
       "name": "Statement",
@@ -168,7 +176,14 @@
         "eyebrow": "DECISION",
         "headline": "Choose the smallest useful next step",
         "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
-      }
+      },
+      "family": "statement",
+      "variant": "statement",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.statement.statement",
+      "version": 2
     },
     "bullets": {
       "name": "Bullets",
@@ -229,7 +244,14 @@
           "Make one bounded change",
           "Check the result"
         ]
-      }
+      },
+      "family": "list",
+      "variant": "bullets",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.list.bullets",
+      "version": 2
     },
     "metrics": {
       "name": "Metrics",
@@ -293,7 +315,15 @@
             "label": "to first value"
           }
         ]
-      }
+      },
+      "family": "metrics",
+      "variant": "metrics",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.metrics.metrics",
+      "version": 2
     },
     "quote": {
       "name": "Quote",
@@ -343,7 +373,14 @@
         "headline": "What guides the work",
         "quote": "Clarity begins with choosing what deserves attention.",
         "attribution": "Design principle"
-      }
+      },
+      "family": "quote",
+      "variant": "quote",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.quote.quote",
+      "version": 2
     },
     "code": {
       "name": "Code",
@@ -399,7 +436,15 @@
         "code": "result = run(input)\nassert result.reviewed",
         "language": "python",
         "caption": "A narrow boundary keeps the decision inspectable."
-      }
+      },
+      "family": "code-demo",
+      "variant": "code",
+      "contentKinds": [
+        "text",
+        "code"
+      ],
+      "previewKey": "v2.code-demo.code",
+      "version": 2
     },
     "split": {
       "name": "Split",
@@ -466,7 +511,14 @@
           "Idempotent work",
           "Explicit outcomes"
         ]
-      }
+      },
+      "family": "split",
+      "variant": "split",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.split.split",
+      "version": 2
     },
     "agenda": {
       "name": "Agenda",
@@ -527,7 +579,14 @@
           "What did we learn?",
           "What happens next?"
         ]
-      }
+      },
+      "family": "agenda",
+      "variant": "agenda",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.agenda.agenda",
+      "version": 2
     },
     "section": {
       "name": "Section divider",
@@ -569,7 +628,14 @@
         "eyebrow": "CHAPTER TWO",
         "headline": "From evidence to action",
         "subtitle": "Turn what we learned into one committed move"
-      }
+      },
+      "family": "section",
+      "variant": "section",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.section.section",
+      "version": 2
     },
     "comparison": {
       "name": "Comparison",
@@ -632,7 +698,14 @@
           "Visible ownership",
           "Reviewable decisions"
         ]
-      }
+      },
+      "family": "comparison",
+      "variant": "comparison",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.comparison.comparison",
+      "version": 2
     },
     "process": {
       "name": "Process",
@@ -693,7 +766,14 @@
           "Compose from constraints",
           "Review before export"
         ]
-      }
+      },
+      "family": "process",
+      "variant": "process",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.process.process",
+      "version": 2
     },
     "timeline": {
       "name": "Timeline",
@@ -754,7 +834,14 @@
           "Next — prove the workflow",
           "Then — scale what works"
         ]
-      }
+      },
+      "family": "timeline",
+      "variant": "timeline",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.timeline.timeline",
+      "version": 2
     },
     "roadmap": {
       "name": "Roadmap",
@@ -815,7 +902,14 @@
           "Expansion — richer motion",
           "Scale — more reviewed presets"
         ]
-      }
+      },
+      "family": "roadmap",
+      "variant": "roadmap",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.roadmap.roadmap",
+      "version": 2
     },
     "checklist": {
       "name": "Checklist",
@@ -876,7 +970,14 @@
           "The failure path is tested",
           "The result is measurable"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "checklist",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.checklist",
+      "version": 2
     },
     "pros-cons": {
       "name": "Pros and cons",
@@ -939,7 +1040,14 @@
           "Requires reviewed patterns",
           "Optimises consistency"
         ]
-      }
+      },
+      "family": "comparison",
+      "variant": "pros-cons",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.comparison.pros-cons",
+      "version": 2
     },
     "big-number": {
       "name": "Big number",
@@ -996,7 +1104,15 @@
           }
         ],
         "caption": "Measured across the first four teams"
-      }
+      },
+      "family": "big-number",
+      "variant": "big-number",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.big-number.big-number",
+      "version": 2
     },
     "profile": {
       "name": "Profile",
@@ -1040,6 +1156,12 @@
           "description": "Name and role.",
           "required": true,
           "recommendedMaxChars": 80
+        },
+        "picture": {
+          "kind": "text",
+          "label": "Picture",
+          "description": "Optional portrait description for a generated or template image.",
+          "recommendedMaxChars": 300
         }
       },
       "exampleSlots": {
@@ -1047,7 +1169,15 @@
         "headline": "The operator behind the change",
         "quote": "Make the safe path the easy path.",
         "attribution": "Maya Chen · Platform lead"
-      }
+      },
+      "family": "profile",
+      "variant": "profile",
+      "contentKinds": [
+        "text",
+        "media"
+      ],
+      "previewKey": "v2.profile.profile",
+      "version": 2
     },
     "case-study": {
       "name": "Case study",
@@ -1110,7 +1240,14 @@
           "Designed one shared state",
           "Cut rework by 42%"
         ]
-      }
+      },
+      "family": "case-study",
+      "variant": "case-study",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.case-study.case-study",
+      "version": 2
     },
     "decision": {
       "name": "Decision",
@@ -1159,7 +1296,14 @@
         "headline": "Approve the boundary and stage the migration",
         "subtitle": "Owner: Platform · Start: this month",
         "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
-      }
+      },
+      "family": "decision",
+      "variant": "decision",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.decision.decision",
+      "version": 2
     },
     "closing": {
       "name": "Closing",
@@ -1201,7 +1345,14 @@
         "eyebrow": "NEXT STEP",
         "headline": "Begin with one real workflow",
         "subtitle": "Choose the team, name the measure and start this week"
-      }
+      },
+      "family": "closing",
+      "variant": "closing",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.closing.closing",
+      "version": 2
     },
     "executive-summary": {
       "name": "Executive summary",
@@ -1262,7 +1413,14 @@
           "The evidence is credible",
           "The next move is bounded"
         ]
-      }
+      },
+      "family": "summary",
+      "variant": "executive-summary",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.summary.executive-summary",
+      "version": 2
     },
     "problem": {
       "name": "Problem",
@@ -1310,7 +1468,14 @@
         "eyebrow": "THE PROBLEM",
         "headline": "Important work stalls between disconnected decisions",
         "body": "A concise explanation keeps the claim grounded and actionable."
-      }
+      },
+      "family": "statement",
+      "variant": "problem",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.statement.problem",
+      "version": 2
     },
     "opportunity": {
       "name": "Opportunity",
@@ -1358,7 +1523,14 @@
         "eyebrow": "THE OPPORTUNITY",
         "headline": "A shared operating view turns handoffs into momentum",
         "body": "A concise explanation keeps the claim grounded and actionable."
-      }
+      },
+      "family": "big-number",
+      "variant": "opportunity",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.big-number.opportunity",
+      "version": 2
     },
     "market": {
       "name": "Market",
@@ -1422,7 +1594,15 @@
             "label": "priority segments"
           }
         ]
-      }
+      },
+      "family": "metrics",
+      "variant": "market",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.metrics.market",
+      "version": 2
     },
     "financials": {
       "name": "Financials",
@@ -1486,7 +1666,15 @@
             "label": "runway"
           }
         ]
-      }
+      },
+      "family": "metrics",
+      "variant": "financials",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.metrics.financials",
+      "version": 2
     },
     "risks": {
       "name": "Risks",
@@ -1547,7 +1735,14 @@
           "Delivery — protect the critical path",
           "Cost — cap each experiment"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "risks",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.risks",
+      "version": 2
     },
     "recommendation": {
       "name": "Recommendation",
@@ -1595,7 +1790,14 @@
         "eyebrow": "RECOMMENDATION",
         "headline": "Approve the focused path and measure it weekly",
         "body": "A concise explanation keeps the claim grounded and actionable."
-      }
+      },
+      "family": "decision",
+      "variant": "recommendation",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.decision.recommendation",
+      "version": 2
     },
     "appendix": {
       "name": "Appendix",
@@ -1656,7 +1858,14 @@
           "Detailed measures",
           "Source notes"
         ]
-      }
+      },
+      "family": "closing",
+      "variant": "appendix",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.closing.appendix",
+      "version": 2
     },
     "feature-grid": {
       "name": "Feature grid",
@@ -1717,7 +1926,14 @@
           "Compose from reviewed patterns",
           "Export without rebuilding"
         ]
-      }
+      },
+      "family": "feature-grid",
+      "variant": "feature-grid",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.feature-grid.feature-grid",
+      "version": 2
     },
     "user-journey": {
       "name": "User journey",
@@ -1778,7 +1994,14 @@
           "Build with guidance",
           "Share a finished result"
         ]
-      }
+      },
+      "family": "journey",
+      "variant": "user-journey",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.journey.user-journey",
+      "version": 2
     },
     "release-plan": {
       "name": "Release plan",
@@ -1839,7 +2062,14 @@
           "Beta — widen the cohort",
           "Launch — scale support"
         ]
-      }
+      },
+      "family": "roadmap",
+      "variant": "release-plan",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.roadmap.release-plan",
+      "version": 2
     },
     "pricing": {
       "name": "Pricing",
@@ -1902,7 +2132,14 @@
           "Team: shared controls",
           "Enterprise: governance"
         ]
-      }
+      },
+      "family": "pricing",
+      "variant": "pricing",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.pricing.pricing",
+      "version": 2
     },
     "feedback": {
       "name": "Customer feedback",
@@ -1952,7 +2189,14 @@
         "headline": "What changed for the user",
         "quote": "We stopped rebuilding the same story in three different tools.",
         "attribution": "Pilot customer"
-      }
+      },
+      "family": "quote",
+      "variant": "feedback",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.quote.feedback",
+      "version": 2
     },
     "demo": {
       "name": "Demo",
@@ -2008,7 +2252,15 @@
         "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
         "language": "text",
         "caption": "A compact example keeps the boundary inspectable."
-      }
+      },
+      "family": "code-demo",
+      "variant": "demo",
+      "contentKinds": [
+        "text",
+        "code"
+      ],
+      "previewKey": "v2.code-demo.demo",
+      "version": 2
     },
     "changelog": {
       "name": "Changelog",
@@ -2069,7 +2321,14 @@
           "Clearer review states",
           "More reliable exports"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "changelog",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.changelog",
+      "version": 2
     },
     "learning-objectives": {
       "name": "Learning objectives",
@@ -2130,7 +2389,14 @@
           "Apply it to a real case",
           "Evaluate the result"
         ]
-      }
+      },
+      "family": "agenda",
+      "variant": "learning-objectives",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.agenda.learning-objectives",
+      "version": 2
     },
     "concept": {
       "name": "Concept",
@@ -2178,7 +2444,14 @@
         "eyebrow": "CORE IDEA",
         "headline": "Constraints turn vague intent into useful choices",
         "body": "A concise explanation keeps the claim grounded and actionable."
-      }
+      },
+      "family": "statement",
+      "variant": "concept",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.statement.concept",
+      "version": 2
     },
     "example": {
       "name": "Worked example",
@@ -2241,7 +2514,14 @@
           "Move: narrow the dependency",
           "Result: a testable path"
         ]
-      }
+      },
+      "family": "case-study",
+      "variant": "example",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.case-study.example",
+      "version": 2
     },
     "exercise": {
       "name": "Exercise",
@@ -2302,7 +2582,14 @@
           "Name the evidence",
           "Write the next action"
         ]
-      }
+      },
+      "family": "practice",
+      "variant": "exercise",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.practice.exercise",
+      "version": 2
     },
     "quiz": {
       "name": "Knowledge check",
@@ -2363,7 +2650,14 @@
           "B — run a bounded pilot",
           "C — defer the measure"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "quiz",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.quiz",
+      "version": 2
     },
     "reflection": {
       "name": "Reflection",
@@ -2413,7 +2707,14 @@
         "headline": "Make the lesson yours",
         "quote": "What would you change in your next real decision?",
         "attribution": "Reflection prompt"
-      }
+      },
+      "family": "reflection",
+      "variant": "reflection",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.reflection.reflection",
+      "version": 2
     },
     "resources": {
       "name": "Resources",
@@ -2474,7 +2775,14 @@
           "Worked example library",
           "Practice checklist"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "resources",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.resources",
+      "version": 2
     },
     "architecture": {
       "name": "Architecture",
@@ -2537,7 +2845,14 @@
           "The worker owns exports",
           "The schema owns the contract"
         ]
-      }
+      },
+      "family": "architecture",
+      "variant": "architecture",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.architecture.architecture",
+      "version": 2
     },
     "system-flow": {
       "name": "System flow",
@@ -2599,7 +2914,14 @@
           "Render deterministically",
           "Publish the artifact"
         ]
-      }
+      },
+      "family": "system-flow",
+      "variant": "system-flow",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.system-flow.system-flow",
+      "version": 2
     },
     "api-contract": {
       "name": "API contract",
@@ -2655,7 +2977,15 @@
         "code": "POST /v1/exports\n{ \"kind\": \"pptx\", \"include_notes\": true }",
         "language": "text",
         "caption": "A compact example keeps the boundary inspectable."
-      }
+      },
+      "family": "code-demo",
+      "variant": "api-contract",
+      "contentKinds": [
+        "text",
+        "code"
+      ],
+      "previewKey": "v2.code-demo.api-contract",
+      "version": 2
     },
     "data-model": {
       "name": "Data model",
@@ -2711,7 +3041,15 @@
         "code": "document -> slides -> elements\n         -> narration -> takes",
         "language": "text",
         "caption": "A compact example keeps the boundary inspectable."
-      }
+      },
+      "family": "architecture",
+      "variant": "data-model",
+      "contentKinds": [
+        "text",
+        "code"
+      ],
+      "previewKey": "v2.architecture.data-model",
+      "version": 2
     },
     "incident": {
       "name": "Incident timeline",
@@ -2772,7 +3110,14 @@
           "09:18 — retries amplify load",
           "09:27 — traffic is limited"
         ]
-      }
+      },
+      "family": "case-study",
+      "variant": "incident",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.case-study.incident",
+      "version": 2
     },
     "root-cause": {
       "name": "Root cause",
@@ -2835,7 +3180,14 @@
           "No admission control",
           "Alert followed symptoms"
         ]
-      }
+      },
+      "family": "system-flow",
+      "variant": "root-cause",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.system-flow.root-cause",
+      "version": 2
     },
     "benchmark": {
       "name": "Benchmark",
@@ -2899,7 +3251,15 @@
             "label": "peak RSS"
           }
         ]
-      }
+      },
+      "family": "metrics",
+      "variant": "benchmark",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.metrics.benchmark",
+      "version": 2
     },
     "team-update": {
       "name": "Team update",
@@ -2960,7 +3320,14 @@
           "Learned where users pause",
           "Next: simplify review"
         ]
-      }
+      },
+      "family": "summary",
+      "variant": "team-update",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.summary.team-update",
+      "version": 2
     },
     "wins": {
       "name": "Wins",
@@ -3024,7 +3391,15 @@
             "label": "team confidence"
           }
         ]
-      }
+      },
+      "family": "metrics",
+      "variant": "wins",
+      "contentKinds": [
+        "text",
+        "metrics"
+      ],
+      "previewKey": "v2.metrics.wins",
+      "version": 2
     },
     "blockers": {
       "name": "Blockers",
@@ -3085,7 +3460,14 @@
           "Scope — owner: Product",
           "Capacity — owner: Engineering"
         ]
-      }
+      },
+      "family": "checklist",
+      "variant": "blockers",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.checklist.blockers",
+      "version": 2
     },
     "responsibilities": {
       "name": "Responsibilities",
@@ -3148,7 +3530,14 @@
           "Engineering owns reliability",
           "Operations owns rollout"
         ]
-      }
+      },
+      "family": "feature-grid",
+      "variant": "responsibilities",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.feature-grid.responsibilities",
+      "version": 2
     },
     "retrospective": {
       "name": "Retrospective",
@@ -3211,7 +3600,14 @@
           "Stop: parallel sources",
           "Try: one decision log"
         ]
-      }
+      },
+      "family": "case-study",
+      "variant": "retrospective",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.case-study.retrospective",
+      "version": 2
     },
     "shout-outs": {
       "name": "Shout-outs",
@@ -3261,7 +3657,14 @@
         "headline": "A contribution worth naming",
         "quote": "Rina made the failure path testable before it reached customers.",
         "attribution": "The launch team"
-      }
+      },
+      "family": "quote",
+      "variant": "shout-outs",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.quote.shout-outs",
+      "version": 2
     },
     "gallery": {
       "name": "Gallery",
@@ -3324,7 +3727,14 @@
           "Data stories",
           "Identity and motion"
         ]
-      }
+      },
+      "family": "gallery",
+      "variant": "gallery",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.gallery.gallery",
+      "version": 2
     },
     "biography": {
       "name": "Biography",
@@ -3374,7 +3784,14 @@
         "headline": "Designing clarity into complex systems",
         "quote": "I turn complicated workflows into experiences people can trust.",
         "attribution": "Independent product designer"
-      }
+      },
+      "family": "profile",
+      "variant": "biography",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.profile.biography",
+      "version": 2
     },
     "event-schedule": {
       "name": "Event schedule",
@@ -3435,7 +3852,14 @@
           "17:00 — ceremony",
           "18:30 — dinner and stories"
         ]
-      }
+      },
+      "family": "timeline",
+      "variant": "event-schedule",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.timeline.event-schedule",
+      "version": 2
     },
     "story-beat": {
       "name": "Story beat",
@@ -3483,7 +3907,14 @@
         "eyebrow": "THEN EVERYTHING CHANGED",
         "headline": "The smallest decision opened the largest possibility",
         "body": "A concise explanation keeps the claim grounded and actionable."
-      }
+      },
+      "family": "media",
+      "variant": "story-beat",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.media.story-beat",
+      "version": 2
     },
     "thank-you": {
       "name": "Thank you",
@@ -3525,7 +3956,14 @@
         "eyebrow": "WITH GRATITUDE",
         "headline": "Thank you for being part of the story",
         "subtitle": "The next chapter starts together"
-      }
+      },
+      "family": "closing",
+      "variant": "thank-you",
+      "contentKinds": [
+        "text"
+      ],
+      "previewKey": "v2.closing.thank-you",
+      "version": 2
     },
     "bar-chart": {
       "name": "Bar chart",
@@ -3606,7 +4044,15 @@
           "unit": "$M"
         },
         "body": "Repeat customers drove two thirds of the growth."
-      }
+      },
+      "family": "data-chart",
+      "variant": "bar-chart",
+      "contentKinds": [
+        "text",
+        "chart"
+      ],
+      "previewKey": "v2.data-chart.bar-chart",
+      "version": 2
     },
     "trend-chart": {
       "name": "Trend chart",
@@ -3689,7 +4135,15 @@
             }
           ]
         }
-      }
+      },
+      "family": "data-chart",
+      "variant": "trend-chart",
+      "contentKinds": [
+        "text",
+        "chart"
+      ],
+      "previewKey": "v2.data-chart.trend-chart",
+      "version": 2
     },
     "waterfall-chart": {
       "name": "Waterfall chart",
@@ -3769,7 +4223,15 @@
           ],
           "unit": "$M"
         }
-      }
+      },
+      "family": "data-chart",
+      "variant": "waterfall-chart",
+      "contentKinds": [
+        "text",
+        "chart"
+      ],
+      "previewKey": "v2.data-chart.waterfall-chart",
+      "version": 2
     },
     "slope-chart": {
       "name": "Slope chart",
@@ -3859,7 +4321,15 @@
           ],
           "unit": "%"
         }
-      }
+      },
+      "family": "data-chart",
+      "variant": "slope-chart",
+      "contentKinds": [
+        "text",
+        "chart"
+      ],
+      "previewKey": "v2.data-chart.slope-chart",
+      "version": 2
     },
     "share-chart": {
       "name": "Share chart",
@@ -3937,7 +4407,15 @@
           ],
           "unit": "%"
         }
-      }
+      },
+      "family": "data-chart",
+      "variant": "share-chart",
+      "contentKinds": [
+        "text",
+        "chart"
+      ],
+      "previewKey": "v2.data-chart.share-chart",
+      "version": 2
     },
     "system-diagram": {
       "name": "System diagram",
@@ -4036,7 +4514,15 @@
             }
           ]
         }
-      }
+      },
+      "family": "architecture",
+      "variant": "system-diagram",
+      "contentKinds": [
+        "text",
+        "diagram"
+      ],
+      "previewKey": "v2.architecture.system-diagram",
+      "version": 2
     },
     "process-flow": {
       "name": "Process flow",
@@ -4125,7 +4611,15 @@
             }
           ]
         }
-      }
+      },
+      "family": "system-flow",
+      "variant": "process-flow",
+      "contentKinds": [
+        "text",
+        "diagram"
+      ],
+      "previewKey": "v2.system-flow.process-flow",
+      "version": 2
     },
     "milestones": {
       "name": "Milestones",
@@ -4203,7 +4697,15 @@
             "detail": "Enterprise controls"
           }
         ]
-      }
+      },
+      "family": "timeline",
+      "variant": "milestones",
+      "contentKinds": [
+        "text",
+        "timeline"
+      ],
+      "previewKey": "v2.timeline.milestones",
+      "version": 2
     },
     "full-bleed-photo": {
       "name": "Full-bleed photo",
@@ -4253,7 +4755,15 @@
         "headline": "Built for the people doing the work",
         "subtitle": "A field engineer checking an installation at dusk",
         "picture": "A field engineer in a hard hat checking a rooftop solar installation at dusk"
-      }
+      },
+      "family": "media",
+      "variant": "full-bleed-photo",
+      "contentKinds": [
+        "text",
+        "media"
+      ],
+      "previewKey": "v2.media.full-bleed-photo",
+      "version": 2
     }
   },
   "motionStyles": {
@@ -4367,7 +4877,7 @@
     "neutral": {
       "id": "neutral",
       "name": "Neutral",
-      "version": 1,
+      "version": 2,
       "summary": "The composer's own grammar: a clear headline, a measured column, nothing that competes with the content.",
       "axes": {
         "expression": "editorial",
@@ -4418,7 +4928,7 @@
     "swiss-signal": {
       "id": "swiss-signal",
       "name": "Swiss Signal",
-      "version": 1,
+      "version": 2,
       "summary": "International Typographic Style: an asymmetric grid, oversized grotesque type set flush left, black and white with one red signal.",
       "axes": {
         "expression": "expressive",
@@ -4493,7 +5003,7 @@
     "cinema-noir": {
       "id": "cinema-noir",
       "name": "Cinema Noir",
-      "version": 1,
+      "version": 2,
       "summary": "Film-noir title cards: near-black frames with letterbox bars, a high-contrast serif in cream, one warm light, and slow fades.",
       "axes": {
         "expression": "expressive",
@@ -4569,7 +5079,7 @@
     "play-lab": {
       "id": "play-lab",
       "name": "Play Lab",
-      "version": 1,
+      "version": 2,
       "summary": "A playground: soft bubbles, a tilted sticker for the label, rounded cards that each hold one idea, and a heavy friendly display.",
       "axes": {
         "expression": "expressive",
@@ -4646,8 +5156,8 @@
     "system-terminal": {
       "id": "system-terminal",
       "name": "System Terminal",
-      "version": 1,
-      "summary": "A terminal session: a window bar, monospace everything, a prompt before each label, line numbers, a block cursor, and one green.",
+      "version": 2,
+      "summary": "A terminal session: monospace display and labels, a readable sans body, a window bar, prompts, line numbers, a block cursor, and one green.",
       "axes": {
         "expression": "editorial",
         "density": "dense",
@@ -4725,7 +5235,7 @@
     "quiet-luxe": {
       "id": "quiet-luxe",
       "name": "Quiet Luxe",
-      "version": 1,
+      "version": 2,
       "summary": "A lookbook: wide margins, a light serif display, small tracked capitals, hairlines instead of boxes, and a tall portrait frame.",
       "axes": {
         "expression": "editorial",
@@ -4800,7 +5310,7 @@
     "data-desk": {
       "id": "data-desk",
       "name": "Data Desk",
-      "version": 1,
+      "version": 2,
       "summary": "An operations dashboard: a header strip with a status dot, bordered tiles, figures larger than anything else, and spark bars.",
       "axes": {
         "expression": "editorial",
@@ -4878,7 +5388,7 @@
     "earth-story": {
       "id": "earth-story",
       "name": "Earth Story",
-      "version": 1,
+      "version": 2,
       "summary": "A field journal: a block of earth colour, arched frames for photographs, a low hill along the foot, a serif voice, lists walked as stepping stones.",
       "axes": {
         "expression": "expressive",
@@ -4955,7 +5465,7 @@
     "spatial-future": {
       "id": "spatial-future",
       "name": "Spatial Future",
-      "version": 1,
+      "version": 2,
       "summary": "A view into a space: glowing orbs, an orbit ring, glass panels the light passes through, and a light geometric display set centred.",
       "axes": {
         "expression": "expressive",
@@ -5993,24 +6503,16 @@
         },
         {
           "key": "opportunity-4",
-          "pattern": "market",
+          "pattern": "comparison",
           "purpose": "A focused wedge expands the opportunity",
           "slots": {
             "eyebrow": "INVESTOR UPDATE · 04",
             "headline": "A focused wedge expands the opportunity",
-            "metrics": [
-              {
-                "value": "$4.2B",
-                "label": "addressable market"
-              },
-              {
-                "value": "18%",
-                "label": "annual growth"
-              },
-              {
-                "value": "3",
-                "label": "priority segments"
-              }
+            "body": "Today: context is scattered and handoffs are implicit.",
+            "bullets": [
+              "Tomorrow: one source",
+              "Visible ownership",
+              "Reviewable decisions"
             ]
           }
         },
@@ -6039,25 +6541,35 @@
         },
         {
           "key": "financials-6",
-          "pattern": "financials",
+          "pattern": "trend-chart",
           "purpose": "Efficiency is improving with scale",
           "slots": {
             "eyebrow": "INVESTOR UPDATE · 06",
             "headline": "Efficiency is improving with scale",
-            "metrics": [
-              {
-                "value": "$12M",
-                "label": "annual revenue"
-              },
-              {
-                "value": "72%",
-                "label": "gross margin"
-              },
-              {
-                "value": "18 mo",
-                "label": "runway"
-              }
-            ]
+            "chart": {
+              "type": "line",
+              "categories": [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun"
+              ],
+              "series": [
+                {
+                  "name": "Active teams",
+                  "values": [
+                    120,
+                    138,
+                    161,
+                    190,
+                    214,
+                    246
+                  ]
+                }
+              ]
+            }
           }
         },
         {
@@ -6139,12 +6651,16 @@
         },
         {
           "key": "executive-summary-2",
-          "pattern": "statement",
+          "pattern": "agenda",
           "purpose": "What leaders need to know",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 02",
             "headline": "What leaders need to know",
-            "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
+            "bullets": [
+              "What changed?",
+              "What did we learn?",
+              "What happens next?"
+            ]
           }
         },
         {
@@ -6169,18 +6685,30 @@
         },
         {
           "key": "market-5",
-          "pattern": "big-number",
+          "pattern": "share-chart",
           "purpose": "Core demand is strongest",
           "slots": {
             "eyebrow": "QUARTERLY REVIEW · 05",
             "headline": "Core demand is strongest",
-            "metrics": [
-              {
-                "value": "62%",
-                "label": "faster cycle time"
-              }
-            ],
-            "caption": "Measured across the first four teams"
+            "chart": {
+              "type": "donut",
+              "categories": [
+                "Utilities",
+                "Industrial",
+                "Residential"
+              ],
+              "series": [
+                {
+                  "name": "Share",
+                  "values": [
+                    45,
+                    35,
+                    20
+                  ]
+                }
+              ],
+              "unit": "%"
+            }
           }
         },
         {
@@ -6285,12 +6813,16 @@
         },
         {
           "key": "executive-summary-2",
-          "pattern": "statement",
+          "pattern": "agenda",
           "purpose": "The brief at a glance",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 02",
             "headline": "The brief at a glance",
-            "body": "A bounded pilot gives the team evidence without hiding the trade-offs."
+            "bullets": [
+              "What changed?",
+              "What did we learn?",
+              "What happens next?"
+            ]
           }
         },
         {
@@ -6315,18 +6847,30 @@
         },
         {
           "key": "market-5",
-          "pattern": "big-number",
+          "pattern": "share-chart",
           "purpose": "The category is consolidating",
           "slots": {
             "eyebrow": "BOARD BRIEFING · 05",
             "headline": "The category is consolidating",
-            "metrics": [
-              {
-                "value": "62%",
-                "label": "faster cycle time"
-              }
-            ],
-            "caption": "Measured across the first four teams"
+            "chart": {
+              "type": "donut",
+              "categories": [
+                "Utilities",
+                "Industrial",
+                "Residential"
+              ],
+              "series": [
+                {
+                  "name": "Share",
+                  "values": [
+                    45,
+                    35,
+                    20
+                  ]
+                }
+              ],
+              "unit": "%"
+            }
           }
         },
         {
@@ -6860,12 +7404,16 @@
         },
         {
           "key": "learning-objectives-2",
-          "pattern": "concept",
+          "pattern": "learning-objectives",
           "purpose": "By the end, you can explain and apply",
           "slots": {
             "eyebrow": "LESSON PLAN · 02",
             "headline": "By the end, you can explain and apply",
-            "body": "A concise explanation keeps the claim grounded and actionable."
+            "bullets": [
+              "Explain the core model",
+              "Apply it to a real case",
+              "Evaluate the result"
+            ]
           }
         },
         {
@@ -6923,13 +7471,16 @@
         },
         {
           "key": "quiz-7",
-          "pattern": "reflection",
+          "pattern": "quiz",
           "purpose": "Check the logic before moving on",
           "slots": {
             "eyebrow": "LESSON PLAN · 07",
             "headline": "Check the logic before moving on",
-            "quote": "What would you change in your next real decision?",
-            "attribution": "Reflection prompt"
+            "bullets": [
+              "A — expand the scope",
+              "B — run a bounded pilot",
+              "C — defer the measure"
+            ]
           }
         },
         {
@@ -6998,12 +7549,16 @@
         },
         {
           "key": "learning-objectives-2",
-          "pattern": "concept",
+          "pattern": "learning-objectives",
           "purpose": "Know the standard and practise it",
           "slots": {
             "eyebrow": "TRAINING MODULE · 02",
             "headline": "Know the standard and practise it",
-            "body": "A concise explanation keeps the claim grounded and actionable."
+            "bullets": [
+              "Explain the core model",
+              "Apply it to a real case",
+              "Evaluate the result"
+            ]
           }
         },
         {
@@ -7061,13 +7616,16 @@
         },
         {
           "key": "quiz-7",
-          "pattern": "reflection",
+          "pattern": "quiz",
           "purpose": "Choose the strongest response",
           "slots": {
             "eyebrow": "TRAINING MODULE · 07",
             "headline": "Choose the strongest response",
-            "quote": "What would you change in your next real decision?",
-            "attribution": "Reflection prompt"
+            "bullets": [
+              "A — expand the scope",
+              "B — run a bounded pilot",
+              "C — defer the measure"
+            ]
           }
         },
         {
@@ -7196,13 +7754,16 @@
         },
         {
           "key": "quiz-7",
-          "pattern": "reflection",
+          "pattern": "quiz",
           "purpose": "The result survives the key challenge",
           "slots": {
             "eyebrow": "THESIS DEFENCE · 07",
             "headline": "The result survives the key challenge",
-            "quote": "What would you change in your next real decision?",
-            "attribution": "Reflection prompt"
+            "bullets": [
+              "A — expand the scope",
+              "B — run a bounded pilot",
+              "C — defer the measure"
+            ]
           }
         },
         {
@@ -7348,14 +7909,16 @@
         },
         {
           "key": "incident-7",
-          "pattern": "data-model",
+          "pattern": "incident",
           "purpose": "The incident unfolded in twelve minutes",
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 07",
             "headline": "The incident unfolded in twelve minutes",
-            "code": "document -> slides -> elements\n         -> narration -> takes",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "bullets": [
+              "09:12 — latency rises",
+              "09:18 — retries amplify load",
+              "09:27 — traffic is limited"
+            ]
           }
         },
         {
@@ -7375,14 +7938,13 @@
         },
         {
           "key": "decision-9",
-          "pattern": "demo",
+          "pattern": "decision",
           "purpose": "Bound retries and isolate partitions",
           "slots": {
             "eyebrow": "INCIDENT REVIEW · 09",
             "headline": "Bound retries and isolate partitions",
-            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "subtitle": "Owner: Platform · Start: this month",
+            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
           }
         },
         {
@@ -7668,14 +8230,16 @@
         },
         {
           "key": "incident-7",
-          "pattern": "data-model",
+          "pattern": "incident",
           "purpose": "The main risk is queue contention",
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 07",
             "headline": "The main risk is queue contention",
-            "code": "document -> slides -> elements\n         -> narration -> takes",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "bullets": [
+              "09:12 — latency rises",
+              "09:18 — retries amplify load",
+              "09:27 — traffic is limited"
+            ]
           }
         },
         {
@@ -7695,14 +8259,13 @@
         },
         {
           "key": "decision-9",
-          "pattern": "demo",
+          "pattern": "decision",
           "purpose": "Approve isolation by workload class",
           "slots": {
             "eyebrow": "SYSTEM DESIGN REVIEW · 09",
             "headline": "Approve isolation by workload class",
-            "code": "const deck = await compose(brief);\nawait deck.export('pdf');",
-            "language": "text",
-            "caption": "A compact example keeps the boundary inspectable."
+            "subtitle": "Owner: Platform · Start: this month",
+            "body": "Ship the adapter first, compare both paths, then retire the legacy writer."
           }
         },
         {
@@ -7750,24 +8313,15 @@
         },
         {
           "key": "team-update-2",
-          "pattern": "wins",
+          "pattern": "team-update",
           "purpose": "Here is how the team is moving",
           "slots": {
             "eyebrow": "TEAM ONBOARDING · 02",
             "headline": "Here is how the team is moving",
-            "metrics": [
-              {
-                "value": "4",
-                "label": "milestones shipped"
-              },
-              {
-                "value": "31%",
-                "label": "faster cycle"
-              },
-              {
-                "value": "9.2",
-                "label": "team confidence"
-              }
+            "bullets": [
+              "Shipped the core path",
+              "Learned where users pause",
+              "Next: simplify review"
             ]
           }
         },
@@ -7866,13 +8420,16 @@
         },
         {
           "key": "checklist-9",
-          "pattern": "shout-outs",
+          "pattern": "checklist",
           "purpose": "Keep this first-week checklist",
           "slots": {
             "eyebrow": "TEAM ONBOARDING · 09",
             "headline": "Keep this first-week checklist",
-            "quote": "Rina made the failure path testable before it reached customers.",
-            "attribution": "The launch team"
+            "bullets": [
+              "The owner is named",
+              "The failure path is tested",
+              "The result is measurable"
+            ]
           }
         },
         {
@@ -8089,24 +8646,15 @@
         },
         {
           "key": "team-update-2",
-          "pattern": "wins",
+          "pattern": "team-update",
           "purpose": "The work begins from a shared signal",
           "slots": {
             "eyebrow": "TEAM KICKOFF · 02",
             "headline": "The work begins from a shared signal",
-            "metrics": [
-              {
-                "value": "4",
-                "label": "milestones shipped"
-              },
-              {
-                "value": "31%",
-                "label": "faster cycle"
-              },
-              {
-                "value": "9.2",
-                "label": "team confidence"
-              }
+            "bullets": [
+              "Shipped the core path",
+              "Learned where users pause",
+              "Next: simplify review"
             ]
           }
         },
@@ -8205,13 +8753,16 @@
         },
         {
           "key": "checklist-9",
-          "pattern": "shout-outs",
+          "pattern": "checklist",
           "purpose": "Leave with a ready-to-start checklist",
           "slots": {
             "eyebrow": "TEAM KICKOFF · 09",
             "headline": "Leave with a ready-to-start checklist",
-            "quote": "Rina made the failure path testable before it reached customers.",
-            "attribution": "The launch team"
+            "bullets": [
+              "The owner is named",
+              "The failure path is tested",
+              "The result is measurable"
+            ]
           }
         },
         {
@@ -8424,16 +8975,16 @@
         },
         {
           "key": "case-study-5",
-          "pattern": "gallery",
+          "pattern": "case-study",
           "purpose": "One journey changed the shape of home",
           "slots": {
             "eyebrow": "WEDDING STORY · 05",
             "headline": "One journey changed the shape of home",
-            "body": "A collection of interfaces built around calm decisions.",
+            "body": "The team lost context whenever work moved between tools.",
             "bullets": [
-              "Product systems",
-              "Data stories",
-              "Identity and motion"
+              "Mapped the failure point",
+              "Designed one shared state",
+              "Cut rework by 42%"
             ]
           }
         },
@@ -8625,6 +9176,206 @@
         }
       ],
       "designLanguage": "cinema-noir"
+    },
+    {
+      "id": "asterloop-energy",
+      "name": "AsterLoop Energy — Series A",
+      "summary": "A premium clean-energy fundraising story from industrial urgency to system proof and scale.",
+      "purpose": "business",
+      "tags": [
+        "energy",
+        "climate",
+        "fundraising",
+        "series a",
+        "industrial"
+      ],
+      "designLanguage": "spatial-future",
+      "themeKey": "asterloop-energy",
+      "motionStyle": "dynamic",
+      "transitionStyle": "zoom",
+      "voiceStyle": "confident",
+      "reviewed": true,
+      "slides": [
+        {
+          "key": "full-bleed-photo-1",
+          "pattern": "full-bleed-photo",
+          "purpose": "Open on the industrial transformation",
+          "slots": {
+            "eyebrow": "ASTERLOOP ENERGY",
+            "headline": "Industrial heat, reinvented",
+            "subtitle": "Series A · clean, dispatchable heat for heavy industry",
+            "picture": "A monumental thermal-energy installation at blue hour, copper heat glowing through insulated industrial pipework"
+          }
+        },
+        {
+          "key": "big-number-2",
+          "pattern": "big-number",
+          "purpose": "Make the emissions gap impossible to ignore",
+          "slots": {
+            "eyebrow": "THE 42% GAP",
+            "headline": "Heat is the hard part",
+            "metrics": [
+              {
+                "value": "42%",
+                "label": "of industrial emissions are tied to process heat"
+              }
+            ],
+            "caption": "Illustrative market framing; replace with a sourced figure before external use."
+          }
+        },
+        {
+          "key": "trend-chart-3",
+          "pattern": "trend-chart",
+          "purpose": "Show commercial momentum",
+          "slots": {
+            "eyebrow": "COMMERCIAL MOMENTUM",
+            "headline": "Deployments turn proof into pipeline",
+            "chart": {
+              "type": "line",
+              "categories": [
+                "2023",
+                "2024",
+                "2025",
+                "2026E"
+              ],
+              "series": [
+                {
+                  "name": "Revenue",
+                  "values": [
+                    4,
+                    14,
+                    28,
+                    48
+                  ]
+                },
+                {
+                  "name": "Deployments",
+                  "values": [
+                    2,
+                    5,
+                    8,
+                    12
+                  ]
+                }
+              ],
+              "unit": "$M"
+            },
+            "body": "Signed sites and repeatable commissioning are expanding together.",
+            "caption": "Illustrative company data for template demonstration."
+          }
+        },
+        {
+          "key": "roadmap-4",
+          "pattern": "roadmap",
+          "purpose": "Connect the round to scale",
+          "slots": {
+            "eyebrow": "ROAD TO SCALE",
+            "headline": "Each milestone removes a scale constraint",
+            "bullets": [
+              "2026 — scale manufacturing",
+              "2027 — expand delivery network",
+              "2028 — enter three industrial clusters",
+              "2030 — avoid one gigatonne pathway"
+            ]
+          }
+        },
+        {
+          "key": "system-diagram-5",
+          "pattern": "system-diagram",
+          "purpose": "Explain the thermal loop",
+          "slots": {
+            "eyebrow": "THERMAL LOOP ARCHITECTURE",
+            "headline": "Modular hardware closes the loop",
+            "diagram": {
+              "kind": "architecture",
+              "direction": "LR",
+              "nodes": [
+                {
+                  "key": "input",
+                  "label": "Heat input",
+                  "sublabel": "renewable electricity",
+                  "role": "external"
+                },
+                {
+                  "key": "store",
+                  "label": "Thermal store",
+                  "sublabel": "modular media",
+                  "role": "datastore"
+                },
+                {
+                  "key": "exchange",
+                  "label": "Heat exchange",
+                  "sublabel": "closed loop",
+                  "role": "service"
+                },
+                {
+                  "key": "process",
+                  "label": "Industrial process",
+                  "sublabel": "dispatchable output",
+                  "role": "external"
+                }
+              ],
+              "edges": [
+                {
+                  "source": "input",
+                  "target": "store"
+                },
+                {
+                  "source": "store",
+                  "target": "exchange"
+                },
+                {
+                  "source": "exchange",
+                  "target": "process"
+                },
+                {
+                  "source": "process",
+                  "target": "store",
+                  "label": "recover"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "key": "comparison-6",
+          "pattern": "comparison",
+          "purpose": "Contrast conventional heat with AsterLoop",
+          "slots": {
+            "eyebrow": "WHY ASTERLOOP WINS",
+            "headline": "Cleaner heat without operational compromise",
+            "body": "Conventional systems lock operators into fuel volatility, emissions exposure and inflexible capacity.",
+            "bullets": [
+              "Clean, reliable heat",
+              "Lower lifecycle cost",
+              "Flexible modular expansion",
+              "Designed for industrial uptime"
+            ]
+          }
+        },
+        {
+          "key": "profile-7",
+          "pattern": "profile",
+          "purpose": "Let an operator validate the benefit",
+          "slots": {
+            "eyebrow": "BUILT WITH OPERATORS",
+            "headline": "Reliability earns adoption",
+            "quote": "AsterLoop gives us the reliable heat we need without the emissions trade-off.",
+            "attribution": "Operations manager · cement manufacturer",
+            "picture": "An experienced industrial operations manager in safety glasses and a hard hat inside a clean modern plant"
+          }
+        },
+        {
+          "key": "closing-8",
+          "pattern": "closing",
+          "purpose": "Close with the investment invitation",
+          "slots": {
+            "eyebrow": "SERIES A",
+            "headline": "Power the next industrial era",
+            "subtitle": "Partner with AsterLoop to make clean industrial heat inevitable."
+          }
+        }
+      ]
     },
     {
       "id": "swiss-strategy-brief",

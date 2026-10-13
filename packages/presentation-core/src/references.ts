@@ -130,6 +130,20 @@ function checkElement(element: PresentationElement, ctx: CheckContext): BrokenRe
     }
   }
 
+  if (element.type === "text") {
+    const assetId = (element as { pictureFill?: { assetId?: string } }).pictureFill?.assetId;
+    if (assetId && !ctx.assetIds.has(assetId)) {
+      problems.push({
+        code: "E102",
+        holder: element.id,
+        missing: assetId,
+        path: `${ctx.base}/pictureFill/assetId`,
+        message: `Text picture fill references asset "${assetId}", which is not in the manifest.`,
+        severity: "error",
+      });
+    }
+  }
+
   if (element.type === "componentInstance") {
     const componentId = (element as { componentId?: string }).componentId;
     if (componentId && !ctx.componentIds.has(componentId)) {

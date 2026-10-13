@@ -5,6 +5,7 @@ import {
   CHART_KINDS,
   DIAGRAM_KINDS,
   ELEMENT_SCHEMA_BY_TYPE,
+  MASK_SHAPES,
   SHAPE_KINDS,
   isKnownElementType,
   walkElements,
@@ -511,6 +512,23 @@ function validateElements(doc: PresentationDocument, c: IssueCollector, ids: Set
             { targetIds: [element.id] },
           );
         }
+      }
+
+      // A mask shape from a newer build is kept and drawn unmasked, never refused.
+      const mask = (element as { mask?: { type?: unknown; shape?: unknown; parts?: unknown } }).mask;
+      if (element.type === "image" && mask) {
+        const parts = mask.type === "compound" && Array.isArray(mask.parts) ? (mask.parts as { type?: unknown; shape?: unknown }[]) : [mask];
+        parts.forEach((part, index) => {
+          if (part.type === "shape" && isUnknownEnumValue(MASK_SHAPES, part.shape)) {
+            const at = mask.type === "compound" ? `${path}/mask/parts/${index}/shape` : `${path}/mask/shape`;
+            c.add(
+              "W241",
+              at,
+              `mask shape "${String(part.shape)}" is not known to this reader. It is preserved on save; the picture is drawn unmasked here.`,
+              { targetIds: [element.id] },
+            );
+          }
+        });
       }
 
       const t = element.transform;

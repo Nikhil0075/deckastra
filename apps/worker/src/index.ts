@@ -122,7 +122,7 @@ export async function runExport(
 
     if (job.kind === "pptx") {
       onProgress({ progress: 0.3, stage: "writing", message: "Building the PowerPoint package" });
-      const equations = await captureEquations([...scenes.values()], page, fontCss);
+      const equations = await captureEquations([...scenes.values()], page, fontCss, library.resolve);
       const artifact = buildPptx(
         equations.size ? { ...input, images: new Map([...input.images, ...equations]) } : input,
       );

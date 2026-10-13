@@ -145,7 +145,7 @@ describe("the tool surface", () => {
     expect(served).toBe(DECK_DESIGN_GUIDE);
     // Every tool the guide names is one this server registers.
     const tools = new Set((await client.listTools()).tools.map((tool) => tool.name));
-    const named = [...served.matchAll(/`([a-z]+_[a-z_]+)`/g)].map((match) => match[1]!).filter((name) => !["key_message"].includes(name));
+    const named = [...served.matchAll(/`([a-z]+_[a-z_]+)`/g)].map((match) => match[1]!).filter((name) => !["key_message", "pattern_id"].includes(name));
     expect(named.filter((name) => !tools.has(name))).toEqual([]);
     const skill = readFileSync(new URL("../skills/deckastra-deck-design/SKILL.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
     expect(skill.replace(/^---\n[\s\S]*?\n---\n\n/, "")).toBe(DECK_DESIGN_GUIDE);

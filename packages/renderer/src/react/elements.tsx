@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { toCss } from "../matrix";
+import { maskImageCss } from "../masks";
 import type {
   ChartPayload,
   DiagramPayload,
@@ -60,7 +61,7 @@ function segmentedText(text: string, counter: TextSubTargetCounter): ReactNode {
   });
 }
 
-function Spans({ block, baseSize, counter, numberSlot, segmented }: { block: TextBlockPayload; baseSize: number; counter: TextSubTargetCounter; numberSlot: boolean; segmented: boolean }): ReactNode {
+function Spans({ block, baseSize, counter, numberSlot, segmented, transparent = false }: { block: TextBlockPayload; baseSize: number; counter: TextSubTargetCounter; numberSlot: boolean; segmented: boolean; transparent?: boolean }): ReactNode {
   const line = counter.line++;
   return (
     <span data-sub-target={`line/${line}`}>
@@ -71,7 +72,7 @@ function Spans({ block, baseSize, counter, numberSlot, segmented }: { block: Tex
           fontWeight: span.bold ? 700 : undefined,
           fontStyle: span.italic ? "italic" : undefined,
           textDecoration: span.underline ? "underline" : undefined,
-          color: span.color,
+          color: transparent ? "transparent" : span.color,
           // Relative, never absolute: shrink-to-fit scales one number and every
           // span keeps its relative emphasis (doc 02 §12.1).
           fontSize: span.fontSizeScale ? baseSize * span.fontSizeScale : undefined,
@@ -101,12 +102,14 @@ function TextBlocks({
   appliedFontSize,
   numberSlot = false,
   segmented = true,
+  transparent = false,
 }: {
   blocks: TextBlockPayload[];
   typography: TypographyStyle;
   appliedFontSize: number;
   numberSlot?: boolean;
   segmented?: boolean;
+  transparent?: boolean;
 }): ReactNode {
   const counter: TextSubTargetCounter = { line: 0, word: 0, glyph: 0, numberSlotAssigned: false };
   return (
@@ -128,7 +131,7 @@ function TextBlocks({
         if (listed) {
           return (
             <li key={block.id} data-plain-text={plainText} style={{ ...style, listStyle: block.type === "numbered" ? "decimal" : "disc", marginInlineStart: 24 + (block.indentLevel ?? 0) * 24 }}>
-              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
+              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} transparent={transparent} />
             </li>
           );
         }
@@ -136,14 +139,14 @@ function TextBlocks({
         if (block.type === "quote") {
           return (
             <blockquote key={block.id} data-plain-text={plainText} style={{ ...style, fontStyle: block.upright ? "normal" : "italic" }}>
-              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
+              <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} transparent={transparent} />
             </blockquote>
           );
         }
 
         return (
           <p key={block.id} data-plain-text={plainText} style={style}>
-            <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} />
+            <Spans block={block} baseSize={appliedFontSize} counter={counter} numberSlot={numberSlot} segmented={segmented} transparent={transparent} />
           </p>
         );
       })}
@@ -167,6 +170,9 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
 
   switch (payload.kind) {
     case "text": {
+      const pictureUrl = payload.pictureFill
+        ? resolveAssetUrl?.(payload.pictureFill.assetId, payload.pictureFill.storageKey)
+        : undefined;
       const justify =
         payload.verticalAlign === "middle"
           ? "center"
@@ -194,6 +200,17 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
             // reports it as W103.
             overflow: "visible",
             ...typographyToCss(payload.typography, payload.metrics.appliedFontSize),
+            ...(payload.pictureFill ? {
+              backgroundColor: payload.pictureFill.fallbackColor ?? payload.typography.color,
+              backgroundImage: pictureUrl ? `url(${JSON.stringify(pictureUrl)})` : undefined,
+              backgroundSize: payload.pictureFill.objectFit === "fill" ? "100% 100%" : payload.pictureFill.objectFit,
+              backgroundPosition: payload.pictureFill.objectPosition,
+              backgroundRepeat: "no-repeat",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              WebkitTextFillColor: "transparent",
+            } : {}),
           }}
         >
           <TextBlocks
@@ -204,6 +221,7 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
             // Static exports use contiguous runs unless a sampled effect needs
             // glyph targets. Paint fragments impair PDF reading order/shaping.
             segmented={segmented}
+            transparent={Boolean(payload.pictureFill)}
           />
         </div>
       );
@@ -313,6 +331,22 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
 
     case "image": {
       const src = resolveAssetUrl?.(payload.assetId, payload.storageKey);
+      // The mask is drawn by the browser from the scene's outlines, the same
+      // outlines PowerPoint receives. It clips the placeholder too, so a
+      // picture that has not loaded still shows the shape the slide is built on.
+      const maskStyle: CSSProperties = payload.mask
+        ? (() => {
+            const image = maskImageCss(payload.mask, node.localBounds.width, node.localBounds.height);
+            return {
+              maskImage: image,
+              WebkitMaskImage: image,
+              maskSize: "100% 100%",
+              WebkitMaskSize: "100% 100%",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+            } as CSSProperties;
+          })()
+        : {};
 
       if (!src) {
         // A missing asset URL is a resolution failure, not a document error. Show
@@ -329,6 +363,7 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
               borderRadius: node.resolvedStyle.cornerRadius,
               font: "500 14px ui-sans-serif, system-ui, sans-serif",
               color: "rgba(127,127,127,0.9)",
+              ...maskStyle,
             }}
           >
             {payload.altText ?? "Image unavailable"}
@@ -346,13 +381,15 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
           // has to be reported as *this picture* rather than as a data URL nobody
           // can read back to an id.
           data-asset-id={payload.assetId}
+          data-mask={payload.mask ? "true" : undefined}
           style={{
             width: "100%",
             height: "100%",
             objectFit: payload.objectFit as CSSProperties["objectFit"],
             objectPosition: payload.objectPosition,
-            borderRadius: node.resolvedStyle.cornerRadius,
+            borderRadius: payload.mask ? undefined : node.resolvedStyle.cornerRadius,
             display: "block",
+            ...maskStyle,
           }}
         />
       );

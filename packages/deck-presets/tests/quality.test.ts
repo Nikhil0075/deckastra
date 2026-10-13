@@ -19,8 +19,8 @@ describe("preset quality gate", () => {
     expect(SLIDE_PATTERNS).toHaveLength(69);
     expect(Object.keys(MOTION_STYLES)).toHaveLength(7);
     expect(MOTION_STYLES.playful.entrance).toBe("wordCascade");
-    // 24 neutral templates and four in the pilot design languages (unit 5).
-    expect(DECK_PRESETS).toHaveLength(28);
+    // 24 original templates, four language pilots and the AsterLoop V2 flagship.
+    expect(DECK_PRESETS).toHaveLength(29);
     expect(DECK_PRESETS.every((preset) => preset.reviewed)).toBe(true);
     // At least four templates per purpose, whatever languages they are in.
     for (const purpose of PURPOSE_GROUPS) {
@@ -38,6 +38,17 @@ describe("preset quality gate", () => {
       const definition = PATTERN_DEFINITIONS[pattern];
       expect(definition.slots.headline?.required).toBe(true);
       expect(definition.exampleSlots.headline).toBeTruthy();
+      expect(definition.family).toBeTruthy();
+      expect(definition.contentKinds.length).toBeGreaterThan(0);
+      expect(definition.previewKey).toContain(definition.family);
+    }
+  });
+
+  it("keeps every reviewed template structurally varied", () => {
+    for (const preset of DECK_PRESETS) {
+      const families = preset.slides.map((slide) => PATTERN_DEFINITIONS[slide.pattern].family);
+      expect(new Set(families).size, preset.id).toBeGreaterThanOrEqual(8);
+      expect(families.some((family, index) => index > 0 && family === families[index - 1]), preset.id).toBe(false);
     }
   });
 

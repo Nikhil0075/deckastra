@@ -3,7 +3,7 @@ import type { BrandIcon, PatchOperation, PresentationDocument, ShapeKind } from 
 import type { StarterElementKind } from "@deckastra/presentation-core";
 import { ICON_CATEGORIES, ICON_NAMES, ICON_VIEWBOX, findIcon, shapeGeometry } from "@deckastra/renderer";
 import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts";
+import type { LayoutFamily, PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts";
 
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
@@ -195,6 +195,8 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
   const [catalog, setCatalog] = useState<PresetCatalog | null>(null);
   const [patternBusy, setPatternBusy] = useState<SlidePattern | null>(null);
   const [patternNotice, setPatternNotice] = useState<string | null>(null);
+  const [patternFamily, setPatternFamily] = useState<LayoutFamily | "all">("all");
+  const [selectedPattern, setSelectedPattern] = useState<SlidePattern | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const svgInput = useRef<HTMLInputElement>(null);
   const needle = query.trim().toLowerCase();
@@ -211,7 +213,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
 
   // Each pattern drawn as the slide it adds, in this deck's language and theme.
   const language = (document?.metadata as { designLanguage?: { id?: string } } | undefined)?.designLanguage?.id ?? "neutral";
-  const previews = usePatternPreviews(client, language, tab === "patterns");
+  const previews = usePatternPreviews(client, language, tab === "patterns", catalog?.catalogVersion ?? 1);
 
   // Recent and favourites follow the person (design review, 2026-09-27): read
   // from the service once, merged with this browser's copy, which stays as the
@@ -510,16 +512,48 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
     }
   };
 
-  const patternEntries = catalog
+  const allPatternEntries = catalog
     ? catalog.slidePatterns
         .map((pattern) => ({ pattern, definition: catalog.patternDefinitions[pattern] }))
-        .filter(({ pattern, definition }) => !needle || `${pattern} ${definition.name} ${definition.summary}`.toLowerCase().includes(needle))
     : [];
+  const patternFamilies = [...new Set(allPatternEntries.map(({ definition }) => definition.family).filter(Boolean))] as LayoutFamily[];
+  const patternEntries = allPatternEntries.filter(({ pattern, definition }) =>
+    (patternFamily === "all" || definition.family === patternFamily) &&
+    (!needle || `${pattern} ${definition.name} ${definition.summary} ${definition.family ?? ""} ${(definition.contentKinds ?? []).join(" ")}`.toLowerCase().includes(needle)),
+  );
+  const previewedPattern = patternEntries.find(({ pattern }) => pattern === selectedPattern) ?? patternEntries[0];
+  const familyLabel = (family: string) => family.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   const patternsPanel = (
     <>
       <p className="dk-field__hint">Complete slide structures with named content slots. Layout and spacing stay consistent automatically.</p>
       {patternNotice ? <p className="dk-field__hint" role="status">{patternNotice}</p> : null}
       {!catalog && !patternNotice ? <p className="dk-field__hint">Loading slide patterns…</p> : null}
+      {catalog ? (
+        <div className="dk-library__chips" role="group" aria-label="Pattern family">
+          <button type="button" className={cx("dk-chipbutton", patternFamily === "all" && "dk-chipbutton--on")} aria-pressed={patternFamily === "all"} onClick={() => setPatternFamily("all")}>All</button>
+          {patternFamilies.map((family) => (
+            <button key={family} type="button" className={cx("dk-chipbutton", patternFamily === family && "dk-chipbutton--on")} aria-pressed={patternFamily === family} onClick={() => setPatternFamily(family)}>
+              {familyLabel(family)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {previewedPattern && document ? (
+        <section className="dk-library__pattern-detail" data-testid="pattern-detail">
+          {previews?.slides[previewedPattern.pattern] ? <PatternThumb slide={previews.slides[previewedPattern.pattern]} document={document} /> : <span className="dk-library__thumb" aria-hidden="true" />}
+          <div className="dk-library__pattern-detail-copy">
+            <div>
+              <strong>{previewedPattern.definition.name}</strong>
+              <span>{previewedPattern.definition.family ? familyLabel(previewedPattern.definition.family) : "Pattern"}</span>
+            </div>
+            <p>{previewedPattern.definition.summary}</p>
+            <p className="dk-field__hint">{(previewedPattern.definition.contentKinds ?? ["text"]).map(familyLabel).join(" · ")}</p>
+            <Button size="sm" variant="primary" disabled={patternBusy !== null} onClick={() => void insertPattern(previewedPattern.pattern)}>
+              {patternBusy === previewedPattern.pattern ? "Inserting…" : "Insert this slide"}
+            </Button>
+          </div>
+        </section>
+      ) : null}
       <div className="dk-library__grid dk-library__grid--patterns" data-testid="library-patterns">
         {patternEntries.map(({ pattern, definition }) => (
           <button
@@ -530,6 +564,8 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
             title={definition.summary}
             data-testid={`library-pattern-${pattern}`}
             data-previewed={previews?.slides[pattern] && document ? "true" : undefined}
+            onMouseEnter={() => setSelectedPattern(pattern)}
+            onFocus={() => setSelectedPattern(pattern)}
             onClick={() => void insertPattern(pattern)}
           >
             {previews?.slides[pattern] && document ? (
@@ -538,6 +574,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
               <Icon name="grid" size={22} />
             )}
             <span className="dk-library__pattern-name">{patternBusy === pattern ? "Inserting…" : definition.name}</span>
+            {definition.family ? <span className="dk-library__pattern-family">{familyLabel(definition.family)}</span> : null}
           </button>
         ))}
       </div>

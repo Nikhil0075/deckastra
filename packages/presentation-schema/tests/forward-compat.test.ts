@@ -139,3 +139,50 @@ describe("forward compatibility", () => {
     expect(serializeDocument(reopened)).toBe(original);
   });
 });
+
+/**
+ * Image masks (2026-10-13). A mask shape from a newer build is kept and drawn
+ * unmasked with a warning, like an unknown shape kind; a mask whose structure
+ * is wrong is refused, because nothing could draw it.
+ */
+describe("image masks", () => {
+  function withMask(mask: unknown): PresentationDocument {
+    const doc = baseDoc();
+    for (const slide of doc.slides) {
+      const image = slide.elements.find((element) => element.type === "image");
+      if (image) {
+        (image as Record<string, unknown>).mask = mask;
+        return doc;
+      }
+    }
+    throw new Error("no image in the fixture");
+  }
+
+  it("accepts every mask form this build draws", () => {
+    for (const mask of [
+      { type: "shape", shape: "arch" },
+      { type: "shape", shape: "star", points: 7, rotation: 15, invert: true },
+      { type: "path", pathData: "M0,1 L0.5,0 L1,1 Z", rotation: -10 },
+      { type: "rounded", radius: { topLeft: 40, topRight: 0, bottomRight: 40, bottomLeft: 0 } },
+      { type: "compound", invert: true, parts: [{ type: "shape", shape: "circle" }, { type: "ellipse", rotation: 30 }] },
+    ]) {
+      const report = validateDocument(withMask(mask));
+      expect(report.errors, JSON.stringify(mask)).toEqual([]);
+    }
+  });
+
+  it("keeps an unknown mask shape and warns, in a part too", () => {
+    const report = validateDocument(withMask({ type: "compound", parts: [{ type: "shape", shape: "spiral" }] }));
+    expect(report.errors).toEqual([]);
+    expect(report.warnings.some((warning) => warning.code === "W241" && /spiral/.test(warning.message))).toBe(true);
+    const saved = JSON.parse(serializeDocument(withMask({ type: "shape", shape: "spiral" })));
+    const image = saved.slides.flatMap((slide: { elements: Record<string, unknown>[] }) => slide.elements).find((element: Record<string, unknown>) => element.type === "image");
+    expect(image.mask).toEqual({ type: "shape", shape: "spiral" });
+  });
+
+  it("refuses a mask that names no outline", () => {
+    expect(validateDocument(withMask({ type: "shape" })).errors.length).toBeGreaterThan(0);
+    expect(validateDocument(withMask({ type: "path", pathData: "<svg/>" })).errors.length).toBeGreaterThan(0);
+    expect(validateDocument(withMask({ type: "compound", parts: [] })).errors.length).toBeGreaterThan(0);
+  });
+});

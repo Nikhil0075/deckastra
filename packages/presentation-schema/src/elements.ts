@@ -161,6 +161,17 @@ export const TextElementSchema = z.looseObject({
   verticalAlign: VerticalAlignSchema.optional(),
   /** Default "auto", derived from metadata.language. */
   direction: z.enum(["ltr", "rtl", "auto"]).optional(),
+  /**
+   * Paint a photograph through the glyphs while the text remains native and
+   * editable. This is PowerPoint's "Text Fill > Picture", not flattened art.
+   */
+  pictureFill: z.object({
+    assetId: IdSchema,
+    fit: ImageFitSchema.optional(),
+    focalPoint: PointSchema.optional(),
+    /** Used while an asset is unavailable or a consumer cannot draw picture fill. */
+    fallbackColor: ColorValueSchema.optional(),
+  }).optional(),
 });
 
 // ---------------------------------------------------------------------- shape
@@ -300,14 +311,85 @@ export const CropDefinitionSchema = z.object({
 });
 export type CropDefinition = z.infer<typeof CropDefinitionSchema>;
 
+/**
+ * Named mask outlines. Open, like shape kinds: a mask from a newer build draws
+ * the picture unmasked with a warning rather than failing the deck.
+ *
+ * `circle` is the largest centred circle, so a portrait or landscape picture
+ * keeps a round frame in a box that is not square. `arch` is a semicircular
+ * top on a straight-sided body. `blob` and `torn` are fixed outlines, so the
+ * same deck draws the same edge everywhere.
+ */
+export const MASK_SHAPES = [
+  "circle",
+  "ellipse",
+  "pill",
+  "arch",
+  "blob",
+  "torn",
+  "triangle",
+  "diamond",
+  "star",
+  "polygon",
+  "chevron",
+  "parallelogram",
+  "speechBubble",
+] as const;
+export const MaskShapeSchema = openEnum(MASK_SHAPES);
+export type MaskShape = (typeof MASK_SHAPES)[number];
+
+/**
+ * What every mask can also say (image masks, 2026-10-13).
+ *
+ * `rotation` turns the outline about the box's centre and leaves the
+ * photograph upright; rotating the element turns both. `invert` keeps what
+ * lies outside the outline instead of inside it.
+ */
+const maskCommon = {
+  invert: z.boolean().optional(),
+  rotation: FiniteNumber.optional(),
+};
+
+const RoundedMaskSchema = z.object({
+  type: z.literal("rounded"),
+  radius: z.union([FiniteNumber.min(0), z.record(z.string(), FiniteNumber)]),
+  ...maskCommon,
+});
+const EllipseMaskSchema = z.object({ type: z.literal("ellipse"), ...maskCommon });
+/** A path normalized 0..1 to the element's box (doc 02 §13.2), like a custom shape. */
+const PathMaskSchema = z.object({ type: z.literal("path"), pathData: PathDataSchema, ...maskCommon });
+const ShapeMaskSchema = z.object({
+  type: z.literal("shape"),
+  shape: MaskShapeSchema,
+  /** star / polygon point count. */
+  points: z.number().int().min(3).max(64).optional(),
+  ...maskCommon,
+});
+
+/** The outlines a compound mask may combine. */
+export const MaskPartSchema = z.discriminatedUnion("type", [
+  RoundedMaskSchema,
+  EllipseMaskSchema,
+  PathMaskSchema,
+  ShapeMaskSchema,
+]);
+export type MaskPart = z.infer<typeof MaskPartSchema>;
+
 export const MaskDefinitionSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("rounded"),
-    radius: z.union([FiniteNumber.min(0), z.record(z.string(), FiniteNumber)]),
-  }),
-  z.object({ type: z.literal("ellipse") }),
-  z.object({ type: z.literal("path"), pathData: PathDataSchema }),
+  RoundedMaskSchema,
+  EllipseMaskSchema,
+  PathMaskSchema,
+  ShapeMaskSchema,
   z.object({ type: z.literal("shapeRef"), elementId: IdSchema }),
+  /**
+   * Several outlines shown together: the picture appears wherever any part
+   * does. A part's own `rotation` turns that part; the compound's turns them all.
+   */
+  z.object({
+    type: z.literal("compound"),
+    parts: z.array(MaskPartSchema).min(1).max(16),
+    ...maskCommon,
+  }),
 ]);
 export type MaskDefinition = z.infer<typeof MaskDefinitionSchema>;
 

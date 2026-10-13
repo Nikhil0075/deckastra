@@ -2,6 +2,14 @@ import type { PatchOperation, PresentationDocument } from "@deckastra/presentati
 
 export type PurposeGroup = "business" | "product" | "teaching" | "technical" | "team" | "personal";
 export type BaseSlidePattern = "title" | "statement" | "bullets" | "metrics" | "quote" | "code" | "split";
+export type DataSlideLayout = "chart" | "diagram" | "timeline" | "image";
+export type LayoutFamily =
+  | "cover" | "statement" | "agenda" | "section" | "comparison" | "process" | "practice"
+  | "timeline" | "roadmap" | "checklist" | "big-number" | "profile" | "case-study"
+  | "decision" | "closing" | "summary" | "feature-grid" | "journey" | "pricing"
+  | "gallery" | "reflection" | "data-chart" | "architecture" | "system-flow" | "code-demo" | "media"
+  | "metrics" | "quote" | "split" | "list";
+export type PatternContentKind = "text" | "metrics" | "chart" | "diagram" | "timeline" | "media" | "code";
 export type SlidePattern = BaseSlidePattern
   | "agenda" | "section" | "comparison" | "process" | "timeline" | "roadmap" | "checklist" | "pros-cons" | "big-number" | "profile" | "case-study" | "decision" | "closing"
   | "executive-summary" | "problem" | "opportunity" | "market" | "financials" | "risks" | "recommendation" | "appendix"
@@ -36,7 +44,12 @@ export interface PresetSlotDefinition {
 export interface PresetPatternDefinition {
   name: string;
   summary: string;
-  composerLayout: BaseSlidePattern;
+  composerLayout: BaseSlidePattern | DataSlideLayout;
+  family?: LayoutFamily;
+  variant?: string;
+  contentKinds?: PatternContentKind[];
+  previewKey?: string;
+  version?: number;
   slots: Record<string, PresetSlotDefinition>;
   requiresOneOf?: string[][];
   exampleSlots: Record<string, PresetSlotValue>;
@@ -78,6 +91,7 @@ export interface PresetTheme {
 }
 
 export interface PresetCatalog {
+  catalogVersion?: number;
   description: string;
   purposeGroups: PurposeGroup[];
   slidePatterns: SlidePattern[];
@@ -123,7 +137,9 @@ export interface StoryMetric {
 
 export interface StoryPlanSlide {
   /** A composer layout; the data layouts carry their data in the fields below. */
-  layout: SlidePattern | "chart" | "diagram" | "image";
+  layout: BaseSlidePattern | DataSlideLayout;
+  /** Optional concrete V2 pattern; layout remains the compatibility fallback. */
+  pattern_id?: SlidePattern;
   purpose: string;
   key_message: string;
   headline: string;
