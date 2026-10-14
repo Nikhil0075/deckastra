@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { AccountContext, AccountWorkspace, PresentationSummary } from "@deckastra/workspace-contracts";
+import type { AccountContext, AccountWorkspace, DraftBoard as DraftBoardModel, PresentationSummary } from "@deckastra/workspace-contracts";
 
 import { useAssetUrls } from "../lib/asset-urls";
 import { latestRequests } from "../lib/latest-request";
@@ -33,6 +33,7 @@ import { ExportPanel } from "./ExportPanel";
 import { FinalFrameSlide } from "./FinalFrameSlide";
 import { CreditsMeter } from "./CreditsMeter";
 import { TemplatesView } from "./TemplatesView";
+import { DraftBoard } from "./DraftBoard";
 import { CommandPalette } from "./shell/CommandPalette";
 import { TaskCentre } from "./shell/TaskCentre";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
@@ -129,6 +130,8 @@ export function DeckList({
   const [busy, setBusy] = useState(false);
   const [moving, setMoving] = useState<PresentationSummary | null>(null);
   const [exporting, setExporting] = useState<PresentationSummary | null>(null);
+  const [draftOpen, setDraftOpen] = useState<DraftBoardModel | "new" | null>(null);
+  const [drafts, setDrafts] = useState<DraftBoardModel[]>([]);
   const [newProject, setNewProject] = useState<string | null>(null);
   // Bumped to put keyboard focus on the template gallery (File › New from template).
   const [templateFocus, setTemplateFocus] = useState(0);
@@ -171,6 +174,12 @@ export function DeckList({
     return null;
   }, [account, projectId]);
   const project = located?.workspace.projects.find((candidate) => candidate.id === projectId);
+  useEffect(() => {
+    let live = true;
+    if (!projectId) { setDrafts([]); return; }
+    void client.drafts.list(projectId, { fresh: true }).then((items) => { if (live) setDrafts(Array.isArray(items) ? items : []); }).catch(() => { if (live) setDrafts([]); });
+    return () => { live = false; };
+  }, [client, projectId, draftOpen]);
 
   // The project on screen *now*, read when a load starts and again when it
   // answers. Refreshes run after a duplicate, a delete, an undo or a move, any of
@@ -564,12 +573,27 @@ export function DeckList({
               <Button variant="secondary" icon="theme" onClick={() => setDestination("templates")} data-testid="browse-templates">
                 From a template
               </Button>
+              <Button variant="secondary" icon="pen" onClick={() => setDraftOpen("new")} disabled={!editable || busy} data-testid="new-draft">
+                New draft
+              </Button>
               {openFile ? (
                 <Button variant="ghost" icon="upload" onClick={openFile} data-testid="open-deck-file">
                   Open .mydeck file
                 </Button>
               ) : null}
             </div>
+          ) : null}
+
+          {drafts.length > 0 && view?.kind === "project" ? (
+            <section className="dk-draft-list" aria-label="Draft boards">
+              <h3>Draft boards</h3>
+              <div>{drafts.map((draft) => (
+                <button key={draft.id} type="button" className="dk-draft-list__card" onClick={() => setDraftOpen(draft)}>
+                  <strong>{draft.title}</strong>
+                  <span>{draft.body.cards.length} cards · revision {draft.revision}{draft.changed_since_build ? " · changed since built" : ""}</span>
+                </button>
+              ))}</div>
+            </section>
           ) : null}
 
           {banner ? (
@@ -677,6 +701,18 @@ export function DeckList({
         width={420}
       >
         {exporting ? <ExportPanel key={exporting.id} presentationId={exporting.id} deckTitle={exporting.title} /> : null}
+      </Drawer>
+
+      <Drawer open={draftOpen !== null} onClose={() => setDraftOpen(null)} title="Draft board" modal width={1180}>
+        {draftOpen && projectId ? (
+          <DraftBoard
+            key={draftOpen === "new" ? "new" : draftOpen.id}
+            projectId={projectId}
+            initial={draftOpen === "new" ? undefined : draftOpen}
+            onClose={() => setDraftOpen(null)}
+            onBuilt={(presentationId) => onOpen(presentationId)}
+          />
+        ) : null}
       </Drawer>
     </div>
   );

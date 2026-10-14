@@ -113,6 +113,76 @@ beforeEach(() => {
 });
 
 describe("the tool surface", () => {
+  it("lists user requests and attaches pending proposal alternatives", async () => {
+    const client = await connect({
+      "/v1/presentations/pres_open/requests": [{
+        id: "req_1", presentation_id: "pres_open", target: { slide_ids: ["sld_1"], element_ids: [] },
+        kind: "alternatives", message: "Show me options", based_on_version_id: "ver_1", status: "open",
+        created_by: "usr_local", created_at: "2026-10-14T00:00:00Z", proposal_ids: [], resolved_target: {},
+      }],
+      "/v1/requests/req_1/answer": { id: "req_1", status: "answered", proposal_ids: ["txn_a", "txn_b"] },
+    });
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(["request_list", "request_answer"]));
+
+    const listed = await client.callTool({ name: "request_list", arguments: { presentation_id: "pres_open" } });
+    expect(text(listed)).toContain("Show me options");
+    await client.callTool({ name: "request_answer", arguments: { request_id: "req_1", proposal_ids: ["txn_a", "txn_b"] } });
+    expect(sent.at(-1)).toMatchObject({
+      url: "http://127.0.0.1:51234/v1/requests/req_1/answer",
+      method: "POST",
+      body: { proposal_ids: ["txn_a", "txn_b"] },
+    });
+  });
+
+  it("suggests one mutually exclusive set of style options without applying one", async () => {
+    const client = await connect({
+      "/v1/presentations/pres_open/style-options": {
+        id: "sty_1", based_on_version_id: "ver_1", status: "open", expires_at: "2026-10-15T00:00:00Z",
+        options: [
+          { id: "opt_a", label: "Quiet", rationale: "Editorial restraint", notes: [], preview_document: animationFixture },
+          { id: "opt_b", label: "System", rationale: "Technical precision", notes: [], preview_document: animationFixture },
+        ],
+      },
+    });
+    const result = await client.callTool({
+      name: "style_suggest",
+      arguments: {
+        presentation_id: "pres_open", expected_version_id: "ver_1",
+        options: [
+          { label: "Quiet", theme_key: "minimal-light", rationale: "Editorial restraint" },
+          { label: "System", theme_key: "neo-technical", rationale: "Technical precision" },
+        ],
+      },
+    });
+    expect(text(result)).toContain("The user chooses one style");
+    expect(text(result)).not.toContain("preview_document");
+    expect(sent.at(-1)).toMatchObject({
+      url: "http://127.0.0.1:51234/v1/presentations/pres_open/style-options",
+      method: "POST",
+    });
+  });
+
+  it("edits a geometry-free draft and exposes no agent build tool", async () => {
+    const draft = {
+      id: "drf_1", project_id: "prj_local", presentation_id: null, title: "Launch story", revision: 1,
+      body: { cards: [{ id: "crd_1", layout: "title", blocks: [{ role: "headline", text: "A launch" }] }] },
+      built_version_id: null, built_revision: null, changed_since_build: false, density_warnings: {},
+      created_by: "usr_local", created_at: "2026-10-14T00:00:00Z", updated_at: "2026-10-14T00:00:00Z",
+    };
+    const client = await connect({
+      "/v1/projects/prj_local/drafts": draft,
+      "/v1/drafts/drf_1": { ...draft, revision: 2 },
+    });
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(["draft_create", "draft_list", "draft_read", "draft_update"]));
+    expect(names).not.toContain("draft_build");
+    await client.callTool({ name: "draft_create", arguments: { project_id: "prj_local", title: "Launch story", body: draft.body } });
+    expect(sent.at(-1)).toMatchObject({ method: "POST", body: { title: "Launch story", body: draft.body } });
+    await client.callTool({ name: "draft_update", arguments: { draft_id: "drf_1", revision: 1, operations: [{ op: "move", card_id: "crd_1", index: 0 }] } });
+    expect(sent.at(-1)).toMatchObject({ method: "PATCH", body: { revision: 1, operations: [{ op: "move", card_id: "crd_1", index: 0 }] } });
+  });
+
   it("teaches clients through prompts and bounded resources", async () => {
     const client = await connect();
     const resources = (await client.listResources()).resources;
@@ -323,11 +393,13 @@ describe("the tool surface", () => {
     expect(names).toEqual(expect.arrayContaining(["media_quote", "media_generate"]));
 
     const quote = await client.callTool({ name: "media_quote", arguments: {
-      presentation_id: "pres_open", prompt: "A calm blue dashboard loop", duration_seconds: 4, aspect_ratio: "16:9",
+      presentation_id: "pres_open", expected_version_id: "ver_1", slide_id: "sld_one",
+      prompt: "A calm blue dashboard loop", duration_seconds: 4, aspect_ratio: "16:9",
     } });
     expect(JSON.parse(text(quote)).credit_cost).toBe(120);
     expect(sent.at(-1)).toMatchObject({ method: "POST", body: {
-      presentation_id: "pres_open", prompt: "A calm blue dashboard loop", duration_seconds: 4, aspect_ratio: "16:9", generate_audio: false,
+      presentation_id: "pres_open", expected_version_id: "ver_1", slide_id: "sld_one", style_source: "deck",
+      prompt: "A calm blue dashboard loop", duration_seconds: 4, aspect_ratio: "16:9", generate_audio: false,
     } });
 
     const generated = await client.callTool({ name: "media_generate", arguments: {
@@ -336,7 +408,7 @@ describe("the tool surface", () => {
       duration_seconds: 4, aspect_ratio: "16:9",
     } });
     expect(JSON.parse(text(generated))).toMatchObject({ id: "asr_video", status: "queued" });
-    expect(sent.at(-1)?.body).toMatchObject({ task: "video", video_generate_audio: false, video_quote_token: "quote-token-that-is-long-enough" });
+    expect(sent.at(-1)?.body).toMatchObject({ task: "video", style_source: "deck", video_generate_audio: false, video_quote_token: "quote-token-that-is-long-enough" });
     expect(names).not.toContain("proposal_approve");
   });
 

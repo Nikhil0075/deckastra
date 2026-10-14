@@ -31,6 +31,10 @@ class VideoQuoteRequest(BaseModel):
     duration_seconds: Literal[4, 6, 8] = 4
     aspect_ratio: Literal["16:9", "9:16"] = "16:9"
     generate_audio: Literal[False] = False
+    expected_version_id: str | None = Field(default=None, min_length=1, max_length=64)
+    slide_id: str | None = Field(default=None, min_length=1, max_length=64)
+    style_source: Literal["deck", "prompt"] = "prompt"
+    composed_prompt: str | None = Field(default=None, min_length=1, max_length=4000)
 
 
 def _secret() -> str:
@@ -109,6 +113,8 @@ class ImageQuoteRequest(BaseModel):
     expected_version_id: str = Field(min_length=1, max_length=64)
     slide_id: str = Field(min_length=1, max_length=64)
     prompt: str = Field(min_length=1, max_length=2000)
+    style_source: Literal["deck", "prompt"] = "prompt"
+    composed_prompt: str | None = Field(default=None, min_length=1, max_length=4000)
 
 
 @router.post("/quotes/image")
@@ -119,9 +125,19 @@ def quote_image(request: ImageQuoteRequest, principal: Principal = Depends(curre
         raise HTTPException(409, "The deck changed. Request a new image quote.")
     if not any(slide.get("id") == request.slide_id for slide in loaded.document.get("slides") or []):
         raise HTTPException(404, "No such slide.")
-    payload = request.model_dump()
-    return _issue_service_quote(kind="image", principal=principal, session=session, presentation_id=request.presentation_id,
-                                payload=payload, price=service_price("image", prompt=request.prompt))
+    from .media_style import compose_media_prompt
+    # Requests from pre-switch clients quoted their literal prompt. Keep those
+    # tokens valid; every current UI and MCP caller sends style_source explicitly.
+    legacy_literal = "style_source" not in request.model_fields_set and request.composed_prompt is None
+    composed = ({"prompt": request.prompt, "parts": [{"source": "subject", "label": "Your description", "text": request.prompt}],
+                 "style_source": "prompt", "checks": [], "aspect_ratio": "16:9", "treatment_preset": None}
+                if legacy_literal else compose_media_prompt(loaded.document, request.slide_id, request.prompt, kind="image", style_source=request.style_source))
+    final_prompt = request.composed_prompt or composed["prompt"]
+    payload = {key: value for key, value in request.model_dump().items() if key != "composed_prompt"}
+    payload["prompt"] = final_prompt
+    quote = _issue_service_quote(kind="image", principal=principal, session=session, presentation_id=request.presentation_id,
+                                 payload=payload, price=service_price("image", prompt=final_prompt))
+    return {**quote, **composed, "prompt": final_prompt}
 
 
 class TranslationQuoteRequest(BaseModel):
@@ -180,6 +196,16 @@ def quote_video(request: VideoQuoteRequest, principal: Principal = Depends(curre
                 session: Session = Depends(get_session)):
     resolve_presentation_access(session, user_id=principal.user_id,
                                 presentation_id=request.presentation_id, require=Role.EDITOR)
+    prompt, composed = request.prompt, None
+    if request.slide_id and request.expected_version_id:
+        loaded = store.load_presentation(session, request.presentation_id)
+        if loaded.version_id != request.expected_version_id:
+            raise HTTPException(409, "The deck changed. Request a new video quote.")
+        from .media_style import compose_media_prompt
+        composed = compose_media_prompt(loaded.document, request.slide_id, request.prompt, kind="video", style_source=request.style_source)
+        prompt = request.composed_prompt or composed["prompt"]
+    elif request.style_source == "deck":
+        raise HTTPException(422, "Match the deck needs a deck version and slide.")
     provider = configured_video_client()
     quote = provider.video_quote(request.duration_seconds) if hasattr(provider, "video_quote") else {
         "model": provider.model, "duration_seconds": request.duration_seconds,
@@ -195,24 +221,27 @@ def quote_video(request: VideoQuoteRequest, principal: Principal = Depends(curre
     now = int(time.time())
     claims = {"iss": "deckastra-media-quote", "aud": "deckastra-media-quote", "iat": now,
               "exp": now + QUOTE_SECONDS, "sub": principal.user_id,
-              "presentation_id": request.presentation_id, "prompt_hash": prompt_hash(request.prompt),
+              "presentation_id": request.presentation_id, "prompt_hash": prompt_hash(prompt),
               "duration_seconds": request.duration_seconds, "aspect_ratio": request.aspect_ratio,
-              "generate_audio": False, "model": quote.get("model"), "usd_micros": math.ceil(usd * 1_000_000)}
-    return {"quote_token": jwt.encode(claims, _secret(), algorithm="HS256"),
+              "generate_audio": False, "style_source": request.style_source,
+              "model": quote.get("model"), "usd_micros": math.ceil(usd * 1_000_000)}
+    answer = {"quote_token": jwt.encode(claims, _secret(), algorithm="HS256"),
             "expires_at": claims["exp"], "provider": "vertex", "model": claims["model"],
             "duration_seconds": request.duration_seconds, "aspect_ratio": request.aspect_ratio,
             "generate_audio": False, "estimated_usd": usd, "credit_cost": credit_cost}
+    return {**answer, **(composed or {"parts": [{"source": "subject", "label": "Your description", "text": prompt}], "style_source": request.style_source}), "prompt": prompt}
 
 
 def verify_video_quote(token: str, *, user_id: str, presentation_id: str, prompt: str,
-                       duration_seconds: int, aspect_ratio: str) -> dict:
+                       duration_seconds: int, aspect_ratio: str, style_source: str = "prompt") -> dict:
     try:
         claims = jwt.decode(token, _secret(), algorithms=["HS256"], audience="deckastra-media-quote",
                             issuer="deckastra-media-quote")
     except jwt.PyJWTError as exc:
         raise HTTPException(409, "The video credit quote is invalid or expired. Request a new quote.") from exc
     expected = {"sub": user_id, "presentation_id": presentation_id, "prompt_hash": prompt_hash(prompt),
-                "duration_seconds": duration_seconds, "aspect_ratio": aspect_ratio, "generate_audio": False}
+                "duration_seconds": duration_seconds, "aspect_ratio": aspect_ratio, "generate_audio": False,
+                "style_source": style_source}
     if any(claims.get(key) != value for key, value in expected.items()):
         raise HTTPException(409, "The video request changed after it was quoted. Request a new quote.")
     provider = configured_video_client()

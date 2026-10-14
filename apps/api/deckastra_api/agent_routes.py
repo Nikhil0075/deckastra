@@ -12,18 +12,20 @@ layer" is true here because there is no route that would let them.
 from __future__ import annotations
 import json
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 from deckastra_agents import ProjectMemory
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from . import agent_store, proposals, store
 from .auth import Principal, Role, current_principal, resolve_presentation_access
-from .db.models import Presentation, TransactionRow
+from .db.models import AgentRequest, Presentation, TransactionRow
 from .db.session import get_session
+from .ids import new_id
 
 router = APIRouter(prefix="/v1")
 
@@ -42,6 +44,7 @@ class ProposalSummary(BaseModel):
     created_at: str
     expires_at: str | None
     operation_count: int
+    in_reply_to: str | None = None
 
 
 class AuthoredProposalResponse(BaseModel):
@@ -82,6 +85,7 @@ def _summary(row: TransactionRow) -> ProposalSummary:
         created_at=row.created_at.isoformat() if row.created_at else "",
         expires_at=row.expires_at.isoformat() if row.expires_at else None,
         operation_count=len(row.operations_json or []),
+        in_reply_to=row.in_reply_to_request_id,
     )
 
 
@@ -122,6 +126,7 @@ class AuthoredProposalRequest(BaseModel):
     #: Which client authored it, for the approval UI. Namespaced below so it
     #: cannot claim to be one of the product's own agents.
     client_label: str = Field(default="external", max_length=60)
+    in_reply_to: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/presentations/{presentation_id}/proposals", response_model=AuthoredProposalResponse)
@@ -190,6 +195,7 @@ def authored_proposal(
             # clear early error; this is the one that cannot be raced, because
             # `create_proposal` reads the document itself.
             expected_version_id=request.expected_version_id,
+            in_reply_to_request_id=request.in_reply_to,
         )
     except proposals.ProposalError as error:
         # 409 rather than 400: the usual cause is that the deck moved under the
@@ -213,6 +219,204 @@ def authored_proposal(
         warnings=[],
         expires_at=outcome.get("expires_at"),
     )
+
+
+# ------------------------------------------------------------ agent requests
+
+
+class AgentRequestCreate(BaseModel):
+    target: dict[str, list[str]]
+    kind: str = Field(pattern=r"^(motion|style|content|image|layout|other)$")
+    message: str = Field(min_length=1, max_length=2_000)
+    based_on_version_id: str = Field(min_length=1, max_length=64)
+
+
+class AgentRequestAnswer(BaseModel):
+    proposal_ids: list[str] = Field(min_length=1, max_length=3)
+
+
+class AgentRequestView(BaseModel):
+    id: str
+    presentation_id: str
+    target: dict[str, list[str]]
+    kind: str
+    message: str
+    based_on_version_id: str
+    status: str
+    created_by: str
+    created_at: str
+    proposal_ids: list[str]
+    resolved_target: dict[str, Any]
+
+
+def _plain_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "".join(_plain_text(item) for item in value)
+    if isinstance(value, dict):
+        if isinstance(value.get("text"), str):
+            return value["text"]
+        return "".join(_plain_text(value.get(key)) for key in ("content", "children", "blocks", "spans"))
+    return ""
+
+
+def _walk_elements(elements: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    for element in elements:
+        found.append(element)
+        children = element.get("children")
+        if isinstance(children, list):
+            found.extend(_walk_elements([item for item in children if isinstance(item, dict)]))
+    return found
+
+
+def _resolved_target(document: dict[str, Any], target: dict[str, list[str]]) -> dict[str, Any]:
+    wanted_slides = set(target.get("slide_ids") or [])
+    wanted_elements = set(target.get("element_ids") or [])
+    slides: list[dict[str, Any]] = []
+    elements: list[dict[str, Any]] = []
+    seen_elements: set[str] = set()
+    for position, slide in enumerate(document.get("slides") or []):
+        if not isinstance(slide, dict):
+            continue
+        slide_id = str(slide.get("id") or "")
+        if slide_id in wanted_slides:
+            slides.append({"id": slide_id, "name": slide.get("name") or f"Slide {position + 1}"})
+        tracks = slide.get("animations") or []
+        for element in _walk_elements([item for item in (slide.get("elements") or []) if isinstance(item, dict)]):
+            element_id = str(element.get("id") or "")
+            if element_id not in wanted_elements:
+                continue
+            seen_elements.add(element_id)
+            motion = [track for track in tracks if isinstance(track, dict) and track.get("targetId") == element_id]
+            elements.append({
+                "id": element_id,
+                "slide_id": slide_id,
+                "type": element.get("type"),
+                "name": element.get("name"),
+                "semantic_role": element.get("semanticRole"),
+                "text": _plain_text(element.get("content"))[:1_000] or None,
+                "motion": motion,
+            })
+    return {
+        "slides": slides,
+        "elements": elements,
+        "missing_slide_ids": sorted(wanted_slides - {item["id"] for item in slides}),
+        "missing_element_ids": sorted(wanted_elements - seen_elements),
+    }
+
+
+def _request_view(row: AgentRequest, document: dict[str, Any]) -> AgentRequestView:
+    return AgentRequestView(
+        id=row.id,
+        presentation_id=row.presentation_id,
+        target=dict(row.target_json or {}),
+        kind=row.kind,
+        message=row.message,
+        based_on_version_id=row.based_on_version_id,
+        status=row.status,
+        created_by=row.created_by,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        proposal_ids=list(row.answer_proposal_ids_json or []),
+        resolved_target=_resolved_target(document, dict(row.target_json or {})),
+    )
+
+
+@router.post("/presentations/{presentation_id}/requests", response_model=AgentRequestView)
+def create_agent_request(
+    presentation_id: str,
+    request: AgentRequestCreate,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> AgentRequestView:
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    loaded = store.load_presentation(session, presentation_id)
+    if loaded.version_id != request.based_on_version_id:
+        raise HTTPException(status_code=409, detail="The deck changed. Review the selection and ask again.")
+    slide_ids = list(dict.fromkeys(request.target.get("slide_ids") or []))
+    element_ids = list(dict.fromkeys(request.target.get("element_ids") or []))
+    if not slide_ids and not element_ids:
+        raise HTTPException(status_code=422, detail="Choose a slide or at least one object.")
+    if len(slide_ids) > 50 or len(element_ids) > 200:
+        raise HTTPException(status_code=422, detail="That request targets too many objects.")
+    row = AgentRequest(
+        id=new_id("req"), presentation_id=presentation_id,
+        target_json={"slide_ids": slide_ids, "element_ids": element_ids},
+        kind=request.kind, message=request.message.strip(),
+        based_on_version_id=request.based_on_version_id,
+        status="open", created_by=principal.user_id,
+    )
+    session.add(row)
+    session.flush()
+    return _request_view(row, loaded.document)
+
+
+@router.get("/presentations/{presentation_id}/requests", response_model=list[AgentRequestView])
+def list_agent_requests(
+    presentation_id: str,
+    status: str | None = None,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> list[AgentRequestView]:
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.VIEWER)
+    if status is not None and status not in {"open", "answered", "closed"}:
+        raise HTTPException(status_code=422, detail="Unknown request status.")
+    query = session.query(AgentRequest).filter(AgentRequest.presentation_id == presentation_id)
+    if status:
+        query = query.filter(AgentRequest.status == status)
+    document = store.load_presentation(session, presentation_id).document
+    return [_request_view(row, document) for row in query.order_by(AgentRequest.created_at.asc()).all()]
+
+
+@router.post("/requests/{request_id}/answer", response_model=AgentRequestView)
+def answer_agent_request(
+    request_id: str,
+    answer: AgentRequestAnswer,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> AgentRequestView:
+    row = session.get(AgentRequest, request_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No such request.")
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.EDITOR)
+    if row.status == "closed":
+        raise HTTPException(status_code=409, detail="That request is closed.")
+    proposal_ids = list(dict.fromkeys(answer.proposal_ids))
+    if len(proposal_ids) != len(answer.proposal_ids):
+        raise HTTPException(status_code=422, detail="Proposal ids must be distinct.")
+    proposals_found = [session.get(TransactionRow, proposal_id) for proposal_id in proposal_ids]
+    if any(item is None or item.presentation_id != row.presentation_id for item in proposals_found):
+        raise HTTPException(status_code=404, detail="One of those proposals does not belong to this deck.")
+    if any(item.status != "pending" for item in proposals_found if item is not None):
+        raise HTTPException(status_code=409, detail="Only pending proposals can answer a request.")
+    if any(not (item.agent_id or "").startswith("mcp:") for item in proposals_found if item is not None):
+        raise HTTPException(status_code=409, detail="Only proposals authored through an agent tool can answer a request.")
+    if any(item.in_reply_to_request_id not in {None, row.id} for item in proposals_found if item is not None):
+        raise HTTPException(status_code=409, detail="One proposal already answers a different request.")
+    for item in proposals_found:
+        assert item is not None
+        item.in_reply_to_request_id = row.id
+    row.answer_proposal_ids_json = proposal_ids
+    row.status = "answered"
+    session.flush()
+    return _request_view(row, store.load_presentation(session, row.presentation_id).document)
+
+
+@router.post("/requests/{request_id}/close", response_model=AgentRequestView)
+def close_agent_request(
+    request_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> AgentRequestView:
+    row = session.get(AgentRequest, request_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No such request.")
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=row.presentation_id, require=Role.EDITOR)
+    row.status = "closed"
+    row.closed_at = datetime.now(timezone.utc)
+    session.flush()
+    return _request_view(row, store.load_presentation(session, row.presentation_id).document)
 
 
 # ---------------------------------------------------------------- proposals
@@ -295,14 +499,36 @@ def approve_proposal(
         session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR
     )
 
+    selected = session.get(TransactionRow, proposal_id)
+    request_id = selected.in_reply_to_request_id if selected is not None else None
     try:
-        return proposals.approve(
+        result = proposals.approve(
             session,
             presentation_id=presentation_id,
             transaction_id=proposal_id,
             approved_by=principal.user_id,
             expected_version_id=(request.expected_version_id if request else None),
         )
+        if request_id:
+            siblings = (
+                session.query(TransactionRow)
+                .filter(
+                    TransactionRow.presentation_id == presentation_id,
+                    TransactionRow.in_reply_to_request_id == request_id,
+                    TransactionRow.id != proposal_id,
+                    TransactionRow.status == "pending",
+                )
+                .all()
+            )
+            for sibling in siblings:
+                sibling.status = "rejected"
+                sibling.reason = f"{sibling.reason or ''}\nSuperseded by accepted reply {proposal_id}.".strip()
+            question = session.get(AgentRequest, request_id)
+            if question is not None:
+                question.status = "closed"
+                question.closed_at = datetime.now(timezone.utc)
+            session.flush()
+        return result
     except proposals.ProposalError as error:
         code = 404 if error.code == "E404" else 409
         raise HTTPException(status_code=code, detail={"message": str(error), "code": error.code}) from error

@@ -36,6 +36,8 @@ export interface MotionRequest {
   client_label?: string;
   /** Plan without proposing: nothing is written, the operations come back. */
   dry_run?: boolean;
+  /** The person's request this plan answers; a reply always waits for them. */
+  in_reply_to?: string;
 }
 
 export interface MotionResult {
@@ -96,6 +98,8 @@ export interface TransitionRequest {
   client_label?: string;
   /** Plan without proposing: nothing is written, the operations come back. */
   dry_run?: boolean;
+  /** The person's request this plan answers; a reply always waits for them. */
+  in_reply_to?: string;
 }
 
 export interface TransitionResult {

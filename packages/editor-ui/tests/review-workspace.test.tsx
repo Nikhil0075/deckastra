@@ -23,7 +23,7 @@ const deck = fixture as unknown as PresentationDocument;
 const first = deck.slides[0]!;
 const second = deck.slides[1]!;
 
-const pending = (id: string, intent: string, risk = "high") => ({
+const pending = (id: string, intent: string, risk = "high", inReplyTo?: string) => ({
   id,
   status: "pending",
   intent,
@@ -34,6 +34,7 @@ const pending = (id: string, intent: string, risk = "high") => ({
   created_at: "2026-10-10T00:00:00Z",
   expires_at: null,
   operation_count: 2,
+  in_reply_to: inReplyTo ?? null,
 });
 
 // Renames two slides, so the change touches two of them.
@@ -46,6 +47,8 @@ let width: PropertyDescriptor | undefined;
 let height: PropertyDescriptor | undefined;
 let fetcher: ReturnType<typeof vi.fn>;
 let list: Array<ReturnType<typeof pending>>;
+let requestList: unknown[];
+let styleOptions: unknown[];
 
 beforeEach(() => {
   width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
@@ -53,11 +56,19 @@ beforeEach(() => {
   Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 1200 });
   Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => 600 });
   list = [pending("txn_a", "Rename two slides"), pending("txn_b", "Tighten the agenda", "low")];
+  requestList = [];
+  styleOptions = [];
   const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
   fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     const path = new URL(String(url), "http://x").pathname;
     const method = init?.method ?? "GET";
     if (method === "GET" && path.endsWith("/proposals")) return reply(list);
+    if (method === "GET" && path.endsWith("/requests")) return reply(requestList);
+    if (method === "GET" && path.endsWith("/style-options")) return reply(styleOptions);
+    if (method === "POST" && /\/style-options\/sty_[a-z0-9]+\/choose$/.test(path)) {
+      styleOptions = [];
+      return reply({ transaction_id: "txn_style", version_id: "ver_style", document: deck, option_id: "opt_a", set_id: "sty_1" });
+    }
     const detail = /\/proposals\/(txn_[a-z])$/.exec(path);
     if (method === "GET" && detail) return reply({ ...list.find((one) => one.id === detail[1])!, operations, base_version_id: "ver_screen" });
     const approved = /\/proposals\/(txn_[a-z])\/approve$/.exec(path);
@@ -101,6 +112,40 @@ const calls = () =>
   fetcher.mock.calls.map(([url, init]) => `${(init as RequestInit | undefined)?.method ?? "GET"} ${new URL(String(url), "http://x").pathname}`);
 
 describe("the Review view", () => {
+  it("shows a style set as real covers and applies only the chosen option", async () => {
+    styleOptions = [{
+      id: "sty_1", presentation_id: "prs_1", based_on_version_id: "ver_screen", slide_id: first.id,
+      status: "open", stale: false, chosen_option_id: null, created_at: "2026-10-14T00:00:00Z", expires_at: "2026-10-15T00:00:00Z",
+      options: [
+        { id: "opt_a", label: "Quiet", rationale: "Editorial restraint", notes: [], preview_document: deck },
+        { id: "opt_b", label: "System", rationale: "Technical precision", notes: [], preview_document: deck },
+      ],
+    }];
+    const ed = editor();
+    render(<ReviewWorkspace editor={ed} presentationId="prs_1" onClose={() => {}} />, { wrapper: withWorkspaceClient() });
+    expect(await screen.findByText("Choose a style")).toBeTruthy();
+    expect(screen.getAllByTestId("style-option-card")).toHaveLength(2);
+    fireEvent.click(screen.getAllByTestId("style-option-use")[0]!);
+    await waitFor(() => expect(ed.adoptDocument).toHaveBeenCalledWith(deck, "ver_style"));
+    const choose = fetcher.mock.calls.find(([url]) => String(url).endsWith("/style-options/sty_1/choose"));
+    expect(JSON.parse(String(choose![1]?.body))).toEqual({ option_id: "opt_a", expected_version_id: "ver_screen" });
+  });
+
+  it("groups replies to one request as alternatives A, B, and C", async () => {
+    list = [pending("txn_a", "Quiet entrance", "medium", "req_1"), pending("txn_b", "Direct entrance", "medium", "req_1")];
+    requestList = [{
+      id: "req_1", presentation_id: "prs_1", target: { slide_ids: [first.id], element_ids: [] },
+      kind: "motion", message: "Give this a calmer opening.", based_on_version_id: "ver_screen",
+      status: "answered", created_by: "usr_1", created_at: "2026-10-14T00:00:00Z", proposal_ids: ["txn_a", "txn_b"],
+      resolved_target: { slides: [], elements: [], missing_slide_ids: [], missing_element_ids: [] },
+    }];
+    render(<ReviewWorkspace editor={editor()} presentationId="prs_1" onClose={() => {}} />, { wrapper: withWorkspaceClient() });
+    expect(await screen.findByText("Give this a calmer opening.")).toBeTruthy();
+    expect(screen.getByText("A · Quiet entrance")).toBeTruthy();
+    expect(screen.getByText("B · Direct entrance")).toBeTruthy();
+    expect(screen.getAllByTestId("review-request-group")).toHaveLength(1);
+  });
+
   it("lists what waits and opens on the one asked for, with every slide it touches", async () => {
     render(<ReviewWorkspace editor={editor()} presentationId="prs_1" initialProposalId="txn_a" onClose={() => {}} />, { wrapper: withWorkspaceClient() });
     const items = await screen.findAllByTestId("review-proposal");

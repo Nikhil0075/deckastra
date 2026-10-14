@@ -104,8 +104,9 @@ import { LayersList } from "./inspector/LayersList";
 import { DesignCheckPanel } from "./DesignCheckPanel";
 import { designCheck } from "../lib/design-check";
 import { ColorStudioProvider, type ColorStudio } from "../lib/color-studio";
-import { Button, IconButton, Splitter, type MenuItem } from "../ui";
+import { Button, Drawer, IconButton, Splitter, type MenuItem } from "../ui";
 import { languageLabel } from "../lib/languages";
+import { DraftBoard } from "./DraftBoard";
 
 // CodeMirror is the heaviest mode-only dependency. Keep it out of the normal
 // design/AI/motion path and fetch it only when Code is actually opened.
@@ -213,6 +214,7 @@ export function EditorShell(props: EditorShellProps) {
   // The Review view (UI audit unit 4): agents' pending changes, compared at a
   // size that can be read, in place of the canvas until closed.
   const [review, setReview] = useState<{ open: boolean; proposalId?: string }>({ open: false });
+  const [draftOpen, setDraftOpen] = useState(false);
   // How many changes wait, for the bar's Review button: one read of the list,
   // polled like the Assistant's own. Up here with the other hooks, above any
   // early return.
@@ -222,7 +224,34 @@ export function EditorShell(props: EditorShellProps) {
     onApplied: editor.adoptDocument,
     saveNow: editor.saveNow,
   });
-  const pendingCount = pending.proposals?.length ?? 0;
+  const [styleOptionCount, setStyleOptionCount] = useState(0);
+  // Open requests keep Review reachable while the agent works on them; they are
+  // not part of the yellow count, which is what waits on the person.
+  const [askedCount, setAskedCount] = useState(0);
+  useEffect(() => {
+    let live = true;
+    const read = () => client.agent.requests(props.presentationId, "open").then((items) => {
+      if (live && Array.isArray(items)) setAskedCount(items.length);
+    }).catch(() => undefined);
+    void read();
+    const timer = window.setInterval(read, 5_000);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [client, props.presentationId]);
+  useEffect(() => {
+    let live = true;
+    const read = () => client.agent.styleOptions(props.presentationId).then((items) => {
+      if (live && Array.isArray(items)) setStyleOptionCount(items.length);
+    }).catch(() => undefined);
+    void read();
+    const timer = window.setInterval(read, 5_000);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [client, props.presentationId]);
+  // Decisions waiting on the person: each proposal, except that the replies to
+  // one request are one choice. A request nobody has answered yet waits on the
+  // agent, and yellow means waiting on a human, so it is not counted (2026-10-15).
+  const pendingCount = styleOptionCount + (pending.proposals
+    ? pending.proposals.filter((proposal) => !proposal.in_reply_to).length + new Set(pending.proposals.flatMap((proposal) => proposal.in_reply_to ? [proposal.in_reply_to] : [])).size
+    : 0);
   const openAssistant = useCallback(() => {
     setColors({ open: false });
     setAssistantOpen(true);
@@ -1011,7 +1040,11 @@ export function EditorShell(props: EditorShellProps) {
             setPlaying((count) => count + 1);
           }}
         />
-      ) : <MotionModePanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl} />}
+      ) : <MotionModePanel editor={editor} presentationId={props.presentationId} scene={scene} resolveAssetUrl={resolveAssetUrl}
+        preview={(tracks) => {
+          if (!tracks) { stopPreview(); return; }
+          setPreviewTracks(tracks); setScrubbing(true); setPlayheadMs(0); setPlaying((count) => count + 1);
+        }} />}
       </div>
     ) : (
       <Inspector
@@ -1097,12 +1130,13 @@ export function EditorShell(props: EditorShellProps) {
         onMode={setMode}
         onPresent={() => setPresenting(true)}
         onExit={exit ? () => exit("all-decks") : undefined}
-        extras={props.barExtras}
+        extras={<>{props.barExtras}<Button size="sm" variant="ghost" onClick={() => setDraftOpen(true)} data-testid="draft-changes">Draft changes</Button></>}
         account={{ ...props.account, onOpenSettings: props.onOpenSettings }}
         onHistory={() => setHistoryOpen(true)}
         layout={{ focused: isFocused(chrome), onFocus: () => onCommand.current("panels-focus"), items: layoutItems }}
         review={{
           count: pendingCount,
+          asked: askedCount,
           open: review.open,
           onToggle: () => setReview((current) => ({ open: !current.open })),
         }}
@@ -1436,6 +1470,21 @@ export function EditorShell(props: EditorShellProps) {
         ) : null}
       </div>
       )}
+      <Drawer open={draftOpen} onClose={() => setDraftOpen(false)} title="Draft changes" modal width={1180}>
+        {draftOpen ? (
+          <DraftBoard
+            presentationId={props.presentationId}
+            onClose={() => setDraftOpen(false)}
+            onBuilt={(_presentationId, kind) => {
+              if (kind === "proposal") {
+                setDraftOpen(false);
+                setReview({ open: true });
+                void pending.refresh();
+              }
+            }}
+          />
+        ) : null}
+      </Drawer>
     </div>
     </ColorStudioProvider>
   );

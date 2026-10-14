@@ -14,14 +14,26 @@ export interface AssistantRequest {
   video_generate_audio?: false;
   video_quote_token?: string;
   image_quote_token?: string;
+  style_source?: "deck" | "prompt";
+}
+
+export interface MediaPromptPart { source: string; label: string; text: string }
+export interface MediaPromptRequest { presentation_id: string; slide_id: string; subject: string; kind: "image" | "video"; style_source: "deck" | "prompt" }
+export interface MediaPromptResponse {
+  prompt: string; parts: MediaPromptPart[]; aspect_ratio: "16:9" | "4:3" | "1:1" | "3:4" | "9:16";
+  checks: string[]; style_source: "deck" | "prompt"; treatment_preset?: string | null;
 }
 
 export interface VideoQuoteRequest {
   prompt: string;
   duration_seconds: 4 | 6 | 8;
   aspect_ratio: "16:9" | "9:16";
+  expected_version_id?: string;
+  slide_id?: string;
+  style_source?: "deck" | "prompt";
+  composed_prompt?: string;
 }
-export interface VideoQuote {
+export interface VideoQuote extends Partial<MediaPromptResponse> {
   quote_token: string;
   expires_at: number;
   model?: string | null;
@@ -34,6 +46,8 @@ export interface ImageQuoteRequest {
   expected_version_id: string;
   slide_id: string;
   prompt: string;
+  style_source?: "deck" | "prompt";
+  composed_prompt?: string;
 }
 export interface AssistantRun {
   id: string; presentation_id: string; task: AssistantTask;

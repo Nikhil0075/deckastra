@@ -45,7 +45,8 @@ export interface AppBarProps {
    * The Review view of agents' pending changes (UI audit unit 4): shown with
    * its count while anything waits, and while it is open.
    */
-  review?: { count: number; open: boolean; onToggle: () => void };
+  /** `count` waits on the person (yellow); `asked` are requests still with the agent. */
+  review?: { count: number; asked?: number; open: boolean; onToggle: () => void };
 }
 
 /**
@@ -155,7 +156,7 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
       </div>
 
       <div className="dk-appbar__end">
-        {review && (review.count > 0 || review.open) ? (
+        {review && (review.count > 0 || (review.asked ?? 0) > 0 || review.open) ? (
           // Yellow is "waiting on a human": the count is the decision owed, so
           // it sits beside the button and stays when a narrow bar drops the
           // button's word (the word crowded the mode switch at 1440px).

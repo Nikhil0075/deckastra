@@ -1,7 +1,7 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
-import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest, VideoQuote, VideoQuoteRequest } from "./assistant";
+import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest, MediaPromptRequest, MediaPromptResponse, VideoQuote, VideoQuoteRequest } from "./assistant";
 
-import type { AppliedChange, PendingProposal, ProposalDetail } from "./agent";
+import type { AgentRequest, AppliedChange, CreateAgentRequest, PendingProposal, ProposalDetail, StyleOptionSet, StyleSuggestionRequest } from "./agent";
 import type {
   CreatePresentationRequest,
   CreatePresentationResult,
@@ -50,6 +50,7 @@ import type { UploadedAsset } from "./documents";
 import type { CreateShareRequest, Share, SharedDocument } from "./shares";
 import type { ImportedTheme, SaveThemeRequest, SavedTheme, ThemeList, ThemeProposal } from "./themes";
 import type { LanguagesStatus, PaidServiceQuote, SynthesizeRequest, SynthesizeResult, TranslateRequest, TranslateResult, Voice } from "./languages";
+import type { DraftAgentRequest, DraftBoard, DraftBody, DraftBuildResult, DraftOperation } from "./drafts";
 
 /**
  * Per-call transport options.
@@ -95,6 +96,7 @@ export interface WorkspaceClient {
   readonly assistant?: {
     capabilities(options?: RequestOptions & { presentationId?: string; slideId?: string; locale?: string }): Promise<AssistantCapabilities>;
     quoteImage(presentationId: string, request: ImageQuoteRequest, options?: RequestOptions): Promise<PaidServiceQuote>;
+    composeMediaPrompt(request: MediaPromptRequest, options?: RequestOptions): Promise<MediaPromptResponse>;
     /** The price of one muted video clip. Optional: an older service has no clips. */
     quoteVideo?(presentationId: string, request: VideoQuoteRequest, options?: RequestOptions): Promise<VideoQuote>;
     start(request: AssistantRequest, options?: RequestOptions): Promise<AssistantRun>;
@@ -104,7 +106,7 @@ export interface WorkspaceClient {
     cancel(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     resume(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     designCheck(presentationId: string, slideId?: string, options?: RequestOptions): Promise<DesignCheckResult>;
-    assetList(request: { workspace_id?: string; filter?: "all" | "unused" | "untagged"; cursor?: string; q?: string; limit?: number }, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
+    assetList(request: { workspace_id?: string; filter?: "all" | "unused" | "untagged"; order?: "oldest" | "newest"; cursor?: string; q?: string; limit?: number }, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
     assetView(assetId: string, maxPx?: number, options?: RequestOptions, crop?: { x: number; y: number; width: number; height: number }): Promise<{ asset_id: string; base64: string; mime_type: string; width: number; height: number }>;
     assetUpdate(assetId: string, request: AssetMetadataUpdate, options?: RequestOptions): Promise<AssistantAsset>;
     assetRevert(assetId: string, changeId: string, options?: RequestOptions): Promise<AssistantAsset>;
@@ -296,6 +298,13 @@ export interface WorkspaceClient {
     proposals(presentationId: string, options?: RequestOptions): Promise<PendingProposal[]>;
     /** One pending proposal with its operations. */
     proposal(presentationId: string, proposalId: string, options?: RequestOptions): Promise<ProposalDetail>;
+    requests(presentationId: string, status?: "open" | "answered" | "closed", options?: RequestOptions): Promise<AgentRequest[]>;
+    createRequest(presentationId: string, body: CreateAgentRequest, options?: RequestOptions): Promise<AgentRequest>;
+    answerRequest(requestId: string, proposalIds: string[], options?: RequestOptions): Promise<AgentRequest>;
+    closeRequest(requestId: string, options?: RequestOptions): Promise<AgentRequest>;
+    styleOptions(presentationId: string, status?: "open" | "chosen" | "expired", options?: RequestOptions): Promise<StyleOptionSet[]>;
+    suggestStyles(presentationId: string, body: StyleSuggestionRequest, options?: RequestOptions): Promise<StyleOptionSet>;
+    chooseStyle(setId: string, optionId: string, expectedVersionId: string, options?: RequestOptions): Promise<AppliedChange & { option_id: string; set_id: string }>;
     /**
      * Approve a pending proposal.
      *
@@ -329,6 +338,21 @@ export interface WorkspaceClient {
       transactionId: string,
       options?: RequestOptions,
     ): Promise<AppliedChange>;
+  };
+
+  /** Rough, geometry-free boards stored beside decks. */
+  readonly drafts: {
+    list(projectId: string, options?: RequestOptions): Promise<DraftBoard[]>;
+    read(draftId: string, options?: RequestOptions): Promise<DraftBoard>;
+    create(projectId: string, body?: { title?: string; body?: DraftBody; presentation_id?: string }, options?: RequestOptions): Promise<DraftBoard>;
+    seed(presentationId: string, options?: RequestOptions): Promise<DraftBoard>;
+    replace(draftId: string, revision: number, body: DraftBody, title?: string, options?: RequestOptions): Promise<DraftBoard>;
+    update(draftId: string, revision: number, operations: DraftOperation[], options?: RequestOptions): Promise<DraftBoard>;
+    build(draftId: string, revision: number, cardIds?: string[], options?: RequestOptions): Promise<DraftBuildResult>;
+    requests(draftId: string, status?: "open" | "answered" | "closed", options?: RequestOptions): Promise<DraftAgentRequest[]>;
+    createRequest(draftId: string, body: { card_ids: string[]; block_ids?: string[]; kind: DraftAgentRequest["kind"]; message: string; revision: number }, options?: RequestOptions): Promise<DraftAgentRequest>;
+    answerRequest(requestId: string, revision: number, options?: RequestOptions): Promise<DraftAgentRequest>;
+    closeRequest(requestId: string, options?: RequestOptions): Promise<DraftAgentRequest>;
   };
 
   /**

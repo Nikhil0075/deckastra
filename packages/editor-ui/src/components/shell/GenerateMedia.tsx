@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { AssistantCapabilities, AssistantRun } from "@deckastra/workspace-contracts";
+import type { AssistantCapabilities, AssistantRun, MediaPromptResponse } from "@deckastra/workspace-contracts";
 import type { Slide } from "@deckastra/presentation-schema";
 import { mediaSlotBrief, slideMediaSlots } from "@deckastra/presentation-core";
 
@@ -26,7 +26,7 @@ type Kind = "image" | "video";
 type Phase =
   | { kind: "idle" }
   | { kind: "pricing" }
-  | { kind: "priced"; token: string; credits: number }
+  | { kind: "priced"; token: string; credits: number; prompt: string; styleSource: StyleSource }
   | { kind: "running"; runId: string }
   | { kind: "done"; message: string }
   | { kind: "failed"; message: string };
@@ -40,13 +40,24 @@ export interface GenerateMediaProps {
   saveNow?: () => Promise<boolean>;
   /** The slide pictures are made for, so a picture frame on it can say what it needs (2026-10-13). */
   slide?: Slide;
+  designLanguage?: string;
+  /** Lets the Media tab refresh as soon as bytes have joined the workspace library. */
+  onGenerated?: () => void;
 }
 
-export function GenerateMedia({ presentationId, slideId, currentVersionId, saveNow, slide }: GenerateMediaProps) {
+type StyleSource = "deck" | "prompt";
+
+export function GenerateMedia({ presentationId, slideId, currentVersionId, saveNow, slide, designLanguage, onGenerated }: GenerateMediaProps) {
   const client = useOptionalWorkspaceClient();
   const assistant = client?.assistant;
   const [kind, setKind] = useState<Kind>("image");
   const [prompt, setPrompt] = useState("");
+  const slots = slide ? slideMediaSlots(slide) : [];
+  const frame = slots.find((one) => !one.filled) ?? slots[0];
+  const [styleSource, setStyleSource] = useState<StyleSource>(() => (frame || designLanguage ? "deck" : "prompt"));
+  const [composed, setComposed] = useState<MediaPromptResponse | null>(null);
+  const [finalPrompt, setFinalPrompt] = useState("");
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
   const [seconds, setSeconds] = useState<4 | 6 | 8>(4);
   const [capabilities, setCapabilities] = useState<AssistantCapabilities | null | "failed">(null);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -71,10 +82,36 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
     };
   }, [assistant, presentationId, slideId]);
 
+  useEffect(() => {
+    if (!assistant || !presentationId || !slideId || !prompt.trim()) {
+      setComposed(null);
+      setFinalPrompt("");
+      return;
+    }
+    let current = true;
+    const timer = window.setTimeout(() => {
+      void assistant.composeMediaPrompt({ presentation_id: presentationId, slide_id: slideId, subject: prompt.trim(), kind, style_source: styleSource })
+        .then((value) => {
+          if (!current) return;
+          if (!Array.isArray(value.parts) || typeof value.prompt !== "string") return;
+          setComposed(value);
+          setExcluded(new Set());
+          setFinalPrompt(value.prompt);
+        })
+        .catch(() => {
+          if (current) setComposed(null);
+        });
+    }, 250);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [assistant, presentationId, slideId, prompt, kind, styleSource]);
+
   // A price is for one exact description, length and slide; any change asks again.
   useEffect(() => {
     setPhase((current) => (current.kind === "priced" ? { kind: "idle" } : current));
-  }, [prompt, seconds, kind, slideId]);
+  }, [prompt, finalPrompt, seconds, kind, styleSource, slideId]);
 
   const ready = Boolean(assistant && presentationId && slideId && currentVersionId);
 
@@ -89,8 +126,6 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
 
   const task = capabilities && capabilities !== "failed" ? capabilities.tasks[kind] : null;
   // The frame a generated picture goes in: the first empty one, else the first.
-  const slots = slide ? slideMediaSlots(slide) : [];
-  const frame = slots.find((one) => !one.filled) ?? slots[0];
   const brief = frame ? mediaSlotBrief(frame.slot, frame, prompt.length > 0 && prompt.length <= 200 ? prompt : undefined) : undefined;
   const unavailable = task && !task.available;
   const noun = kind === "image" ? "picture" : "video clip";
@@ -102,27 +137,44 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
         setPhase({ kind: "failed", message: "Save your latest edits, then ask for the price again." });
         return;
       }
+      let pricedText = finalPrompt;
+      if (!pricedText) {
+        try {
+          const value = await assistant!.composeMediaPrompt({ presentation_id: presentationId!, slide_id: slideId!, subject: prompt.trim(), kind, style_source: styleSource });
+          if (Array.isArray(value.parts) && typeof value.prompt === "string") {
+            pricedText = value.prompt;
+            if (live.current) {
+              setComposed(value);
+              setFinalPrompt(value.prompt);
+            }
+          }
+        } catch {
+          // Older services have no preview route. Their quote endpoint still
+          // binds the literal prompt, which preserves the pre-switch workflow.
+        }
+      }
       if (kind === "image") {
-        const quote = await assistant!.quoteImage(presentationId!, { expected_version_id: currentVersionId!(), slide_id: slideId!, prompt });
-        if (live.current) setPhase({ kind: "priced", token: quote.quote_token, credits: quote.credit_cost });
+        const quote = await assistant!.quoteImage(presentationId!, { expected_version_id: currentVersionId!(), slide_id: slideId!, prompt, composed_prompt: pricedText || undefined, style_source: styleSource });
+        if (live.current) setPhase({ kind: "priced", token: quote.quote_token, credits: quote.credit_cost, prompt: quote.prompt ?? (pricedText || prompt), styleSource });
       } else {
         if (!assistant!.quoteVideo) throw new Error("This service cannot make video clips.");
-        const quote = await assistant!.quoteVideo(presentationId!, { prompt, duration_seconds: seconds, aspect_ratio: "16:9" });
-        if (live.current) setPhase({ kind: "priced", token: quote.quote_token, credits: quote.credit_cost });
+        const quote = await assistant!.quoteVideo(presentationId!, { prompt, composed_prompt: pricedText || undefined, expected_version_id: currentVersionId!(), slide_id: slideId!, style_source: styleSource, duration_seconds: seconds, aspect_ratio: "16:9" });
+        if (live.current) setPhase({ kind: "priced", token: quote.quote_token, credits: quote.credit_cost, prompt: quote.prompt ?? (pricedText || prompt), styleSource });
       }
     } catch (error) {
       if (live.current) setPhase({ kind: "failed", message: serviceWords(error instanceof Error ? error.message : null, `The ${noun} price could not be checked.`) });
     }
   };
 
-  const generate = async (token: string) => {
+  const generate = async (token: string, pricedPrompt: string, pricedStyleSource: StyleSource) => {
     try {
       const run = await assistant!.start({
         task: kind,
         presentation_id: presentationId!,
         expected_version_id: currentVersionId!(),
         operation_key: `${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-        instruction: prompt,
+        instruction: pricedPrompt,
+        style_source: pricedStyleSource,
         scope: { kind: "slide", slide_ids: [slideId!], element_ids: [] },
         ...(kind === "image"
           ? { image_quote_token: token }
@@ -139,6 +191,7 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
       if (!live.current) return;
       if (current.status === "completed") {
         setPrompt("");
+        onGenerated?.();
         setPhase({ kind: "done", message: `Your ${noun} is ready. Approve it under Assistant › Waiting for you to put it on the slide.` });
       } else {
         setPhase({ kind: "failed", message: serviceWords(current.error, `The ${noun} could not be made.`) });
@@ -160,6 +213,16 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
         items={[
           { value: "image", label: "Picture", "data-testid": "generate-kind-image" },
           { value: "video", label: "Video clip", "data-testid": "generate-kind-video" },
+        ]}
+      />
+      <Segmented
+        label="Style source"
+        size="sm"
+        value={styleSource}
+        onChange={setStyleSource}
+        items={[
+          { value: "deck", label: "Match the deck", "data-testid": "generate-style-deck" },
+          { value: "prompt", label: "Follow my prompt", "data-testid": "generate-style-prompt" },
         ]}
       />
       {capabilities === null ? (
@@ -207,6 +270,30 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
               data-testid="generate-prompt"
             />
           </label>
+          {composed ? (
+            <div className="dk-generate__composed" data-testid="generate-composed-prompt">
+              <p className="dk-label">What will be sent</p>
+              {composed.parts.map((part) => (
+                <label className="dk-generate__part" key={part.source}>
+                  <input
+                    type="checkbox"
+                    checked={!excluded.has(part.source)}
+                    onChange={() => {
+                      const next = new Set(excluded);
+                      if (next.has(part.source)) next.delete(part.source); else next.add(part.source);
+                      setExcluded(next);
+                      setFinalPrompt(composed.parts.filter((one) => !next.has(one.source)).map((one) => one.text).join("\n"));
+                    }}
+                  />
+                  <span><strong>{part.label}</strong><br />{part.text}</span>
+                </label>
+              ))}
+              <label className="dk-field dk-generate__field">
+                <span className="dk-label">Exact prompt</span>
+                <textarea className="dk-input" rows={7} maxLength={4000} value={finalPrompt} disabled={busy} onChange={(event) => setFinalPrompt(event.target.value)} data-testid="generate-final-prompt" />
+              </label>
+            </div>
+          ) : null}
           {kind === "video" ? (
             <Segmented
               label="Length"
@@ -225,7 +312,7 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
               <span data-testid="generate-price">
                 {phase.credits} credit{phase.credits === 1 ? "" : "s"} for this {noun}.
               </span>
-              <Button size="sm" variant="primary" onClick={() => void generate(phase.token)} data-testid="generate-confirm">
+              <Button size="sm" variant="primary" onClick={() => void generate(phase.token, phase.prompt, phase.styleSource)} data-testid="generate-confirm">
                 Generate
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setPhase({ kind: "idle" })}>

@@ -9,7 +9,9 @@ import type {
   AccountDeletion,
   DeckImport,
   AccountProject,
+  AgentRequest,
   AppliedChange,
+  CreateAgentRequest,
   CreatePresentationRequest,
   CreatePresentationResult,
   CreateShareRequest,
@@ -33,6 +35,8 @@ import type {
   MotionStyleResult,
   PendingProposal,
   ProposalDetail,
+  StyleOptionSet,
+  StyleSuggestionRequest,
   PresentationSummary,
   PresetCatalog,
   InsertPatternRequest,
@@ -65,6 +69,11 @@ import type {
   SynthesizeResult,
   TranslateResult,
   Voice,
+  DraftBoard,
+  DraftBody,
+  DraftBuildResult,
+  DraftOperation,
+  DraftAgentRequest,
 } from "@deckastra/workspace-contracts";
 import { DECK_IMPORT_MAX_BYTES } from "@deckastra/workspace-contracts";
 
@@ -282,6 +291,9 @@ const q = encodeURIComponent;
       capabilities: (o) => json<AssistantCapabilities>(`/v1/assistant/capabilities${o?.presentationId ? `?presentation_id=${q(o.presentationId)}${o.slideId ? `&slide_id=${q(o.slideId)}` : ""}${o.locale ? `&locale=${q(o.locale)}` : ""}` : ""}`, { ...o }),
       quoteImage: (presentationId, body, o) => json<PaidServiceQuote>("/v1/media/quotes/image", {
         ...o, body: { presentation_id: presentationId, ...body }, fallback: "The image price could not be checked.",
+      }),
+      composeMediaPrompt: (body, o) => json("/v1/assistant/media-prompt", {
+        ...o, body, fallback: "The deck media brief could not be composed.",
       }),
       quoteVideo: (presentationId, body, o) => json<VideoQuote>("/v1/media/quotes/video", {
         ...o, body: { presentation_id: presentationId, ...body }, fallback: "The clip price could not be checked.",
@@ -505,6 +517,25 @@ const q = encodeURIComponent;
           fresh: true,
           ...request,
         }),
+      requests: (presentationId, status, request) =>
+        json<AgentRequest[]>(
+          `/v1/presentations/${q(presentationId)}/requests${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+          { fresh: true, ...request },
+        ),
+      createRequest: (presentationId, body: CreateAgentRequest, request) =>
+        json<AgentRequest>(`/v1/presentations/${q(presentationId)}/requests`, { body, ...request }),
+      answerRequest: (requestId, proposalIds, request) =>
+        json<AgentRequest>(`/v1/requests/${q(requestId)}/answer`, { body: { proposal_ids: proposalIds }, ...request }),
+      closeRequest: (requestId, request) =>
+        json<AgentRequest>(`/v1/requests/${q(requestId)}/close`, { method: "POST", ...request }),
+      styleOptions: (presentationId, status = "open", request) =>
+        json<StyleOptionSet[]>(`/v1/presentations/${q(presentationId)}/style-options?status=${encodeURIComponent(status)}`, { fresh: true, ...request }),
+      suggestStyles: (presentationId, body: StyleSuggestionRequest, request) =>
+        json<StyleOptionSet>(`/v1/presentations/${q(presentationId)}/style-options`, { body, ...request }),
+      chooseStyle: (setId, optionId, expectedVersionId, request) =>
+        json<AppliedChange & { option_id: string; set_id: string }>(`/v1/style-options/${q(setId)}/choose`, {
+          body: { option_id: optionId, expected_version_id: expectedVersionId }, ...request,
+        }),
       approve: (presentationId, proposalId, expectedVersionId, request) =>
         json<AppliedChange>(
           `/v1/presentations/${q(presentationId)}/proposals/${q(proposalId)}/approve`,
@@ -524,6 +555,20 @@ const q = encodeURIComponent;
           `/v1/presentations/${q(presentationId)}/transactions/${q(transactionId)}/revert`,
           { method: "POST", ...request },
         ),
+    },
+
+    drafts: {
+      list: (projectId, request) => json<DraftBoard[]>(`/v1/projects/${q(projectId)}/drafts`, { fresh: true, ...request }),
+      read: (draftId, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { fresh: true, ...request }),
+      create: (projectId, body = {}, request) => json<DraftBoard>(`/v1/projects/${q(projectId)}/drafts`, { body, ...request }),
+      seed: (presentationId, request) => json<DraftBoard>(`/v1/presentations/${q(presentationId)}/drafts`, { method: "POST", ...request }),
+      replace: (draftId, revision, body: DraftBody, title, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { method: "PUT", body: { revision, body, ...(title ? { title } : {}) }, ...request }),
+      update: (draftId, revision, operations: DraftOperation[], request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { method: "PATCH", body: { revision, operations }, ...request }),
+      build: (draftId, revision, cardIds, request) => json<DraftBuildResult>(`/v1/drafts/${q(draftId)}/build`, { body: { revision, ...(cardIds ? { card_ids: cardIds } : {}) }, ...request }),
+      requests: (draftId, status = "open", request) => json<DraftAgentRequest[]>(`/v1/drafts/${q(draftId)}/requests?status=${encodeURIComponent(status)}`, { fresh: true, ...request }),
+      createRequest: (draftId, body, request) => json<DraftAgentRequest>(`/v1/drafts/${q(draftId)}/requests`, { body, ...request }),
+      answerRequest: (requestId, revision, request) => json<DraftAgentRequest>(`/v1/draft-requests/${q(requestId)}/answer`, { body: { revision }, ...request }),
+      closeRequest: (requestId, request) => json<DraftAgentRequest>(`/v1/draft-requests/${q(requestId)}/close`, { method: "POST", ...request }),
     },
 
     imports: {

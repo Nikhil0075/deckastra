@@ -56,6 +56,8 @@ const account = ok({
 function route(url: string) {
   if (url.endsWith("/v1/account")) return account;
   if (url.includes("/v1/projects/prj_test/presentations")) return ok({ presentations: [] });
+  // The home lists the project's draft boards on arrival (A2, 2026-10-14).
+  if (url.includes("/v1/projects/prj_test/drafts")) return ok([]);
   if (url.endsWith("/v1/presets")) return ok({
     description: "reviewed",
     purposeGroups: ["business"],

@@ -80,6 +80,13 @@ export interface PaidServiceQuote {
   units: number;
   estimated_usd: number;
   credit_cost: number;
+  /** Present for media quotes: the exact provider prompt and its inspectable sources. */
+  prompt?: string;
+  parts?: { source: string; label: string; text: string }[];
+  aspect_ratio?: string;
+  checks?: string[];
+  style_source?: "deck" | "prompt";
+  treatment_preset?: string | null;
 }
 
 /** Say `term` as `say` when voicing narration (plan 01 §7). */

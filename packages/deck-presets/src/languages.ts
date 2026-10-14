@@ -70,6 +70,8 @@ export interface DesignLanguage {
   imagery: {
     kind: "none" | "graphic" | "photographic";
     frame: "none" | "full-bleed" | "framed";
+    /** Provider-neutral art-direction words used by deterministic media prompts. */
+    promptWords: readonly string[];
   };
   data: { emphasis: "one-accent" | "all-equal"; gridlines: boolean };
   shapes: { radius: number; motifs: readonly string[] };
@@ -104,7 +106,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.25, displayCase: "as-written", displayTracking: "normal", alignment: "mixed" },
     grid: { columns: 1, asymmetry: "none" },
     density: { maxBullets: 6, maxHeadlineWords: 12 },
-    imagery: { kind: "none", frame: "none" },
+    imagery: { kind: "none", frame: "none", promptWords: ["clear editorial light", "restrained detail", "clean neutral finish"] },
     data: { emphasis: "all-equal", gridlines: true },
     shapes: { radius: 12, motifs: [] },
     layouts: [],
@@ -121,7 +123,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.618, displayCase: "uppercase", displayTracking: "tight", alignment: "flush-left" },
     grid: { columns: 12, asymmetry: "strong" },
     density: { maxBullets: 4, maxHeadlineWords: 5 },
-    imagery: { kind: "graphic", frame: "none" },
+    imagery: { kind: "graphic", frame: "none", promptWords: ["crisp graphic light", "hard-edged composition", "precise editorial finish"] },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 0, motifs: ["red-rule", "signal-disc", "index-number"] },
     layouts: SIX,
@@ -151,7 +153,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "wide", alignment: "centred" },
     grid: { columns: 1, asymmetry: "none" },
     density: { maxBullets: 3, maxHeadlineWords: 8 },
-    imagery: { kind: "photographic", frame: "full-bleed" },
+    imagery: { kind: "photographic", frame: "full-bleed", promptWords: ["low-key light", "deep shadows", "fine film grain"] },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 0, motifs: ["letterbox", "spotlight", "hairline"] },
     layouts: SIX,
@@ -181,7 +183,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.414, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
     grid: { columns: 2, asymmetry: "none" },
     density: { maxBullets: 4, maxHeadlineWords: 9 },
-    imagery: { kind: "graphic", frame: "framed" },
+    imagery: { kind: "graphic", frame: "framed", promptWords: ["bright soft light", "tactile playful forms", "friendly polished finish"] },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 36, motifs: ["bubble", "sticker", "idea-card", "speech-bubble"] },
     layouts: SIX,
@@ -205,7 +207,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.25, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
     grid: { columns: 1, asymmetry: "strong" },
     density: { maxBullets: 6, maxHeadlineWords: 10 },
-    imagery: { kind: "none", frame: "none" },
+    imagery: { kind: "none", frame: "none", promptWords: ["controlled screen glow", "precise technical detail", "clean digital finish"] },
     data: { emphasis: "one-accent", gridlines: true },
     shapes: { radius: 0, motifs: ["window-bar", "prompt", "line-numbers", "cursor", "block-comment"] },
     layouts: [...SIX, "code"],
@@ -229,7 +231,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "normal", alignment: "mixed" },
     grid: { columns: 2, asymmetry: "strong" },
     density: { maxBullets: 4, maxHeadlineWords: 9 },
-    imagery: { kind: "photographic", frame: "framed" },
+    imagery: { kind: "photographic", frame: "framed", promptWords: ["soft directional light", "refined material texture", "quiet editorial finish"] },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 0, motifs: ["hairline", "portrait-frame", "tracked-capitals"] },
     layouts: SIX,
@@ -253,7 +255,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.333, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
     grid: { columns: 4, asymmetry: "none" },
     density: { maxBullets: 5, maxHeadlineWords: 10 },
-    imagery: { kind: "graphic", frame: "none" },
+    imagery: { kind: "graphic", frame: "none", promptWords: ["even analytical light", "clear structured detail", "precise reportorial finish"] },
     data: { emphasis: "all-equal", gridlines: true },
     shapes: { radius: 12, motifs: ["header-strip", "status-dot", "kpi-tile", "spark-bars", "trend-bar"] },
     layouts: SIX,
@@ -277,7 +279,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.414, displayCase: "as-written", displayTracking: "normal", alignment: "flush-left" },
     grid: { columns: 2, asymmetry: "strong" },
     density: { maxBullets: 4, maxHeadlineWords: 10 },
-    imagery: { kind: "photographic", frame: "framed" },
+    imagery: { kind: "photographic", frame: "framed", promptWords: ["natural daylight", "matte organic textures", "documentary finish"] },
     data: { emphasis: "all-equal", gridlines: false },
     shapes: { radius: 0, motifs: ["earth-block", "arch-frame", "hill", "stepping-stones", "leaf"] },
     layouts: SIX,
@@ -301,7 +303,7 @@ export const DESIGN_LANGUAGES = {
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "tight", alignment: "centred" },
     grid: { columns: 4, asymmetry: "none" },
     density: { maxBullets: 4, maxHeadlineWords: 8 },
-    imagery: { kind: "graphic", frame: "framed" },
+    imagery: { kind: "graphic", frame: "framed", promptWords: ["luminous atmospheric light", "smooth dimensional surfaces", "cinematic future finish"] },
     data: { emphasis: "one-accent", gridlines: false },
     shapes: { radius: 32, motifs: ["glow", "orbit-ring", "glass-panel", "hologram-frame"] },
     layouts: SIX,
