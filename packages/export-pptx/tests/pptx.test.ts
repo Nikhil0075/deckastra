@@ -1014,6 +1014,38 @@ it("keeps picture-filled text editable in PowerPoint", () => {
   expect(result.report.warnings.filter((entry) => entry.feature === "text-picture-fill")).toEqual([]);
 });
 
+it("keeps picture-filled text editable with a fallback when its manifest asset is gone", () => {
+  const document = structuredClone(TECHNICAL);
+  const missing = "ast_01JB8Z9K2QW4RN7F3X01009999";
+  const text = document.slides[0]!.elements.find((element) => element.type === "text")!;
+  (text as typeof text & { pictureFill: unknown }).pictureFill = {
+    assetId: missing,
+    fit: "cover",
+    fallbackColor: "#F7F3E8",
+  };
+  const { bytes, result } = buildPptx(inputFor(document));
+  const slide = unzip(bytes).get("ppt/slides/slide1.xml")!;
+
+  // The text run is still native, only its unavailable photographic paint was
+  // approximated by the authored fallback colour.
+  expect(slide).toContain("<a:t>");
+  expect(slide).toContain("F7F3E8");
+  const warning = result.report.warnings.find((entry) => entry.feature === "text-picture-fill")!;
+  expect(warning.action).toBe("approximated");
+  expect(warning.message).toMatch(/fallback colour/);
+});
+
+it("reports an unsupported PowerPoint blend mode instead of dropping it silently", () => {
+  const document = structuredClone(TECHNICAL);
+  const input = inputFor(document);
+  const node = input.scenes.values().next().value!.nodes[0]!;
+  node.resolvedStyle = { ...node.resolvedStyle, blendMode: "multiply" };
+  const { result } = buildPptx(input);
+  expect(result.report.warnings).toEqual(expect.arrayContaining([
+    expect.objectContaining({ elementId: node.id, feature: "blendMode", action: "dropped" }),
+  ]));
+});
+
 /**
  * A slide background that is a photograph.
  *

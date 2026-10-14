@@ -113,6 +113,18 @@ describe("fitting the window", () => {
     expect(fitLayout(DEFAULT_SIZES, 1024, all)).toEqual({ strip: 176, inspector: 288, stripCollapsed: false });
   });
 
+  it("keeps the same logical layout at Windows scaling from 100 to 150 percent", () => {
+    // Electron exposes CSS pixels to the layout even when Windows supplies
+    // more physical pixels.  Model that conversion explicitly so a later use
+    // of physical screen width cannot make panes jump at 125% or 150%.
+    const logicalWidth = 1440;
+    const expected = fitLayout(DEFAULT_SIZES, logicalWidth, all);
+    for (const scale of [1, 1.25, 1.5]) {
+      const physicalWidth = logicalWidth * scale;
+      expect(fitLayout(DEFAULT_SIZES, physicalWidth / scale, all), `${scale * 100}%`).toEqual(expected);
+    }
+  });
+
   it("does not report a hidden strip as collapsed", () => {
     expect(fitLayout(DEFAULT_SIZES, 900, { ...all, slides: false }).stripCollapsed).toBe(false);
   });

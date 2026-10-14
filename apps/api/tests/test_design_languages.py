@@ -144,8 +144,9 @@ def test_each_language_composes_the_same_plan_differently():
     # Nine languages, nine grammars: no two compose the title the same way.
     assert len(set(map(repr, signatures.values()))) == len(signatures), signatures
     assert "Signal disc" in signatures["swiss-signal"][0]
-    assert "Letterbox top" in signatures["cinema-noir"][0]
-    assert signatures["cinema-noir"][1] == "center"
+    # The noir cover is a photograph with contact prints under the title (v3).
+    assert "Contact print" in signatures["cinema-noir"][0]
+    assert signatures["cinema-noir"][1] == "left"
     assert signatures["swiss-signal"][1] == "left"
 
 

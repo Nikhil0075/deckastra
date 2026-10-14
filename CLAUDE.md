@@ -4669,6 +4669,51 @@ to undo:
   template composes in neutral, `compose_golden.py` hashes every pattern's
   example slide in neutral on a fixed theme.
 
+### Design-system v3: type fills its region (2026-10-14)
+
+Every language's title and inside layouts were rebuilt against 16:9 OpenArt
+concepts (`.artifacts/concepts/design-system-v3-16x9/` and `-inside/`,
+git-ignored). The regression artifact is
+`packages/deck-presets/scripts/design-system-showcase.py`. Rules that are easy
+to undo:
+
+- **A display headline is a stack** (`_display_stack` in `language_kit.py`).
+  - It is one text element with a block per line, balanced by
+    `_stack_lines`, so all lines share one size.
+  - The last line takes the accent as its span colour.
+  - Its `fontSize` is a ceiling and `shrinkToFit` fills the region. A small
+    fixed size with shrink-to-fit only ever shrinks, which is how titles
+    ended up a quarter of their concept's size.
+- **Lists are rows that share the height** (`_rows`): one element per item,
+  each with its own number, with hairlines between rows. Text huddled in the
+  top half of a slide was the commonest gap from the concepts.
+- **Off-slide shapes are drawn as their visible part** (`_clipped_circle`,
+  `_path`), because nothing a language draws may leave the slide.
+- **Words over a washed photograph declare it** (`_over_scene`). The frame
+  is marked `scene` and what stands on it `content`, so W110 gives way, and
+  the document says why.
+- **New picture frames get names `preset_media` does not fill** (for example
+  "Noir scene frame" or "Luxe still frame"), with a brief in `FRAME_SLOTS`.
+  The known names ("Image frame", "Portrait frame", "Arch frame" and the rest)
+  must be filled whenever a template ships pictures, so adding one is a test
+  failure.
+- **Gradient angles are CSS.** `angle: 0` runs bottom to top; a left-to-right
+  wash is `90`. Two layouts had a hard seam from `0`.
+- **Text is measured in the stack it paints in** (`scene.ts`, the measure
+  call). A bundled face is registered under its face name
+  ("Playfair Display Variable"). Measuring the bare family used a narrower
+  fallback, so a display line measured to fit wrapped when drawn. The Node
+  estimator reads only the first name, so digests did not move. The test is
+  `gate.browser.test.ts` "measures a bundled display face in the face it
+  paints in".
+- **Splitting text into glyph spans does not lose kerning** in this Chromium:
+  measured 3524.30px against 3524.52px for one Playfair line. Do not chase
+  that again.
+- **Cover numbers must be the deck's own.** A Data Desk cover draws trend,
+  map and bar motifs with no figures on them. The inside layouts leave out
+  progress bars and sparklines next to real numbers, which would imply data
+  nobody gave.
+
 ### Decks that vary, and agents told how (2026-10-11)
 
 A review of an agent-built deck found it correct and monotonous: cards and

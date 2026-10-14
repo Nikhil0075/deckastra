@@ -71,6 +71,30 @@ def test_a_transparent_cutout_is_accepted_and_an_opaque_png_is_not(tmp_path, mon
     assert any("no transparency" in problem for problem in problems), problems
 
 
+def test_a_missing_cutout_and_a_png_labelled_as_jpeg_are_deliberate_failures(tmp_path, monkeypatch, cleanup):
+    """The release gate fails loudly for both broken-asset cases.
+
+    A missing file must never become an empty subject silently, and a PNG with
+    a JPEG name/MIME must not reach PowerPoint as a corrupt picture part.
+    """
+    folder = _folder(tmp_path, monkeypatch, cutout=_png(300, 500, transparent=True))
+    subject = folder / "pitch-subject.png"
+    raw = subject.read_bytes()
+    subject.unlink()
+    preset_media._load.cache_clear()
+    assert any("pitch-subject.png is in the manifest and not on disk" in problem for problem in preset_media.problems(folder))
+
+    manifest = json.loads((folder / "MANIFEST.json").read_text(encoding="utf-8"))
+    entry = next(one for one in manifest["media"] if one["file"] == "pitch-subject.png")
+    entry["file"] = "pitch-subject.jpg"
+    entry["sha256"] = entry["sourceSha256"] = __import__("hashlib").sha256(raw).hexdigest()
+    entry["bytes"] = len(raw)
+    (folder / "pitch-subject.jpg").write_bytes(raw)
+    (folder / "MANIFEST.json").write_text(json.dumps(manifest), encoding="utf-8")
+    preset_media._load.cache_clear()
+    assert any("pitch-subject.jpg is not a JPEG" in problem for problem in preset_media.problems(folder))
+
+
 def test_a_template_names_a_depth_it_may_have(tmp_path, monkeypatch, cleanup):
     folder = _folder(tmp_path, monkeypatch, cutout=_png(300, 500, transparent=True), layer="hovering")
     assert any("no valid template media selector" in problem for problem in preset_media.problems(folder))

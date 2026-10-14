@@ -802,7 +802,12 @@ function buildPayload(
 
       const metrics = ctx.measurer.measure({
         content: el.content,
-        typography,
+        // Measured in the stack it paints in (2026-10-14). The paint expands
+        // the family into a full stack (`expandFontStacks`), and a bundled face
+        // is registered under its face name ("Playfair Display Variable"), so a
+        // bare "Playfair Display" measured in a fallback serif: narrower, so a
+        // display line measured to fit wrapped when it was drawn.
+        typography: { ...typography, fontFamily: resolveFontStack(typography.fontFamily, ctx.script) },
         maxWidth: Math.max(1, innerWidth),
         maxHeight: Math.max(1, innerHeight),
         fit: (el.fit as never) ?? "fixed",

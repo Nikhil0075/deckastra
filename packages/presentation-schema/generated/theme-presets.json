@@ -2830,10 +2830,10 @@
           "foreground": "#1F1A14",
           "foregroundMuted": "#4A4036",
           "foregroundSubtle": "#6B5F52",
-          "accent": "#7A5A32",
+          "accent": "#7A2028",
           "accentForeground": "#FFFFFF",
           "accentMuted": "#EDE4D8",
-          "secondary": "#1F3A34",
+          "secondary": "#164B3D",
           "secondaryForeground": "#F6F1EA",
           "border": "#E5DCCF",
           "borderStrong": "#B9AB97",
@@ -2841,10 +2841,10 @@
           "success": "#15803D",
           "warning": "#B45309",
           "danger": "#B91C1C",
-          "info": "#7A5A32",
+          "info": "#7A2028",
           "chartSeries": [
-            "#7A5A32",
-            "#1F3A34",
+            "#7A2028",
+            "#164B3D",
             "#A0764A",
             "#5B6B63",
             "#8C4A3C",
@@ -2984,8 +2984,8 @@
         },
         "chart": {
           "series": [
-            "#7A5A32",
-            "#1F3A34",
+            "#7A2028",
+            "#164B3D",
             "#A0764A",
             "#5B6B63",
             "#8C4A3C",
@@ -4395,29 +4395,29 @@
         },
         "typography": {
           "display": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 96,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1.05,
             "letterSpacing": -2
           },
           "h1": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 64,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1.1,
             "letterSpacing": -1
           },
           "h2": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 44,
-            "fontWeight": 700,
+            "fontWeight": 400,
             "lineHeight": 1.15
           },
           "h3": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 32,
-            "fontWeight": 600,
+            "fontWeight": 400,
             "lineHeight": 1.2
           },
           "body": {
@@ -4439,7 +4439,7 @@
             "lineHeight": 1.4
           },
           "quote": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 32,
             "fontWeight": 400,
             "fontStyle": "italic",
@@ -4452,9 +4452,9 @@
             "lineHeight": 1.5
           },
           "metric": {
-            "fontFamily": "Baloo 2",
+            "fontFamily": "Archivo Black",
             "fontSize": 88,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1,
             "fontFeatures": [
               "tnum"
@@ -5127,28 +5127,28 @@
         "description": "Evergreen, parchment and moss accents for grounded strategy and sustainability work.",
         "mode": "light",
         "colors": {
-          "background": "#F3F5EC",
-          "surface": "#FFFFFF",
-          "surfaceAlt": "#E3E9D5",
+          "background": "#EFE9D7",
+          "surface": "#F7F2E6",
+          "surfaceAlt": "#D8D2C0",
           "overlay": "#FFFFFFCC",
-          "foreground": "#17251B",
-          "foregroundMuted": "#405044",
-          "foregroundSubtle": "#637067",
-          "accent": "#245C35",
+          "foreground": "#243A2D",
+          "foregroundMuted": "#4F5E52",
+          "foregroundSubtle": "#687469",
+          "accent": "#315A42",
           "accentForeground": "#FFFFFF",
-          "accentMuted": "#E3E9D5",
-          "secondary": "#9A5B13",
+          "accentMuted": "#D8D2C0",
+          "secondary": "#90633D",
           "secondaryForeground": "#FFFFFF",
-          "border": "#CBD4C2",
-          "borderStrong": "#95A58C",
-          "divider": "#CBD4C2",
+          "border": "#CDC5B3",
+          "borderStrong": "#978E7C",
+          "divider": "#CDC5B3",
           "success": "#15803D",
           "warning": "#B45309",
           "danger": "#B91C1C",
-          "info": "#245C35",
+          "info": "#315A42",
           "chartSeries": [
-            "#245C35",
-            "#9A5B13",
+            "#315A42",
+            "#90633D",
             "#4267A9",
             "#7A3E8E",
             "#B23A48",
@@ -5156,7 +5156,7 @@
           ],
           "chartPositive": "#15803D",
           "chartNegative": "#B91C1C",
-          "chartNeutral": "#637067"
+          "chartNeutral": "#687469"
         },
         "typography": {
           "display": {
@@ -5288,15 +5288,15 @@
         },
         "chart": {
           "series": [
-            "#245C35",
-            "#9A5B13",
+            "#315A42",
+            "#90633D",
             "#4267A9",
             "#7A3E8E",
             "#B23A48",
             "#397A78"
           ],
-          "gridlineColor": "#CBD4C2",
-          "axisColor": "#637067",
+          "gridlineColor": "#CDC5B3",
+          "axisColor": "#687469",
           "showGridlines": true,
           "barCornerRadius": 4,
           "lineWidth": 3,
@@ -7455,7 +7455,7 @@
           "accent": "#005EA8",
           "accentForeground": "#FFFFFF",
           "accentMuted": "#E5EDF5",
-          "secondary": "#8A4B08",
+          "secondary": "#EE402F",
           "secondaryForeground": "#FFFFFF",
           "border": "#C8D6E2",
           "borderStrong": "#92A8BA",
@@ -7466,7 +7466,7 @@
           "info": "#005EA8",
           "chartSeries": [
             "#005EA8",
-            "#8A4B08",
+            "#EE402F",
             "#26734D",
             "#7A438F",
             "#B23A48",
@@ -7607,7 +7607,7 @@
         "chart": {
           "series": [
             "#005EA8",
-            "#8A4B08",
+            "#EE402F",
             "#26734D",
             "#7A438F",
             "#B23A48",
@@ -7832,7 +7832,7 @@
           "foreground": "#0A0A0A",
           "foregroundMuted": "#3A3A3A",
           "foregroundSubtle": "#5E5E5E",
-          "accent": "#D0021B",
+          "accent": "#E31B23",
           "accentForeground": "#FFFFFF",
           "accentMuted": "#E8E8E5",
           "secondary": "#0A0A0A",
@@ -7843,9 +7843,9 @@
           "success": "#15803D",
           "warning": "#B45309",
           "danger": "#B91C1C",
-          "info": "#D0021B",
+          "info": "#E31B23",
           "chartSeries": [
-            "#D0021B",
+            "#E31B23",
             "#0A0A0A",
             "#6E6E6E",
             "#A8A8A4",
@@ -7858,29 +7858,29 @@
         },
         "typography": {
           "display": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 96,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1.05,
             "letterSpacing": -2
           },
           "h1": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 64,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1.1,
             "letterSpacing": -1
           },
           "h2": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 44,
-            "fontWeight": 700,
+            "fontWeight": 400,
             "lineHeight": 1.15
           },
           "h3": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 32,
-            "fontWeight": 600,
+            "fontWeight": 400,
             "lineHeight": 1.2
           },
           "body": {
@@ -7902,7 +7902,7 @@
             "lineHeight": 1.4
           },
           "quote": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 32,
             "fontWeight": 400,
             "fontStyle": "italic",
@@ -7915,9 +7915,9 @@
             "lineHeight": 1.5
           },
           "metric": {
-            "fontFamily": "Work Sans",
+            "fontFamily": "Bebas Neue",
             "fontSize": 88,
-            "fontWeight": 800,
+            "fontWeight": 400,
             "lineHeight": 1,
             "fontFeatures": [
               "tnum"
@@ -7986,7 +7986,7 @@
         },
         "chart": {
           "series": [
-            "#D0021B",
+            "#E31B23",
             "#0A0A0A",
             "#6E6E6E",
             "#A8A8A4",

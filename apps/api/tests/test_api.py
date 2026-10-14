@@ -165,7 +165,9 @@ def test_reviewed_presets_create_a_deterministic_deck(client: TestClient, auth: 
     # Found by role: since unit 7a the slide is composed in a language, whose
     # motifs come before the words.
     headline = next(element for element in body["document"]["slides"][0]["elements"] if element.get("semanticRole") == "headline")
-    assert headline["content"]["blocks"][0]["spans"][0]["text"] == "One clear direction"
+    # A cover headline is one element set a line per block (design-system v3).
+    words = " ".join(span["text"] for block in headline["content"]["blocks"] for span in block["spans"])
+    assert words == "One clear direction"
     # The template's motion is its language's (Quiet Luxe); its voice is its own.
     assert body["document"]["metadata"]["motionStyle"] == "editorial"
     assert body["document"]["metadata"]["voiceStyle"] == "confident"

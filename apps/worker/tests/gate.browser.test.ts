@@ -169,3 +169,36 @@ it("draws a missing cut-out as a named placeholder and reports which it was", as
   });
   expect(text).toBe("Cut-out missing: The subject, cut out");
 }, 300_000);
+
+it("measures a bundled display face in the face it paints in", async () => {
+  // A bundled face is registered under its face name ("Playfair Display
+  // Variable"); measuring the bare family measured a fallback serif, so a
+  // display line measured to fit at 230px wrapped when drawn (2026-10-14).
+  const document = structuredClone(loadFixture("technical")) as PresentationDocument;
+  const slide = document.slides[0]!;
+  const text = (slide.elements as Record<string, unknown>[]).find((element) => element.type === "text") as Record<string, unknown> & { id: string };
+  text.transform = { x: 120, y: 120, width: 1180, height: 480 };
+  text.fit = "shrinkToFit";
+  text.minFontSize = 80;
+  text.typography = { fontFamily: "Playfair Display", fontSize: 230, fontWeight: 500, lineHeight: 1 };
+  text.content = { version: 1, blocks: [
+    { id: "blk_01JB8Z9K2QW4RN7F3XG5GATE11", type: "paragraph", spans: [{ text: "Focus beats" }] },
+    { id: "blk_01JB8Z9K2QW4RN7F3XG5GATE12", type: "paragraph", spans: [{ text: "volume" }] },
+  ] };
+  const library = new AssetLibrary();
+  const painted = await pool.withPage(1, async (page) => {
+    const fontCss = await pageFontCss(document, library);
+    const scene = await buildBrowserScene(document, page, fontCss);
+    const built = scene.slides[0]!;
+    await page.setContent(slideHtml(built, "final", [], library.resolve, fontCss), { waitUntil: "load" });
+    await settle(page);
+    return page.evaluate<number, string>((id) => {
+      const element = globalThis.document.querySelector(`[data-element-id="${id}"]`)!;
+      let bottom = 0;
+      for (const paragraph of element.querySelectorAll("p")) bottom = Math.max(bottom, paragraph.getBoundingClientRect().bottom);
+      return bottom - element.getBoundingClientRect().top;
+    }, text.id);
+  });
+  // The painted words stay inside the box they were measured for.
+  expect(painted).toBeLessThanOrEqual(481);
+}, 300_000);
