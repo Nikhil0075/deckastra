@@ -240,6 +240,9 @@ class Project(Base, TimestampMixin):
     presentations: Mapped[list[Presentation]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    drafts: Mapped[list[Draft]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Presentation(Base, TimestampMixin):
@@ -289,6 +292,13 @@ class Presentation(Base, TimestampMixin):
     transactions: Mapped[list[TransactionRow]] = relationship(
         back_populates="presentation", cascade="all, delete-orphan"
     )
+    agent_requests: Mapped[list[AgentRequest]] = relationship(
+        back_populates="presentation", cascade="all, delete-orphan"
+    )
+    style_option_sets: Mapped[list[StyleOptionSet]] = relationship(
+        back_populates="presentation", cascade="all, delete-orphan"
+    )
+    drafts: Mapped[list[Draft]] = relationship(back_populates="presentation")
 
 
 class PresentationVersion(Base, TimestampMixin):
@@ -374,6 +384,11 @@ class TransactionRow(Base, TimestampMixin):
     confidence: Mapped[float | None] = mapped_column()
     source_ids_json: Mapped[list[Any] | None] = mapped_column(JsonColumn)
     risk_tier: Mapped[str | None] = mapped_column(String(10))
+    #: The person's question this proposal answers. Kept on the transaction so
+    #: proposal history still explains why the change was authored.
+    in_reply_to_request_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_requests.id", ondelete="SET NULL"), index=True
+    )
 
     created_by: Mapped[str] = mapped_column(String(64), nullable=False)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -400,6 +415,98 @@ class TransactionRow(Base, TimestampMixin):
     change_key: Mapped[str | None] = mapped_column(String(64))
 
     presentation: Mapped[Presentation] = relationship(back_populates="transactions")
+
+
+class AgentRequest(Base, TimestampMixin):
+    """A persisted, user-authored question about part of a deck."""
+
+    __tablename__ = "agent_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'answered', 'closed')", name="ck_agent_request_status"
+        ),
+        Index("ix_agent_requests_presentation_status", "presentation_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), nullable=True
+    )
+    draft_id: Mapped[str | None] = mapped_column(
+        ForeignKey("drafts.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    target_json: Mapped[dict[str, Any]] = mapped_column(JsonColumn, nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    based_on_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    based_on_draft_revision: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    answer_proposal_ids_json: Mapped[list[str] | None] = mapped_column(JsonColumn)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    presentation: Mapped[Presentation | None] = relationship(back_populates="agent_requests")
+    draft: Mapped[Draft | None] = relationship(back_populates="agent_requests")
+
+
+class Draft(Base, TimestampMixin):
+    """A cheap, geometry-free working board stored beside a presentation."""
+
+    __tablename__ = "drafts"
+    __table_args__ = (
+        Index("ix_drafts_project_updated", "project_id", "updated_at"),
+        Index("ix_drafts_presentation", "presentation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    presentation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("presentations.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    body_json: Mapped[dict[str, Any]] = mapped_column(JsonColumn, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now, nullable=False
+    )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    built_version_id: Mapped[str | None] = mapped_column(String(64))
+    built_revision: Mapped[int | None] = mapped_column(Integer)
+
+    project: Mapped[Project] = relationship(back_populates="drafts")
+    presentation: Mapped[Presentation | None] = relationship(back_populates="drafts")
+    agent_requests: Mapped[list[AgentRequest]] = relationship(
+        back_populates="draft", cascade="all, delete-orphan"
+    )
+
+
+class StyleOptionSet(Base, TimestampMixin):
+    """Two to four mutually exclusive visual directions for one deck version."""
+
+    __tablename__ = "style_option_sets"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'chosen', 'expired')", name="ck_style_option_set_status"
+        ),
+        Index("ix_style_option_sets_presentation_status", "presentation_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_id: Mapped[str] = mapped_column(
+        ForeignKey("presentations.id", ondelete="CASCADE"), nullable=False
+    )
+    based_on_version_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    slide_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    options_json: Mapped[list[dict[str, Any]]] = mapped_column(JsonColumn, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
+    chosen_option_id: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    presentation: Mapped[Presentation] = relationship(back_populates="style_option_sets")
 
 
 class AgentRunRow(Base, TimestampMixin):
@@ -480,12 +587,15 @@ class AgentMemoryRow(Base, TimestampMixin):
 
 __all__ = [
     "AgentMemoryRow",
+    "AgentRequest",
     "AgentRunRow",
     "Base",
+    "Draft",
     "JsonColumn",
     "Presentation",
     "PresentationVersion",
     "Project",
+    "StyleOptionSet",
     "TransactionRow",
     "User",
     "Workspace",

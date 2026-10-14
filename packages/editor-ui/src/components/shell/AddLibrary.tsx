@@ -3,7 +3,7 @@ import type { BrandIcon, PatchOperation, PresentationDocument, ShapeKind } from 
 import type { StarterElementKind } from "@deckastra/presentation-core";
 import { ICON_CATEGORIES, ICON_NAMES, ICON_VIEWBOX, findIcon, shapeGeometry } from "@deckastra/renderer";
 import { useOptionalWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { LayoutFamily, PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts";
+import type { AssistantAsset, LayoutFamily, PresetCatalog, SlidePattern } from "@deckastra/workspace-contracts";
 
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
@@ -66,6 +66,43 @@ const OBJECTS: readonly { object: StarterElementKind; label: string; icon: IconN
 
 const STORE = "deckastra.library";
 const RECENT_LIMIT = 8;
+
+function RecentMedia({ refresh }: { refresh: number }) {
+  const client = useOptionalWorkspaceClient();
+  const [assets, setAssets] = useState<AssistantAsset[]>([]);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!client?.assistant) return;
+    let live = true;
+    client.assistant.assetList({ order: "newest", limit: 12 }).then((answer) => {
+      if (!live) return;
+      const media = answer.assets.filter((asset) => asset.kind === "image" || asset.kind === "video");
+      setAssets(media);
+      for (const asset of media.filter((item) => item.kind === "image")) {
+        void client.assistant!.assetView(asset.id, 256).then((view) => {
+          if (live) setPreviews((current) => ({ ...current, [asset.id]: `data:${view.mime_type};base64,${view.base64}` }));
+        }).catch(() => undefined);
+      }
+    }).catch(() => { if (live) setAssets([]); });
+    return () => { live = false; };
+  }, [client, refresh]);
+  return (
+    <section className="dk-library__section" data-testid="media-library-assets">
+      <h4 className="dk-library__heading">Recent media</h4>
+      {assets.length ? (
+        <div className="dk-media-grid">
+          {assets.map((asset) => (
+            <div className="dk-media-card" key={asset.id} data-asset-id={asset.id}>
+              {previews[asset.id] ? <img src={previews[asset.id]} alt="" /> : <Icon name={asset.kind === "video" ? "play" : "image"} />}
+              <span title={asset.filename ?? asset.id}>{asset.filename ?? (asset.kind === "video" ? "Video clip" : "Picture")}</span>
+              {(asset.tags ?? []).includes("generated") ? <StatusChip tone="action">Generated</StatusChip> : null}
+            </div>
+          ))}
+        </div>
+      ) : <p className="dk-field__hint">Uploaded and generated pictures and clips will appear here.</p>}
+    </section>
+  );
+}
 
 function keyOf(item: LibraryItem): string {
   if (item.kind === "icon") return item.set === "brand" ? `brand:${item.name}` : `icon:${item.name}`;
@@ -197,6 +234,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
   const [patternNotice, setPatternNotice] = useState<string | null>(null);
   const [patternFamily, setPatternFamily] = useState<LayoutFamily | "all">("all");
   const [selectedPattern, setSelectedPattern] = useState<SlidePattern | null>(null);
+  const [mediaRefresh, setMediaRefresh] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const svgInput = useRef<HTMLInputElement>(null);
   const needle = query.trim().toLowerCase();
@@ -471,7 +509,8 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
         }}
       />
       <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG. You can also paste a picture or drop one on the slide.</p>
-      <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} slide={document?.slides.find((one) => one.id === afterSlideId)} />
+      <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} slide={document?.slides.find((one) => one.id === afterSlideId)} designLanguage={(document?.metadata as { designLanguage?: { id?: string } } | undefined)?.designLanguage?.id} onGenerated={() => setMediaRefresh((value) => value + 1)} />
+      <RecentMedia refresh={mediaRefresh} />
       <h4 className="dk-library__heading">Objects</h4>
       <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
     </>

@@ -60,20 +60,20 @@ def selected(session, principal, workspace_id, role=Role.VIEWER):
 
 
 @router.get("/assets")
-def asset_list(workspace_id: str | None = None, filter: Literal["all", "unused", "untagged"] = "all", cursor: str | None = None, q: str = Query("", max_length=200), limit: int = Query(50, ge=1, le=100), principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
+def asset_list(workspace_id: str | None = None, filter: Literal["all", "unused", "untagged"] = "all", order: Literal["oldest", "newest"] = "oldest", cursor: str | None = None, q: str = Query("", max_length=200), limit: int = Query(50, ge=1, le=100), principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
     workspace_id = selected(session, principal, workspace_id)
     if filter == "unused":
         assets.recount_references(session, workspace_id)
     query = select(Asset).where(Asset.workspace_id == workspace_id, Asset.deleted_at.is_(None))
     if cursor:
-        query = query.where(Asset.id > cursor)
+        query = query.where(Asset.id < cursor if order == "newest" else Asset.id > cursor)
     if filter == "unused":
         query = query.where(Asset.reference_count == 0)
     if filter == "untagged":
         query = query.where((Asset.tags.is_(None)) | (Asset.tags == []))
     if q:
         query = query.where(Asset.filename.contains(q, autoescape=True) | Asset.description.contains(q, autoescape=True))
-    rows = session.scalars(query.order_by(Asset.id).limit(limit + 1)).all()
+    rows = session.scalars(query.order_by(Asset.id.desc() if order == "newest" else Asset.id).limit(limit + 1)).all()
     return {"assets": [describe(row) for row in rows[:limit]], "next_cursor": rows[limit - 1].id if len(rows) > limit else None, "untrusted_fields": ["filename", "tags", "description"]}
 
 

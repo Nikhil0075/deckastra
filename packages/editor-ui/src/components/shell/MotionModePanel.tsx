@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { NAMED_EASING_VALUES, type PatchOperation } from "@deckastra/presentation-schema";
+import { resolveElementById } from "@deckastra/presentation-core";
+import { NAMED_EASING_VALUES, type AnimationTrack, type PatchOperation } from "@deckastra/presentation-schema";
 import type { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { MotionCapabilities, MotionStyleId, PresetCatalog } from "@deckastra/workspace-contracts";
@@ -52,6 +53,7 @@ export function MotionModePanel({
   scene,
   resolveAssetUrl,
   embedded = false,
+  preview,
 }: {
   editor: EditorApi;
   presentationId: string;
@@ -59,6 +61,8 @@ export function MotionModePanel({
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
   /** Host extensions can append the established controls inside their panel. */
   embedded?: boolean;
+  /** Show a dry-run track set on the canvas without writing it. */
+  preview?: (tracks?: AnimationTrack[]) => void;
 }) {
   const slide = editor.document.slides[editor.slideIndex];
   if (!slide) return null;
@@ -70,6 +74,12 @@ export function MotionModePanel({
       <Section title="Preview transition" defaultOpen>
         <TransitionPreview scene={scene} slideIndex={editor.slideIndex} resolveAssetUrl={resolveAssetUrl} />
       </Section>
+      <Section title="Selected object" defaultOpen>
+        <SelectedMotionAlternatives editor={editor} presentationId={presentationId} preview={preview} />
+      </Section>
+      <Section title="Ask agent" defaultOpen>
+        <AskAgent editor={editor} presentationId={presentationId} />
+      </Section>
       <Section title="Plan by roles" defaultOpen>
         <RolePlanner key={slide.id} editor={editor} presentationId={presentationId} />
       </Section>
@@ -78,6 +88,173 @@ export function MotionModePanel({
       </Section>
     </div>
   );
+}
+
+const ALTERNATIVE_PRESETS = ["fade", "slide", "scale", "blurReveal", "maskReveal", "springIn", "wordCascade", "staggerReveal"] as const;
+
+/** A preset named in words: "blurReveal" reads "Blur reveal". */
+const presetWords = (preset: string): string => {
+  const words = preset.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+function pacingFor(tracks: AnimationTrack[], selectedIds: Set<string>, capabilities: MotionCapabilities | null): Pacing {
+  const duration = tracks.find((track) => selectedIds.has(track.targetId))?.clips[0]?.durationMs;
+  if (duration === undefined || !capabilities) return "measured";
+  return PACING.reduce((best, pace) =>
+    Math.abs((capabilities.pacing[pace]?.durationMs ?? duration) - duration) <
+    Math.abs((capabilities.pacing[best]?.durationMs ?? duration) - duration) ? pace : best, "measured" as Pacing);
+}
+
+export function mergeSelectedMotionPlan(
+  slideId: string,
+  existing: AnimationTrack[],
+  planned: AnimationTrack[],
+  selectedIds: Set<string>,
+): PatchOperation[] {
+  const selected = planned.filter((track) => selectedIds.has(track.targetId));
+  const untouched = existing.filter((track) => !selectedIds.has(track.targetId));
+  return [{ op: existing.length ? "replace" : "add", path: `/slides/id:${slideId}/animations`, value: [...untouched, ...selected] }];
+}
+
+function SelectedMotionAlternatives({
+  editor, presentationId, preview,
+}: {
+  editor: EditorApi;
+  presentationId: string;
+  preview?: (tracks?: AnimationTrack[]) => void;
+}) {
+  const client = useWorkspaceClient();
+  const slide = editor.document.slides[editor.slideIndex]!;
+  const selectedIds = useMemo(() => new Set(editor.selection?.selectedIds ?? []), [editor.selection?.selectedIds]);
+  const selected = [...selectedIds].map((id) => resolveElementById(editor.document, id)?.element).filter(Boolean);
+  const roles = [...new Set(selected.map((element) => element!.semanticRole).filter((role): role is string => Boolean(role)))];
+  const existing = slide.animations ?? [];
+  const currentPreset = existing.find((track) => selectedIds.has(track.targetId))?.clips[0]?.preset;
+  const [capabilities, setCapabilities] = useState<MotionCapabilities | null>(null);
+  const [seen, setSeen] = useState<string[]>(currentPreset ? [currentPreset] : []);
+  const [plan, setPlan] = useState<(Plan & { preset?: string }) | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    client.motion.capabilities().then((value) => { if (live) setCapabilities(value); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [client]);
+  useEffect(() => {
+    setSeen(currentPreset ? [currentPreset] : []);
+    setPlan(null);
+    preview?.();
+  }, [slide.id, [...selectedIds].join("|"), currentPreset]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const ask = async (mode: "another" | "calmer" | "energy") => {
+    setNotice(null);
+    setPlan(null);
+    preview?.();
+    if (selectedIds.size === 0) return setNotice("Select an object on the slide first.");
+    if (roles.length !== 1) return setNotice("Select objects that share one semantic role so the planner can address them safely.");
+    if (!(await editor.saveNow())) return setNotice("Save your edits, then try again.");
+    setBusy(true);
+    try {
+      const currentPacing = pacingFor(existing, selectedIds, capabilities);
+      const at = PACING.indexOf(currentPacing);
+      const pacing = mode === "calmer" ? PACING[Math.min(PACING.length - 1, at + 1)]! :
+        mode === "energy" ? PACING[Math.max(0, at - 1)]! : currentPacing;
+      const presetList = capabilities?.presets?.length ? capabilities.presets : [...ALTERNATIVE_PRESETS];
+      let seenThisCycle = seen;
+      let available = presetList.filter((preset) => mode !== "another" || !seenThisCycle.includes(preset));
+      if (mode === "another" && available.length === 0) {
+        seenThisCycle = currentPreset ? [currentPreset] : [];
+        setSeen(seenThisCycle);
+        available = presetList.filter((preset) => !seenThisCycle.includes(preset));
+      }
+      const candidates = mode === "another" ? available : [currentPreset ?? "fade"];
+      let accepted: { operations: PatchOperation[]; measured: MeasuredPlan; preset?: string; warnings: string[] } | null = null;
+      for (const entrance of candidates) {
+        const answer = await client.motion.propose(presentationId, {
+          slide_id: slide.id, expected_version_id: editor.currentVersionId(), sequence: roles,
+          entrance, pacing, click_reveals: 0, intent: `${mode === "another" ? "Try another" : mode === "calmer" ? "Calmer" : "More energy"} for selected object`, dry_run: true,
+        });
+        if (answer.outcome !== "planned" || !answer.operations) continue;
+        const plannedSlide = measurePlan(editor.document, slide.id, answer.operations).after?.slides[editor.slideIndex];
+        const actual = plannedSlide?.animations?.find((track) => selectedIds.has(track.targetId))?.clips[0]?.preset;
+        if (mode === "another" && actual && seenThisCycle.includes(actual)) continue;
+        const operations = mergeSelectedMotionPlan(slide.id, existing, plannedSlide?.animations ?? [], selectedIds);
+        const measured = measurePlan(editor.document, slide.id, operations);
+        accepted = { operations, measured, preset: actual, warnings: answer.warnings ?? [] };
+        break;
+      }
+      if (!accepted) return setPlan({ what: "refused", message: "The planner has no other suitable motion for this selection.", warnings: [] });
+      if (accepted.preset) setSeen((items) => items.includes(accepted!.preset!) ? items : [...items, accepted!.preset!]);
+      setPlan({ what: "entrances", operations: accepted.operations, measured: accepted.measured,
+        fingerprint: planFingerprint(editor.document, slide.id, "animations"),
+        summary: accepted.preset ? presetWords(accepted.preset) : pacing, warnings: accepted.warnings, preset: accepted.preset });
+      preview?.(accepted.measured.after?.slides[editor.slideIndex]?.animations);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The planner did not answer.");
+    } finally { setBusy(false); }
+  };
+
+  const keep = () => {
+    if (!plan || plan.what === "refused") return;
+    if (planFingerprint(editor.document, slide.id, "animations") !== plan.fingerprint) {
+      setPlan(null); preview?.(); return setNotice("The slide changed. Try again against the current motion.");
+    }
+    editor.apply(plan.operations, { label: "Motion for selected object" });
+    setPlan(null); preview?.(); setNotice("Kept as one change. Undo takes it back.");
+  };
+
+  return <div className="dk-motion" data-testid="selected-motion-alternatives">
+    <p className="dk-muted">{selectedIds.size ? `${selectedIds.size} selected${currentPreset ? ` · ${presetWords(currentPreset)}` : " · no entrance yet"}` : "Select an object to explore its motion."}</p>
+    <div className="dk-proposal__actions">
+      <Button size="sm" variant="secondary" disabled={busy || !selectedIds.size} onClick={() => void ask("another")} data-testid="motion-try-another">Try another</Button>
+      <Button size="sm" variant="secondary" disabled={busy || !selectedIds.size} onClick={() => void ask("calmer")}>Calmer</Button>
+      <Button size="sm" variant="secondary" disabled={busy || !selectedIds.size} onClick={() => void ask("energy")}>More energy</Button>
+    </div>
+    {plan ? plan.what === "refused" ? <p className="dk-muted" role="status">{plan.message}</p> :
+      <article className="dk-proposal" data-testid="selected-motion-plan"><header className="dk-proposal__head"><StatusChip tone="waiting">Preview</StatusChip><span>{plan.summary}</span></header>
+        <p className="dk-proposal__intent">{budgetLine(plan.measured.budget)}</p>
+        {plan.measured.error ? <p className="dk-proposals__error">{plan.measured.error}</p> : null}
+        <div className="dk-proposal__actions"><Button size="sm" variant="secondary" onClick={() => { setPlan(null); preview?.(); }}>Discard</Button><Button size="sm" variant="primary" disabled={Boolean(plan.measured.error)} onClick={keep} data-testid="selected-motion-keep">Keep</Button></div>
+      </article> : null}
+    {notice ? <p className="dk-muted" role="status">{notice}</p> : null}
+  </div>;
+}
+
+function AskAgent({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {
+  const client = useWorkspaceClient();
+  const slide = editor.document.slides[editor.slideIndex]!;
+  const [requestKind, setRequestKind] = useState<"entrance" | "calmer" | "simpler" | "picture" | "words" | "other">("entrance");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const send = async () => {
+    if (!message.trim()) return setNotice("Say what you want the agent to consider.");
+    if (!(await editor.saveNow())) return setNotice("Save your edits, then ask again.");
+    setBusy(true); setNotice(null);
+    try {
+      const ids = editor.selection?.selectedIds ?? [];
+      await client.agent.createRequest(presentationId, {
+        target: { slide_ids: ids.length ? [] : [slide.id], element_ids: ids },
+        kind: ({ entrance: "motion", calmer: "motion", simpler: "style", picture: "image", words: "content", other: "other" } as const)[requestKind],
+        message: message.trim(), based_on_version_id: editor.currentVersionId(),
+      });
+      setMessage(""); setNotice("Waiting for your agent. Replies will appear in Review.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "That request could not be sent."); }
+    finally { setBusy(false); }
+  };
+  return <div className="dk-motion" data-testid="ask-agent">
+    <Segmented label="Ask for" value={requestKind} items={[
+      { value: "entrance", label: "Different entrance" }, { value: "calmer", label: "Calmer" },
+      { value: "simpler", label: "Simpler" }, { value: "picture", label: "Another picture" }, { value: "words", label: "Tighter words" },
+      { value: "other", label: "Something else" },
+    ]} onChange={setRequestKind} size="sm" />
+    <label className="dk-label">Message<textarea className="dk-input" value={message} maxLength={2000} rows={3} onChange={(event) => setMessage(event.target.value)} data-testid="ask-agent-message" /></label>
+    <Button size="sm" variant="primary" disabled={busy || !message.trim()} onClick={() => void send()} data-testid="ask-agent-send">{busy ? "Sending…" : "Ask agent"}</Button>
+    <p className="dk-muted">Targets {editor.selection?.selectedIds?.length ? `${editor.selection.selectedIds.length} selected object(s)` : "this slide"}.</p>
+    {notice ? <p className="dk-muted" role="status">{notice}</p> : null}
+  </div>;
 }
 
 function MotionStylePicker({ editor, presentationId }: { editor: EditorApi; presentationId: string }) {

@@ -46,7 +46,7 @@ export function ImportGeneratePanel({ editor, presentationId, slideId, onAddImag
         <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG, added to this slide. You can also paste a picture or drop one on the slide.</p>
       </Section>
       <Section title="Generate" defaultOpen>
-        <GenerateMedia presentationId={presentationId} slideId={slideId} currentVersionId={editor.currentVersionId} saveNow={editor.saveNow} slide={editor.document.slides.find((one) => one.id === slideId)} />
+        <GenerateMedia presentationId={presentationId} slideId={slideId} currentVersionId={editor.currentVersionId} saveNow={editor.saveNow} slide={editor.document.slides.find((one) => one.id === slideId)} designLanguage={(editor.document.metadata as { designLanguage?: { id?: string } }).designLanguage?.id} />
       </Section>
       <Section title="Theme from a file">
         <ThemeFile editor={editor} presentationId={presentationId} />

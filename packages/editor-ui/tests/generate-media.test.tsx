@@ -57,7 +57,7 @@ it("asks the price for this exact description, then generates only on confirm", 
   expect((await screen.findByTestId("generate-price")).textContent).toContain("8 credits");
   expect(saveNow).toHaveBeenCalled();
   const quote = fetcher.mock.calls.find(([url]) => String(url).endsWith("/quotes/image"))!;
-  expect(JSON.parse(String(quote[1]!.body))).toEqual({ presentation_id: "pres_1", expected_version_id: "ver_1", slide_id: "sld_1", prompt: "A wind farm at dawn" });
+  expect(JSON.parse(String(quote[1]!.body))).toEqual({ presentation_id: "pres_1", expected_version_id: "ver_1", slide_id: "sld_1", prompt: "A wind farm at dawn", style_source: "prompt" });
   // Nothing has been started by asking the price.
   expect(fetcher.mock.calls.some(([url, init]) => String(url).endsWith("/v1/assistant/runs") && init?.method === "POST")).toBe(false);
 
@@ -66,8 +66,41 @@ it("asks the price for this exact description, then generates only on confirm", 
   const started = fetcher.mock.calls.find(([url, init]) => String(url).endsWith("/v1/assistant/runs") && init?.method === "POST")!;
   expect(JSON.parse(String(started[1]!.body))).toMatchObject({
     task: "image", presentation_id: "pres_1", expected_version_id: "ver_1", instruction: "A wind farm at dawn",
-    scope: { kind: "slide", slide_ids: ["sld_1"] }, image_quote_token: "q".repeat(24),
+    scope: { kind: "slide", slide_ids: ["sld_1"] }, image_quote_token: "q".repeat(24), style_source: "prompt",
   });
+});
+
+it("shows the deck-derived parts and prices the exact edited prompt", async () => {
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    const path = String(url);
+    if (path.includes("/v1/assistant/capabilities")) return json(capabilities({ available: true, reason: null }));
+    if (path.endsWith("/v1/assistant/media-prompt")) return json({
+      prompt: "A launch vehicle\nUse deep navy #14213D.\nNo text, letters or logos.",
+      parts: [
+        { source: "subject", label: "Your description", text: "A launch vehicle" },
+        { source: "palette", label: "From the deck: palette", text: "Use deep navy #14213D." },
+        { source: "always", label: "Always", text: "No text, letters or logos." },
+      ],
+      aspect_ratio: "16:9", checks: [], style_source: "deck",
+    });
+    if (path.endsWith("/v1/media/quotes/image")) {
+      const body = JSON.parse(String(init?.body));
+      return json({ quote_token: "q".repeat(24), expires_at: 0, task: "image", provider: "vertex", units: 1, estimated_usd: 0.04, credit_cost: 8, prompt: body.composed_prompt });
+    }
+    return json({}, 404);
+  });
+  vi.stubGlobal("fetch", fetcher);
+  render(
+    <GenerateMedia presentationId="pres_1" slideId="sld_1" currentVersionId={() => "ver_1"} saveNow={vi.fn(async () => true)} designLanguage="cinema-noir" />,
+    { wrapper: withWorkspaceClient() },
+  );
+  fireEvent.change(await screen.findByTestId("generate-prompt"), { target: { value: "A launch vehicle" } });
+  const exact = await screen.findByTestId("generate-final-prompt");
+  fireEvent.change(exact, { target: { value: "A launch vehicle\nNo text." } });
+  fireEvent.click(screen.getByTestId("generate-price-check"));
+  await screen.findByTestId("generate-price");
+  const call = fetcher.mock.calls.find(([url]) => String(url).endsWith("/quotes/image"))!;
+  expect(JSON.parse(String(call[1]!.body))).toMatchObject({ style_source: "deck", composed_prompt: "A launch vehicle\nNo text." });
 });
 
 it("forgets a price when the description changes", async () => {

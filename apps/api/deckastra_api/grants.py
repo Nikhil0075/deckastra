@@ -64,6 +64,17 @@ RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
     # app's own: an agent that could ask for a backup could ask for one written
     # wherever it liked, and could read every deck out of the result.
     (re.compile(r"^/v1/local/backup$"), CHANGING, "administer"),
+    # Questions are authored and dismissed by the person. An agent may read an
+    # open question and attach pending proposal replies, but cannot create the
+    # instruction it later claims to have answered or make it disappear.
+    (re.compile(r"^/v1/presentations/[^/]+/requests$"), frozenset({"POST"}), "approve"),
+    (re.compile(r"^/v1/requests/[^/]+/close$"), frozenset({"POST"}), "approve"),
+    (re.compile(r"^/v1/style-options/[^/]+/choose$"), frozenset({"POST"}), "approve"),
+    # Agents may author and revise rough boards, but turning one into a deck is
+    # the person's explicit checkpoint.
+    (re.compile(r"^/v1/drafts/[^/]+/build$"), frozenset({"POST"}), "approve"),
+    (re.compile(r"^/v1/drafts/[^/]+/requests$"), frozenset({"POST"}), "approve"),
+    (re.compile(r"^/v1/draft-requests/[^/]+/close$"), frozenset({"POST"}), "approve"),
     (
         re.compile(r"^/v1/presentations/[^/]+/proposals/[^/]+/(approve|reject)$"),
         frozenset({"POST"}),

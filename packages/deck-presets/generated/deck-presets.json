@@ -4902,7 +4902,12 @@
       },
       "imagery": {
         "kind": "none",
-        "frame": "none"
+        "frame": "none",
+        "promptWords": [
+          "clear editorial light",
+          "restrained detail",
+          "clean neutral finish"
+        ]
       },
       "data": {
         "emphasis": "all-equal",
@@ -4953,7 +4958,12 @@
       },
       "imagery": {
         "kind": "graphic",
-        "frame": "none"
+        "frame": "none",
+        "promptWords": [
+          "crisp graphic light",
+          "hard-edged composition",
+          "precise editorial finish"
+        ]
       },
       "data": {
         "emphasis": "one-accent",
@@ -5028,7 +5038,12 @@
       },
       "imagery": {
         "kind": "photographic",
-        "frame": "full-bleed"
+        "frame": "full-bleed",
+        "promptWords": [
+          "low-key light",
+          "deep shadows",
+          "fine film grain"
+        ]
       },
       "data": {
         "emphasis": "one-accent",
@@ -5104,7 +5119,12 @@
       },
       "imagery": {
         "kind": "graphic",
-        "frame": "framed"
+        "frame": "framed",
+        "promptWords": [
+          "bright soft light",
+          "tactile playful forms",
+          "friendly polished finish"
+        ]
       },
       "data": {
         "emphasis": "all-equal",
@@ -5181,7 +5201,12 @@
       },
       "imagery": {
         "kind": "none",
-        "frame": "none"
+        "frame": "none",
+        "promptWords": [
+          "controlled screen glow",
+          "precise technical detail",
+          "clean digital finish"
+        ]
       },
       "data": {
         "emphasis": "one-accent",
@@ -5260,7 +5285,12 @@
       },
       "imagery": {
         "kind": "photographic",
-        "frame": "framed"
+        "frame": "framed",
+        "promptWords": [
+          "soft directional light",
+          "refined material texture",
+          "quiet editorial finish"
+        ]
       },
       "data": {
         "emphasis": "all-equal",
@@ -5335,7 +5365,12 @@
       },
       "imagery": {
         "kind": "graphic",
-        "frame": "none"
+        "frame": "none",
+        "promptWords": [
+          "even analytical light",
+          "clear structured detail",
+          "precise reportorial finish"
+        ]
       },
       "data": {
         "emphasis": "all-equal",
@@ -5413,7 +5448,12 @@
       },
       "imagery": {
         "kind": "photographic",
-        "frame": "framed"
+        "frame": "framed",
+        "promptWords": [
+          "natural daylight",
+          "matte organic textures",
+          "documentary finish"
+        ]
       },
       "data": {
         "emphasis": "all-equal",
@@ -5490,7 +5530,12 @@
       },
       "imagery": {
         "kind": "graphic",
-        "frame": "framed"
+        "frame": "framed",
+        "promptWords": [
+          "luminous atmospheric light",
+          "smooth dimensional surfaces",
+          "cinematic future finish"
+        ]
       },
       "data": {
         "emphasis": "one-accent",

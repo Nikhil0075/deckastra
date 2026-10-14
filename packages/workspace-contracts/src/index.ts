@@ -24,3 +24,4 @@ export * from "./presets";
 export * from "./render-host";
 export * from "./languages";
 export * from "./assistant";
+export * from "./drafts";

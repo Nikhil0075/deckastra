@@ -396,6 +396,8 @@ class MotionRequest(BaseModel):
     #: as an agent's proposal it is not. Nothing is written; the operations and
     #: the version they were planned against come back.
     dry_run: bool = False
+    #: The person's request this plan answers. A reply always waits for them.
+    in_reply_to: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/presentations/{presentation_id}/motion")
@@ -504,6 +506,7 @@ def propose_motion(
             # The route's own check above is an early, clearer error; this is the
             # one that cannot be raced, because `create_proposal` loads the base.
             expected_version_id=request.expected_version_id,
+            in_reply_to_request_id=request.in_reply_to,
         )
     except proposals.ProposalError as error:
         raise HTTPException(
@@ -790,6 +793,8 @@ class TransitionRequest(BaseModel):
     #: as an agent's proposal it is not. Nothing is written; the operations and
     #: the version they were planned against come back.
     dry_run: bool = False
+    #: The person's request this plan answers. A reply always waits for them.
+    in_reply_to: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/presentations/{presentation_id}/transition")
@@ -892,6 +897,7 @@ def propose_transition(
             agent_id=f"mcp:{request.client_label}"[:120],
             reason="; ".join(warnings)[:1000] or None,
             expected_version_id=request.expected_version_id,
+            in_reply_to_request_id=request.in_reply_to,
         )
     except proposals.ProposalError as error:
         raise HTTPException(

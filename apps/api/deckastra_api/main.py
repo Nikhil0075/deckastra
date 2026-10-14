@@ -50,6 +50,8 @@ from .assistant_routes import router as assistant_router
 from .assistant_assets import router as assistant_assets_router
 from .assistant_design import router as assistant_design_router
 from .media_quotes import router as media_quotes_router
+from .style_options import router as style_options_router
+from .drafts import router as drafts_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
 from deckastra_agents.router import ModelUnavailable
@@ -128,6 +130,8 @@ app.include_router(assistant_router)
 app.include_router(assistant_assets_router)
 app.include_router(assistant_design_router)
 app.include_router(media_quotes_router)
+app.include_router(style_options_router)
+app.include_router(drafts_router)
 
 
 @app.get("/ready")

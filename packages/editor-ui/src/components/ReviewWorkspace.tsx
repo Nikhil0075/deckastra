@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildDocumentScene } from "@deckastra/renderer";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
-import type { PendingProposal, ProposalDetail } from "@deckastra/workspace-contracts";
+import type { AgentRequest, PendingProposal, ProposalDetail, StyleOptionSet } from "@deckastra/workspace-contracts";
 
 import { useAssetUrls } from "../lib/asset-urls";
 import { useBrowserMeasurer } from "../lib/measurer";
@@ -54,6 +54,10 @@ interface Applied {
   undone?: boolean;
 }
 
+const REQUEST_KIND_WORDS: Record<string, string> = {
+  motion: "Motion", style: "Style", content: "Words", image: "Picture", layout: "Layout", other: "Request",
+};
+
 export function ReviewWorkspace({
   editor,
   presentationId,
@@ -62,6 +66,7 @@ export function ReviewWorkspace({
   onCount,
   onOpenHistory,
 }: ReviewWorkspaceProps) {
+  const client = useWorkspaceClient();
   const { proposals, readFailed, status, approve, reject } = useProposals({
     presentationId,
     currentVersionId: editor.currentVersionId,
@@ -72,15 +77,47 @@ export function ReviewWorkspace({
   const [applied, setApplied] = useState<Applied[]>([]);
   const [undoMessage, setUndoMessage] = useState<string | null>(null);
   const [undoing, setUndoing] = useState<string | null>(null);
+  const [requests, setRequests] = useState<AgentRequest[]>([]);
+  const [styleSets, setStyleSets] = useState<StyleOptionSet[]>([]);
+  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
 
   useEffect(() => {
-    onCount?.(proposals?.length ?? 0);
-  }, [proposals, onCount]);
+    let live = true;
+    client.agent.requests(presentationId).then((items) => {
+      if (live) setRequests(items.filter((item) => item.status !== "closed"));
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [client, presentationId, proposals]);
+  useEffect(() => {
+    let live = true;
+    client.agent.styleOptions(presentationId).then((items) => {
+      if (!live || !Array.isArray(items)) return;
+      setStyleSets(items);
+      setSelectedStyleId((current) => current && items.some((item) => item.id === current) ? current : items[0]?.id ?? null);
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [client, presentationId]);
+
+  const requestById = useMemo(() => new Map(requests.map((item) => [item.id, item])), [requests]);
+  // A request with no reply yet waits on the agent, not on the person.
+  const unanswered = requests.filter((request) => !(proposals ?? []).some((proposal) => proposal.in_reply_to === request.id && proposal.status === "pending"));
+  const orderedProposals = useMemo(() => {
+    const waiting = proposals ?? [];
+    return [
+      ...requests.flatMap((request) => waiting.filter((proposal) => proposal.in_reply_to === request.id)),
+      ...waiting.filter((proposal) => !proposal.in_reply_to || !requestById.has(proposal.in_reply_to)),
+    ];
+  }, [proposals, requests, requestById]);
+
+  useEffect(() => {
+    onCount?.((proposals?.length ?? 0) + styleSets.length);
+  }, [proposals, styleSets, onCount]);
 
   // Keep a selection while there is anything to select: the one asked for, or
   // the first waiting once it has gone (approved, rejected, expired).
   const selected: PendingProposal | undefined =
     proposals?.find((proposal) => proposal.id === selectedId) ?? proposals?.[0];
+  const selectedStyle = styleSets.find((item) => item.id === selectedStyleId);
 
   // Escape returns to editing, as it leaves every other overlay.
   useEffect(() => {
@@ -115,7 +152,17 @@ export function ReviewWorkspace({
 
   return (
     <div className="dk-review" data-testid="review-workspace" data-region="review" role="region" aria-label="Review proposed changes">
-      {selected ? (
+      {selectedStyle ? (
+        <StyleOptionsReview
+          optionSet={selectedStyle}
+          editor={editor}
+          onClose={onClose}
+          onChosen={(setId) => {
+            setStyleSets((items) => items.filter((item) => item.id !== setId));
+            setSelectedStyleId(null);
+          }}
+        />
+      ) : selected ? (
         <ProposalReview
           key={selected.id}
           proposal={selected}
@@ -136,25 +183,42 @@ export function ReviewWorkspace({
               ? readFailed
                 ? "Pending changes could not be checked just now. Trying again shortly."
                 : "Looking for pending changes…"
-              : "Nothing is waiting for you. Changes an agent proposes appear here."}
+              : requests.length
+                ? "Your request is waiting for an agent. Alternatives will appear here for review."
+                : "Nothing is waiting for you. Changes an agent proposes appear here."}
           </p>
         </div>
       )}
 
       <aside className="dk-review__queue" aria-label="Waiting for you">
         <h2 className="dk-review__title">
-          Waiting for you{proposals ? ` (${proposals.length})` : ""}
+          Waiting for you{proposals ? ` (${styleSets.length + proposals.filter((item) => !item.in_reply_to).length + new Set(proposals.flatMap((item) => item.in_reply_to ? [item.in_reply_to] : [])).size})` : ""}
         </h2>
         <ul className="dk-review__list">
-          {(proposals ?? []).map((proposal) => {
+          {styleSets.map((optionSet) => (
+            <li key={optionSet.id}>
+              <button type="button" className={cx("dk-review__item", optionSet.id === selectedStyle?.id && "dk-review__item--current")}
+                onClick={() => { setSelectedStyleId(optionSet.id); setSelectedId(undefined); }} data-testid="review-style-set">
+                <span className="dk-review__item-head"><StatusChip tone="waiting">Choose one</StatusChip><span>{optionSet.options.length} styles</span></span>
+                <span className="dk-review__intent">Style directions</span>
+                <span className="dk-muted">{optionSet.stale ? "Deck changed · refresh needed" : "Previewed on this deck"}</span>
+              </button>
+            </li>
+          ))}
+          {orderedProposals.map((proposal, queueIndex) => {
             const current = proposal.id === selected?.id;
+            const question = proposal.in_reply_to ? requestById.get(proposal.in_reply_to) : undefined;
+            const siblings = question ? orderedProposals.filter((item) => item.in_reply_to === question.id) : [];
+            const alternative = question ? siblings.findIndex((item) => item.id === proposal.id) : -1;
+            const firstReply = question && (queueIndex === 0 || orderedProposals[queueIndex - 1]?.in_reply_to !== question.id);
             return (
               <li key={proposal.id}>
+                {firstReply ? <div className="dk-review__reason" data-testid="review-request-group"><strong>{question.kind.replace("_", "-")}</strong><br />{question.message}</div> : null}
                 <button
                   type="button"
                   className={cx("dk-review__item", current && "dk-review__item--current")}
                   aria-pressed={current}
-                  onClick={() => setSelectedId(proposal.id)}
+                  onClick={() => { setSelectedStyleId(null); setSelectedId(proposal.id); }}
                   data-testid="review-proposal"
                   data-proposal-id={proposal.id}
                 >
@@ -164,7 +228,7 @@ export function ReviewWorkspace({
                       {(proposal.risk_tier ?? "unknown").replace(/^./, (letter) => letter.toUpperCase())} risk
                     </span>
                   </span>
-                  <span className="dk-review__intent">{proposal.intent}</span>
+                  <span className="dk-review__intent">{alternative >= 0 ? `${String.fromCharCode(65 + alternative)} · ` : ""}{proposal.intent}</span>
                   <span className="dk-muted">{proposalSource(proposal.agent_id)}</span>
                 </button>
                 {current ? (
@@ -184,6 +248,18 @@ export function ReviewWorkspace({
             );
           })}
         </ul>
+        {unanswered.length ? (
+          <>
+            <h2 className="dk-review__title">Asked of your agent ({unanswered.length})</h2>
+            <ul className="dk-review__list">
+              {unanswered.map((request) => (
+                <li key={request.id} className="dk-review__reason" data-testid="review-request-waiting">
+                  <strong>{REQUEST_KIND_WORDS[request.kind] ?? "Request"}</strong><br />{request.message}<br /><span className="dk-muted">Waiting for an agent reply</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
         {status.kind === "error" ? (
           <p role="alert" className="dk-proposals__error">
             {status.message}
@@ -227,6 +303,76 @@ export function ReviewWorkspace({
         ) : null}
       </aside>
     </div>
+  );
+}
+
+function StyleOptionsReview({
+  optionSet,
+  editor,
+  onClose,
+  onChosen,
+}: {
+  optionSet: StyleOptionSet;
+  editor: EditorApi;
+  onClose: () => void;
+  onChosen: (setId: string) => void;
+}) {
+  const client = useWorkspaceClient();
+  const measurer = useBrowserMeasurer();
+  const resolveAssetUrl = useAssetUrls(editor.sourceDocument);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const scenes = useMemo(() => optionSet.options.map((option) => ({
+    option,
+    scene: buildDocumentScene(option.preview_document, { measurer }).slides[0],
+  })), [optionSet, measurer]);
+
+  const choose = async (optionId: string) => {
+    setNotice(null);
+    if (!(await editor.saveNow())) {
+      setNotice("Your latest edits are not saved yet. Save them, then choose again.");
+      return;
+    }
+    setBusy(optionId);
+    try {
+      const applied = await client.agent.chooseStyle(optionSet.id, optionId, editor.currentVersionId());
+      if (!editor.adoptDocument(applied.document, applied.version_id)) {
+        throw new Error("The style was saved, but newer local edits need reconciliation.");
+      }
+      onChosen(optionSet.id);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "That style could not be applied.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="dk-review__empty dk-style-options" data-testid="style-options-review">
+      <div className="dk-review__toolbar">
+        <h2 className="dk-review__title">Choose a style</h2>
+        <span className="dk-review__where">One choice, one undoable change</span>
+        <Button size="sm" variant="secondary" icon="close" onClick={onClose}>Back to editing</Button>
+      </div>
+      {optionSet.stale ? <p className="dk-proposals__error">This deck changed after these covers were drawn. Ask for fresh options before choosing.</p> : null}
+      <div className="dk-style-options__row">
+        {scenes.map(({ option, scene }) => (
+          <article key={option.id} className="dk-style-options__card" data-testid="style-option-card">
+            <div className="dk-style-options__cover">
+              {scene ? <FinalFrameSlide scene={scene} width={280} resolveAssetUrl={resolveAssetUrl} /> : null}
+            </div>
+            <h3>{option.label}</h3>
+            <p>{option.rationale}</p>
+            {option.notes?.map((note) => <small key={note} className="dk-muted">{note}</small>)}
+            <Button size="sm" variant="primary" disabled={optionSet.stale || busy !== null}
+              onClick={() => void choose(option.id)} data-testid="style-option-use">
+              {busy === option.id ? "Applying…" : "Use this"}
+            </Button>
+          </article>
+        ))}
+      </div>
+      {notice ? <p role="alert" className="dk-proposals__error">{notice}</p> : null}
+    </section>
   );
 }
 

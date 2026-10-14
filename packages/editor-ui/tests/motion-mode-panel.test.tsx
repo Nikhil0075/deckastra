@@ -82,6 +82,59 @@ describe("deck motion styles", () => {
   });
 });
 
+describe("selected-object alternatives", () => {
+  it("dry-runs another preset, preserves other tracks, and keeps it as one undoable edit", async () => {
+    const document = deck();
+    const slide = document.slides[0]!;
+    const selectedId = slide.elements[0]!.id;
+    const fetcher = stubPlanner((body) => {
+      const planned = (slide.animations ?? []).map((track) => track.targetId === selectedId
+        ? { ...track, clips: track.clips.map((clip) => ({ ...clip, preset: String(body.entrance) })) }
+        : track);
+      return {
+        outcome: "planned", version_id: "ver_1", track_count: planned.length, warnings: [],
+        operations: [{ op: "replace", path: `/slides/id:${slide.id}/animations`, value: planned }],
+      };
+    });
+    const editor = fakeEditor(document, 0, {
+      selection: { selectedIds: [selectedId], primaryId: selectedId },
+    } as Partial<EditorApi>);
+    show(editor);
+
+    fireEvent.click(await screen.findByTestId("motion-try-another"));
+    await screen.findByTestId("selected-motion-plan");
+    expect(editor.apply).not.toHaveBeenCalled();
+    const motionCalls = fetcher.mock.calls.filter(([url]) => String(url).endsWith("/motion"));
+    expect(JSON.parse(String(motionCalls.at(-1)![1]?.body))).toMatchObject({ dry_run: true, sequence: ["headline"], entrance: "fade" });
+
+    fireEvent.click(screen.getByTestId("selected-motion-keep"));
+    expect(editor.apply).toHaveBeenCalledTimes(1);
+    const [operations, options] = editor.apply.mock.calls[0]!;
+    expect(options.label).toBe("Motion for selected object");
+    const after = applyPatch(document, operations as PatchOperation[]).document;
+    expect(after.slides[0]!.animations).toHaveLength(slide.animations!.length);
+    expect(after.slides[0]!.animations!.find((track) => track.targetId === selectedId)?.clips[0]?.preset).toBe("fade");
+  });
+});
+
+describe("ask agent", () => {
+  it("persists a question against the selected objects and current version", async () => {
+    const fetcher = stubPlanner(() => ({}));
+    const document = deck();
+    const selectedId = document.slides[0]!.elements[0]!.id;
+    const editor = fakeEditor(document, 0, { selection: { selectedIds: [selectedId], primaryId: selectedId } } as Partial<EditorApi>);
+    show(editor);
+    fireEvent.change(screen.getByTestId("ask-agent-message"), { target: { value: "Give me two clearer options." } });
+    fireEvent.click(screen.getByTestId("ask-agent-send"));
+    await waitFor(() => expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/requests"))).toBe(true));
+    const call = fetcher.mock.calls.find(([url]) => String(url).endsWith("/requests"))!;
+    expect(JSON.parse(String(call[1]?.body))).toMatchObject({
+      target: { slide_ids: [], element_ids: [selectedId] }, kind: "motion",
+      message: "Give me two clearer options.", based_on_version_id: "ver_1",
+    });
+  });
+});
+
 describe("the transition editor", () => {
   it("shows a morph's pairs as manual, and breaking one is a patch", () => {
     stubPlanner(() => ({}));

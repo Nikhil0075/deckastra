@@ -27,7 +27,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from . import store
-from .db.models import TransactionRow
+from .db.models import AgentRequest, TransactionRow
 from .ids import new_id
 from .patch import PatchError, apply_patch
 from .risk import assess_risk, RiskAssessment
@@ -73,6 +73,7 @@ def create_proposal(
     expected_version_id: str | None = None,
     model_authored: bool = False,
     review_reason: str | None = None,
+    in_reply_to_request_id: str | None = None,
 ) -> dict[str, Any]:
     """Record an agent's change, applying it now or parking it for approval.
 
@@ -95,6 +96,10 @@ def create_proposal(
             "re-author the change against the current version.",
             code="E310",
         )
+    if in_reply_to_request_id:
+        question = session.get(AgentRequest, in_reply_to_request_id)
+        if question is None or question.presentation_id != presentation_id or question.status == "closed":
+            raise ProposalError("That request is no longer open for replies.", code="E_REQUEST_CLOSED")
     assessment = assess_risk(operations)
     if model_authored and not assessment.requires_approval:
         assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, "Model-authored changes need semantic review"], behavior="pendingPreview")
@@ -102,6 +107,11 @@ def create_proposal(
     # person's animation); the caller names why, and the person decides.
     if review_reason and not assessment.requires_approval:
         assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, review_reason], behavior="pendingPreview")
+    # A reply to a person's request is one of up to three options for them to
+    # choose between. Applying a low-risk one at once would make the choice for
+    # them, and leave a request that nothing can answer (2026-10-15).
+    if in_reply_to_request_id and not assessment.requires_approval:
+        assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, "Replies to a request are chosen by the person who asked"], behavior="pendingPreview")
 
     # Dry run first, always. A proposal that cannot apply is not a proposal, and
     # discovering that at approval time wastes the user's decision.
@@ -142,8 +152,10 @@ def create_proposal(
             label=intent[:200],
         )
         transaction = session.get(TransactionRow, result.transaction_id)
-        if transaction is not None and run_id:
-            transaction.run_id = run_id
+        if transaction is not None:
+            if run_id:
+                transaction.run_id = run_id
+            transaction.in_reply_to_request_id = in_reply_to_request_id
         session.flush()
 
         return {
@@ -176,6 +188,7 @@ def create_proposal(
         user_instruction=user_instruction,
         expires_at=_now() + PROPOSAL_TTL,
         run_id=run_id,
+        in_reply_to_request_id=in_reply_to_request_id,
     )
     session.add(transaction)
     session.flush()
