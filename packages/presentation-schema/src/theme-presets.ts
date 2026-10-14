@@ -894,9 +894,9 @@ export const THEME_PRESETS: readonly ThemePreset[] = [
     palette: {
       background: "#F4F7FA", surface: "#FFFFFF", surfaceAlt: "#E5EDF5",
       foreground: "#142331", foregroundMuted: "#3E5263", foregroundSubtle: "#63788A",
-      accent: "#005EA8", accentForeground: "#FFFFFF", secondary: "#EE402F", secondaryForeground: "#FFFFFF",
+      accent: "#005EA8", accentForeground: "#FFFFFF", secondary: "#CE2211", secondaryForeground: "#FFFFFF",
       border: "#C8D6E2", borderStrong: "#92A8BA",
-      chartSeries: ["#005EA8", "#EE402F", "#26734D", "#7A438F", "#B23A48", "#3B6C8E"],
+      chartSeries: ["#005EA8", "#CE2211", "#26734D", "#7A438F", "#B23A48", "#3B6C8E"],
     },
     radii: { sm: 4, md: 8, lg: 12 },
     kit: { card: { fill: solid("token:colors.surface"), stroke: line("token:colors.border", 1), cornerRadius: 8, shadow: [], backdropFilters: [] } },
@@ -915,9 +915,9 @@ export const THEME_PRESETS: readonly ThemePreset[] = [
     palette: {
       background: "#FFFFFF", surface: "#F4F4F2", surfaceAlt: "#E8E8E5",
       foreground: "#0A0A0A", foregroundMuted: "#3A3A3A", foregroundSubtle: "#5E5E5E",
-      accent: "#E31B23", accentForeground: "#FFFFFF", secondary: "#0A0A0A", secondaryForeground: "#FFFFFF",
+      accent: "#CC181F", accentForeground: "#FFFFFF", secondary: "#0A0A0A", secondaryForeground: "#FFFFFF",
       border: "#D9D9D6", borderStrong: "#0A0A0A",
-      chartSeries: ["#E31B23", "#0A0A0A", "#6E6E6E", "#A8A8A4", "#7A0010", "#3A3A3A"],
+      chartSeries: ["#CC181F", "#0A0A0A", "#6E6E6E", "#A8A8A4", "#7A0010", "#3A3A3A"],
     },
     radii: { sm: 0, md: 0, lg: 0 },
     kit: { card: { fill: solid("token:colors.surface"), stroke: line("token:colors.borderStrong", 2), cornerRadius: 0, shadow: [], backdropFilters: [] } },

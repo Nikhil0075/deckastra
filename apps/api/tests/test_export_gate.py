@@ -66,7 +66,7 @@ def _export(tmp: Path, kind: str) -> tuple[Path, dict]:
         text=True,
         encoding="utf-8",
         timeout=300,
-        shell=True,  # npx is a .cmd on Windows
+        shell=sys.platform == "win32",  # npx is a .cmd on Windows; a list with shell=True on Linux runs only "npx"
     )
     lines = finished.stdout.strip().splitlines()
     assert lines, f"the exporter printed nothing: {finished.stderr[-2000:]}"
