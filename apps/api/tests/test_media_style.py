@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from deckastra_api.media_style import TREATMENT_PRESETS, compose_media_prompt, deck_treatment
+from deckastra_api.media_style import TREATMENT_PRESETS, compose_media_prompt, deck_treatment, target_frame
 from deckastra_api import presets
 
 
@@ -87,3 +87,23 @@ def test_treatment_presets_are_the_editors_looks():
     assert set(editor) == set(TREATMENT_PRESETS)
     for name, values in TREATMENT_PRESETS.items():
         assert {key: float(value) for key, value in values.items()} == editor[name], name
+
+
+def test_the_prompt_describes_the_frame_the_picture_will_fill():
+    # Two frames, the first already holding a picture: the brief and the
+    # placement are both for the second, as the editor's panel is (2026-10-15).
+    doc = document()
+    elements = doc["slides"][0]["elements"]
+    first = elements[1]
+    elements.insert(2, {"id": "el_photo", "type": "image", "transform": dict(first["transform"])})
+    elements.append({"id": "el_frame2", "type": "shape", "transform": {"x": 100, "y": 600, "width": 400, "height": 400},
+                     "mediaSlot": {"role": "texture"}})
+    index, element = target_frame(doc["slides"][0])
+    assert element["id"] == "el_frame2" and index == 3
+    prompt = compose_media_prompt(doc, "sld_one", "Linen", kind="image", style_source="prompt")
+    assert "seamless surface texture" in prompt["prompt"]
+    assert prompt["aspect_ratio"] == "1:1"
+
+    # With every frame filled, the first is the one a new picture replaces.
+    elements.append({"id": "el_photo2", "type": "image", "transform": dict(elements[3]["transform"])})
+    assert target_frame(doc["slides"][0])[1]["id"] == "el_frame"

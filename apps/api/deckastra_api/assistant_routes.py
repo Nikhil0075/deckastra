@@ -22,7 +22,7 @@ from deckastra_agents.budgets import RunBudget, RunCancelled
 from deckastra_agents.vertex_model import configured_image_client
 from deckastra_agents.video_model import configured_video_client
 from deckastra_agents.router import ModelUnavailable
-from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales, preset_media, local_mode
+from . import assets, author_service, store, proposals, object_storage, assistant_tasks, quotas, locales, local_mode
 from .assistant_assets import fingerprints, describe as describe_asset
 from .assistant_models import AssistantRun, AssistantEvent, AssistantReservation
 from .auth import Principal, Role, current_principal, resolve_presentation_access
@@ -830,7 +830,8 @@ def _execute(run_id):
                         # directly above it, so the scrim and the headline drawn
                         # after the frame stay on top. Centred at 70% it covered
                         # the words the layout had put over the photograph.
-                        frame = next(((i, e) for i, e in enumerate(chosen[0].get("elements") or []) if e.get("type") == "shape" and e.get("name") in preset_media.FRAME_NAMES), None)
+                        from .media_style import target_frame
+                        frame = target_frame(chosen[0])
                         if frame is not None:
                             frame_index, frame_element = frame
                             element["transform"], element["fit"] = dict(frame_element["transform"]), "cover"

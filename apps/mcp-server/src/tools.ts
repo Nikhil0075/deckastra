@@ -234,7 +234,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     },
     async ({ presentation_id, ...body }) =>
       guard(async () => {
-        const result = await client.agent.suggestStyles(presentation_id, body);
+        const result = await client.agent.suggestStyles(presentation_id, { ...body, client_label: client.clientId.replace(/^mcp:/, "") });
         return json({
           id: result.id, based_on_version_id: result.based_on_version_id,
           status: result.status, expires_at: result.expires_at,
