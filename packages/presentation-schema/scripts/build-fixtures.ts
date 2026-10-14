@@ -256,6 +256,9 @@ function technicalDeck(): PresentationDocument {
         type: "diagram",
         name: "Agent pipeline",
         semanticRole: "mainDiagram",
+        // A description, not just a name: WCAG 1.1.1 is judged on written alt
+        // text, and this diagram passed only on its name until 2026-10-14.
+        altText: "The user's request goes to the orchestrator, which routes it to the Story Architect and the Layout Agent; their proposals become one validated change.",
         transform: { x: 120, y: 260, width: 1680, height: 620 },
         diagramType: "architecture",
         layoutHint: { algorithm: "layered", direction: "LR", mode: "hybrid", nodeSpacing: 48, rankSpacing: 96 },

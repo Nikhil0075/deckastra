@@ -142,7 +142,12 @@ export interface SceneNode {
   zPath: number[];
   children?: SceneNode[];
   renderPayload: RenderPayload;
-  a11y: { role: string; label?: string; order: number };
+  /**
+   * `described` is whether the author wrote words for this node (its `altText`,
+   * or `metadata.altText`), as opposed to a label falling back to its name.
+   * WCAG 1.1.1 is judged on it: a picture named "Photo" is not described.
+   */
+  a11y: { role: string; label?: string; order: number; described?: boolean };
   flags: SceneFlags;
 }
 
@@ -432,8 +437,10 @@ function a11yOrder(role: string | undefined, fallback: number): number {
   return 5000 + fallback;
 }
 
-function a11yRole(type: string, semanticRole?: string): string {
-  if (semanticRole === "decoration") return "presentation";
+function a11yRole(type: string, semanticRole?: string, layerRole?: string): string {
+  // A decoration placed behind a cut-out subject is decoration whatever its
+  // type: a screen reader announcing the ring behind a person says nothing.
+  if (semanticRole === "decoration" || layerRole === "decoration-behind-subject") return "presentation";
   switch (type) {
     case "text":
       return semanticRole === "headline" ? "heading" : "paragraph";
@@ -690,11 +697,20 @@ function buildNode(
     layer: layerFor(element.type),
     zPath,
     renderPayload: buildPayload(element, ctx, flags, transform),
-    a11y: {
-      role: a11yRole(element.type, element.semanticRole),
-      label: element.metadata?.altText ?? element.name,
-      order: a11yOrder(element.semanticRole, order),
-    },
+    a11y: (() => {
+      // The element's own alt text first (pictures, charts, diagrams carry it
+      // as `altText`), so PowerPoint's description and the slide's aria label
+      // are the words the author wrote, not the element's name (export gate,
+      // 2026-10-14).
+      const own = (element as { altText?: unknown }).altText;
+      const alt = (typeof own === "string" && own.trim() ? own : undefined) ?? element.metadata?.altText;
+      return {
+        role: a11yRole(element.type, element.semanticRole, element.layerRole),
+        label: alt ?? element.name,
+        order: a11yOrder(element.semanticRole, order),
+        described: Boolean(alt && alt.trim()),
+      };
+    })(),
     flags,
   };
 
@@ -770,6 +786,7 @@ function buildPayload(
         maxFontSize?: number;
         padding?: Insets;
         verticalAlign?: string;
+        direction?: string;
         pictureFill?: {
           assetId: string;
           fit?: string;
@@ -785,7 +802,12 @@ function buildPayload(
 
       const metrics = ctx.measurer.measure({
         content: el.content,
-        typography,
+        // Measured in the stack it paints in (2026-10-14). The paint expands
+        // the family into a full stack (`expandFontStacks`), and a bundled face
+        // is registered under its face name ("Playfair Display Variable"), so a
+        // bare "Playfair Display" measured in a fallback serif: narrower, so a
+        // display line measured to fit wrapped when it was drawn.
+        typography: { ...typography, fontFamily: resolveFontStack(typography.fontFamily, ctx.script) },
         maxWidth: Math.max(1, innerWidth),
         maxHeight: Math.max(1, innerHeight),
         fit: (el.fit as never) ?? "fixed",
@@ -797,13 +819,14 @@ function buildPayload(
       flags.metricsEstimated = metrics.estimated;
       flags.overflow = metrics.overflow;
       const pictureFocal = el.pictureFill?.focalPoint ?? { x: 0.5, y: 0.5 };
+      const direction = ownDirection(el.direction, ctx.direction);
 
       return {
         kind: "text",
-        blocks: directed(textBlocks(theme, el.content, el.paragraph?.align), ctx.direction),
+        blocks: directed(textBlocks(theme, el.content, el.paragraph?.align), direction),
         metrics,
         typography,
-        align: mirrorAlign(el.paragraph?.align, ctx.direction),
+        align: mirrorAlign(el.paragraph?.align, direction),
         verticalAlign: el.verticalAlign,
         padding,
         ...(el.pictureFill ? {
@@ -817,7 +840,7 @@ function buildPayload(
             } : {}),
           },
         } : {}),
-        ...(ctx.direction === "rtl" ? { direction: "rtl" as const } : {}),
+        ...(direction === "rtl" ? { direction: "rtl" as const } : {}),
       };
     }
 
@@ -1288,6 +1311,17 @@ function resolveGradient(theme: ResolvedTheme, paint: unknown): ResolvedGradient
 }
 
 /** Mirror each block's alignment for a right-to-left language; left as it is otherwise. */
+/**
+ * A text box's own direction, where it says one (export gate, 2026-10-14). The
+ * schema has carried `direction` on text since v1 and the scene read only the
+ * deck's language, so an Arabic quotation in an English deck ran left to right
+ * on the canvas, in the PDF and in PowerPoint. `auto`, or nothing, is the
+ * deck's language, which is what the schema says it defaults to.
+ */
+function ownDirection(own: unknown, fallback: "ltr" | "rtl"): "ltr" | "rtl" {
+  return own === "rtl" || own === "ltr" ? own : fallback;
+}
+
 function directed(blocks: TextBlockPayload[], direction: "ltr" | "rtl"): TextBlockPayload[] {
   if (direction !== "rtl") return blocks;
   return blocks.map((block) => ({ ...block, align: mirrorAlign(block.align, direction) }));

@@ -59,7 +59,8 @@ def test_compose_takes_a_language_and_its_theme(client, auth):
     body = response.json()
     assert body["document"]["metadata"]["designLanguage"]["id"] == "data-desk"
     assert body["document"]["theme"]["name"] == presets.themes()["civic"]["name"]
-    assert any(element.get("name") == "Status dot" for element in body["document"]["slides"][0]["elements"])
+    # The desk rules every page with hairlines (design-system v3).
+    assert any(element.get("name") == "Desk rule" for element in body["document"]["slides"][0]["elements"])
     assert body["warnings"] == []
 
 
@@ -68,7 +69,8 @@ def test_compose_holds_a_plan_to_the_language_and_says_what_it_did(client, auth)
     body = client.post("/v1/decks/compose", headers=auth, json={"story_plan": plan, "design_language": "cinema-noir"}).json()
     # Noir shows three bullets: the other two are dropped, and the caller is told.
     listed = [e for e in body["document"]["slides"][0]["elements"] if e.get("semanticRole") == "body"]
-    assert len(listed[0]["content"]["blocks"]) == 3
+    # One row per item since design-system v3, so the count is the rows.
+    assert len(listed) == 3
     assert any("at most 3 bullets" in warning for warning in body["warnings"])
     # A long headline is kept as written and named.
     assert any("reads best at 8 or fewer" in warning for warning in body["warnings"])
@@ -96,7 +98,7 @@ def test_an_inserted_pattern_composes_in_the_decks_language(client, auth):
     assert response.status_code == 200, response.text
     slide = response.json()["operations"][0]["value"]
     # System Terminal's window bar, not the neutral statement.
-    assert any(element.get("name") == "Window bar" for element in slide["elements"])
+    assert any(element.get("name") == "Status light" for element in slide["elements"])
 
 
 def test_pattern_previews_are_every_pattern_composed_in_the_language_and_store_nothing(client, auth):
@@ -112,7 +114,7 @@ def test_pattern_previews_are_every_pattern_composed_in_the_language_and_store_n
     assert body["language"] == "system-terminal"
     assert set(body["slides"]) == set(presets.catalog()["slidePatterns"])
     # The language's own grammar, not the neutral statement.
-    assert any(e.get("name") == "Window bar" for e in body["slides"]["statement"]["elements"])
+    assert any(e.get("name") == "Status light" for e in body["slides"]["statement"]["elements"])
     # An unknown language is drawn neutral rather than refused.
     assert client.get("/v1/patterns/preview?language=nope", headers=auth).json()["language"] == "neutral"
     with db_session.session_scope() as session:

@@ -968,10 +968,12 @@ describe("a picture the exporter was given", () => {
   it("refuses a format PowerPoint will not open, and says which", () => {
     // Embedding a webp because it is "an image" produces a file that opens with
     // a broken picture in it, which is worse than a labelled box: the recipient
-    // cannot tell whether it is their machine.
+    // cannot tell whether it is their machine. Real WebP bytes: the exporter
+    // reads the file's own type now, so a PNG merely labelled WebP is a PNG.
+    const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x1a, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4c, 0x0d, 0, 0, 0, 0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07, 0]);
     const refused = buildPptx({
       ...inputFor(TECHNICAL),
-      images: new Map([[assetId, { bytes: png, contentType: "image/webp" }]]),
+      images: new Map([[assetId, { bytes: webp, contentType: "image/webp" }]]),
     });
     expect(
       [...unzipRaw(refused.bytes).keys()].filter((path) => path.startsWith("ppt/media/")),
@@ -1010,6 +1012,38 @@ it("keeps picture-filled text editable in PowerPoint", () => {
 
   expect(slide).toMatch(/<a:rPr[^>]*><a:blipFill[^>]*><a:blip r:embed="rId\d+"\/>/);
   expect(result.report.warnings.filter((entry) => entry.feature === "text-picture-fill")).toEqual([]);
+});
+
+it("keeps picture-filled text editable with a fallback when its manifest asset is gone", () => {
+  const document = structuredClone(TECHNICAL);
+  const missing = "ast_01JB8Z9K2QW4RN7F3X01009999";
+  const text = document.slides[0]!.elements.find((element) => element.type === "text")!;
+  (text as typeof text & { pictureFill: unknown }).pictureFill = {
+    assetId: missing,
+    fit: "cover",
+    fallbackColor: "#F7F3E8",
+  };
+  const { bytes, result } = buildPptx(inputFor(document));
+  const slide = unzip(bytes).get("ppt/slides/slide1.xml")!;
+
+  // The text run is still native, only its unavailable photographic paint was
+  // approximated by the authored fallback colour.
+  expect(slide).toContain("<a:t>");
+  expect(slide).toContain("F7F3E8");
+  const warning = result.report.warnings.find((entry) => entry.feature === "text-picture-fill")!;
+  expect(warning.action).toBe("approximated");
+  expect(warning.message).toMatch(/fallback colour/);
+});
+
+it("reports an unsupported PowerPoint blend mode instead of dropping it silently", () => {
+  const document = structuredClone(TECHNICAL);
+  const input = inputFor(document);
+  const node = input.scenes.values().next().value!.nodes[0]!;
+  node.resolvedStyle = { ...node.resolvedStyle, blendMode: "multiply" };
+  const { result } = buildPptx(input);
+  expect(result.report.warnings).toEqual(expect.arrayContaining([
+    expect.objectContaining({ elementId: node.id, feature: "blendMode", action: "dropped" }),
+  ]));
 });
 
 /**

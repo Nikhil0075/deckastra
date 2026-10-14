@@ -53,6 +53,16 @@
         {
           "template": "customer-case-study",
           "role": "hero"
+        },
+        {
+          "template": "customer-case-study",
+          "slideIndex": 0,
+          "frame": "Arch frame"
+        },
+        {
+          "template": "customer-case-study",
+          "slideIndex": 9,
+          "frame": "Arch frame"
         }
       ],
       "provider": "OpenAI"
@@ -101,6 +111,16 @@
         {
           "template": "customer-case-study",
           "role": "scene"
+        },
+        {
+          "template": "customer-case-study",
+          "slideIndex": 0,
+          "frame": "Earth detail frame"
+        },
+        {
+          "template": "customer-case-study",
+          "slideIndex": 9,
+          "frame": "Earth detail frame"
         }
       ],
       "provider": "OpenAI"
@@ -149,6 +169,16 @@
         {
           "template": "lesson-plan",
           "role": "hero"
+        },
+        {
+          "template": "lesson-plan",
+          "slideIndex": 0,
+          "frame": "Arch frame"
+        },
+        {
+          "template": "lesson-plan",
+          "slideIndex": 9,
+          "frame": "Arch frame"
         }
       ],
       "provider": "OpenAI"
@@ -197,6 +227,16 @@
         {
           "template": "lesson-plan",
           "role": "scene"
+        },
+        {
+          "template": "lesson-plan",
+          "slideIndex": 0,
+          "frame": "Earth detail frame"
+        },
+        {
+          "template": "lesson-plan",
+          "slideIndex": 9,
+          "frame": "Earth detail frame"
         }
       ],
       "provider": "OpenAI"
@@ -245,6 +285,16 @@
         {
           "template": "training-module",
           "role": "hero"
+        },
+        {
+          "template": "training-module",
+          "slideIndex": 0,
+          "frame": "Arch frame"
+        },
+        {
+          "template": "training-module",
+          "slideIndex": 9,
+          "frame": "Arch frame"
         }
       ],
       "provider": "OpenAI"
@@ -293,6 +343,16 @@
         {
           "template": "training-module",
           "role": "scene"
+        },
+        {
+          "template": "training-module",
+          "slideIndex": 0,
+          "frame": "Earth detail frame"
+        },
+        {
+          "template": "training-module",
+          "slideIndex": 9,
+          "frame": "Earth detail frame"
         }
       ],
       "provider": "OpenAI"

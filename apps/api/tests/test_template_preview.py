@@ -51,6 +51,9 @@ def _texts(slide: dict) -> list[str]:
         if isinstance(value, dict):
             if isinstance(value.get("text"), str):
                 found.append(value["text"])
+            # A cover headline sets a line per block: read it whole as well.
+            if isinstance(value.get("blocks"), list):
+                found.append(" ".join(span.get("text", "") for block in value["blocks"] for span in block.get("spans", [])))
             for child in value.values():
                 walk(child)
         elif isinstance(value, list):

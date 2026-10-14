@@ -393,7 +393,8 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       const picture = (
         <img
           src={src}
-          alt={payload.altText ?? ""}
+          // A wrapped picture is named by its wrapper, below.
+          alt={layered ? "" : (payload.altText ?? "")}
           draggable={false}
           // Which asset this is, readable from the page. A headless render waits
           // for every image to decode before it captures, and a decode that fails
@@ -416,8 +417,15 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       );
       const duotone = treatment?.duotone ? <DuotoneFilter duotone={treatment.duotone} /> : null;
       if (!layered) return duotone ? <>{duotone}{picture}</> : picture;
+      // The wrapper is the picture to a screen reader (export gate,
+      // 2026-10-14). Chromium leaves an image drawn through an SVG filter inside
+      // a masked wrapper out of a tagged PDF's structure, so a duotone with a
+      // vignette lost its description in every PDF; the wrapper paints the
+      // vignette itself and is always tagged.
       return (
         <div
+          role="img"
+          aria-label={payload.altText || undefined}
           style={{
             position: "relative",
             width: "100%",
@@ -576,7 +584,7 @@ export function ElementContent({ node, resolveAssetUrl, segmented = true }: Elem
       return <ChartContent payload={payload} width={width} height={height} />;
 
     case "diagram":
-      return <DiagramContent payload={payload} width={width} height={height} />;
+      return <DiagramContent payload={payload} width={width} height={height} label={node.a11y.described ? node.a11y.label : undefined} />;
 
     case "icon":
       return <IconContent payload={payload} width={width} height={height} />;
@@ -875,10 +883,13 @@ function DiagramContent({
   payload,
   width,
   height,
+  label,
 }: {
   payload: DiagramPayload;
   width: number;
   height: number;
+  /** The author's description, as a chart carries its own (WCAG 1.1.1). */
+  label?: string;
 }): ReactNode {
   if (payload.notice) return <Notice text={payload.notice} />;
 
@@ -925,7 +936,12 @@ function DiagramContent({
       viewBox={`0 0 ${width} ${height}`}
       style={{ position: "absolute", inset: 0, overflow: "visible" }}
       fontFamily={payload.typography.fontFamily}
+      // Named like a chart, so a tagged PDF carries the diagram as a figure
+      // with its description; it used to reach only an unlabelled wrapper.
+      role={label ? "img" : undefined}
+      aria-label={label}
     >
+      {label ? <title>{label}</title> : null}
       <defs>
         <marker
           id={markerId}

@@ -961,6 +961,7 @@
           "type": "diagram",
           "name": "Agent pipeline",
           "semanticRole": "mainDiagram",
+          "altText": "The user's request goes to the orchestrator, which routes it to the Story Architect and the Layout Agent; their proposals become one validated change.",
           "transform": {
             "x": 120,
             "y": 260,

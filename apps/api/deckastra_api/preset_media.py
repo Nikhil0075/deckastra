@@ -84,7 +84,9 @@ ROLES = ("hero", "scene")
 #: The frames a language draws for a photograph, by element name.
 FRAME_NAMES = {
     "Image frame", "Portrait frame", "Arch frame", "Hologram frame", "Picture blob",
+    "Swiss architecture frame",
     "Play Lab hero frame",
+    "Earth detail frame",
     "AsterLoop hero frame", "AsterLoop emissions frame", "AsterLoop roadmap frame",
     "AsterLoop module frame", "AsterLoop comparison frame", "AsterLoop operator frame",
     "AsterLoop closing frame",

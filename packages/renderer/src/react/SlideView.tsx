@@ -45,12 +45,23 @@ export function SlideView({
   segmentText = true,
   textAnimationTargets = [],
 }: SlideViewProps): ReactNode {
-  const nodes = flattenScene(scene);
+  // The markup is in reading order, not depth order (export gate, 2026-10-14).
+  // A screen reader reads the DOM; a cut-out subject stacked over its headline,
+  // or a foreground note above everything, would otherwise be announced in the
+  // order things are layered rather than the order the slide is meant to be
+  // read. Every node carries its own distinct z-index below, so the order of
+  // the markup changes nothing that is painted. Decorations come first: they
+  // are announced as nothing, and keeping them out of the middle of the story
+  // keeps the story in one piece.
+  const nodes = [...flattenScene(scene)].sort(
+    (left, right) =>
+      Number(right.a11y.role === "presentation") - Number(left.a11y.role === "presentation") || left.a11y.order - right.a11y.order,
+  );
 
-  // Paint order is the zPath sort computed at scene-build time. Rendering in that
-  // order and assigning z-index from the resulting index gives one global stacking
-  // order across every element, which is what doc 04 §8.3 requires. The spacing of
-  // 10 leaves room to insert without renumbering everything.
+  // Paint order is the zPath sort computed at scene-build time. Assigning z-index
+  // from it gives one global stacking order across every element, whatever order
+  // the markup is in, which is what doc 04 §8.3 requires. The spacing of 10
+  // leaves room to insert without renumbering everything.
   const paintIndex = new Map(scene.paintOrder.map((id, i) => [id, i * 10]));
 
   const background = scene.background;

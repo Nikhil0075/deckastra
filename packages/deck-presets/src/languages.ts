@@ -115,7 +115,7 @@ export const DESIGN_LANGUAGES = {
   "swiss-signal": {
     id: "swiss-signal",
     name: "Swiss Signal",
-    version: 2,
+    version: 3,
     summary: "International Typographic Style: an asymmetric grid, oversized grotesque type set flush left, black and white with one red signal.",
     axes: { expression: "expressive", density: "spacious", imagery: "graphic", motion: "calm", tone: "formal" },
     typography: { scaleRatio: 1.618, displayCase: "uppercase", displayTracking: "tight", alignment: "flush-left" },
@@ -145,7 +145,7 @@ export const DESIGN_LANGUAGES = {
   "cinema-noir": {
     id: "cinema-noir",
     name: "Cinema Noir",
-    version: 2,
+    version: 3,
     summary: "Film-noir title cards: near-black frames with letterbox bars, a high-contrast serif in cream, one warm light, and slow fades.",
     axes: { expression: "expressive", density: "spacious", imagery: "photographic", motion: "calm", tone: "formal" },
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "wide", alignment: "centred" },
@@ -175,7 +175,7 @@ export const DESIGN_LANGUAGES = {
   "play-lab": {
     id: "play-lab",
     name: "Play Lab",
-    version: 2,
+    version: 3,
     summary: "A playground: soft bubbles, a tilted sticker for the label, rounded cards that each hold one idea, and a heavy friendly display.",
     axes: { expression: "expressive", density: "spacious", imagery: "graphic", motion: "kinetic", tone: "playful" },
     typography: { scaleRatio: 1.414, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
@@ -199,7 +199,7 @@ export const DESIGN_LANGUAGES = {
   "system-terminal": {
     id: "system-terminal",
     name: "System Terminal",
-    version: 2,
+    version: 3,
     summary: "A terminal session: monospace display and labels, a readable sans body, a window bar, prompts, line numbers, a block cursor, and one green.",
     axes: { expression: "editorial", density: "dense", imagery: "graphic", motion: "calm", tone: "formal" },
     typography: { scaleRatio: 1.25, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
@@ -223,7 +223,7 @@ export const DESIGN_LANGUAGES = {
   "quiet-luxe": {
     id: "quiet-luxe",
     name: "Quiet Luxe",
-    version: 2,
+    version: 3,
     summary: "A lookbook: wide margins, a light serif display, small tracked capitals, hairlines instead of boxes, and a tall portrait frame.",
     axes: { expression: "editorial", density: "spacious", imagery: "photographic", motion: "calm", tone: "formal" },
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "normal", alignment: "mixed" },
@@ -247,7 +247,7 @@ export const DESIGN_LANGUAGES = {
   "data-desk": {
     id: "data-desk",
     name: "Data Desk",
-    version: 2,
+    version: 3,
     summary: "An operations dashboard: a header strip with a status dot, bordered tiles, figures larger than anything else, and spark bars.",
     axes: { expression: "editorial", density: "dense", imagery: "graphic", motion: "calm", tone: "formal" },
     typography: { scaleRatio: 1.333, displayCase: "as-written", displayTracking: "tight", alignment: "flush-left" },
@@ -271,7 +271,7 @@ export const DESIGN_LANGUAGES = {
   "earth-story": {
     id: "earth-story",
     name: "Earth Story",
-    version: 2,
+    version: 3,
     summary: "A field journal: a block of earth colour, arched frames for photographs, a low hill along the foot, a serif voice, lists walked as stepping stones.",
     axes: { expression: "expressive", density: "spacious", imagery: "photographic", motion: "calm", tone: "playful" },
     typography: { scaleRatio: 1.414, displayCase: "as-written", displayTracking: "normal", alignment: "flush-left" },
@@ -295,7 +295,7 @@ export const DESIGN_LANGUAGES = {
   "spatial-future": {
     id: "spatial-future",
     name: "Spatial Future",
-    version: 2,
+    version: 3,
     summary: "A view into a space: glowing orbs, an orbit ring, glass panels the light passes through, and a light geometric display set centred.",
     axes: { expression: "expressive", density: "spacious", imagery: "graphic", motion: "kinetic", tone: "formal" },
     typography: { scaleRatio: 1.5, displayCase: "as-written", displayTracking: "tight", alignment: "centred" },

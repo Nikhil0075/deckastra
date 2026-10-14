@@ -79,6 +79,32 @@ describe("a scene in another language", () => {
     expect(markup).toContain('dir="rtl"');
   });
 
+  it("runs one text box the way it says, whatever the deck's language", () => {
+    // An Arabic quotation in an English deck, and the reverse. The schema has
+    // carried `direction` on text since v1; the scene read only the deck's.
+    const english = structuredClone(loadFixture("multilingual"));
+    const quote = english.slides[0]!.elements[0] as { direction?: string; paragraph?: { align: string } };
+    quote.direction = "rtl";
+    quote.paragraph = { align: "left" };
+    let node = buildDocumentScene(english).slides[0]!.nodes[0]!;
+    if (node.renderPayload.kind !== "text") throw new Error("expected text");
+    expect(node.renderPayload.direction).toBe("rtl");
+    expect(node.renderPayload.align).toBe("right");
+
+    const arabic = shownIn("ar");
+    const latin = arabic.slides[0]!.elements[0] as { direction?: string };
+    latin.direction = "ltr";
+    node = buildDocumentScene(arabic).slides[0]!.nodes[0]!;
+    if (node.renderPayload.kind !== "text") throw new Error("expected text");
+    expect(node.renderPayload.direction).toBeUndefined();
+
+    // `auto` is the deck's language, as the schema says.
+    latin.direction = "auto";
+    node = buildDocumentScene(arabic).slides[0]!.nodes[0]!;
+    if (node.renderPayload.kind !== "text") throw new Error("expected text");
+    expect(node.renderPayload.direction).toBe("rtl");
+  });
+
   it("carries narration, sound cues, playback and the audio files for present mode", () => {
     const scene = buildDocumentScene(loadFixture("multilingual"));
     expect(scene.playback).toEqual({ mode: "narrated", gapMs: 400 });
