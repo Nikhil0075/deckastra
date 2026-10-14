@@ -387,25 +387,67 @@ def _fingerprint(card: DraftCard) -> str:
     return hashlib.sha256(json.dumps(content, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+_SEEDED_ROLES = {"headline", "subtitle", "body", "bullet", "metric", "quote"}
+
+
+def _block_words(block: dict[str, Any]) -> str:
+    return "".join(str(span.get("text") or "") for span in block.get("spans") or [] if isinstance(span, dict)).strip()
+
+
+def _seed_blocks(elements: list[dict[str, Any]]) -> list[DraftBlock]:
+    """A slide's words as draft blocks, in reading order, groups included.
+
+    Slide text is rich text: blocks of spans, never a plain string. Reading
+    only `content.text` seeded every card of a real deck empty, so "Draft
+    changes" showed a board of blank wireframes (2026-10-15). Grouped elements
+    count too, because cards and metric rows are groups.
+    """
+    found: list[DraftBlock] = []
+    for element in elements:
+        children = element.get("children")
+        if isinstance(children, list):
+            found.extend(_seed_blocks([child for child in children if isinstance(child, dict)]))
+        role = str(element.get("semanticRole") or "body")
+        if element.get("type") != "text" or role not in _SEEDED_ROLES:
+            continue
+        content = element.get("content")
+        if isinstance(content, str):
+            blocks = [{"type": "paragraph", "spans": [{"text": content}]}]
+        elif isinstance(content, dict):
+            blocks = [block for block in content.get("blocks") or [] if isinstance(block, dict)]
+        else:
+            blocks = []
+        paragraphs: list[str] = []
+        for block in blocks:
+            words = _block_words(block)
+            if not words:
+                continue
+            if block.get("type") in ("bullet", "numbered"):
+                found.append(DraftBlock(role="bullet", text=words[:4_000]))
+            else:
+                paragraphs.append(words)
+        if paragraphs:
+            found.append(DraftBlock(role=role, text="\n".join(paragraphs)[:4_000]))
+    return found[:30]
+
+
+def _notes_text(notes: Any) -> str | None:
+    """Speaker notes are a string, or rich text when they carry formatting."""
+    if isinstance(notes, dict):
+        notes = "\n".join(_block_words(block) for block in notes.get("blocks") or [] if isinstance(block, dict))
+    text = str(notes or "").strip()
+    return text[:4_000] or None
+
+
 def _seed_body(document: dict[str, Any]) -> DraftBody:
     cards: list[DraftCard] = []
+    patterns = set((presets.catalog().get("patternDefinitions") or {}).keys())
     for slide in document.get("slides") or []:
-        blocks: list[DraftBlock] = []
-        for element in slide.get("elements") or []:
-            role = str(element.get("semanticRole") or "body")
-            if role not in {"headline", "subtitle", "body", "bullet", "metric", "quote"}:
-                continue
-            content = element.get("content")
-            text = content if isinstance(content, str) else ""
-            if isinstance(content, dict):
-                text = str(content.get("text") or "")
-            if text.strip():
-                blocks.append(DraftBlock(role=role, text=text[:4_000]))
+        blocks = _seed_blocks([element for element in slide.get("elements") or [] if isinstance(element, dict)])
         layout = str((slide.get("layout") or {}).get("styleLabel") or (slide.get("layout") or {}).get("templateId") or "statement")
-        patterns = set((presets.catalog().get("patternDefinitions") or {}).keys())
         if layout not in patterns and layout not in {item.value for item in SlideLayout}:
             layout = "statement"
-        card = DraftCard(id=new_id("crd"), layout=layout, blocks=blocks, notes=str(slide.get("speakerNotes") or "") or None, source_slide_id=str(slide.get("id") or "") or None)
+        card = DraftCard(id=new_id("crd"), layout=layout, blocks=blocks, notes=_notes_text(slide.get("speakerNotes")), source_slide_id=str(slide.get("id") or "") or None)
         cards.append(card.model_copy(update={"source_fingerprint": _fingerprint(card)}))
     metadata = document.get("metadata") or {}
     return DraftBody(brief=str(metadata.get("description") or "") or None, cards=cards)

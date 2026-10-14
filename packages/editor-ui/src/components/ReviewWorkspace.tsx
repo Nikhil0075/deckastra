@@ -213,7 +213,7 @@ export function ReviewWorkspace({
             const firstReply = question && (queueIndex === 0 || orderedProposals[queueIndex - 1]?.in_reply_to !== question.id);
             return (
               <li key={proposal.id}>
-                {firstReply ? <div className="dk-review__reason" data-testid="review-request-group"><strong>{question.kind.replace("_", "-")}</strong><br />{question.message}</div> : null}
+                {firstReply ? <div className="dk-review__reason" data-testid="review-request-group"><strong>{REQUEST_KIND_WORDS[question.kind] ?? "Request"}</strong><br />{question.message}</div> : null}
                 <button
                   type="button"
                   className={cx("dk-review__item", current && "dk-review__item--current")}

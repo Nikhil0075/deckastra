@@ -4560,6 +4560,40 @@ that are easy to undo:
 - The `polish` step adds a 1024×640 window and zooms of 75%, 125% and 150%.
   Windows scaling on a 1920×1080 screen gives the page what a zoom does.
 
+### Agents suggest; the person chooses (plan 10, 2026-10-15)
+
+`docs/integrations/10_AGENT_SUGGESTIONS_AND_MEDIA_INTENT.md`. Rules that are
+easy to undo:
+
+- **A reply to a request always waits for the person** (`create_proposal`,
+  `in_reply_to_request_id`), however low its risk: up to three replies are
+  options to choose between, and one applied at once could never answer its
+  request. The open-request check lives there too, so the proposal, motion and
+  transition routes all inherit it.
+- **The yellow count is only what waits on the person.** The replies to one
+  request count as one decision; a request with no reply yet is the agent's,
+  so it keeps Review reachable (`asked`) without adding to the count.
+- **A linked draft build changes only what the board changed**
+  (`drafts._linked_slides`). A card seeded from a slide keeps `source_slide_id`
+  and a fingerprint; unchanged cards keep their slide byte for byte, changed
+  ones are recomposed under the same id, and only a build of every card removes
+  or reorders slides. The first version replaced `/slides` whole: one selected
+  card on a ten-slide deck proposed a one-slide deck.
+- **Seeding reads rich text and groups** (`_seed_blocks`). Reading only
+  `content.text` seeded every card of a real deck empty.
+- **A style option does not rewrite `metadata.designLanguage` on an existing
+  deck**: its slides keep their layouts, so the deck keeps the language they
+  are in. Choosing one is recorded as the agent's (`source: agent`).
+- **One frame for a generated picture** (`media_style.target_frame`): the first
+  empty frame, else the first, for both the prompt and the placement.
+- **The duotone treatment's shadows take the darker of text and background**,
+  as the editor's look does; `test_media_style` holds the server's preset
+  numbers to `image-treatment.ts`.
+- The desktop `agents` smoke step drives all of it on a template deck of its
+  own: Try another and Keep, Ask agent with two replies chosen in Review, a
+  one-card draft build, and the composed prompt. After a migration, run
+  `npm run manifest` in `apps/desktop` first, or the service refuses to start.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

@@ -4747,7 +4747,10 @@
 .dk-draft-card__head > * { flex-shrink: 0; }
 .dk-draft-card__number { width: 22px; height: 22px; display: grid; place-items: center; background: var(--dk-sunk); font-size: 12px; font-weight: 700; }
 .dk-draft-card__spacer { flex: 1; }
-.dk-draft-wireframe { aspect-ratio: 16 / 9; margin-top: 10px; padding: 14px; border: 1px dashed var(--dk-rule); background: color-mix(in srgb, var(--dk-sunk) 70%, transparent); display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 9px; overflow: hidden; }
+.dk-draft-wireframe { aspect-ratio: 16 / 9; margin-top: 10px; padding: 14px; border: 1px dashed var(--dk-rule); background: color-mix(in srgb, var(--dk-sunk) 70%, transparent); display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 9px; }
+/* 16:9 is the wireframe's least height, not its size: with overflow hidden a
+   card of many bullets cut its lower fields off where nothing could reach
+   them (2026-10-15). Visible overflow lets the box grow to its blocks. */
 .dk-draft-block { min-width: 0; padding: 7px; background: color-mix(in srgb, var(--dk-ink) 7%, var(--dk-surface)); border: 1px solid color-mix(in srgb, var(--dk-ink) 14%, transparent); }
 .dk-draft-block > span { display: block; margin-bottom: 3px; color: var(--dk-ink-muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .dk-draft-block textarea { width: 100%; min-height: 36px; resize: none; border: 0; background: transparent; color: inherit; font: inherit; }
