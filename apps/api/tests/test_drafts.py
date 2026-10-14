@@ -210,3 +210,22 @@ def test_agents_can_edit_drafts_but_cannot_build_or_author_the_request():
     assert grants.required_scope("GET", "/v1/drafts/drf_1/requests") == "read"
     assert grants.required_scope("POST", "/v1/draft-requests/req_1/answer") == "write"
     assert grants.required_scope("POST", "/v1/draft-requests/req_1/close") == "approve"
+
+
+def test_drafting_changes_to_a_real_deck_seeds_its_words(client, session):
+    # 2026-10-15: slide text is rich text, and seeding read only `content.text`,
+    # so every card of a real deck came out empty.
+    account, auth = session
+    deck = client.post("/v1/decks/from-template", headers=auth,
+                        json={"project_id": account["project_id"], "template_id": "technical-architecture", "title": "Seeded"}).json()
+    seeded = client.post(f"/v1/presentations/{deck['presentation_id']}/drafts", headers=auth).json()
+    cards = seeded["body"]["cards"]
+    assert len(cards) == len(deck["document"]["slides"])
+    assert all(card["blocks"] for card in cards), [card["layout"] for card in cards if not card["blocks"]]
+    headlines = [block["text"] for card in cards for block in card["blocks"] if block["role"] == "headline"]
+    assert len(headlines) >= len(cards) - 1
+    assert any(block["role"] == "bullet" for card in cards for block in card["blocks"])
+
+    # Seeded cards are the deck as it is: building them all changes nothing.
+    built = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": seeded["revision"]})
+    assert built.status_code == 422

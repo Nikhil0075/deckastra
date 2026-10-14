@@ -1,5 +1,6 @@
 import { deflateSync } from "node:zlib";
 import { runLanguages, runNarration } from "./smoke-languages";
+import { runAgents } from "./smoke-agents";
 import { writeFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -65,7 +66,8 @@ export type SmokeStep =
   | "languages"
   | "narration"
   | "layout"
-  | "polish";
+  | "polish"
+  | "agents";
 
 /**
  * What the harness may do to the app, beyond driving its UI.
@@ -293,6 +295,8 @@ export async function runSmoke(
       await runHistory(window, record);
     } else if (current === "ai") {
       await runAi(window, dir, record);
+    } else if (current === "agents") {
+      await runAgents(window, dir, record);
     } else if (current === "motion") {
       await runMotion(window, dir, record);
     } else if (current === "a11y") {
