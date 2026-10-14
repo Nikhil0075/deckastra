@@ -37,6 +37,29 @@ export interface MediaPart {
 export interface Placed {
   /** The `r:embed` a `<a:blip>` names. */
   relationshipId: string;
+  /**
+   * Set when the picture's bytes are not the type it was declared as (export
+   * gate, 2026-10-14): what it was declared as, and what it is. It is stored
+   * as what it is, and the caller reports the difference.
+   */
+  retyped?: { declared: string; actual: string };
+}
+
+/**
+ * An image's real type, from its first bytes. A transparent PNG uploaded or
+ * recorded as `image/jpeg` would otherwise be written as a `.jpeg` part with a
+ * JPEG content type around PNG bytes: a package whose declared type and bytes
+ * disagree, which is exactly what makes a reader refuse a file.
+ */
+export function sniffImageType(bytes: Uint8Array): string | undefined {
+  const at = (index: number) => bytes[index];
+  if (bytes.length >= 8 && at(0) === 0x89 && at(1) === 0x50 && at(2) === 0x4e && at(3) === 0x47) return "image/png";
+  if (bytes.length >= 3 && at(0) === 0xff && at(1) === 0xd8 && at(2) === 0xff) return "image/jpeg";
+  if (bytes.length >= 6 && at(0) === 0x47 && at(1) === 0x49 && at(2) === 0x46 && at(3) === 0x38) return "image/gif";
+  if (bytes.length >= 12 && at(0) === 0x52 && at(1) === 0x49 && at(2) === 0x46 && at(3) === 0x46 && at(8) === 0x57 && at(9) === 0x45 && at(10) === 0x42 && at(11) === 0x50) {
+    return "image/webp";
+  }
+  return undefined;
 }
 
 /** What an audio object on a slide names: its file twice (two relationship types) and its icon. */
@@ -148,13 +171,17 @@ export class MediaRegistry {
       return { refused: "its bytes were not available to the exporter" };
     }
 
-    const type = image.contentType.split(";", 1)[0]!.trim().toLowerCase();
+    const declared = image.contentType.split(";", 1)[0]!.trim().toLowerCase();
+    // The bytes decide, not the label: what PowerPoint opens is what the file is.
+    const sniffed = sniffImageType(image.bytes);
+    const type = sniffed ?? declared;
     const extension = EXTENSIONS[type];
     if (!extension) {
       return {
-        refused: `PowerPoint does not open ${type || "that image format"}`,
+        refused: `PowerPoint does not open ${type || "that image format"}${sniffed && sniffed !== declared ? ` (it was declared as ${declared || "no type"})` : ""}`,
       };
     }
+    const retyped = sniffed && sniffed !== declared && EXTENSIONS[declared] !== extension ? { declared: declared || "no type", actual: sniffed } : undefined;
 
     let part = this.parts.get(assetId);
     if (!part) {
@@ -176,7 +203,7 @@ export class MediaRegistry {
       // Relative to `ppt/slides/_rels/`, which is where the part is read from.
       target: `../media/${part.path.slice("ppt/media/".length)}`,
     });
-    return { placed: { relationshipId } };
+    return { placed: { relationshipId, ...(retyped ? { retyped } : {}) } };
   }
 
   /**

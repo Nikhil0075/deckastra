@@ -60,6 +60,12 @@ export interface ShapeContext {
   /** Assigned in paint order, because PowerPoint needs unique non-zero ids. */
   nextId(): number;
   /**
+   * The deck's language, written on every run (export gate, 2026-10-14). It
+   * was `en-US` whatever the deck said, so PowerPoint proofed a Hindi deck as
+   * English. Absent means `en-US`, as before.
+   */
+  lang?: string;
+  /**
    * Claim a relationship to an embedded picture, or say why there is not one.
    *
    * The adapter used to route every image to `unsupported()` — a dashed box and
@@ -67,7 +73,7 @@ export interface ShapeContext {
    * to find a grey rectangle where the photograph was is the outcome doc 04
    * §33.4 exists to prevent.
    */
-  placePicture?(assetId: string): { placed: { relationshipId: string } } | { refused: string };
+  placePicture?(assetId: string): { placed: { relationshipId: string; retyped?: { declared: string; actual: string } } } | { refused: string };
   placeVideo?(assetId: string, posterAssetId?: string): { placed: { videoRelationshipId: string; mediaRelationshipId: string; posterRelationshipId: string } } | { refused: string };
   /**
    * An asset's own pixel dimensions, from the document's manifest.
@@ -293,7 +299,7 @@ function nonVisual(node: SceneNode, id: number, names?: ReadonlyMap<string, stri
   // partner's id, which is what makes that pairing possible at all.
   return (
     `<p:nvSpPr>` +
-    `<p:cNvPr id="${id}" name="${xml(shapeName(names?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    `<p:cNvPr id="${id}" name="${xml(shapeName(names?.get(node.id) ?? node.id))}"${cNvPrEnd(node)}` +
     `<p:cNvSpPr${node.renderPayload.kind === "text" ? ' txBox="1"' : ""}/>` +
     `<p:nvPr/>` +
     `</p:nvSpPr>`
@@ -304,6 +310,31 @@ function nonVisual(node: SceneNode, id: number, names?: ReadonlyMap<string, stri
 function describe(node: SceneNode): string {
   const label = node.a11y.label;
   return label ? ` descr="${xml(label.slice(0, 300))}"` : "";
+}
+
+/**
+ * Whether the author said this is decoration (export gate, 2026-10-14): a
+ * `decoration` role, or a layer placed behind a cut-out subject. Explicit
+ * intent only — a shape with a label carries words, and guessing it decorative
+ * would hide them from a screen reader.
+ */
+export function isDecorative(node: SceneNode): boolean {
+  return node.semanticRole === "decoration" || node.layerRole === "decoration-behind-subject";
+}
+
+/**
+ * The end of a `<p:cNvPr>`: its description, and Office's own "decorative"
+ * mark where the author said so, which screen readers in PowerPoint skip and
+ * its accessibility checker accepts in place of alt text. The mark lives in an
+ * extension list, so a reader that does not know it ignores it.
+ */
+export function cNvPrEnd(node: SceneNode, tag = "p:cNvPr"): string {
+  if (!isDecorative(node)) return `${describe(node)}/>`;
+  return (
+    `${describe(node)}><a:extLst><a:ext uri="{C183D7F6-B498-43B3-948B-1728B52AA6E4}">` +
+    `<adec:decorative xmlns:adec="http://schemas.microsoft.com/office/drawing/2017/decorative" val="1"/>` +
+    `</a:ext></a:extLst></${tag}>`
+  );
 }
 
 // -------------------------------------------------------------------- text
@@ -330,7 +361,7 @@ function textShape(node: SceneNode, context: ShapeContext): string {
     }
   }
   const paragraphs = payload.blocks
-    .map((block) => paragraph(block, payload.typography, units, payload.align, pictureFillRelationshipId, payload.pictureFill?.fallbackColor))
+    .map((block) => paragraph(block, payload.typography, units, payload.align, pictureFillRelationshipId, payload.pictureFill?.fallbackColor, payload.direction === "rtl", context.lang))
     .join("");
 
   return (
@@ -387,18 +418,23 @@ function paragraph(
   alignment: string | undefined,
   pictureFillRelationshipId?: string,
   pictureFillFallback?: string,
+  rtl = false,
+  lang?: string,
 ): string {
   const isList = block.type === "bullet" || block.type === "numbered" || block.type === "number";
   const level = isList ? (block.indentLevel ?? 0) : undefined;
   const properties =
-    `<a:pPr${align(alignment)}${level !== undefined ? ` lvl="${Math.min(8, level)}"` : ""}` +
+    // `rtl` is the paragraph's base direction. Without it PowerPoint lays an
+    // Arabic or Hebrew paragraph out left to right: the words still shape, but
+    // the line starts at the wrong edge and its punctuation lands at the far end.
+    `<a:pPr${align(alignment)}${level !== undefined ? ` lvl="${Math.min(8, level)}"` : ""}${rtl ? ' rtl="1"' : ""}` +
     // An explicit "no bullet" for anything that is not a list: PowerPoint's
     // default placeholder style adds one, and a paragraph that grows a bullet in
     // the client's copy is the classic PPTX export complaint.
     (level === undefined ? "><a:buNone/></a:pPr>" : "/>");
 
   const runs = block.spans
-    .map((span) => run(span, typography, units, pictureFillRelationshipId, pictureFillFallback))
+    .map((span) => run(span, typography, units, pictureFillRelationshipId, pictureFillFallback, lang))
     .join("");
 
   return `<a:p>${properties}${runs}</a:p>`;
@@ -410,6 +446,7 @@ function run(
   units: Units,
   pictureFillRelationshipId?: string,
   pictureFillFallback?: string,
+  lang = "en-US",
 ): string {
   if (!span.text) return "";
 
@@ -422,7 +459,7 @@ function run(
     : `<a:solidFill><a:srgbClr val="${hex(span.color ?? pictureFillFallback ?? typography.color)}"/></a:solidFill>`;
 
   return (
-    `<a:r><a:rPr lang="en-US" sz="${units.fontSize(typography.fontSize ?? 18)}"${bold}${italic}${underline}>` +
+    `<a:r><a:rPr lang="${xml(lang)}" sz="${units.fontSize(typography.fontSize ?? 18)}"${bold}${italic}${underline}>` +
     runFill +
     `<a:latin typeface="${xml(family)}"/><a:cs typeface="${xml(family)}"/>` +
     `</a:rPr><a:t>${xml(span.text)}</a:t></a:r>`
@@ -474,7 +511,7 @@ function geometryShape(node: SceneNode, context: ShapeContext): string {
           payload.labelVerticalAlign === "top" ? "t" : payload.labelVerticalAlign === "bottom" ? "b" : "ctr"
         }"><a:noAutofit/></a:bodyPr><a:lstStyle/>` +
         payload.label
-          .map((block) => paragraph(block as TextBlockLike, payload.labelTypography ?? {}, units, "center"))
+          .map((block) => paragraph(block as TextBlockLike, payload.labelTypography ?? {}, units, "center", undefined, undefined, payload.direction === "rtl", context.lang))
           .join("") +
         `</p:txBody>`
       : `<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>`;
@@ -512,7 +549,7 @@ function lineShape(node: SceneNode, context: ShapeContext): string {
 
   return (
     `<p:cxnSp><p:nvCxnSpPr>` +
-    `<p:cNvPr id="${context.nextId()}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    `<p:cNvPr id="${context.nextId()}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${cNvPrEnd(node)}` +
     `<p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr>` +
     `<p:spPr><a:xfrm${flipH}${flipV}>` +
     `<a:off x="${units.px(node.bounds.x + x)}" y="${units.px(node.bounds.y + y)}"/>` +
@@ -623,6 +660,18 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
   if (!claim || "refused" in claim) {
     return unsupported(node, context, claim?.refused);
   }
+  if (claim.placed.retyped) {
+    context.ledger.record({
+      severity: "warning",
+      slideId: context.scene.slideId,
+      elementId: node.id,
+      feature: "image type",
+      action: "approximated",
+      message:
+        `This picture is recorded as ${claim.placed.retyped.declared} but its file is ${claim.placed.retyped.actual}. ` +
+        `It is stored as ${claim.placed.retyped.actual}, which is what PowerPoint needs to open it; correct the upload's type.`,
+    });
+  }
 
   const { units } = context;
   const intrinsic = context.intrinsic?.get(payload.assetId);
@@ -662,7 +711,7 @@ function pictureShape(node: SceneNode, context: ShapeContext): string {
     "<p:pic>" +
     "<p:nvPicPr>" +
     `<p:cNvPr id="${context.nextId()}" ` +
-    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${cNvPrEnd(node)}` +
     '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
     "<p:nvPr/>" +
     "</p:nvPicPr>" +
@@ -849,7 +898,7 @@ function capturedMaskShape(node: SceneNode, context: ShapeContext): string | und
     "<p:pic>" +
     "<p:nvPicPr>" +
     `<p:cNvPr id="${context.nextId()}" ` +
-    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${describe(node)}/>` +
+    `name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${cNvPrEnd(node)}` +
     '<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>' +
     "<p:nvPr/>" +
     "</p:nvPicPr>" +
@@ -919,19 +968,27 @@ function equationShape(node: SceneNode, context: ShapeContext): string {
 
 function unsupported(node: SceneNode, context: ShapeContext, because?: string): string {
   const kind = node.renderPayload.kind;
+  // A missing cut-out is its own line (export gate, 2026-10-14). The report
+  // keeps one line per feature and slide, so it used to fold into any other
+  // missing picture on the slide and was never named, although losing the
+  // subject that stands in front of the scene changes the whole composition.
+  const cutout = kind === "image" && node.layerRole === "subject";
 
   context.ledger.record({
     severity: "warning",
     slideId: context.scene.slideId,
     elementId: node.id,
-    feature: kind,
+    feature: cutout ? "cut-out" : kind,
     // `dropped`, not `rasterized`. "Rasterized" tells a reader the appearance
     // was preserved as an image and only the selectable text was lost — this
     // adapter embeds no image at all, it draws a labelled dashed box. Reporting
     // the friendlier word is the exact failure `DegradationLedger` exists to
     // prevent: the report has to be true about the file it just wrote.
     action: "dropped",
-    message: because
+    message: cutout && because
+      ? `The cut-out "${(node.a11y.label ?? node.id).slice(0, 60)}" is a labelled placeholder box and is not in the file, ` +
+        `because ${because}. The subject that stood in front of the scene is missing.`
+      : because
       ? `This ${kind} is a labelled placeholder box and is not in the file, ` +
         `because ${because}.`
       : `${kind} elements are replaced by a labelled placeholder box in this ` +

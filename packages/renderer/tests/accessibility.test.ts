@@ -134,9 +134,20 @@ describe("alternative text", () => {
     const described = node({
       id: "el_img",
       renderPayload: { kind: "image", assetId: "ast_1", objectFit: "cover", objectPosition: "50% 50%" },
-      a11y: { role: "img", order: 0, label: "Latency fell after the migration" },
+      a11y: { role: "img", order: 0, label: "Latency fell after the migration", described: true },
     });
     expect(checkAccessibility(scene([described]))).toEqual([]);
+  });
+
+  it("a picture with a name and no alt text is not described", () => {
+    // The label falls back to the element's name; a name is not a description
+    // (export gate, 2026-10-14). This used to pass.
+    const named = node({
+      id: "el_img",
+      renderPayload: { kind: "image", assetId: "ast_1", objectFit: "cover", objectPosition: "50% 50%" },
+      a11y: { role: "img", order: 0, label: "Photo", described: false },
+    });
+    expect(checkAccessibility(scene([named])).map((issue) => issue.code)).toEqual(["A101"]);
   });
 });
 

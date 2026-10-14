@@ -20,7 +20,7 @@
  */
 
 import { sourceLocale, type PresentationDocument } from "@deckastra/presentation-schema";
-import { librarySoundDurationMs, librarySoundWav, type SlideScene } from "@deckastra/renderer";
+import { librarySoundDurationMs, librarySoundWav, type SceneNode, type SlideScene } from "@deckastra/renderer";
 import {
   compileNarratedPlayback,
   compileTimeline,
@@ -60,7 +60,7 @@ import {
   solidBackground,
   theme,
 } from "./parts";
-import { gradientFill, shapeFor, type ShapeContext } from "./shapes";
+import { gradientFill, isDecorative, shapeFor, type ShapeContext } from "./shapes";
 import { MediaRegistry } from "./media";
 import { timingFor, transitionFor, type AudioPlay } from "./timing";
 import { hex, unitsFor, xml } from "./units";
@@ -99,6 +99,9 @@ export function buildPptx(input: ExportInput): PptxArtifact {
   const startedAt = Date.now();
   const ledger = new DegradationLedger();
   const { document, scenes, options } = input;
+  // A language tag is letters, digits and hyphens; anything else is not one,
+  // and the file falls back to the tag it always used.
+  const language = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(sourceLocale(document)) ? sourceLocale(document) : "en-US";
 
   const ids = slidesToExport(document, options);
   const elementsById = indexElements(document);
@@ -144,7 +147,7 @@ export function buildPptx(input: ExportInput): PptxArtifact {
     // Per slide, because a relationship id is unique within one `.rels` part.
     media.startSlide();
 
-    const { xmlBody, shapeIds, nextShapeId } = shapesFor(scene, units, ledger, elementsById, media, intrinsic);
+    const { xmlBody, shapeIds, nextShapeId } = shapesFor(scene, units, ledger, elementsById, media, intrinsic, language);
 
     const timeline = compileTimeline(scene, (scene.animations ?? []) as AnimationTrack[], {
       // Full motion: PowerPoint has its own reduced-motion handling, and
@@ -277,6 +280,7 @@ function shapesFor(
   elementsById: Map<string, { type: string; shape?: string }>,
   media: MediaRegistry,
   intrinsic: ReadonlyMap<string, { width: number; height: number }>,
+  lang: string,
 ): { xmlBody: string; shapeIds: Map<string, number>; nextShapeId: () => number } {
   const shapeIds = new Map<string, number>();
   // PowerPoint reserves id 1 for the slide's own group; shapes start at 2.
@@ -288,6 +292,7 @@ function shapesFor(
     ledger,
     elementsById,
     nextId: () => counter++,
+    lang,
     // A slide entered by a morph names its paired shapes after their partners on
     // the previous slide. Without this the two names differ — they are different
     // elements with different ids — and PowerPoint's Morph pairs nothing, which
@@ -315,6 +320,33 @@ function shapesFor(
 
     shapeIds.set(node.id, before);
     parts.push(xmlBody);
+  }
+
+  // PowerPoint reads a slide's objects in the order they are stacked, back to
+  // front, and that order is the slide's look: it cannot also be the story's
+  // (export gate, 2026-10-14). The slide's own markup and the PDF are read in
+  // narrative order; where layering puts something that is read early above
+  // something read later, say so, so nobody believes the file reads as the
+  // slide does.
+  const read = scene.paintOrder
+    .map((id) => byId.get(id))
+    .filter((node): node is SceneNode => node !== undefined && !node.flags.hidden && node.a11y.role !== "presentation" && !isDecorative(node));
+  const narrative = [...read].sort((left, right) => left.a11y.order - right.a11y.order);
+  const first = read.findIndex((node, index) => node.id !== narrative[index]?.id);
+  if (first !== -1) {
+    const early = narrative[first]!;
+    const late = read[first]!;
+    ledger.record({
+      severity: "info",
+      slideId: scene.slideId,
+      elementId: early.id,
+      feature: "reading order",
+      action: "approximated",
+      message:
+        `PowerPoint reads this slide in the order its objects are layered, so a screen reader there reaches ` +
+        `"${(late.a11y.label ?? late.name ?? late.id).slice(0, 60)}" before "${(early.a11y.label ?? early.name ?? early.id).slice(0, 60)}". ` +
+        "On the slide and in the PDF it is read in story order; check the order in PowerPoint's Selection Pane if it matters.",
+    });
   }
 
   return { xmlBody: parts.join(""), shapeIds, nextShapeId: () => counter++ };
@@ -612,3 +644,4 @@ function sceneUsedEstimatedMetrics(scene: SlideScene): boolean {
 export { createZip } from "./zip";
 export * from "./units";
 export { equationImageKey, maskedImageKey, maskNeedsPicture, pictureNeedsCapture } from "./shapes";
+export { sniffImageType } from "./media";

@@ -613,6 +613,16 @@ function validateReferences(
         }
       }
 
+      // A picture inside text cites an asset the same way a picture does
+      // (export gate, 2026-10-14). Removed from the manifest, it would draw its
+      // fallback colour everywhere with nothing saying the picture had gone.
+      const fill = (element as { pictureFill?: { assetId?: string } }).pictureFill;
+      if (element.type === "text" && fill?.assetId && !assetIds.has(fill.assetId)) {
+        c.add("E102", `${path}/pictureFill/assetId`, `The picture inside this text, "${fill.assetId}", is not in the asset manifest; it draws its fallback colour.`, {
+          targetIds: [element.id],
+        });
+      }
+
       if (element.type === "componentInstance") {
         const componentId = (element as { componentId?: string }).componentId;
         if (componentId && !componentIds.has(componentId)) {

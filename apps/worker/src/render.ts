@@ -526,11 +526,16 @@ export function slideHtml(
   warnings: ExportWarning[],
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined,
   fontCss = "",
+  /**
+   * Only the export gate asks for "editor", to draw the canvas a person sees
+   * through the same page and compare it with the export (item 8, 2026-10-14).
+   */
+  mode: "export" | "editor" = "export",
 ): string {
   const markup = renderToStaticMarkup(
     // `mode="export"` excludes editor chrome structurally — the subtree is never
     // mounted, so no CSS override can put a selection handle in a customer's PDF.
-    createElement(SlideView, { scene: withoutFaces(slide), mode: "export" as const, resolveAssetUrl }),
+    createElement(SlideView, { scene: withoutFaces(slide), mode, resolveAssetUrl }),
   );
 
   return (

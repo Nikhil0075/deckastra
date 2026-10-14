@@ -84,8 +84,10 @@ function checkAltText(node: SceneNode, slideId: string): AccessibilityIssue[] {
   // description, and describing it makes a screen reader worse, not better.
   if (node.semanticRole === "decoration") return [];
 
-  const described = Boolean(node.a11y.label && node.a11y.label.trim());
-  if (described) return [];
+  // Words the author wrote, never the element's name standing in for them: a
+  // picture named "Photo" with no alt text used to pass (export gate, 2026-10-14).
+  if (node.a11y.described) return [];
+  if (node.a11y.role === "presentation") return [];
 
   return [
     {

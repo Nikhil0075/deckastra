@@ -968,10 +968,12 @@ describe("a picture the exporter was given", () => {
   it("refuses a format PowerPoint will not open, and says which", () => {
     // Embedding a webp because it is "an image" produces a file that opens with
     // a broken picture in it, which is worse than a labelled box: the recipient
-    // cannot tell whether it is their machine.
+    // cannot tell whether it is their machine. Real WebP bytes: the exporter
+    // reads the file's own type now, so a PNG merely labelled WebP is a PNG.
+    const webp = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x1a, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x4c, 0x0d, 0, 0, 0, 0x2f, 0, 0, 0, 0x10, 0x07, 0x10, 0x11, 0x11, 0x88, 0x88, 0xfe, 0x07, 0]);
     const refused = buildPptx({
       ...inputFor(TECHNICAL),
-      images: new Map([[assetId, { bytes: png, contentType: "image/webp" }]]),
+      images: new Map([[assetId, { bytes: webp, contentType: "image/webp" }]]),
     });
     expect(
       [...unzipRaw(refused.bytes).keys()].filter((path) => path.startsWith("ppt/media/")),

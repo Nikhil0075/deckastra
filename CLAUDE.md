@@ -4526,6 +4526,40 @@ open), `orientation`, `mask`, `focalRegion`, `textSafeArea`,
   except the listed `KNOWN_MISFITS`, and fixing one fails until it is removed
   from the list. A cut-out slot must be filled by a picture with transparency.
 
+### The image-led export gate (2026-10-14)
+
+`docs/design-audit/EXPORT_A11Y_GATE.md` maps each export and accessibility
+requirement to its tests. `test_gate_map_names_real_tests` fails when a cited
+test is gone. The gate deck is `apps/api/tests/export_gate_deck.py`. It goes
+through the real CLI, and pypdf, python-pptx and Pillow read it back. Rules
+that are easy to undo:
+
+- **A name is not a description.** `a11y.described` comes from `altText`
+  alone. WCAG 1.1.1 and PowerPoint's `descr` used to accept "Picture 3".
+- **The markup is in story order, and the paint is in depth order.**
+  `SlideView` sorts nodes by `a11y.order`, with decorations first, and z-index
+  still comes from `paintOrder`. A tagged PDF's structure follows the markup.
+  pypdf's `extract_text` follows the content stream, which is paint order, so
+  reading order is checked on the tag tree.
+- **A wrapped, treated picture is named by its wrapper** (`role="img"`).
+  Chromium drops an image drawn through an SVG filter inside a masked wrapper
+  from the PDF's tags. A diagram's `<svg>` is `role="img"` with its
+  description, as a chart's is.
+- **PowerPoint reads in layer order**, so the exporter cannot make it read
+  the story.
+  - Decorations (`decoration` role, or `decoration-behind-subject`) carry
+    Office's decorative mark.
+  - A slide whose layers reverse its story gets one `reading order` note.
+- **Picture bytes decide the part's type** (`sniffImageType`). A PNG recorded
+  as a JPEG is stored as `.png`, with an `image type` line in the report.
+- **A text box's own `direction` wins** over the deck's language
+  (`ownDirection`). PowerPoint paragraphs get `rtl="1"`. Runs carry the deck's
+  language tag instead of a fixed `en-US`.
+- **A missing cut-out has its own report line** (`cut-out`). The ledger keeps
+  one line per feature and slide, and it used to fold into another picture's.
+- The `polish` step adds a 1024×640 window and zooms of 75%, 125% and 150%.
+  Windows scaling on a 1920×1080 screen gives the page what a zoom does.
+
 ### Five modes, two on the bar (2026-10-12)
 
 `EDITOR_MODES` (`lib/editor-layout.ts`) is Design, Motion, Narration & sound,

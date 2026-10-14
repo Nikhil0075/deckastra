@@ -23,7 +23,7 @@
 
 import type { SceneNode } from "@deckastra/renderer";
 
-import type { ShapeContext } from "./shapes";
+import { cNvPrEnd, type ShapeContext } from "./shapes";
 import { alpha, hex, rotation, shapeName, xml, type Units } from "./units";
 
 // ------------------------------------------------------------------ geometry
@@ -438,9 +438,8 @@ function group(writer: Writer): string {
   const frameXml =
     `<a:xfrm><a:off x="${units.px(b.x)}" y="${units.px(b.y)}"/><a:ext cx="${units.px(Math.max(1, b.width))}" cy="${units.px(Math.max(1, b.height))}"/>` +
     `<a:chOff x="${units.px(b.x)}" y="${units.px(b.y)}"/><a:chExt cx="${units.px(Math.max(1, b.width))}" cy="${units.px(Math.max(1, b.height))}"/></a:xfrm>`;
-  const label = node.a11y.label ? ` descr="${xml(node.a11y.label.slice(0, 300))}"` : "";
   return (
-    `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="${context.nextId()}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${label}/>` +
+    `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="${context.nextId()}" name="${xml(shapeName(context.nameOverrides?.get(node.id) ?? node.id))}"${cNvPrEnd(node)}` +
     `<p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr>${frameXml}</p:grpSpPr>${writer.parts.join("")}</p:grpSp>`
   );
 }

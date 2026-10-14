@@ -1530,7 +1530,7 @@ async function runConsent(window: BrowserWindow, record: Record<string, unknown>
 /**
  * UI audit Unit 9: the screens at the sizes people actually have.
  *
- * Three window sizes (1280×720, 1366×768, 1920×1080) and 200% zoom, on the
+ * Four window sizes (1024×640 to 1920×1080) and four zooms (75% to 200%), on the
  * editor and on the home. At each: nothing makes the page scroll sideways, the
  * controls a person cannot do without are inside the window, and no two
  * buttons in the bar sit on top of each other. Then the two words the bar
@@ -1590,11 +1590,17 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
       return { width, overflow, outside, overlaps, canvasShare: canvas ? Math.round((canvas.getBoundingClientRect().width / width) * 100) / 100 : null };
     })()`);
 
+  // 1024×640 is the narrowest editor this checks (export gate, 2026-10-14).
   const SIZES: Array<[number, number]> = [
+    [1024, 640],
     [1280, 720],
     [1366, 768],
     [1920, 1080],
   ];
+  // A 1920×1080 screen at Windows' 125% and 150% scaling gives the page what
+  // these zoom factors give it; 200% is a person reading with the zoom up, and
+  // 75% is a wide 2560px window without needing a screen that size.
+  const ZOOMS = [0.75, 1.25, 1.5, 2];
   const EDITOR = ["present", "account-menu", "open-share", "mode-design", "mode-more", "undo", "open-deck-list", "agent-access-open"];
   const HOME = ["account-menu", "deck-search", "view-all"];
 
@@ -1610,18 +1616,20 @@ async function runPolish(window: BrowserWindow, dir: string, record: Record<stri
       if (seen.outside.length) failures.push(`${where} ${w}×${h}: outside the window: ${seen.outside.join(", ")}`);
       if (seen.overlaps.length) failures.push(`${where} ${w}×${h}: overlapping: ${seen.overlaps.join("; ")}`);
     }
-    // 200%: a person who reads with the zoom up gets a 960×540 window.
     window.setContentSize(1920, 1080);
-    window.webContents.setZoomFactor(2);
-    await sleep(800);
-    const zoomed = await measure(essentials, bar);
-    results["1920x1080@200%"] = zoomed;
-    await capture(window, join(dir, `polish-${where}-zoom200.png`));
+    for (const zoom of ZOOMS) {
+      const label = `${Math.round(zoom * 100)}%`;
+      window.webContents.setZoomFactor(zoom);
+      await sleep(800);
+      const zoomed = await measure(essentials, bar);
+      results[`1920x1080@${label}`] = zoomed;
+      await capture(window, join(dir, `polish-${where}-zoom${Math.round(zoom * 100)}.png`));
+      if (zoomed.overflow > 1) failures.push(`${where} at ${label}: the page scrolls sideways by ${zoomed.overflow}px`);
+      if (zoomed.outside.length) failures.push(`${where} at ${label}: outside the window: ${zoomed.outside.join(", ")}`);
+      if (zoomed.overlaps.length) failures.push(`${where} at ${label}: overlapping: ${zoomed.overlaps.join("; ")}`);
+    }
     window.webContents.setZoomFactor(1);
     await sleep(400);
-    if (zoomed.overflow > 1) failures.push(`${where} at 200%: the page scrolls sideways by ${zoomed.overflow}px`);
-    if (zoomed.outside.length) failures.push(`${where} at 200%: outside the window: ${zoomed.outside.join(", ")}`);
-    if (zoomed.overlaps.length) failures.push(`${where} at 200%: overlapping: ${zoomed.overlaps.join("; ")}`);
     return results;
   };
 
