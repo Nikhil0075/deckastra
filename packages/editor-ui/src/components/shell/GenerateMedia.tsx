@@ -232,8 +232,8 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
         value={styleSource}
         onChange={chooseStyle}
         items={[
-          { value: "deck", label: "Match the deck", "data-testid": "generate-style-deck" },
-          { value: "prompt", label: "Follow my prompt", "data-testid": "generate-style-prompt" },
+          { value: "deck", label: "Match deck", "data-testid": "generate-style-deck" },
+          { value: "prompt", label: "My prompt", "data-testid": "generate-style-prompt" },
         ]}
       />
       {capabilities === null ? (

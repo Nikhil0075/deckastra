@@ -5065,6 +5065,12 @@
 .dk-generate__field textarea {
   width: 100%;
   resize: vertical;
+  /* `.dk-input` fixes a field's height, and `rows` alone left the exact
+     prompt two lines tall: five lines of prompt read through a slot. */
+  min-height: 4.5em;
+}
+.dk-generate__composed textarea {
+  min-height: 10em;
 }
 .dk-generate__confirm {
   display: flex;

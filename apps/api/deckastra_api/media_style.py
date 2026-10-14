@@ -40,6 +40,11 @@ _COLOURS = {
     "gold": "#D4A017", "warm yellow": "#F2C14E", "violet": "#7C5CE7",
     "magenta": "#C23B8E", "warm beige": "#D8C3A5", "light grey": "#D9DDE3",
     "off white": "#F5F3EE", "white": "#FFFFFF",
+    # Vivid hues, so a bright colour is not named after a muted one: #4ADE80
+    # was "sage green", which would steer a model to a grey-green (2026-10-15).
+    "bright green": "#4ADE80", "lime": "#A3E635", "cyan": "#22D3EE",
+    "electric blue": "#3B82F6", "hot pink": "#F472B6", "amber": "#F59E0B",
+    "pale green": "#D4F0D4", "pale blue": "#D6E4F5",
 }
 
 
