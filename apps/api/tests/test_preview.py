@@ -80,10 +80,18 @@ def pending_proposal(client, auth, deck, operations, intent="Clear the slide") -
 
 
 def removals(document, count=2):
+    """Remove the first slide's first words: always visible, in any design language.
+
+    It used to remove the first two elements, whatever they were. A language's
+    cover starts with its ground and its picture frame, and the frame is
+    covered by the template's photograph, so taking both away changed nothing
+    on screen and the proposal preview rightly drew the same picture.
+    """
     slide = document["slides"][0]
+    texts = [element for element in slide["elements"] if element.get("type") == "text"]
     return slide["id"], [
         {"op": "remove", "path": f"/slides/id:{slide['id']}/elements/id:{element['id']}"}
-        for element in slide["elements"][:count]
+        for element in texts[:count]
     ]
 
 
