@@ -6,7 +6,8 @@ import math
 import os
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import inspect, select, update
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.exc import IntegrityError
 
 from deckastra_agents.budgets import BudgetExceeded
@@ -33,13 +34,32 @@ def amount(usd):
 
 
 def _insert_once(session, row):
+    """Create the row unless it exists, without asking the database to fail.
+
+    Every credit check calls this for an account or daily limit that almost
+    always exists already. Inserting and catching the duplicate worked, but
+    PostgreSQL logs each refused insert as an ERROR: production logged one per
+    credit check, and the noise reached the error alerts (2026-10-14).
+    `ON CONFLICT DO NOTHING` says the same thing without an error.
+    """
     ensure_physical_transaction(session)
-    try:
-        with session.begin_nested():
-            session.add(row)
-            session.flush()
-    except IntegrityError:
-        pass
+    dialects = {"postgresql": postgresql, "sqlite": sqlite}
+    dialect = dialects.get(session.get_bind().dialect.name)
+    if dialect is None:
+        try:
+            with session.begin_nested():
+                session.add(row)
+                session.flush()
+        except IntegrityError:
+            pass
+        return
+    mapper = inspect(type(row))
+    values = {
+        attribute.columns[0].name: getattr(row, attribute.key)
+        for attribute in mapper.column_attrs
+        if getattr(row, attribute.key) is not None
+    }
+    session.execute(dialect.insert(mapper.local_table).values(**values).on_conflict_do_nothing())
 
 
 def free_allowance() -> int:
