@@ -54,7 +54,18 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
   const [prompt, setPrompt] = useState("");
   const slots = slide ? slideMediaSlots(slide) : [];
   const frame = slots.find((one) => !one.filled) ?? slots[0];
-  const [styleSource, setStyleSource] = useState<StyleSource>(() => (frame || designLanguage ? "deck" : "prompt"));
+  const suggested: StyleSource = frame || designLanguage ? "deck" : "prompt";
+  const [styleSource, setStyleSource] = useState<StyleSource>(suggested);
+  // The default follows the slide until the person picks one themselves; a
+  // choice they made is kept as they move between slides (2026-10-15).
+  const chosenStyle = useRef(false);
+  useEffect(() => {
+    if (!chosenStyle.current) setStyleSource(suggested);
+  }, [slideId, suggested]);
+  const chooseStyle = (value: StyleSource) => {
+    chosenStyle.current = true;
+    setStyleSource(value);
+  };
   const [composed, setComposed] = useState<MediaPromptResponse | null>(null);
   const [finalPrompt, setFinalPrompt] = useState("");
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
@@ -219,7 +230,7 @@ export function GenerateMedia({ presentationId, slideId, currentVersionId, saveN
         label="Style source"
         size="sm"
         value={styleSource}
-        onChange={setStyleSource}
+        onChange={chooseStyle}
         items={[
           { value: "deck", label: "Match the deck", "data-testid": "generate-style-deck" },
           { value: "prompt", label: "Follow my prompt", "data-testid": "generate-style-prompt" },

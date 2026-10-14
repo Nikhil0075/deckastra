@@ -120,7 +120,9 @@ def test_choosing_one_style_creates_one_transaction_and_closes_the_set(client, a
         json={"option_id": chosen, "expected_version_id": deck["version_id"]},
     )
     assert applied.status_code == 200, applied.text
-    assert applied.json()["document"]["metadata"]["designLanguage"]["id"] == "system-terminal"
+    # The deck's slides keep their layouts, so it keeps recording their language.
+    before = deck["document"]["metadata"].get("designLanguage")
+    assert applied.json()["document"]["metadata"].get("designLanguage") == before
     with db_session.session_scope() as session:
         row = session.get(StyleOptionSet, created["id"])
         transactions = session.query(TransactionRow).filter(
@@ -129,6 +131,8 @@ def test_choosing_one_style_creates_one_transaction_and_closes_the_set(client, a
         ).all()
         assert row is not None and row.status == "chosen" and row.chosen_option_id == chosen
         assert len(transactions) == 1
+        # The person chose it; the history says whose suggestion it was.
+        assert transactions[0].source == "agent" and transactions[0].agent_id == "mcp:external"
 
 
 def test_a_set_is_marked_stale_and_cannot_apply_after_the_deck_moves(client, auth, deck):

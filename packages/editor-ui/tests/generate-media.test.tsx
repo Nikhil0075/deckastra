@@ -164,3 +164,28 @@ it("shows no frame brief for a video clip or a slide without a frame", async () 
   await screen.findByTestId("generate-prompt");
   expect(screen.queryByTestId("generate-slot")).toBeNull();
 });
+
+it("suggests Match the deck per slide until the person picks one", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => json(capabilities({ available: true, reason: null }))));
+  const framed = {
+    id: "sld_1",
+    elements: [{ id: "el_frame", type: "shape", shape: "rectangle", name: "Image frame",
+      transform: { x: 0, y: 0, width: 800, height: 450, rotation: 0 }, mediaSlot: { role: "background" } }],
+  };
+  const plain = { id: "sld_2", elements: [] };
+  const view = (slide: { id: string }) => (
+    <GenerateMedia presentationId="pres_1" slideId={slide.id} currentVersionId={() => "ver_1"} saveNow={vi.fn(async () => true)} slide={slide as never} />
+  );
+  const checked = (id: string) => screen.getByTestId(id).getAttribute("aria-checked");
+  const { rerender } = render(view(framed), { wrapper: withWorkspaceClient() });
+  await screen.findByTestId("generate-style-deck");
+  expect(checked("generate-style-deck")).toBe("true");
+  // A slide with no frame and no language: the suggestion follows it.
+  rerender(view(plain));
+  await waitFor(() => expect(checked("generate-style-prompt")).toBe("true"));
+  // Once chosen, the choice is kept across slides.
+  fireEvent.click(screen.getByTestId("generate-style-deck"));
+  rerender(view(framed));
+  rerender(view(plain));
+  expect(checked("generate-style-deck")).toBe("true");
+});

@@ -93,11 +93,38 @@ def _elements(items: list[dict[str, Any]]):
         yield from _elements(item.get("children") or [])
 
 
+def target_frame(slide: dict[str, Any]) -> tuple[int, dict[str, Any]] | None:
+    """The frame a generated picture goes in: the first empty one, else the first.
+
+    One answer for the prompt and for placement, which disagreed: the prompt
+    described the first frame with a slot, placement filled the first frame by
+    name, and the editor offered the first empty one, so on a slide with two
+    frames a picture could be asked for one and placed in the other
+    (2026-10-15). A frame is filled when an image sits directly above it in the
+    same box, as `slideMediaSlots` in presentation-core decides. Only top-level
+    frames count, because placement inserts beside the frame on the slide.
+    """
+    from .preset_media import FRAME_NAMES
+
+    elements = slide.get("elements") or []
+    frames = [(index, element) for index, element in enumerate(elements)
+              if element.get("type") == "shape"
+              and (isinstance(element.get("mediaSlot"), dict) or element.get("name") in FRAME_NAMES)]
+
+    def filled(index: int, element: dict[str, Any]) -> bool:
+        above = elements[index + 1] if index + 1 < len(elements) else None
+        box, other = element.get("transform") or {}, (above or {}).get("transform") or {}
+        return bool(above) and above.get("type") == "image" and all(other.get(key) == box.get(key) for key in ("x", "y", "width"))
+
+    return next(((index, element) for index, element in frames if not filled(index, element)), frames[0] if frames else None)
+
+
 def _frame(slide: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]] | None:
-    for element in _elements(slide.get("elements") or []):
-        if element.get("type") == "shape" and isinstance(element.get("mediaSlot"), dict):
-            return element, element["mediaSlot"]
-    return None
+    found = target_frame(slide)
+    if found is None:
+        return None
+    element = found[1]
+    return element, element.get("mediaSlot") if isinstance(element.get("mediaSlot"), dict) else {}
 
 
 def _fallback_safe_area(document: dict[str, Any], slide: dict[str, Any]) -> dict[str, float] | None:

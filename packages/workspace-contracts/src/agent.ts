@@ -97,6 +97,8 @@ export interface StyleSuggestionRequest {
   expected_version_id: string;
   slide_id?: string;
   options: StyleOptionInput[];
+  /** Which client suggested these, for the history row a choice writes. */
+  client_label?: string;
 }
 
 /**

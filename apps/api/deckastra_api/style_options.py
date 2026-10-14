@@ -65,6 +65,8 @@ class StyleSuggestRequest(BaseModel):
     expected_version_id: str = Field(min_length=1, max_length=64)
     options: list[StyleOptionInput] = Field(min_length=2, max_length=4)
     slide_id: str | None = Field(default=None, max_length=64)
+    #: Which client suggested these, for the history row a choice writes.
+    client_label: str = Field(default="external", max_length=60)
 
 
 class StyleChooseRequest(BaseModel):
@@ -142,11 +144,14 @@ def _operations(document: dict[str, Any], option: StyleOptionInput) -> tuple[lis
             operations.append({"op": "remove", "path": "/themeId"})
 
     if option.design_language:
-        metadata = document.get("metadata") or {}
-        assert language is not None
-        value = {"id": option.design_language, "version": int(language.get("version") or 1)}
-        if metadata.get("designLanguage") != value:
-            operations.append({"op": "replace" if "designLanguage" in metadata else "add", "path": "/metadata/designLanguage", "value": value})
+        # The language supplies the theme and motion defaults above. Its layouts
+        # are not applied: these slides keep the geometry they were composed
+        # with, so the deck keeps recording the language that geometry is in.
+        # Writing the new name would be untrue, and slides inserted later would
+        # be drawn in a grammar the rest of the deck does not use (2026-10-15).
+        current = ((document.get("metadata") or {}).get("designLanguage") or {}).get("id") or "neutral"
+        if current != option.design_language:
+            notes.append(f"Colours, type and motion from {option.design_language}; the slides keep their {current} layouts.")
 
     if option.motion_style:
         style = (presets.catalog().get("motionStyles") or {}).get(option.motion_style)
@@ -238,6 +243,7 @@ def suggest_styles(
             "id": new_id("opt"), "label": option.label, "rationale": option.rationale,
             "design_language": resolved.design_language, "theme_key": resolved.theme_key,
             "motion_style": resolved.motion_style, "notes": notes,
+            "agent_id": f"mcp:{request.client_label}"[:120],
             "preview_document": preview, "operations": operations,
         })
     row = StyleOptionSet(
@@ -303,7 +309,10 @@ def choose_style(
         session, presentation_id=row.presentation_id, operations=operations,
         inverse_operations=inverse, document=document, parent_version_id=loaded.version_id,
         expected_version_id=loaded.version_id, intent=f"Use style: {option.get('label')}",
-        source="user", created_by=principal.user_id, client_id="style-options",
+        # The person chose it; the agent wrote it. The history shows whose
+        # suggestion it was, as an approved proposal does (2026-10-15).
+        source="agent", agent_id=str(option.get("agent_id") or "mcp:external"),
+        created_by=principal.user_id, client_id="style-options",
         reason=str(option.get("rationale") or ""), risk_tier=risk.tier,
         label=f"Use style: {option.get('label')}",
     )
