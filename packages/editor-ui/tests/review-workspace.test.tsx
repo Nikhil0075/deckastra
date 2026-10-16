@@ -125,6 +125,10 @@ describe("the Review view", () => {
     render(<ReviewWorkspace editor={ed} presentationId="prs_1" onClose={() => {}} />, { wrapper: withWorkspaceClient() });
     expect(await screen.findByText("Choose a style")).toBeTruthy();
     expect(screen.getAllByTestId("style-option-card")).toHaveLength(2);
+    expect(screen.getAllByText("Cover preview")).toHaveLength(2);
+    expect(screen.getByText(/Your words and layouts stay in place/)).toBeTruthy();
+    expect(screen.queryByText("Colours, type and motion from quiet-luxe")).toBeNull();
+    await waitFor(() => expect(Number(screen.getAllByTestId("style-option-card")[0]!.querySelector("[data-width]")?.getAttribute("data-width"))).toBeGreaterThan(280));
     fireEvent.click(screen.getAllByTestId("style-option-use")[0]!);
     await waitFor(() => expect(ed.adoptDocument).toHaveBeenCalledWith(deck, "ver_style"));
     const choose = fetcher.mock.calls.find(([url]) => String(url).endsWith("/style-options/sty_1/choose"));

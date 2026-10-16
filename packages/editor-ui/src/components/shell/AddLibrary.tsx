@@ -7,7 +7,8 @@ import type { AssistantAsset, LayoutFamily, PresetCatalog, SlidePattern } from "
 
 import { pptxFidelity } from "../../lib/export-fidelity";
 import { addBrandIconOperations, brandIconName, parseSvgIcon, removeBrandIconOperations } from "../../lib/svg-icon";
-import { Button, Icon, IconButton, StatusChip, Tabs, TextField, cx, type IconName } from "../../ui";
+import { insertImageOperations } from "../../lib/insert-image";
+import { Button, Icon, IconButton, Select, StatusChip, Tabs, TextField, cx, type IconName } from "../../ui";
 import { GenerateMedia } from "./GenerateMedia";
 import { PatternThumb, usePatternPreviews } from "./PatternPreview";
 
@@ -67,39 +68,95 @@ const OBJECTS: readonly { object: StarterElementKind; label: string; icon: IconN
 const STORE = "deckastra.library";
 const RECENT_LIMIT = 8;
 
-function RecentMedia({ refresh }: { refresh: number }) {
+/**
+ * Recent media. A picture listed here is placed on the slide by pressing it:
+ * the list only ever showed them, so an upload or a generated picture could
+ * not be used a second time without uploading it again (2026-10-17).
+ */
+function RecentMedia({ refresh, onPlace }: { refresh: number; onPlace?: (asset: AssistantAsset) => Promise<void> }) {
   const client = useOptionalWorkspaceClient();
   const [assets, setAssets] = useState<AssistantAsset[]>([]);
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [placing, setPlacing] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const place = async (asset: AssistantAsset) => {
+    if (!onPlace) return;
+    setPlacing(asset.id);
+    setProblem(null);
+    try {
+      await onPlace(asset);
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : "That picture could not be placed.");
+    } finally {
+      setPlacing(null);
+    }
+  };
   useEffect(() => {
     if (!client?.assistant) return;
     let live = true;
-    client.assistant.assetList({ order: "newest", limit: 12 }).then((answer) => {
-      if (!live) return;
-      const media = answer.assets.filter((asset) => asset.kind === "image" || asset.kind === "video");
-      setAssets(media);
-      for (const asset of media.filter((item) => item.kind === "image")) {
-        void client.assistant!.assetView(asset.id, 256).then((view) => {
-          if (live) setPreviews((current) => ({ ...current, [asset.id]: `data:${view.mime_type};base64,${view.base64}` }));
-        }).catch(() => undefined);
-      }
-    }).catch(() => { if (live) setAssets([]); });
-    return () => { live = false; };
+    const load = () => client.assistant!.assetList({ order: "newest", limit: 12 }, { fresh: true }).then((answer) => {
+        if (!live) return;
+        const media = answer.assets.filter((asset) => asset.kind === "image" || asset.kind === "video");
+        setAssets(media);
+        for (const asset of media.filter((item) => item.kind === "image")) {
+          void client.assistant!.assetView(asset.id, 256).then((view) => {
+            if (live) setPreviews((current) => ({ ...current, [asset.id]: `data:${view.mime_type};base64,${view.base64}` }));
+          }).catch(() => undefined);
+        }
+      }).catch(() => undefined);
+    void load();
+    // Generated media may arrive through MCP while this panel is already open.
+    // A small visible-page poll keeps Media honest without asking the user to
+    // close and reopen it; focus refresh makes returning from an image tool feel immediate.
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void load();
+    }, 5_000);
+    const focused = () => { void load(); };
+    window.addEventListener("focus", focused);
+    return () => {
+      live = false;
+      window.clearInterval(poll);
+      window.removeEventListener("focus", focused);
+    };
   }, [client, refresh]);
   return (
     <section className="dk-library__section" data-testid="media-library-assets">
       <h4 className="dk-library__heading">Recent media</h4>
       {assets.length ? (
         <div className="dk-media-grid">
-          {assets.map((asset) => (
-            <div className="dk-media-card" key={asset.id} data-asset-id={asset.id}>
-              {previews[asset.id] ? <img src={previews[asset.id]} alt="" /> : <Icon name={asset.kind === "video" ? "play" : "image"} />}
-              <span title={asset.filename ?? asset.id}>{asset.filename ?? (asset.kind === "video" ? "Video clip" : "Picture")}</span>
-              {(asset.tags ?? []).includes("generated") ? <StatusChip tone="action">Generated</StatusChip> : null}
-            </div>
-          ))}
+          {assets.map((asset) => {
+            const name = asset.filename ?? (asset.kind === "video" ? "Video clip" : "Picture");
+            const content = (
+              <>
+                {previews[asset.id] ? <img src={previews[asset.id]} alt="" /> : <Icon name={asset.kind === "video" ? "play" : "image"} />}
+                <span title={asset.filename ?? asset.id}>{placing === asset.id ? "Placing…" : name}</span>
+                {(asset.tags ?? []).includes("generated") ? <StatusChip tone="action">Generated</StatusChip> : null}
+              </>
+            );
+            return onPlace && asset.kind === "image" ? (
+              <button
+                type="button"
+                className="dk-media-card dk-media-card--button"
+                key={asset.id}
+                data-asset-id={asset.id}
+                title={`Place ${name} on this slide`}
+                aria-label={`Place ${name} on this slide`}
+                disabled={placing !== null}
+                onClick={() => void place(asset)}
+                data-testid="media-place"
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="dk-media-card" key={asset.id} data-asset-id={asset.id}>
+                {content}
+              </div>
+            );
+          })}
         </div>
       ) : <p className="dk-field__hint">Uploaded and generated pictures and clips will appear here.</p>}
+      {assets.some((asset) => asset.kind === "image") && onPlace ? <p className="dk-field__hint">Press a picture to place it on this slide.</p> : null}
+      {problem ? <p className="dk-field__hint dk-field__hint--error" role="alert">{problem}</p> : null}
     </section>
   );
 }
@@ -239,6 +296,18 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
   const svgInput = useRef<HTMLInputElement>(null);
   const needle = query.trim().toLowerCase();
   const brand = (document?.theme.icons ?? {}) as Record<string, BrandIcon>;
+
+  // A picture the workspace already holds, placed like a fresh upload. A deck
+  // that cites it already keeps its one manifest entry: a second entry with
+  // the same id is a document that does not validate.
+  const placeAsset = async (asset: AssistantAsset) => {
+    if (!client?.assets.cite || !presentationId || !document || !apply || !afterSlideId) return;
+    const cited = await client.assets.cite(presentationId, asset.id);
+    const { operations } = insertImageOperations(document, { slideId: afterSlideId, asset: cited });
+    const known = document.assets.some((entry) => entry.id === cited.id);
+    apply(known ? operations.filter((operation) => operation.path !== "/assets/-") : operations, "Place picture");
+  };
+
 
   useEffect(() => {
     if (!client || tab !== "patterns") return;
@@ -510,7 +579,7 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
       />
       <p className="dk-field__hint">PNG, JPEG, GIF, WebP or SVG. You can also paste a picture or drop one on the slide.</p>
       <GenerateMedia presentationId={presentationId} slideId={afterSlideId} currentVersionId={currentVersionId} saveNow={saveNow} slide={document?.slides.find((one) => one.id === afterSlideId)} designLanguage={(document?.metadata as { designLanguage?: { id?: string } } | undefined)?.designLanguage?.id} onGenerated={() => setMediaRefresh((value) => value + 1)} />
-      <RecentMedia refresh={mediaRefresh} />
+      <RecentMedia refresh={mediaRefresh} onPlace={client?.assets.cite && presentationId && document && apply && afterSlideId ? placeAsset : undefined} />
       <h4 className="dk-library__heading">Objects</h4>
       <div className="dk-library__grid">{OBJECTS.map(objectTile)}</div>
     </>
@@ -568,14 +637,20 @@ export function AddLibrary({ tab, onTab, onClose, onAdd, onAddImage, document, a
       {patternNotice ? <p className="dk-field__hint" role="status">{patternNotice}</p> : null}
       {!catalog && !patternNotice ? <p className="dk-field__hint">Loading slide patterns…</p> : null}
       {catalog ? (
-        <div className="dk-library__chips" role="group" aria-label="Pattern family">
-          <button type="button" className={cx("dk-chipbutton", patternFamily === "all" && "dk-chipbutton--on")} aria-pressed={patternFamily === "all"} onClick={() => setPatternFamily("all")}>All</button>
-          {patternFamilies.map((family) => (
-            <button key={family} type="button" className={cx("dk-chipbutton", patternFamily === family && "dk-chipbutton--on")} aria-pressed={patternFamily === family} onClick={() => setPatternFamily(family)}>
-              {familyLabel(family)}
-            </button>
-          ))}
-        </div>
+        <Select
+          label="Pattern family"
+          className="dk-library__filter"
+          value={patternFamily}
+          onChange={(value) => setPatternFamily(value as typeof patternFamily)}
+          options={[
+            { value: "all", label: `All patterns (${allPatternEntries.length})` },
+            ...patternFamilies.map((family) => ({
+              value: family,
+              label: `${familyLabel(family)} (${allPatternEntries.filter(({ definition }) => definition.family === family).length})`,
+            })),
+          ]}
+          data-testid="library-pattern-family"
+        />
       ) : null}
       {previewedPattern && document ? (
         <section className="dk-library__pattern-detail" data-testid="pattern-detail">

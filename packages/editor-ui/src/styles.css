@@ -147,12 +147,8 @@ a {
 }
 
 .dk-assistant { display: grid; gap: 12px; }
-.dk-assistant > label { display: grid; gap: 5px; font-size: 12px; }
-.dk-assistant select, .dk-assistant textarea, .dk-assistant input:not([type="checkbox"]) {
-  width: 100%; min-width: 0; border: 1px solid var(--dk-border, #3b4250);
-  border-radius: 8px; padding: 8px; color: inherit; background: transparent; font: inherit;
-}
-.dk-assistant textarea { min-height: 90px; resize: vertical; }
-.dk-assistant fieldset { display: grid; gap: 8px; border: 1px solid var(--dk-border, #3b4250); border-radius: 8px; padding: 10px; }
+/* The removed in-app assistant styled every field in this panel itself, with
+   rounded corners and a literal border colour; the panel now uses the shared
+   fields (`.dk-input`), so those rules are gone (2026-10-17). */
 .dk-assistant [role="alert"] { color: var(--dk-danger, #ef6464); }
 .dk-assistant details > div { display: flex; justify-content: space-between; gap: 8px; padding-block: 6px; }

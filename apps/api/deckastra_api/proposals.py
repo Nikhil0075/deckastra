@@ -27,9 +27,9 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from . import store
-from .db.models import AgentRequest, TransactionRow
+from .db.models import AgentRequest, Draft, TransactionRow
 from .ids import new_id
-from .patch import PatchError, apply_patch
+from .patch import PatchError, apply_patch, read_path
 from .risk import assess_risk, RiskAssessment
 from .schema import validate_document
 
@@ -55,6 +55,24 @@ def _aware(value: datetime | None) -> datetime | None:
     if value is None:
         return None
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _record_applied_draft_build(session: Session, transaction: TransactionRow, version_id: str) -> None:
+    """Advance a draft's build marker only after its proposal was applied."""
+    sources = [str(item) for item in transaction.source_ids_json or []]
+    draft_id = next((item.removeprefix("draft:") for item in sources if item.startswith("draft:")), None)
+    revision_text = next((item.removeprefix("draft-revision:") for item in sources if item.startswith("draft-revision:")), None)
+    if not draft_id or not revision_text or "draft-build:full" not in sources:
+        return
+    try:
+        revision = int(revision_text)
+    except ValueError:
+        return
+    draft = session.get(Draft, draft_id)
+    if draft is None or draft.presentation_id != transaction.presentation_id:
+        return
+    draft.built_version_id = version_id
+    draft.built_revision = revision
 
 
 def create_proposal(
@@ -249,6 +267,25 @@ def pending(session: Session, presentation_id: str) -> list[TransactionRow]:
     )
 
 
+def changed_since(base: dict[str, Any], head: dict[str, Any], operations: list[dict[str, Any]]) -> list[str]:
+    """Paths a proposal would change whose values moved between its base and now.
+
+    An append (`/-`) names a position that does not exist yet, so it can meet
+    nothing; every other path is read on both sides and compared. A path whose
+    object has gone reads as missing on one side, which counts: the proposal
+    would apply to something that is not there any more.
+    """
+    found: list[str] = []
+    for operation in operations:
+        for key in ("path", "from"):
+            path = operation.get(key)
+            if not isinstance(path, str) or path.endswith("/-") or path in found:
+                continue
+            if read_path(base, path) != read_path(head, path):
+                found.append(path)
+    return found
+
+
 def approve(
     session: Session,
     *,
@@ -300,6 +337,27 @@ def approve(
             code="E310",
         )
 
+    # Moving past the base is allowed when the approver names what they saw,
+    # and that is a rebase onto edits the proposal never knew about. It is safe
+    # only where those edits and the proposal do not meet: a proposal that
+    # replaces a title someone retyped since would put the old agent's words
+    # back over theirs, and the preview of "this deck plus this change" shows
+    # that as an ordinary-looking title (2026-10-17, release E2E step 5).
+    if transaction.parent_version_id and loaded.version_id != transaction.parent_version_id:
+        base = store.load_presentation(
+            session, presentation_id, at_version=transaction.parent_version_id
+        ).document
+        touched = changed_since(base, loaded.document, transaction.operations_json)
+        if touched:
+            raise ProposalError(
+                "This proposal changes something that was edited after it was written ("
+                + ", ".join(touched[:3])
+                + (f" and {len(touched) - 3} more" if len(touched) > 3 else "")
+                + "). Applying it would undo that edit. Ask the agent for a fresh proposal "
+                "against the current deck.",
+                code="E_PROPOSAL_STALE",
+            )
+
     try:
         document, inverse = apply_patch(loaded.document, transaction.operations_json)
     except PatchError as error:
@@ -345,6 +403,7 @@ def approve(
     transaction.status = "applied"
     transaction.result_version_id = result.version_id
     transaction.applied_at = _now()
+    _record_applied_draft_build(session, transaction, result.version_id)
     session.flush()
 
     return {

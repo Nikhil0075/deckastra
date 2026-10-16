@@ -211,6 +211,21 @@ describe("reading order", () => {
     expect(checkAccessibility(scene([left, right])).filter((i) => i.code === "A103")).toEqual([]);
   });
 
+  it("honours an explicit accessible order without changing paint order", () => {
+    const lower = textNode({ id: "el_lower", bounds: { x: 0, y: 600, width: 400, height: 80 }, order: 1 });
+    const upper = textNode({ id: "el_upper", bounds: { x: 0, y: 100, width: 400, height: 80 }, order: 0 });
+    const ordered = scene([lower, upper]);
+
+    expect(ordered.paintOrder).toEqual(["el_lower", "el_upper"]);
+    expect(checkAccessibility(ordered).filter((i) => i.code === "A103")).toEqual([]);
+  });
+
+  it("does not treat a flattened group wrapper as a spoken object", () => {
+    const child = textNode({ id: "el_child", bounds: { x: 0, y: 100, width: 400, height: 80 }, order: 0 });
+    const group = node({ id: "el_group", a11y: { role: "group", order: 100 }, children: [child] });
+    expect(checkAccessibility(scene([group])).filter((i) => i.code === "A103")).toEqual([]);
+  });
+
   it("says nothing about a slide with one element", () => {
     expect(checkAccessibility(scene([textNode({})])).filter((i) => i.code === "A103")).toEqual([]);
   });

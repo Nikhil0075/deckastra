@@ -60,11 +60,16 @@ def selected(session, principal, workspace_id, role=Role.VIEWER):
 
 
 @router.get("/assets")
-def asset_list(workspace_id: str | None = None, filter: Literal["all", "unused", "untagged"] = "all", order: Literal["oldest", "newest"] = "oldest", cursor: str | None = None, q: str = Query("", max_length=200), limit: int = Query(50, ge=1, le=100), principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
+def asset_list(workspace_id: str | None = None, filter: Literal["all", "unused", "untagged", "deleted"] = "all", kind: Literal["image", "video", "audio", "font", "document"] | None = None, order: Literal["oldest", "newest"] = "oldest", cursor: str | None = None, q: str = Query("", max_length=200), limit: int = Query(50, ge=1, le=100), principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
     workspace_id = selected(session, principal, workspace_id)
     if filter == "unused":
         assets.recount_references(session, workspace_id)
-    query = select(Asset).where(Asset.workspace_id == workspace_id, Asset.deleted_at.is_(None))
+    # `deleted` is the Media page's trash: soft-deleted files the sweeper has
+    # not reached yet, which a restore can still bring back (2026-10-17).
+    gone = Asset.deleted_at.is_not(None) if filter == "deleted" else Asset.deleted_at.is_(None)
+    query = select(Asset).where(Asset.workspace_id == workspace_id, gone)
+    if kind:
+        query = query.where(Asset.kind == kind)
     if cursor:
         query = query.where(Asset.id < cursor if order == "newest" else Asset.id > cursor)
     if filter == "unused":
@@ -163,3 +168,10 @@ def asset_revert(asset_id: str, change_id: str, principal: Principal = Depends(c
     result = update_metadata(session, principal, asset, MetadataUpdate(expected_metadata_version=change.result_version, **change.before_json))
     change.reverted = True
     return result
+
+
+@router.get("/assets/{asset_id}/uses")
+def asset_uses(asset_id: str, principal: Principal = Depends(current_principal), session: Session = Depends(get_session)):
+    """Which decks use this file now, for the Media page's detail panel."""
+    asset = asset_access(session, principal, asset_id)
+    return assets.current_uses(session, asset.workspace_id, asset.id)

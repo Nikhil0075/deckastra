@@ -1,6 +1,6 @@
 /**
- * Which half of the home is on screen: the person's own decks, or the template
- * catalog (UI audit 2026-10-10, unit 1).
+ * Which home destination is on screen: decks, the template catalog, or the
+ * person's cross-project Rough Canvas workspace.
  *
  * They used to share one scroll, with 24 template cards above the decks, so
  * opening the home to find yesterday's deck meant scrolling past a catalog, and
@@ -12,7 +12,7 @@
  * older build wrote.
  */
 
-export type HomeDestination = "projects" | "templates";
+export type HomeDestination = "projects" | "templates" | "drafts" | "tasks" | "media";
 
 export const DEFAULT_DESTINATION: HomeDestination = "projects";
 
@@ -21,9 +21,9 @@ const STORAGE_KEY = "deckastra.home";
 export function loadDestination(storage: Pick<Storage, "getItem"> | undefined = safeStorage()): HomeDestination {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
-    // Only the two known words count. Anything else reads as Projects: a person
+    // Only known destinations count. Anything else reads as Projects: a person
     // who opens the app is more often looking for a deck than for a template.
-    return raw === "templates" || raw === "projects" ? raw : DEFAULT_DESTINATION;
+    return raw === "templates" || raw === "drafts" || raw === "tasks" || raw === "media" || raw === "projects" ? raw : DEFAULT_DESTINATION;
   } catch {
     return DEFAULT_DESTINATION;
   }

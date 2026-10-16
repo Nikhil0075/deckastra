@@ -241,3 +241,60 @@ def test_an_ordinary_unmoved_approval_still_works(client, auth, deck):
         f"/v1/presentations/{presentation_id}/proposals/{proposal}/approve", headers=auth
     )
     assert approved.status_code == 200, approved.text
+
+
+# ------------------------------------------------------- rebase meets an edit
+
+
+def test_a_rebase_never_puts_an_agents_old_words_over_a_newer_edit(client, auth, deck):
+    """Release E2E step 5 (2026-10-17).
+
+    The approver names the version on screen, so the head check passes; the
+    proposal replaces the title the person retyped after it was written, and
+    approving it would silently put the agent's words back. It is refused as
+    stale and the person's edit stands.
+    """
+    presentation_id = deck["presentation_id"]
+    base = head_version(client, auth, presentation_id)
+    proposal = client.post(
+        f"/v1/presentations/{presentation_id}/proposals",
+        headers=auth,
+        json={
+            "operations": [{"op": "replace", "path": "/metadata/title", "value": "Agent title"}]
+            + [{"op": "remove", "path": f"/slides/id:{deck['document']['slides'][0]['id']}/elements/id:{element['id']}"}
+               for element in deck["document"]["slides"][0]["elements"][:2]],
+            "intent": "Retitle and tidy",
+            "expected_version_id": base,
+        },
+    ).json()
+    assert proposal["outcome"] == "pending", proposal
+
+    moved = user_edit(client, auth, presentation_id, base, "My title")
+    assert moved.status_code == 200, moved.text
+    now = head_version(client, auth, presentation_id)
+
+    refused = client.post(
+        f"/v1/presentations/{presentation_id}/proposals/{proposal['transaction_id']}/approve",
+        headers=auth,
+        json={"expected_version_id": now},
+    )
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["detail"]["code"] == "E_PROPOSAL_STALE"
+    assert "/metadata/title" in refused.json()["detail"]["message"]
+    document = client.get(f"/v1/presentations/{presentation_id}", headers=auth).json()["document"]
+    assert document["metadata"]["title"] == "My title"
+
+
+def test_an_edit_elsewhere_still_rebases(client, auth, deck):
+    """The other half: an unrelated edit must not strand the proposal."""
+    presentation_id = deck["presentation_id"]
+    base = head_version(client, auth, presentation_id)
+    proposal = pending_removal(client, auth, deck, base)
+    assert user_edit(client, auth, presentation_id, base, "Elsewhere").status_code == 200
+    now = head_version(client, auth, presentation_id)
+    approved = client.post(
+        f"/v1/presentations/{presentation_id}/proposals/{proposal}/approve",
+        headers=auth,
+        json={"expected_version_id": now},
+    )
+    assert approved.status_code == 200, approved.text

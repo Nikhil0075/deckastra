@@ -8,6 +8,7 @@ import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import type { PendingProposal, ProposalDetail } from "@deckastra/workspace-contracts";
 
 import { useProposals } from "../lib/use-proposals";
+import { placeWords, useStaleEdits } from "../lib/proposal-stale";
 
 import { useAssetUrls } from "../lib/asset-urls";
 import { useBrowserMeasurer } from "../lib/measurer";
@@ -228,6 +229,8 @@ function ProposalCard({
   const afterIndex = slideId ? (preview?.after?.slides.findIndex((slide) => slide.id === slideId) ?? -1) : -1;
   const position = afterIndex >= 0 ? afterIndex + 1 : document.slides.findIndex((slide) => slide.id === slideId) + 1;
   const rebased = Boolean(detail?.base_version_id && detail.base_version_id !== currentVersionId());
+  const stalePaths = useStaleEdits(client, presentationId, detail, document, currentVersionId());
+  const stalePlaces = stalePaths ? placeWords(stalePaths, document) : undefined;
 
   return (
     <article className="dk-proposal" data-testid="proposal-card" data-proposal-id={proposal.id}>
@@ -308,9 +311,13 @@ function ProposalCard({
       {preview?.groundedIn.length ? (
         <p className="dk-proposal__grounded">Grounded in {groundingLabel(preview.groundedIn)}</p>
       ) : null}
-      {rebased ? (
+      {stalePlaces ? (
+        <p className="dk-proposal__warning" role="status" data-testid="proposal-stale">
+          Written before you edited {stalePlaces}. Applying it would undo that edit. Reject it and ask the agent for a fresh proposal.
+        </p>
+      ) : rebased ? (
         <p className="dk-proposal__reason">
-          Written against an earlier version. The pictures show it applied to the deck as it is now.
+          Written against an earlier version and rebased: the pictures show it applied to the deck as it is now.
         </p>
       ) : null}
 
@@ -324,7 +331,7 @@ function ProposalCard({
         <Button size="sm" variant="secondary" disabled={busy} onClick={onReject} data-testid="proposal-reject">
           Reject
         </Button>
-        <Button size="sm" variant="primary" disabled={busy} onClick={onApply} data-testid="proposal-apply">
+        <Button size="sm" variant="primary" disabled={busy || Boolean(stalePlaces)} onClick={onApply} data-testid="proposal-apply">
           {applying ? "Applying…" : "Apply"}
         </Button>
       </div>

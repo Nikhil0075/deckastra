@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import type { EditorApi } from "../lib/useEditor";
 import { Button, IconButton, Section, StatusChip } from "../ui";
 import { CreditsMeter } from "./CreditsMeter";
+import { AskAgentSection } from "./AskAgentSection";
 import { LanguagesPanel } from "./LanguagesPanel";
 import { ProposalsPanel } from "./ProposalsPanel";
 
@@ -77,6 +78,10 @@ export function AssistantPanel({
           onReview={onReview}
           onOpenHistory={onOpenHistory}
         />
+      </Section>
+
+      <Section title="Ask agent" defaultOpen data-testid="ai-ask-agent">
+        <AskAgentSection editor={editor} presentationId={presentationId} />
       </Section>
 
       <div ref={languages}>

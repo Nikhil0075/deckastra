@@ -218,7 +218,8 @@ def suggest_styles(
     loaded = store.load_presentation(session, presentation_id)
     if loaded.version_id != request.expected_version_id:
         raise HTTPException(status_code=409, detail={"message": "The deck changed. Read it again before suggesting styles.", "code": "E310", "current_version_id": loaded.version_id})
-    slide_id = request.slide_id or str((loaded.document.get("slides") or [{}])[0].get("id") or "")
+    slides = loaded.document.get("slides") or []
+    slide_id = request.slide_id or str((slides or [{}])[0].get("id") or "")
     if not any(slide.get("id") == slide_id for slide in loaded.document.get("slides") or []):
         raise HTTPException(status_code=404, detail="No such slide in this deck.")
     labels = [option.label.casefold() for option in request.options]
@@ -238,7 +239,14 @@ def suggest_styles(
         if errors:
             raise HTTPException(status_code=422, detail={"message": f'{option.label} would make an invalid deck.', "errors": errors[:3]})
         preview = copy.deepcopy(candidate)
-        preview["slides"] = [copy.deepcopy(next(slide for slide in candidate["slides"] if slide["id"] == slide_id))]
+        # A request may be made while a dense body slide is selected, but that
+        # is a poor and inconsistent surface for comparing type and colour. A
+        # style set therefore always uses this deck's front slide: the same
+        # authored cover, words and geometry for every option, with only the
+        # proposed deck-wide style applied. `slide_id` still records where the
+        # request was made; it does not decide which slide becomes the swatch.
+        # This is intentionally not a separately invented mock cover (2026-10-16).
+        preview["slides"] = [copy.deepcopy(candidate["slides"][0])]
         stored.append({
             "id": new_id("opt"), "label": option.label, "rationale": option.rationale,
             "design_language": resolved.design_language, "theme_key": resolved.theme_key,

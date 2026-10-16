@@ -168,15 +168,10 @@ function checkContrast(node: SceneNode, scene: SlideScene): AccessibilityIssue[]
 const ROW_TOLERANCE = 40;
 
 function checkReadingOrder(scene: SlideScene): AccessibilityIssue[] {
-  const nodes = flatten(scene.nodes).filter(
-    (node) => !node.flags.hidden && node.a11y.role !== "presentation",
-  );
+  const nodes = meaningfulReadingNodes(scene);
   if (nodes.length < 2) return [];
 
-  const visual = [...nodes].sort((left, right) => {
-    const sameRow = Math.abs(left.bounds.y - right.bounds.y) <= ROW_TOLERANCE;
-    return sameRow ? left.bounds.x - right.bounds.x : left.bounds.y - right.bounds.y;
-  });
+  const visual = visualReadingOrder(scene);
 
   const announced = [...nodes].sort((left, right) => left.a11y.order - right.a11y.order);
 
@@ -193,9 +188,26 @@ function checkReadingOrder(scene: SlideScene): AccessibilityIssue[] {
       message:
         "A screen reader reads this slide in a different order from the one it is " +
         "laid out in, so the two audiences get different slides.",
-      suggestedFix: "Reorder the elements in the layers panel to match the visual order.",
+      suggestedFix: "Set the reading order to match the visual order without changing the layers.",
     },
   ];
+}
+
+/** Meaningful nodes in the order a sighted reader encounters them. */
+export function visualReadingOrder(scene: SlideScene): SceneNode[] {
+  return meaningfulReadingNodes(scene).sort((left, right) => {
+    const sameRow = Math.abs(left.bounds.y - right.bounds.y) <= ROW_TOLERANCE;
+    return sameRow ? left.bounds.x - right.bounds.x : left.bounds.y - right.bounds.y;
+  });
+}
+
+function meaningfulReadingNodes(scene: SlideScene): SceneNode[] {
+  // Groups are flattened into separately positioned DOM nodes by SlideView;
+  // their children carry the actual words and descriptions. Including the
+  // empty group wrapper here produced phantom reading-order warnings.
+  return flatten(scene.nodes).filter(
+    (node) => !node.flags.hidden && node.a11y.role !== "presentation" && node.a11y.role !== "group",
+  );
 }
 
 // ------------------------------------------------------------------ summary

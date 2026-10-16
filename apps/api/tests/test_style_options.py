@@ -73,6 +73,19 @@ def test_suggestions_draw_real_covers_and_store_nothing_in_the_deck(client, auth
     assert read["version_id"] == deck["version_id"]
 
 
+def test_selected_body_slide_still_previews_the_deck_cover(client, auth, deck):
+    body = suggestions(deck)
+    body["slide_id"] = deck["document"]["slides"][1]["id"]
+    response = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/style-options",
+        headers=auth, json=body,
+    )
+    assert response.status_code == 200, response.text
+    option_set = response.json()
+    assert option_set["slide_id"] == deck["document"]["slides"][1]["id"]
+    assert option_set["options"][0]["preview_document"]["slides"][0]["id"] == deck["document"]["slides"][0]["id"]
+
+
 def test_palette_below_aa_is_refused_with_the_option_named(client, auth, deck):
     body = suggestions(deck)
     body["options"][0] = {

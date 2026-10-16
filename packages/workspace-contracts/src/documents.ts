@@ -120,6 +120,10 @@ export interface PreviewResult {
   changed_slide_ids: string[];
   /** True when any text fell back to the estimator rather than a measurement. */
   metrics_estimated: boolean;
+  /** Render degradations such as an asset that could not be decoded. */
+  warnings: string[];
+  /** True when identical versioned pixels were reused instead of launching another browser. */
+  cache_hit?: boolean;
   /** The version a previewed proposal was written against, when one was named. */
   proposal_base_version_id?: string | null;
   /**
@@ -147,6 +151,8 @@ export interface MotionPreviewResult {
   frame_times_ms: number[];
   frame_count: number;
   metrics_estimated: boolean;
+  warnings: string[];
+  cache_hit?: boolean;
 }
 
 export interface CreatePresentationRequest {

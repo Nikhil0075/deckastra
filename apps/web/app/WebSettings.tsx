@@ -7,6 +7,7 @@ import {
   AiTaskSettings,
   AppearanceSettings,
   CreditsMeter,
+  StorageUsage,
   LanguageVoiceSettings,
   SettingsShell,
   WorkspaceSettings,
@@ -59,6 +60,8 @@ export function WebSettings({
             <h3 className="dk-settings__heading">AI credits</h3>
             <CreditsMeter variant="card" />
             <p className="dk-muted">Credits pay for AI help only. Editing, checks and exports never use them.</p>
+            <h3 className="dk-settings__heading">Storage</h3>
+            <StorageUsage />
           </div>
         ) : null,
         workspaces: <WorkspaceSettings online />,

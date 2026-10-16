@@ -59,6 +59,16 @@ export interface AssistantRun {
 }
 export interface AssistantEvent { sequence: number; status: string; message?: string; provider?: string; task?: string; reason?: string; at: string }
 export interface AssistantCapabilities { provider: string; available: boolean; reason: string | null; spend?: { ceiling_usd: number; used_usd: number; reserved_usd: number; remaining_usd: number; calls: number } | null; tasks: Record<AssistantTask, { available: boolean; provider: string; model?: string | null; inputs?: string[]; reason: string | null; minimum_reservation_usd?: number | null }> }
-export interface AssistantAsset { id: string; filename: string | null; kind?: string; content_type?: string | null; tags: string[]; description: string | null; metadata_version: number; sha256?: string | null; dhash64?: string | null; change_id?: string }
+export interface AssistantAsset {
+  id: string; filename: string | null; kind?: string; content_type?: string | null; tags: string[]; description: string | null; metadata_version: number; sha256?: string | null; dhash64?: string | null; change_id?: string;
+  /** Described by the service on every read; optional for older services. */
+  bytes?: number; width?: number | null; height?: number | null; duration_ms?: number | null;
+  /** Every retained version that cites it, history included: the sweeper's count, not "decks now". */
+  reference_count?: number; deleted_at?: string | null; created_at?: string | null;
+}
+/** `GET /v1/assets/{id}/uses`: the decks whose current version shows a file. */
+export interface AssetUses { asset_id: string; decks: { presentation_id: string; title: string; slide_ids: string[]; deleted: boolean }[]; partial: boolean }
+/** The Media page's filters. `deleted` is its trash. */
+export interface AssetListRequest { workspace_id?: string; filter?: "all" | "unused" | "untagged" | "deleted"; kind?: "image" | "video" | "audio" | "font" | "document"; order?: "oldest" | "newest"; cursor?: string; q?: string; limit?: number }
 export interface AssetMetadataUpdate { expected_metadata_version: number; filename?: string | null; tags?: string[]; description?: string | null }
 export interface DesignCheckResult { version_id: string; estimated: boolean; findings: { code: string; severity: string; slideId: string; elementId?: string; title: string; message: string; estimated: boolean; suggestedFix: PatchOperation[] }[] }

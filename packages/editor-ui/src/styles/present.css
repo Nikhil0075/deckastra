@@ -313,8 +313,6 @@
   display: flex;
   gap: var(--dk-space-1);
   overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-ink) transparent;
 }
 .dk-presenter__jumpto {
   flex: none;
@@ -372,8 +370,6 @@
   font-size: var(--dk-text-lg);
   line-height: 1.55;
   white-space: pre-wrap;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-ink) transparent;
 }
 .dk-richnotes p,
 .dk-richnotes h4,

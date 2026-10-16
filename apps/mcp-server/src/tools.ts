@@ -167,6 +167,41 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       operation_key: `image-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`, instruction: prompt,
       scope: { kind: "slide", slide_ids: [slide_id], element_ids: [] }, image_quote_token: quote_token, style_source }));
   }));
+  server.registerTool("image_import_prepare", {
+    title: "Prepare an externally generated image",
+    description:
+      "Use this after generating an image with your own image tool, when Deckastra credits must not be used. " +
+      "It reserves a short-lived direct PUT upload bound to this exact deck version, slide and prompt. " +
+      "Upload the file bytes to the returned URL with the returned headers; do not put image bytes or a local path in another model message.",
+    inputSchema: {
+      presentation_id: z.string().min(1), expected_version_id: z.string().min(1), slide_id: z.string().min(1),
+      filename: z.string().min(1).max(255), content_type: z.enum(["image/png", "image/jpeg", "image/webp"]),
+      size_bytes: z.number().int().min(1).max(20 * 1024 * 1024), width: z.number().int().min(1).max(16_000), height: z.number().int().min(1).max(16_000),
+      prompt: z.string().min(1).max(4000), style_source: z.enum(["deck", "prompt"]).default("deck"),
+    },
+  }, async ({ presentation_id, ...request }) => guard(async () => {
+    const prepared = await client.agent.prepareImageImport(presentation_id, request);
+    const uploadUrl = /^https?:\/\//i.test(prepared.upload_url) ? prepared.upload_url : `${attached.baseUrl}${prepared.upload_url}`;
+    return json({
+      ...prepared,
+      upload_url: uploadUrl,
+      charged_credits: 0,
+      next: "PUT the exact generated file bytes to upload_url with headers, then call image_import_propose with this upload_token and the identical prompt.",
+    });
+  }));
+  server.registerTool("image_import_propose", {
+    title: "Propose an externally generated image",
+    description:
+      "Finalize a prepared external image upload. The image appears in Deckastra Media immediately and its placement becomes a pending side-by-side proposal for the user; this tool cannot approve it and uses no Deckastra generation credits.",
+    inputSchema: {
+      presentation_id: z.string().min(1), upload_token: z.string().min(20).max(12_000),
+      prompt: z.string().min(1).max(4000), provider: z.string().min(1).max(120).default("external-image-tool"),
+    },
+  }, async ({ presentation_id, upload_token, prompt, provider }) => guard(async () => json(
+    await client.agent.completeImageImport(presentation_id, {
+      upload_token, prompt, provider, client_label: client.clientId.replace(/^mcp:/, ""),
+    }),
+  )));
 
   // -------------------------------------------------------- deterministic creation
 
@@ -252,7 +287,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     role: z.enum(["headline", "subtitle", "body", "bullet", "metric", "quote", "chart", "diagram", "timeline", "image"]),
     text: z.string().max(4_000).optional(),
     data: z.unknown().optional(),
-    image: z.object({ subject: z.string().min(1).max(400), style_source: z.enum(["deck", "prompt"]).default("deck") }).strict().optional(),
+    image: z.object({ subject: z.string().min(1).max(400), style_source: z.enum(["deck", "prompt"]).default("deck"), asset_id: z.string().max(64).optional() }).strict().optional(),
   }).strict();
   const draftCard = z.object({
     id: z.string().min(1).max(64),
@@ -262,6 +297,8 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     motion: z.object({ pacing: z.string().min(1).max(40), emphasis_roles: z.array(z.string()).max(8).default([]) }).strict().optional(),
     notes: z.string().max(4_000).optional(),
     locked: z.boolean().optional(),
+    source_slide_id: z.string().max(64).optional(),
+    source_fingerprint: z.string().max(64).optional(),
   }).strict();
   const draftBody = z.object({
     brief: z.string().max(8_000).optional(),
@@ -269,11 +306,12 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     cards: z.array(draftCard).max(60),
   }).strict();
   const draftOperation = z.object({
-    op: z.enum(["add", "remove", "move", "set_blocks", "add_alternative", "choose_alternative", "set_locked"]),
+    op: z.enum(["add", "remove", "move", "set_blocks", "set_layout", "add_alternative", "choose_alternative", "set_locked"]),
     card_id: z.string().min(1).max(64).optional(),
     card: draftCard.optional(),
     index: z.number().int().min(0).max(60).optional(),
     blocks: z.array(draftBlock).max(30).optional(),
+    layout: z.string().min(1).max(80).optional(),
     alternative: z.array(draftBlock).max(30).optional(),
     alternative_index: z.number().int().min(0).max(4).optional(),
     locked: z.boolean().optional(),
@@ -320,7 +358,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     "draft_update",
     {
       title: "Revise a rough slide board",
-      description: "Replace the whole geometry-free body or apply card operations using optimistic revision concurrency. Locked cards cannot be changed by an agent. This never builds or changes a deck.",
+      description: "Replace the whole geometry-free body or apply card operations using optimistic revision concurrency. Use set_layout to convert a card's semantic blocks together with its layout; the previous blocks remain recoverable as an alternative. Locked cards cannot be changed by an agent. This never builds or changes a deck.",
       inputSchema: {
         draft_id: z.string().min(1),
         revision: z.number().int().min(1),
@@ -783,6 +821,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       inputSchema: {
         presentation_id: z.string().min(1),
         slide_id: z.string().min(1),
+        expected_version_id: z.string().min(1).optional().describe("The version returned by deck_outline or document_read. A newer deck is refused instead of rendered silently."),
         proposal_id: z
           .string()
           .min(1)
@@ -790,11 +829,11 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
           .describe("A pending proposal, to see what it would produce. Nothing is applied."),
       },
     },
-    async ({ presentation_id, slide_id, proposal_id }) =>
+    async ({ presentation_id, slide_id, expected_version_id, proposal_id }) =>
       guard(async () => {
         const preview = await client.documents.preview(
           presentation_id,
-          { slide_id, ...(proposal_id ? { proposal_id } : {}) },
+          { slide_id, ...(expected_version_id ? { expected_version_id } : {}), ...(proposal_id ? { proposal_id } : {}) },
           { fresh: true },
         );
         // Only said when there is a proposal. "Other slides this proposal
@@ -810,9 +849,14 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
             (proposal_id
               ? ` — with proposal ${proposal_id} applied to a copy. Other slides it changes: ${also}.`
               : " — the deck as it stands.") +
+            (proposal_id && preview.rebased
+              ? " Warning: the proposal was written against an earlier version; this rebased picture cannot be approved without a fresh proposal."
+              : "") +
             (preview.metrics_estimated
               ? " Some text was estimated rather than measured; treat spacing as approximate."
-              : ""),
+              : "") +
+            (preview.warnings?.length ? ` Render warnings: ${preview.warnings.join("; ")}` : "") +
+            (preview.cache_hit ? " Identical versioned pixels were reused from the render cache." : ""),
         );
       }),
   );
@@ -829,14 +873,15 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       inputSchema: {
         presentation_id: z.string().min(1),
         slide_id: z.string().min(1),
+        expected_version_id: z.string().min(1).optional().describe("The version returned by deck_outline or document_read."),
         frame_count: z.number().int().min(3).max(8).default(6),
       },
     },
-    async ({ presentation_id, slide_id, frame_count }) =>
+    async ({ presentation_id, slide_id, expected_version_id, frame_count }) =>
       guard(async () => {
         const preview = await client.documents.motionPreview(
           presentation_id,
-          { slide_id, frame_count },
+          { slide_id, frame_count, ...(expected_version_id ? { expected_version_id } : {}) },
           { fresh: true },
         );
         return image(
@@ -846,7 +891,9 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
             `(${preview.frame_times_ms.join(", ")}ms), ${preview.width}×${preview.height}.` +
             (preview.metrics_estimated
               ? " Some text was estimated rather than measured; treat spacing as approximate."
-              : ""),
+              : "") +
+            (preview.warnings?.length ? ` Render warnings: ${preview.warnings.join("; ")}` : "") +
+            (preview.cache_hit ? " Identical versioned pixels were reused from the render cache." : ""),
         );
       }),
   );
@@ -1315,19 +1362,21 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     {
       title: "Attach proposal alternatives to a user question",
       description:
-        "Answer a deck request with one to three pending proposals, or a draft request with the newer draft revision produced by draft_update. This never approves a proposal or builds a draft.",
+        "Answer a deck request with one to three pending proposals, with written findings, or both; or a draft request with the newer draft revision produced by draft_update. A request of kind `review` (or one that says to change nothing) is answered with `findings` alone: a short numbered list the person reads in Agent Tasks. This never approves a proposal or builds a draft.",
       inputSchema: {
         request_id: z.string().min(1),
         proposal_ids: z.array(z.string().min(1)).min(1).max(3).optional(),
+        findings: z.string().min(1).max(8_000).optional(),
         draft_revision: z.number().int().min(2).optional(),
       },
     },
-    async ({ request_id, proposal_ids, draft_revision }) =>
+    async ({ request_id, proposal_ids, findings, draft_revision }) =>
       guard(async () => {
-        if (Boolean(proposal_ids) === Boolean(draft_revision)) return failure("Give proposal_ids for a deck request or draft_revision after updating a draft.");
+        const deckAnswer = Boolean(proposal_ids) || Boolean(findings);
+        if (deckAnswer === Boolean(draft_revision)) return failure("Give proposal_ids and/or findings for a deck request, or draft_revision after updating a draft.");
         return json(draft_revision
           ? await client.drafts.answerRequest(request_id, draft_revision)
-          : await client.agent.answerRequest(request_id, proposal_ids!));
+          : await client.agent.answerRequest(request_id, proposal_ids ?? [], findings ? { findings } : undefined));
       }),
   );
 

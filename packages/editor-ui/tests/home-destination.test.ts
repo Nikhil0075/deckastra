@@ -5,13 +5,17 @@ import { loadDestination, saveDestination } from "../src/lib/home-destination";
 const memory = (value: string | null) => ({ getItem: () => value });
 
 describe("the remembered home destination", () => {
-  it("restores either destination it saved", () => {
+  it("restores each destination it saved", () => {
     const store = new Map<string, string>();
     const storage = { getItem: (key: string) => store.get(key) ?? null, setItem: (key: string, value: string) => void store.set(key, value) };
     saveDestination("templates", storage);
     expect(loadDestination(storage)).toBe("templates");
     saveDestination("projects", storage);
     expect(loadDestination(storage)).toBe("projects");
+    saveDestination("drafts", storage);
+    expect(loadDestination(storage)).toBe("drafts");
+    saveDestination("tasks", storage);
+    expect(loadDestination(storage)).toBe("tasks");
   });
 
   it("opens on Projects when nothing usable is saved", () => {

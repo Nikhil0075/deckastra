@@ -306,3 +306,15 @@ def test_no_grant_carries_administer(client):
         assert "administer" not in mode.scopes_for(mode.mint_grant(scopes, ttl_seconds=60))
     # The app's own credential has it, which is how the desktop revokes.
     assert "administer" in mode.scopes_for(SECRET)
+
+
+def test_the_window_can_see_when_an_agent_last_reached_it(client, deck, monkeypatch):
+    # Release E2E step 3 (2026-10-17): "Deckastra shows the agent connection".
+    monkeypatch.setattr(local_mode, "_agent_last_seen", None)
+    assert client.get("/v1/local/agent-activity", headers=bearer(SECRET)).json()["last_request_at"] is None
+    # The app's own requests are not an agent's.
+    client.get("/v1/account", headers=bearer(SECRET))
+    assert client.get("/v1/local/agent-activity", headers=bearer(SECRET)).json()["last_request_at"] is None
+    token = local_mode.mint_grant({"read"}, ttl_seconds=60)
+    assert client.get("/v1/account", headers=bearer(token)).status_code == 200
+    assert client.get("/v1/local/agent-activity", headers=bearer(SECRET)).json()["last_request_at"] is not None

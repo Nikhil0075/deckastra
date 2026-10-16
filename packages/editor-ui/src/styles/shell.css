@@ -140,10 +140,29 @@
   color: var(--dk-ink-muted);
 }
 .dk-appbar__deck {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px var(--dk-space-1);
+  border: var(--dk-line) solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: text;
+}
+.dk-appbar__deck:hover {
+  border-color: var(--dk-rule-soft);
+}
+/* Renaming in place: the field takes the name's room, no more. */
+.dk-deck-title-input {
+  min-width: 120px;
+  max-width: 320px;
+  width: 100%;
+  height: var(--dk-control-sm);
+  font-weight: 600;
 }
 .dk-appbar__group {
   display: flex;
@@ -582,8 +601,6 @@
 
 .dk-dock {
   padding: 0 var(--dk-space-2);
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-ink) transparent;
 }
 /* MotionPanel draws its own top rule; the dock already has one. */
 .dk-dock > div:first-child {
@@ -604,8 +621,6 @@
   overflow-x: hidden;
   background: var(--dk-ground);
   font-size: var(--dk-text-sm);
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-ink) transparent;
 }
 .dk-modepanel {
   display: flex;
@@ -623,25 +638,54 @@
 .dk-library .dk-tabs__tab {
   padding: 0 var(--dk-space-2);
 }
-/* A row of choices in a side panel (the twelve transition kinds) wraps onto a
-   grid instead of running past the column. The bar's mode switch is not in a
-   panel and keeps its single row. */
+/* A row of choices in a side panel (the twelve transition kinds, Ask agent's
+   kinds) wraps onto a grid instead of running past the column. Each choice is
+   its own outlined cell with a gap between: the first version drew the rules
+   with the container's background showing through a 1px gap, so a short last
+   row left solid black cells, and uppercase two-word labels ("BLUR DISSOLVE")
+   broke mid-cell (2026-10-17). The bar's mode switch is not in a panel and
+   keeps its single row. */
 .dk-panel .dk-segmented,
 .dk-library .dk-segmented {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-  gap: var(--dk-line);
-  background: var(--dk-rule);
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: var(--dk-space-1);
+  border: 0;
+  background: transparent;
 }
 .dk-panel .dk-segmented__item,
 .dk-library .dk-segmented__item {
-  border-left: 0;
+  height: auto;
+  min-height: var(--dk-control-md);
+  padding: var(--dk-space-1) var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
   background: var(--dk-surface);
+  font-size: var(--dk-text-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.dk-panel .dk-segmented__item:hover:not(:disabled):not(.dk-segmented__item--checked),
+.dk-library .dk-segmented__item:hover:not(:disabled):not(.dk-segmented__item--checked) {
+  border-color: var(--dk-rule);
+  background: var(--dk-sunk);
 }
 .dk-panel .dk-segmented__item--checked,
 .dk-library .dk-segmented__item--checked {
+  border-color: var(--dk-blue);
   background: var(--dk-blue);
   color: var(--dk-on-blue);
+  font-weight: 600;
+}
+/* Unavailable reads as unavailable, not as a grey button that looks chosen. */
+.dk-panel .dk-segmented__item:disabled,
+.dk-library .dk-segmented__item:disabled {
+  border-style: dashed;
+  background: transparent;
+  color: var(--dk-ink-muted);
+  cursor: not-allowed;
 }
 /* The panel scrolls; what is in it never shrinks to fit. Motion mode stacks
    the host's motion panel and the narration sections in one column, and a
@@ -694,12 +738,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--dk-space-2);
-}
-.dk-textarea {
-  height: auto;
-  padding: var(--dk-space-2);
-  resize: vertical;
-  line-height: 1.4;
 }
 .dk-textarea--mono {
   font-family: var(--dk-font-mono);
@@ -3203,7 +3241,6 @@
   /* A short window gives the rail a vertical scrollbar; without this, that
      scrollbar's width then made it scroll sideways as well (UI audit Unit 9). */
   overflow-x: hidden;
-  scrollbar-width: thin;
 }
 .dk-rail__spacer {
   flex: 1;
@@ -3355,19 +3392,27 @@
   font-size: 12px;
   font-weight: 600;
 }
+.dk-library__filter {
+  margin: var(--dk-space-2) 0;
+}
 .dk-library__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dk-space-1);
   margin: var(--dk-space-2) 0;
 }
 .dk-chipbutton {
-  padding: 3px 10px;
-  border: var(--dk-line) solid var(--dk-rule);
-  background: transparent;
+  min-height: var(--dk-control-sm);
+  padding: 2px var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
   color: var(--dk-ink);
-  font-size: 12px;
+  font-size: var(--dk-text-sm);
   cursor: pointer;
+}
+.dk-chipbutton:hover:not(.dk-chipbutton--on) {
+  border-color: var(--dk-rule);
+  background: var(--dk-sunk);
 }
 .dk-chipbutton--on {
   background: var(--dk-blue);
@@ -4656,6 +4701,10 @@
   height: 100%;
   background: var(--dk-blue);
 }
+/* Nearly full is a finding, so it takes the finding colour. */
+.dk-credits__fill--warn {
+  background: var(--dk-red);
+}
 .dk-assistant__head .dk-credits--inline {
   margin-left: auto;
 }
@@ -4694,35 +4743,92 @@
 }
 .dk-style-options__row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: var(--dk-space-4);
   align-items: start;
 }
 .dk-style-options__card {
   display: grid;
-  gap: var(--dk-space-2);
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: var(--dk-space-3);
   min-width: 0;
-  padding: var(--dk-space-3);
+  padding: var(--dk-space-4);
   border: var(--dk-line) solid var(--dk-rule);
   background: var(--dk-surface);
+}
+.dk-style-options__card:hover {
+  border-color: var(--dk-ink-muted);
+}
+.dk-style-options__card-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--dk-space-2);
+}
+.dk-style-options__number {
+  color: var(--dk-ink-muted);
+  font-family: var(--dk-font-mono);
+  font-size: var(--dk-text-xs);
 }
 .dk-style-options__card h3,
 .dk-style-options__card p {
   margin: 0;
 }
+.dk-style-options__card h3 {
+  font-family: var(--dk-font-display);
+  font-size: var(--dk-text-lg);
+}
 .dk-style-options__card p {
   color: var(--dk-ink-muted);
   font-size: var(--dk-text-sm);
+  line-height: 1.45;
+}
+.dk-style-options__guidance {
+  max-width: 72ch;
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-sm) !important;
 }
 .dk-style-options__cover {
+  position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0;
   overflow: hidden;
   border: var(--dk-line) solid var(--dk-rule-soft);
   background: var(--dk-backdrop);
 }
 .dk-style-options__cover > [data-final-frame] {
+  width: 100%;
   max-width: 100%;
+}
+.dk-style-options__cover figcaption {
+  position: absolute;
+  right: var(--dk-space-2);
+  bottom: var(--dk-space-2);
+  padding: 3px 6px;
+  background: color-mix(in srgb, var(--dk-ink) 82%, transparent);
+  color: var(--dk-surface);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.dk-style-options__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dk-style-options__facts span {
+  padding: 3px 7px;
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-sunk);
+  color: var(--dk-ink-muted);
+  font-size: var(--dk-text-xs);
+}
+.dk-style-options__card > button {
+  width: 100%;
 }
 
 /* Draft board: intentionally a wireframe, never a miniature finished slide. */
@@ -4757,6 +4863,16 @@
 .dk-draft-block--headline { grid-column: 1 / -1; font-weight: 700; }
 .dk-draft-block--body, .dk-draft-block--quote, .dk-draft-block--image, .dk-draft-block--chart, .dk-draft-block--diagram, .dk-draft-block--timeline { grid-column: 1 / -1; }
 .dk-draft-wireframe--split .dk-draft-block--body, .dk-draft-wireframe--split .dk-draft-block--image { grid-column: auto; }
+.dk-draft-wireframe--quote { align-content: center; padding-inline: 34px; }
+.dk-draft-wireframe--quote .dk-draft-block--quote { position: relative; border: 0; background: transparent; font-family: var(--dk-font-display); font-size: 18px; font-style: italic; }
+.dk-draft-wireframe--quote .dk-draft-block--quote::before { content: "“"; position: absolute; inset: -20px auto auto -22px; color: var(--dk-blue); font-size: 44px; line-height: 1; }
+.dk-draft-wireframe--image .dk-draft-block--image, .dk-draft-wireframe--split .dk-draft-block--image { min-height: 92px; display: grid; align-content: end; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--dk-blue) 10%, var(--dk-surface)) 0 10px, color-mix(in srgb, var(--dk-blue) 4%, var(--dk-surface)) 10px 20px); }
+.dk-draft-wireframe--image .dk-draft-block--headline { align-self: end; background: color-mix(in srgb, var(--dk-ink) 82%, transparent); color: var(--dk-surface); }
+.dk-draft-block--chart code, .dk-draft-block--diagram code, .dk-draft-block--timeline code, .dk-draft-block--metric code { display: grid; min-height: 62px; place-items: center; border: 1px dashed var(--dk-rule); color: var(--dk-ink-muted); background: var(--dk-surface); }
+.dk-draft-wireframe--metrics { grid-template-columns: repeat(3, 1fr); }
+.dk-draft-wireframe--metrics .dk-draft-block--metric { grid-column: auto; text-align: center; }
+.dk-draft-wireframe--timeline .dk-draft-block--timeline code { border-top: 3px solid var(--dk-blue); }
+.dk-draft-wireframe--diagram .dk-draft-block--diagram code { border-width: 2px; }
 .dk-draft-card__warning { margin: 8px 2px 0; color: var(--dk-on-yellow); background: var(--dk-yellow); padding: 4px 6px; font-size: 12px; }
 .dk-draft-card__alternatives { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--dk-ink-muted); font-size: 12px; }
 .dk-draft-card__ask { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dk-rule-soft); }
@@ -5064,7 +5180,6 @@
 }
 .dk-generate__field textarea {
   width: 100%;
-  resize: vertical;
   /* `.dk-input` fixes a field's height, and `rows` alone left the exact
      prompt two lines tall: five lines of prompt read through a slot. */
   min-height: 4.5em;
@@ -5129,6 +5244,18 @@
   font-size: var(--dk-text-xs);
 }
 
+.dk-media-card--button {
+  color: var(--dk-ink);
+  font-family: var(--dk-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.dk-media-card--button:hover:not(:disabled) {
+  border-color: var(--dk-blue);
+}
+.dk-media-card--button:disabled {
+  cursor: progress;
+}
 .dk-media-card img {
   width: 100%;
   aspect-ratio: 16 / 10;
@@ -5158,4 +5285,47 @@
 .dk-details[open] {
   display: grid;
   gap: var(--dk-space-2);
+}
+
+/* Ask agent, deck level (2026-10-17). */
+.dk-askagent {
+  display: grid;
+  gap: var(--dk-space-2);
+}
+.dk-askagent > .dk-btn {
+  justify-self: start;
+}
+.dk-askagent__list {
+  display: grid;
+  gap: var(--dk-space-2);
+  margin: var(--dk-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dk-askagent__item {
+  display: grid;
+  gap: var(--dk-space-1);
+  padding: var(--dk-space-2);
+  border: var(--dk-line) solid var(--dk-rule-soft);
+  background: var(--dk-surface);
+  font-size: var(--dk-text-sm);
+}
+.dk-askagent__message {
+  color: var(--dk-ink-muted);
+}
+/* The agent's own words, kept as written: line breaks are its list. */
+.dk-askagent__findings,
+.dk-agent-task-card__findings {
+  max-height: 16em;
+  overflow-y: auto;
+  padding: var(--dk-space-2);
+  border-left: var(--dk-line-strong) solid var(--dk-blue);
+  background: var(--dk-ground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.dk-style-options__again {
+  display: flex;
+  justify-content: center;
+  padding: var(--dk-space-3) 0;
 }

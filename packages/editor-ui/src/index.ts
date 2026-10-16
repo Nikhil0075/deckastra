@@ -32,6 +32,7 @@ export {
   type SettingsSectionId,
 } from "./components/SettingsShell";
 export { CreditsMeter } from "./components/CreditsMeter";
+export { StorageUsage, formatBytes } from "./components/StorageUsage";
 export { AgentSetupGuide, agentConfiguration, type AgentLauncher } from "./components/AgentSetupGuide";
 export { useChromeTheme } from "./lib/chrome-theme";
 export { AccountDeletionSettings, AiTaskSettings, deletionProblem } from "./components/CloudAccountSettings";

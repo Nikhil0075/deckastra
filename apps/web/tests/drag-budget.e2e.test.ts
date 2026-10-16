@@ -168,10 +168,10 @@ describe.skipIf(!ENABLED)("drag frame budget", () => {
 
     // The shell reports the last gesture's frame times; reading the number the
     // product shows is better than reading one the test computed itself.
-    const readout = page!.locator("text=/Last drag: .* p95/");
+    const readout = page!.locator('[aria-label^="Last drag:"]');
     await readout.waitFor({ timeout: 10_000 });
 
-    const text = (await readout.textContent()) ?? "";
+    const text = (await readout.getAttribute("aria-label")) ?? "";
     const p95 = Number(/Last drag: ([\d.]+)ms/.exec(text)?.[1]);
     const frames = Number(/over (\d+) frames/.exec(text)?.[1]);
     const droppedPercent = Number(/([\d.]+)% dropped/.exec(text)?.[1]);

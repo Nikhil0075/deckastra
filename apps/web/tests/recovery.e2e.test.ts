@@ -19,8 +19,12 @@ async function createDeck() {
   const created = await request("/v1/decks/from-template", { template_id: "technical-architecture", title: "Recovery browser regression" });
   const id = created.presentation_id as string;
   await page.goto(`${WEB}/edit/${id}`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Rect", exact: true }).waitFor({ timeout: 60_000 });
+  await page.getByTestId("tool-shapes").waitFor({ timeout: 60_000 });
   return { id, document: created.document as PresentationDocument, version: created.version_id as string };
+}
+async function addRectangle(tab = page) {
+  await tab.getByTestId("tool-shapes").click();
+  await tab.getByTestId("library-shapes").getByRole("button", { name: "Add rectangle", exact: true }).click();
 }
 async function blockSaves(id: string) {
   await page.route(`**/v1/presentations/${id}/transactions`, route =>
@@ -64,7 +68,7 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
     const deck = await createDeck();
     const before = await request(`/v1/presentations/${deck.id}`);
     await blockSaves(deck.id);
-    await page.getByRole("button", { name: "Rect", exact: true }).click();
+    await addRectangle();
     const local = await localRecord(deck.id);
     const addedId = local.document.slides[0].elements.at(-1).id;
     await request(`/v1/presentations/${deck.id}/transactions`, {
@@ -91,7 +95,7 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
   it("requires a choice for the same property changed by both writers", async () => {
     const deck = await createDeck();
     // Add a shape through the editor and wait for its acknowledged version.
-    await page.getByRole("button", { name: "Rect", exact: true }).click();
+    await addRectangle();
     const initial = await localRecord(deck.id);
     const element = initial.document.slides[0].elements.at(-1);
     await page.waitForFunction(key => localStorage.getItem(key) === null, await journalKey(deck.id));
@@ -121,7 +125,7 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
   it("isolates a duplicate tab's journal and recovers the first tab's work after it closes", async () => {
     const deck = await createDeck();
     await blockSaves(deck.id);
-    await page.getByRole("button", { name: "Rect", exact: true }).click();
+    await addRectangle();
     const firstRecord = await localRecord(deck.id);
     const firstKey = await journalKey(deck.id);
     const firstElement = firstRecord.document.slides[0].elements.at(-1).id;
@@ -132,14 +136,14 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
     const second = await popup;
     second.on("dialog", dialog => void dialog.accept());
     try {
-      await second.getByRole("button", { name: "Rect", exact: true }).waitFor({ timeout: 60_000 });
+      await second.getByTestId("tool-shapes").waitFor({ timeout: 60_000 });
       const secondKey = await journalKey(deck.id, second);
       expect(secondKey).not.toBe(firstKey);
       // The copies notice is one line until opened.
       await second.getByTestId("recovery-toggle").click();
       const recoverButton = second.getByRole("button", { name: /^Recover copy:/ });
       expect(await recoverButton.isDisabled()).toBe(true);
-      await second.getByRole("button", { name: "Rect", exact: true }).click();
+      await addRectangle(second);
       const secondRecord = await localRecord(deck.id, second);
       const secondElement = secondRecord.document.slides[0].elements.at(-1).id;
       expect(secondElement).not.toBe(firstElement);
@@ -160,7 +164,7 @@ describe.skipIf(!ENABLED)("conflict recovery browser journey", () => {
       expect(combined.document.slides[0].elements.some((e: { id: string }) => e.id === secondElement)).toBe(true);
       expect(await second.evaluate(key => localStorage.getItem(key), firstKey)).toBeNull();
       await second.reload({ waitUntil: "domcontentloaded" });
-      await second.getByRole("button", { name: "Rect", exact: true }).waitFor();
+      await second.getByTestId("tool-shapes").waitFor();
       expect(await second.evaluate(key => localStorage.getItem(key), secondKey)).toBeNull();
     } finally {
       // Keep the shared harness alive for later journeys even after the original

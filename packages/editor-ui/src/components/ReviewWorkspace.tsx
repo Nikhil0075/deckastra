@@ -9,6 +9,7 @@ import { useAssetUrls } from "../lib/asset-urls";
 import { useBrowserMeasurer } from "../lib/measurer";
 import { groundingLabel, previewProposal, proposalSource } from "../lib/proposal-preview";
 import { useProposals } from "../lib/use-proposals";
+import { placeWords, useStaleEdits } from "../lib/proposal-stale";
 import type { EditorApi } from "../lib/useEditor";
 import { Button, IconButton, Segmented, StatusChip } from "../ui";
 import { cx } from "../ui/cx";
@@ -55,7 +56,7 @@ interface Applied {
 }
 
 const REQUEST_KIND_WORDS: Record<string, string> = {
-  motion: "Motion", style: "Style", content: "Words", image: "Picture", layout: "Layout", other: "Request",
+  motion: "Motion", style: "Style", content: "Words", image: "Picture", layout: "Layout", review: "Review", other: "Request",
 };
 
 export function ReviewWorkspace({
@@ -77,6 +78,8 @@ export function ReviewWorkspace({
   const [applied, setApplied] = useState<Applied[]>([]);
   const [undoMessage, setUndoMessage] = useState<string | null>(null);
   const [undoing, setUndoing] = useState<string | null>(null);
+  // Which proposals would overwrite an edit made after they were written.
+  const [staleById, setStaleById] = useState<Record<string, string | undefined>>({});
   const [requests, setRequests] = useState<AgentRequest[]>([]);
   const [styleSets, setStyleSets] = useState<StyleOptionSet[]>([]);
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
@@ -169,6 +172,7 @@ export function ReviewWorkspace({
           editor={editor}
           presentationId={presentationId}
           onClose={onClose}
+          onStale={(id, words) => setStaleById((current) => (current[id] === words ? current : { ...current, [id]: words }))}
         />
       ) : (
         <div className="dk-review__empty">
@@ -234,11 +238,16 @@ export function ReviewWorkspace({
                 {current ? (
                   <div className="dk-review__decide">
                     {proposal.reason ? <p className="dk-review__reason">{proposal.reason}</p> : null}
+                    {staleById[proposal.id] ? (
+                      <p className="dk-proposal__warning" role="status" data-testid="review-stale">
+                        Out of date: it would undo your later edit to {staleById[proposal.id]}. Reject it and ask the agent for a fresh proposal.
+                      </p>
+                    ) : null}
                     <div className="dk-review__actions">
                       <Button size="sm" variant="secondary" disabled={busy} onClick={() => void reject(proposal)} data-testid="review-reject">
                         Reject
                       </Button>
-                      <Button size="sm" variant="primary" disabled={busy} onClick={() => void onApprove(proposal)} data-testid="review-approve">
+                      <Button size="sm" variant="primary" disabled={busy || Boolean(staleById[proposal.id])} onClick={() => void onApprove(proposal)} data-testid="review-approve">
                         {status.kind === "working" && status.id === proposal.id ? "Approving…" : "Approve"}
                       </Button>
                     </div>
@@ -318,14 +327,35 @@ function StyleOptionsReview({
   onChosen: (setId: string) => void;
 }) {
   const client = useWorkspaceClient();
-  const measurer = useBrowserMeasurer();
-  const resolveAssetUrl = useAssetUrls(editor.sourceDocument);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const scenes = useMemo(() => optionSet.options.map((option) => ({
-    option,
-    scene: buildDocumentScene(option.preview_document, { measurer }).slides[0],
-  })), [optionSet, measurer]);
+
+  // "Try another": the person asks the agent for a fresh set, naming the ones
+  // on screen so it does not offer them again (release E2E step 6). The agent
+  // answers with a new set; this one stays until it is chosen or replaced.
+  const [asked, setAsked] = useState(false);
+  const askAgain = async () => {
+    setNotice(null);
+    if (!(await editor.saveNow())) {
+      setNotice("Your latest edits are not saved yet. Save them, then ask again.");
+      return;
+    }
+    setBusy("ask");
+    try {
+      const names = optionSet.options.map((option) => option.label).join(", ");
+      await client.agent.createRequest(optionSet.presentation_id, {
+        target: { slide_ids: editor.sourceDocument.slides.slice(0, 50).map((slide) => slide.id), element_ids: [] },
+        kind: "style",
+        message: `Suggest three new style options for this deck, clearly different from the ones already offered (${names}). Use the deck's own content in each preview.`,
+        based_on_version_id: editor.currentVersionId(),
+      });
+      setAsked(true);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "The request could not be sent.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const choose = async (optionId: string) => {
     setNotice(null);
@@ -355,24 +385,58 @@ function StyleOptionsReview({
         <Button size="sm" variant="secondary" icon="close" onClick={onClose}>Back to editing</Button>
       </div>
       {optionSet.stale ? <p className="dk-proposals__error">This deck changed after these covers were drawn. Ask for fresh options before choosing.</p> : null}
+      <p className="dk-style-options__guidance">Previewed on this deck’s cover. Your words and layouts stay in place; choosing changes the deck’s colour, type and motion.</p>
       <div className="dk-style-options__row">
-        {scenes.map(({ option, scene }) => (
+        {optionSet.options.map((option, index) => (
           <article key={option.id} className="dk-style-options__card" data-testid="style-option-card">
-            <div className="dk-style-options__cover">
-              {scene ? <FinalFrameSlide scene={scene} width={280} resolveAssetUrl={resolveAssetUrl} /> : null}
+            <div className="dk-style-options__card-head">
+              <span className="dk-style-options__number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <h3>{option.label}</h3>
             </div>
-            <h3>{option.label}</h3>
+            <StyleCover document={option.preview_document} label={`${option.label} cover preview`} />
+            <div className="dk-style-options__facts" aria-label="Style details">
+              <span>Theme · {option.theme_key ? styleName(option.theme_key) : "Custom"}</span>
+              {option.design_language ? <span>Direction · {styleName(option.design_language)}</span> : null}
+              {option.motion_style ? <span>Motion · {styleName(option.motion_style)}</span> : null}
+            </div>
             <p>{option.rationale}</p>
-            {option.notes?.map((note) => <small key={note} className="dk-muted">{note}</small>)}
             <Button size="sm" variant="primary" disabled={optionSet.stale || busy !== null}
-              onClick={() => void choose(option.id)} data-testid="style-option-use">
-              {busy === option.id ? "Applying…" : "Use this"}
+              onClick={() => void choose(option.id)} data-testid="style-option-use" aria-label={`Use ${option.label}`}>
+              {busy === option.id ? "Applying…" : `Use ${option.label}`}
             </Button>
           </article>
         ))}
       </div>
+      <div className="dk-style-options__again">
+        {asked ? (
+          <p className="dk-muted" role="status" data-testid="style-options-asked">Asked your agent for three different options. They will appear here.</p>
+        ) : (
+          <Button size="sm" variant="secondary" disabled={busy !== null} onClick={() => void askAgain()} data-testid="style-options-again">
+            {busy === "ask" ? "Asking…" : "None of these — ask for others"}
+          </Button>
+        )}
+      </div>
       {notice ? <p role="alert" className="dk-proposals__error">{notice}</p> : null}
     </section>
+  );
+}
+
+function styleName(value: string): string {
+  return value.split("-").map((word) => word ? word[0]!.toUpperCase() + word.slice(1) : word).join(" ");
+}
+
+/** A real rendered cover that fills its card instead of a fixed-width thumbnail. */
+function StyleCover({ document, label }: { document: StyleOptionSet["options"][number]["preview_document"]; label: string }) {
+  const [ref, size] = useStageSize();
+  const measurer = useBrowserMeasurer();
+  const resolveAssetUrl = useAssetUrls(document);
+  const scene = useMemo(() => buildDocumentScene(document, { measurer }).slides[0] ?? null, [document, measurer]);
+  const width = Math.max(0, Math.floor(size.width - 2));
+  return (
+    <figure ref={ref} className="dk-style-options__cover" aria-label={label}>
+      {scene && width > 0 ? <FinalFrameSlide scene={scene} width={width} resolveAssetUrl={resolveAssetUrl} /> : null}
+      <figcaption>Cover preview</figcaption>
+    </figure>
   );
 }
 
@@ -403,11 +467,13 @@ function ProposalReview({
   editor,
   presentationId,
   onClose,
+  onStale,
 }: {
   proposal: PendingProposal;
   editor: EditorApi;
   presentationId: string;
   onClose: () => void;
+  onStale?: (proposalId: string, places: string | undefined) => void;
 }) {
   const client = useWorkspaceClient();
   const measurer = useBrowserMeasurer();
@@ -433,6 +499,12 @@ function ProposalReview({
       cancelled = true;
     };
   }, [client, presentationId, proposal.id]);
+
+  const stalePaths = useStaleEdits(client, presentationId, detail, document, editor.currentVersionId());
+  const stalePlaces = stalePaths ? placeWords(stalePaths, document) : undefined;
+  useEffect(() => {
+    onStale?.(proposal.id, stalePlaces);
+  }, [onStale, proposal.id, stalePlaces]);
 
   const preview = useMemo(
     () => (detail ? previewProposal(document, detail.operations, editor.locale ?? null) : null),
@@ -539,8 +611,13 @@ function ProposalReview({
           <strong>{proposal.intent}</strong>
           {preview?.groundedIn.length ? <span className="dk-muted"> · Grounded in {groundingLabel(preview.groundedIn)}</span> : null}
         </p>
-        {rebased ? (
-          <p className="dk-review__note">Written against an earlier version. The pictures show it applied to the deck as it is now.</p>
+        {stalePlaces ? (
+          <p className="dk-proposal__warning" role="status">
+            Written before you edited {stalePlaces}. Approving it would put the agent’s older version back over your edit, so it
+            cannot be approved. Ask the agent to re-read the deck and propose again.
+          </p>
+        ) : rebased ? (
+          <p className="dk-review__note">Written against an earlier version and rebased: the pictures show it applied to the deck as it is now. Nothing it changes was edited since.</p>
         ) : null}
 
         <div ref={stageRef} className="dk-review__stage" data-testid="review-stage" data-compare={compare}>
