@@ -114,6 +114,20 @@ GRANT_PREFIX = "dk1"
 #: dies with it anyway — a restart revokes everything by itself.
 _revoked_before: float = 0.0
 
+#: When a grant last authorised a request. Not a count: a request is checked
+#: in more than one place, so counting here would count each one twice.
+#: In memory on purpose: it answers "is my agent connected right now", which a
+#: restart rightly resets, and it records no path, body or tool name.
+_agent_last_seen: float | None = None
+
+
+def agent_activity() -> dict[str, object]:
+    """What the window shows beside the agent switch (release E2E step 3)."""
+    return {
+        "last_request_at": _agent_last_seen,
+        "revoked_before": _revoked_before or None,
+    }
+
 
 def revoke_grants() -> float:
     """Refuse every grant issued up to now. Returns the moment it took effect."""
@@ -202,6 +216,8 @@ def scopes_for(token: str) -> "frozenset[str] | None":
         # Revoked. Said the same way as expired, because to the holder it is the
         # same fact: this credential no longer works and asking again is the fix.
         return None
+    global _agent_last_seen
+    _agent_last_seen = time.time()
     # A grant cannot widen itself by naming a scope this build does not have.
     return granted & FULL_SCOPES
 

@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from deckastra_api.media_style import TREATMENT_PRESETS, compose_media_prompt, deck_treatment, target_frame
+from deckastra_api.media_style import TREATMENT_PRESETS, _colour_name, compose_media_prompt, deck_treatment, target_frame
 from deckastra_api import presets
 
 
@@ -107,3 +107,12 @@ def test_the_prompt_describes_the_frame_the_picture_will_fill():
     # With every frame filled, the first is the one a new picture replaces.
     elements.append({"id": "el_photo2", "type": "image", "transform": dict(elements[3]["transform"])})
     assert target_frame(doc["slides"][0])[1]["id"] == "el_frame"
+
+
+def test_a_bright_colour_is_not_named_after_a_muted_one():
+    # Seen in the signed-in panel (2026-10-15): System Terminal's #4ADE80 read
+    # "sage green", which would steer a model to a grey-green.
+    assert _colour_name("#4ADE80") == "bright green #4ADE80"
+    assert _colour_name("#D7F2D3") == "pale green #D7F2D3"
+    assert _colour_name("#8BA888") == "sage green #8BA888"
+    assert _colour_name("#14213D") == "deep navy #14213D"

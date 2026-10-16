@@ -86,6 +86,8 @@ RULES: tuple[tuple[re.Pattern[str], frozenset[str], str], ...] = (
     (re.compile(r"^/v1/runs/[^/]+/resume$"), frozenset({"POST"}), "approve"),
     (re.compile(r"^/v1/presentations/[^/]+$"), frozenset({"DELETE"}), "manage"),
     (re.compile(r"^/v1/presentations/[^/]+/restore$"), frozenset({"POST"}), "manage"),
+    (re.compile(r"^/v1/drafts/[^/]+$"), frozenset({"DELETE"}), "manage"),
+    (re.compile(r"^/v1/drafts/[^/]+/restore$"), frozenset({"POST"}), "manage"),
     (re.compile(r"^/v1/presentations/[^/]+/versions/[^/]+/restore$"), frozenset({"POST"}), "manage"),
     (re.compile(r"^/v1/presentations/[^/]+/move$"), frozenset({"POST"}), "manage"),
     (re.compile(r"^/v1/presentations/[^/]+/shares$"), CHANGING, "share"),

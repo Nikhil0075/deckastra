@@ -12,9 +12,10 @@ import { importDeckFile } from "../lib/import-deck";
 import { loadView, viewKey, viewTitle, type DeckView, type ListedDeck } from "../lib/deck-views";
 import { setThemePreference } from "../lib/chrome-theme";
 import { themeForCommand, type DeckListCommand, type HostCommand, type SubscribeHostCommands } from "../lib/host-commands";
-import { deckSummary, projectSummary, relativeTime, visibleDecks, type DeckSort } from "../lib/deck-list";
+import { deckSummary, parseServerTime, projectSummary, relativeTime, visibleDecks, type DeckSort } from "../lib/deck-list";
 import { loadDestination, saveDestination, type HomeDestination } from "../lib/home-destination";
 import { useBrowserMeasurer } from "../lib/measurer";
+import { cleanDeckTitle, renameOperations } from "../lib/deck-title";
 import {
   Button,
   Drawer,
@@ -38,6 +39,9 @@ import { CommandPalette } from "./shell/CommandPalette";
 import { TaskCentre } from "./shell/TaskCentre";
 import { AccountMenu, type AccountIdentity } from "./shell/AccountMenu";
 import type { SettingsSectionId } from "./SettingsShell";
+import { AgentTasksView } from "./AgentTasksView";
+import { MediaLibraryView } from "./MediaLibraryView";
+import { DeckTitleInput } from "./shell/DeckTitle";
 
 /**
  * The deck list per project (Figma: "the deck list per project").
@@ -92,6 +96,11 @@ interface Located {
   projectId: string;
 }
 
+interface ManagedDraft extends DraftBoardModel {
+  projectName: string;
+  editable: boolean;
+}
+
 export function DeckList({
   onOpen,
   openPresentationId,
@@ -124,14 +133,21 @@ export function DeckList({
   }, []);
   const [deckQuery, setDeckQuery] = useState("");
   const [templateQuery, setTemplateQuery] = useState("");
+  const [draftQuery, setDraftQuery] = useState("");
+  const [taskQuery, setTaskQuery] = useState("");
+  const [mediaQuery, setMediaQuery] = useState("");
   const query = deckQuery;
   const [sort, setSort] = useState<DeckSort>("recent");
   const [banner, setBanner] = useState<{ text: string; undo?: () => void; tone: "notice" | "danger" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [moving, setMoving] = useState<PresentationSummary | null>(null);
   const [exporting, setExporting] = useState<PresentationSummary | null>(null);
-  const [draftOpen, setDraftOpen] = useState<DraftBoardModel | "new" | null>(null);
-  const [drafts, setDrafts] = useState<DraftBoardModel[]>([]);
+  const [draftOpen, setDraftOpen] = useState<DraftBoardModel | "new" | { draftId: string } | null>(null);
+  const [agentTaskCount, setAgentTaskCount] = useState(0);
+  const [drafts, setDrafts] = useState<ManagedDraft[]>([]);
+  const [trashedDrafts, setTrashedDrafts] = useState<ManagedDraft[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState<string | null>(null);
   const [newProject, setNewProject] = useState<string | null>(null);
   // Bumped to put keyboard focus on the template gallery (File › New from template).
   const [templateFocus, setTemplateFocus] = useState(0);
@@ -166,6 +182,21 @@ export function DeckList({
   }, [loadAccount]);
   useEffect(() => startAccount(), [startAccount]);
 
+  // Agent Tasks is a real destination, but its pending count stays visible in
+  // the sidebar while someone works elsewhere. The destination itself owns the
+  // same polling while open, so this watcher steps aside there.
+  useEffect(() => {
+    if (!account || destination === "tasks") return;
+    let live = true;
+    const projectIds = account.workspaces.flatMap((workspace) => workspace.projects.map((candidate) => candidate.id));
+    const read = () => Promise.all(projectIds.map((id) => client.agent.tasks(id, "pending", { fresh: true })))
+      .then((groups) => { if (live) setAgentTaskCount(groups.reduce((count, group) => count + group.length, 0)); })
+      .catch(() => undefined);
+    void read();
+    const timer = window.setInterval(read, 5_000);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [account, client, destination]);
+
   const located = useMemo<Located | null>(() => {
     if (!account || !projectId) return null;
     for (const workspace of account.workspaces) {
@@ -174,12 +205,37 @@ export function DeckList({
     return null;
   }, [account, projectId]);
   const project = located?.workspace.projects.find((candidate) => candidate.id === projectId);
+  const loadDrafts = useCallback(async () => {
+    if (!account) return;
+    setDraftsLoading(true);
+    const projects = account.workspaces.flatMap((workspace) =>
+      workspace.projects.map((candidate) => ({
+        projectId: candidate.id,
+        projectName: candidate.name,
+        editable: workspace.role !== "viewer",
+      })),
+    );
+    const attach = (items: DraftBoardModel[], project: (typeof projects)[number]): ManagedDraft[] =>
+      items.map((item) => ({ ...item, projectName: project.projectName, editable: project.editable }));
+    try {
+      const [active, deleted] = await Promise.all([
+        Promise.all(projects.map((candidate) => client.drafts.list(candidate.projectId, { fresh: true }).then((items) => attach(items, candidate)))),
+        Promise.all(projects.map((candidate) => client.drafts.trash(candidate.projectId, { fresh: true }).then((items) => attach(items, candidate)))),
+      ]);
+      setDrafts(active.flat().sort((a, b) => parseServerTime(b.updated_at) - parseServerTime(a.updated_at)));
+      setTrashedDrafts(deleted.flat().sort((a, b) => parseServerTime(b.deleted_at ?? "") - parseServerTime(a.deleted_at ?? "")));
+      setDraftsError(null);
+    } catch (reason) {
+      setDraftsError(reason instanceof Error ? reason.message : "Your rough canvases could not be read.");
+      throw reason;
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, [account, client]);
   useEffect(() => {
-    let live = true;
-    if (!projectId) { setDrafts([]); return; }
-    void client.drafts.list(projectId, { fresh: true }).then((items) => { if (live) setDrafts(Array.isArray(items) ? items : []); }).catch(() => { if (live) setDrafts([]); });
-    return () => { live = false; };
-  }, [client, projectId, draftOpen]);
+    if (!account || (destination !== "drafts" && view?.kind !== "trash")) return;
+    void loadDrafts().catch(() => undefined);
+  }, [account, destination, draftOpen, loadDrafts, view?.kind]);
 
   // The project on screen *now*, read when a load starts and again when it
   // answers. Refreshes run after a duplicate, a delete, an undo or a move, any of
@@ -286,6 +342,24 @@ export function DeckList({
       await loadDecks();
     });
 
+  // Renaming from the home is one ordinary change against the deck's head, the
+  // same operation the editor's title field makes. A deck that moved meanwhile
+  // is a 409 like any other write, never a rename over work nobody saw.
+  const rename = (deck: PresentationSummary, title: string) =>
+    run(async () => {
+      const operations = renameOperations(deck.title, title);
+      if (!operations.length) return;
+      const head = await client.documents.head(deck.id);
+      await client.documents.commit(deck.id, {
+        operations,
+        intent: "Rename deck",
+        expected_version_id: head.version_id,
+        client_id: client.clientId,
+      });
+      setBanner({ tone: "notice", text: `Renamed to “${cleanDeckTitle(title)}”.` });
+      await loadDecks();
+    });
+
   const remove = (deck: PresentationSummary) =>
     run(async () => {
       await client.documents.delete(deck.id);
@@ -309,6 +383,29 @@ export function DeckList({
       await loadDecks();
     });
 
+  const removeDraft = (draft: ManagedDraft) =>
+    run(async () => {
+      await client.drafts.delete(draft.id);
+      setBanner({
+        tone: "notice",
+        text: `Moved “${draft.title}” to Trash.`,
+        undo: () =>
+          void run(async () => {
+            await client.drafts.restore(draft.id);
+            setBanner({ tone: "notice", text: `Restored “${draft.title}”.` });
+            await loadDrafts();
+          }),
+      });
+      await loadDrafts();
+    });
+
+  const restoreDraft = (draft: ManagedDraft) =>
+    run(async () => {
+      await client.drafts.restore(draft.id);
+      setBanner({ tone: "notice", text: `Restored “${draft.title}”.` });
+      await loadDrafts();
+    });
+
   const createProject = () =>
     run(async () => {
       const name = newProject?.trim();
@@ -323,6 +420,7 @@ export function DeckList({
 
   const editable = located ? located.workspace.role !== "viewer" : false;
   const onProjects = destination === "projects";
+  const shownDrafts = drafts.filter((draft) => draft.title.toLocaleLowerCase().includes(draftQuery.trim().toLocaleLowerCase()));
 
   // The menu's commands. A ref for the same reason as the editor's: one
   // subscription per host, a handler that sees the current project.
@@ -369,7 +467,9 @@ export function DeckList({
           <span className="dk-appbar__sep" aria-hidden="true">
             /
           </span>
-          <span className="dk-appbar__deck">{destination === "templates" ? "Templates" : (project?.name ?? "Decks")}</span>
+          <span className="dk-appbar__deck">
+            {destination === "templates" ? "Templates" : destination === "drafts" ? "Rough Canvas" : destination === "tasks" ? "Agent Tasks" : destination === "media" ? "Media" : (project?.name ?? "Decks")}
+          </span>
         </h1>
         <span className="dk-decks__search">
           <Icon name="search" size={14} />
@@ -385,6 +485,39 @@ export function DeckList({
               value={templateQuery}
               onChange={setTemplateQuery}
               data-testid="template-search"
+            />
+          ) : destination === "drafts" ? (
+            <TextField
+              key="drafts"
+              type="search"
+              label="Search rough canvases"
+              hideLabel
+              placeholder="Search rough canvases"
+              value={draftQuery}
+              onChange={setDraftQuery}
+              data-testid="draft-search"
+            />
+          ) : destination === "media" ? (
+            <TextField
+              key="media"
+              type="search"
+              label="Search media"
+              hideLabel
+              placeholder="Search media by name or description"
+              value={mediaQuery}
+              onChange={setMediaQuery}
+              data-testid="media-search"
+            />
+          ) : destination === "tasks" ? (
+            <TextField
+              key="tasks"
+              type="search"
+              label="Search agent tasks"
+              hideLabel
+              placeholder="Search agent tasks"
+              value={taskQuery}
+              onChange={setTaskQuery}
+              data-testid="agent-task-search"
             />
           ) : (
             <TextField
@@ -495,6 +628,37 @@ export function DeckList({
           )}
           <button
             type="button"
+            className={cx("dk-decks__project", destination === "drafts" && "dk-decks__project--current")}
+            aria-current={destination === "drafts" ? "page" : undefined}
+            onClick={() => setDestination("drafts")}
+            data-testid="view-drafts"
+          >
+            <Icon name="pen" size={14} />
+            Rough Canvas
+          </button>
+          <button
+            type="button"
+            className={cx("dk-decks__project", destination === "tasks" && "dk-decks__project--current")}
+            aria-current={destination === "tasks" ? "page" : undefined}
+            onClick={() => setDestination("tasks")}
+            data-testid="view-agent-tasks"
+          >
+            <Icon name="history" size={14} />
+            <span>Agent Tasks</span>
+            {agentTaskCount ? <span className="dk-decks__nav-count">{agentTaskCount}</span> : null}
+          </button>
+          <button
+            type="button"
+            className={cx("dk-decks__project", destination === "media" && "dk-decks__project--current")}
+            aria-current={destination === "media" ? "page" : undefined}
+            onClick={() => setDestination("media")}
+            data-testid="view-media"
+          >
+            <Icon name="image" size={14} />
+            Media
+          </button>
+          <button
+            type="button"
             className={cx("dk-decks__project", "dk-decks__trash", onProjects && view?.kind === "trash" && "dk-decks__project--current")}
             aria-current={onProjects && view?.kind === "trash" ? "true" : undefined}
             onClick={() => showView({ kind: "trash" })}
@@ -521,6 +685,90 @@ export function DeckList({
               onBuildWithAgent={onSetUpGeneration}
             />
           </main>
+        ) : destination === "media" && account ? (
+          <MediaLibraryView
+            account={account}
+            workspaceId={located?.workspace.id}
+            query={mediaQuery}
+            now={now}
+            onOpenDeck={onOpen}
+          />
+        ) : destination === "tasks" && account ? (
+          <AgentTasksView
+            account={account}
+            query={taskQuery}
+            now={now}
+            onOpenDeck={onOpen}
+            onOpenDraft={(draftId) => setDraftOpen({ draftId })}
+            onPendingCount={setAgentTaskCount}
+          />
+        ) : destination === "drafts" ? (
+          <main className="dk-decks__main" data-home-destination="drafts">
+            <div className="dk-decks__heading">
+              <div>
+                <h2 className="dk-decks__title">Rough Canvas</h2>
+                <p className="dk-muted">
+                  {draftsError
+                    ? "Could not read your rough canvases"
+                    : draftsLoading && drafts.length === 0
+                      ? "Reading your rough canvases…"
+                      : drafts.length === 0
+                        ? "No rough canvases yet"
+                        : `${drafts.length} rough canvas${drafts.length === 1 ? "" : "es"} across your projects`}
+                </p>
+              </div>
+              <div className="dk-decks__heading-actions">
+                <Select
+                  label="Project for new rough canvas"
+                  hideLabel
+                  value={projectId ?? ""}
+                  onChange={setProjectId}
+                  options={(account?.workspaces ?? []).flatMap((workspace) => workspace.projects.map((candidate) => ({ value: candidate.id, label: candidate.name })))}
+                />
+                <Button variant="primary" icon="plus" onClick={() => setDraftOpen("new")} disabled={!editable || busy || !projectId} data-testid="new-draft">
+                  New rough canvas
+                </Button>
+              </div>
+            </div>
+            {banner ? (
+              <div className={cx("dk-banner", banner.tone === "danger" ? "dk-banner--danger" : "dk-banner--notice", "dk-decks__banner")} role="status">
+                <span>{banner.text}</span>
+                {banner.undo ? <Button size="sm" variant="secondary" onClick={banner.undo} data-testid="undo-delete">Undo</Button> : null}
+                <IconButton icon="close" label="Dismiss" size="sm" onClick={() => setBanner(null)} />
+              </div>
+            ) : null}
+            {draftsError ? (
+              <InlineError onRetry={() => void loadDrafts()} data-testid="drafts-list-error">
+                {draftsError}
+              </InlineError>
+            ) : null}
+            <ScrollArea className="dk-decks__scroll">
+              {draftsLoading && drafts.length === 0 && !draftsError ? (
+                <SkeletonCards label="Reading your rough canvases" count={4} gridClassName="dk-decks__grid" data-testid="drafts-loading" />
+              ) : null}
+              {!draftsLoading && !draftsError && drafts.length === 0 ? (
+                <div className="dk-decks__empty">
+                  <span className="dk-accent-rule" aria-hidden="true" />
+                  <p>Start a rough canvas to shape cards before building a deck.</p>
+                </div>
+              ) : shownDrafts.length === 0 ? (
+                <p className="dk-muted dk-decks__empty">No rough canvases match “{draftQuery}”.</p>
+              ) : null}
+              <ul className="dk-decks__grid" aria-label="Rough canvases">
+                {shownDrafts.map((draft) => (
+                  <li key={draft.id}>
+                    <DraftManagementCard
+                      draft={draft}
+                      now={now}
+                      onOpen={() => setDraftOpen(draft)}
+                      onDelete={() => void removeDraft(draft)}
+                      disabled={busy || !draft.editable}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          </main>
         ) : (
         <main className="dk-decks__main" data-home-destination="projects">
           {browserImport ? (
@@ -545,9 +793,11 @@ export function DeckList({
                 {!decks
                   ? "\u00a0"
                   : view?.kind === "trash"
-                    ? decks.length === 0
+                    ? draftsError
+                      ? "Some deleted items could not be read"
+                      : decks.length + trashedDrafts.length === 0
                       ? "Empty"
-                      : `${decks.length} deleted deck${decks.length === 1 ? "" : "s"} · restore any of them`
+                      : `${decks.length + trashedDrafts.length} deleted item${decks.length + trashedDrafts.length === 1 ? "" : "s"} · restore any of them`
                     : projectSummary(decks, now)}
               </p>
             </div>
@@ -573,27 +823,12 @@ export function DeckList({
               <Button variant="secondary" icon="theme" onClick={() => setDestination("templates")} data-testid="browse-templates">
                 From a template
               </Button>
-              <Button variant="secondary" icon="pen" onClick={() => setDraftOpen("new")} disabled={!editable || busy} data-testid="new-draft">
-                New draft
-              </Button>
               {openFile ? (
                 <Button variant="ghost" icon="upload" onClick={openFile} data-testid="open-deck-file">
                   Open .mydeck file
                 </Button>
               ) : null}
             </div>
-          ) : null}
-
-          {drafts.length > 0 && view?.kind === "project" ? (
-            <section className="dk-draft-list" aria-label="Draft boards">
-              <h3>Draft boards</h3>
-              <div>{drafts.map((draft) => (
-                <button key={draft.id} type="button" className="dk-draft-list__card" onClick={() => setDraftOpen(draft)}>
-                  <strong>{draft.title}</strong>
-                  <span>{draft.body.cards.length} cards · revision {draft.revision}{draft.changed_since_build ? " · changed since built" : ""}</span>
-                </button>
-              ))}</div>
-            </section>
           ) : null}
 
           {banner ? (
@@ -613,14 +848,19 @@ export function DeckList({
               {listError}
             </InlineError>
           ) : null}
+          {view?.kind === "trash" && draftsError ? (
+            <InlineError onRetry={() => void loadDrafts()} data-testid="trash-drafts-list-error">
+              {draftsError}
+            </InlineError>
+          ) : null}
 
           <ScrollArea className="dk-decks__scroll">
-            {decks && decks.length === 0 ? (
+            {decks && decks.length === 0 && (view?.kind !== "trash" || (!draftsLoading && !draftsError && trashedDrafts.length === 0)) ? (
               <div className="dk-decks__empty">
                 <span className="dk-accent-rule" aria-hidden="true" />
                 <p>
                   {view?.kind === "trash"
-                    ? "Nothing in the trash. Decks you delete wait here until you restore them."
+                    ? "Nothing in the trash. Decks and rough canvases wait here until you restore them."
                     : view?.kind === "project"
                       ? "No decks in this project yet. Start from a blank deck or a template."
                       : "No decks yet. Start from a blank deck or a template."}
@@ -649,6 +889,7 @@ export function DeckList({
                     where={view?.kind === "project" ? undefined : deck.projectName}
                     onOpen={() => onOpen(deck.id)}
                     onDuplicate={() => void duplicate(deck)}
+                    onRename={(title) => void rename(deck, title)}
                     onMove={() => setMoving(deck)}
                     onExport={() => setExporting(deck)}
                     onDelete={() => void remove(deck)}
@@ -656,6 +897,11 @@ export function DeckList({
                 </li>
                 ),
               )}
+              {view?.kind === "trash" ? trashedDrafts.map((draft) => (
+                <li key={draft.id}>
+                  <DraftTrashCard draft={draft} now={now} onRestore={() => void restoreDraft(draft)} disabled={busy || !draft.editable} />
+                </li>
+              )) : null}
             </ul>
           </ScrollArea>
         </main>
@@ -703,12 +949,13 @@ export function DeckList({
         {exporting ? <ExportPanel key={exporting.id} presentationId={exporting.id} deckTitle={exporting.title} /> : null}
       </Drawer>
 
-      <Drawer open={draftOpen !== null} onClose={() => setDraftOpen(null)} title="Draft board" modal width={1180}>
+      <Drawer open={draftOpen !== null} onClose={() => setDraftOpen(null)} title="Rough Canvas" modal width={1180}>
         {draftOpen && projectId ? (
           <DraftBoard
-            key={draftOpen === "new" ? "new" : draftOpen.id}
-            projectId={projectId}
-            initial={draftOpen === "new" ? undefined : draftOpen}
+            key={draftOpen === "new" ? "new" : "draftId" in draftOpen ? draftOpen.draftId : draftOpen.id}
+            draftId={draftOpen !== "new" && "draftId" in draftOpen ? draftOpen.draftId : undefined}
+            projectId={draftOpen === "new" ? projectId : "draftId" in draftOpen ? undefined : draftOpen.project_id}
+            initial={draftOpen === "new" || "draftId" in draftOpen ? undefined : draftOpen}
             onClose={() => setDraftOpen(null)}
             onBuilt={(presentationId) => onOpen(presentationId)}
           />
@@ -728,6 +975,7 @@ function DeckCard({
   where,
   onOpen,
   onDuplicate,
+  onRename,
   onMove,
   onExport,
   onDelete,
@@ -740,11 +988,13 @@ function DeckCard({
   where?: string;
   onOpen: () => void;
   onDuplicate: () => void;
+  onRename: (title: string) => void;
   onMove: () => void;
   onExport: () => void;
   onDelete: () => void;
 }) {
   const pending = deck.pending_proposals ?? 0;
+  const [renaming, setRenaming] = useState(false);
   return (
     <article className={cx("dk-card", open && "dk-card--open")} data-testid="deck-card" data-deck-id={deck.id}>
       <button type="button" className="dk-card__thumb" onClick={onOpen} aria-label={`Open ${deck.title}`}>
@@ -759,6 +1009,7 @@ function DeckCard({
           )}
           items={[
             { id: "open", label: "Open", onSelect: onOpen },
+            { id: "rename", label: "Rename…", disabled: !editable, onSelect: () => setRenaming(true) },
             { id: "duplicate", label: "Duplicate", icon: "duplicate", disabled: !editable, onSelect: onDuplicate },
             { id: "move", label: "Move to project…", disabled: !editable, onSelect: onMove },
             { id: "export", label: "Export", icon: "download", onSelect: onExport },
@@ -767,9 +1018,26 @@ function DeckCard({
         />
       </span>
       <div className="dk-card__meta">
-        <span className="dk-card__title" title={deck.title} dir="auto">
-          {deck.title}
-        </span>
+        {renaming ? (
+          <DeckTitleInput
+            value={deck.title}
+            onCommit={(title) => {
+              setRenaming(false);
+              onRename(title);
+            }}
+            onCancel={() => setRenaming(false)}
+            data-testid="deck-card-title-input"
+          />
+        ) : (
+          <span
+            className="dk-card__title"
+            title={editable ? `${deck.title} (double-click to rename)` : deck.title}
+            dir="auto"
+            onDoubleClick={editable ? () => setRenaming(true) : undefined}
+          >
+            {deck.title}
+          </span>
+        )}
         {pending > 0 ? (
           <StatusChip tone="waiting" title={`${pending} change${pending === 1 ? "" : "s"} waiting for review`}>
             {pending} pending
@@ -804,6 +1072,49 @@ function TrashCard({ deck, now, onRestore, disabled }: { deck: ListedDeck; now: 
       <p className="dk-card__summary">
         {deck.projectName} · deleted {relativeTime(deck.deleted_at, now)}
       </p>
+    </article>
+  );
+}
+
+function DraftManagementCard({ draft, now, onOpen, onDelete, disabled }: { draft: ManagedDraft; now: number; onOpen: () => void; onDelete: () => void; disabled: boolean }) {
+  const count = draft.body.cards.length;
+  return (
+    <article className="dk-card dk-draft-management-card" data-testid="draft-card" data-draft-id={draft.id}>
+      <button type="button" className="dk-draft-management-card__preview" onClick={onOpen} aria-label={`Open ${draft.title}`}>
+        <Icon name="pen" size={22} />
+        <span>{count} card{count === 1 ? "" : "s"}</span>
+      </button>
+      <span className="dk-card__menu">
+        <Menu
+          label={`${draft.title} actions`}
+          align="end"
+          trigger={(props) => <IconButton icon="more" label={`${draft.title} actions`} size="sm" variant="secondary" {...props} />}
+          items={[
+            { id: "open", label: "Open", onSelect: onOpen },
+            { id: "delete", label: "Move to Trash", icon: "trash", danger: true, disabled, onSelect: onDelete },
+          ]}
+        />
+      </span>
+      <div className="dk-card__meta">
+        <span className="dk-card__title" title={draft.title} dir="auto">{draft.title}</span>
+        {draft.changed_since_build ? <StatusChip tone="waiting">Changed</StatusChip> : null}
+      </div>
+      <p className="dk-card__summary">{draft.projectName} · edited {relativeTime(draft.updated_at, now)}</p>
+    </article>
+  );
+}
+
+function DraftTrashCard({ draft, now, onRestore, disabled }: { draft: ManagedDraft; now: number; onRestore: () => void; disabled: boolean }) {
+  return (
+    <article className="dk-card dk-card--trash" data-testid="draft-trash-card" data-draft-id={draft.id}>
+      <div className="dk-card__thumb dk-card__thumb--empty" aria-hidden="true">
+        <Icon name="pen" size={20} />
+      </div>
+      <div className="dk-card__meta">
+        <span className="dk-card__title" title={draft.title} dir="auto">{draft.title}</span>
+        <Button size="sm" variant="secondary" onClick={onRestore} disabled={disabled} data-testid="restore-draft">Restore</Button>
+      </div>
+      <p className="dk-card__summary">Rough Canvas · {draft.projectName} · deleted {relativeTime(draft.deleted_at, now)}</p>
     </article>
   );
 }

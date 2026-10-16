@@ -113,6 +113,28 @@ export function Tabs<T extends string = string>({ label, value, items, onChange,
     refs.current[activeIndex]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [activeIndex]);
 
+  // Which edge has tabs past it, so the row fades there instead of showing a
+  // scrollbar (2026-10-17). Read on scroll and on resize, never during render.
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [more, setMore] = useState<"start" | "end" | "both" | undefined>(undefined);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const measure = () => {
+      const before = list.scrollLeft > 1;
+      const after = list.scrollLeft + list.clientWidth < list.scrollWidth - 1;
+      setMore(before && after ? "both" : before ? "start" : after ? "end" : undefined);
+    };
+    measure();
+    list.addEventListener("scroll", measure, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(list);
+    return () => {
+      list.removeEventListener("scroll", measure);
+      observer?.disconnect();
+    };
+  }, [items.length]);
+
   const onKeyDown = (event: KeyboardEvent, index: number) => {
     const next = rovingIndex(index, items.length, event.key, { orientation: "horizontal", disabled });
     if (next === null) return;
@@ -123,7 +145,7 @@ export function Tabs<T extends string = string>({ label, value, items, onChange,
 
   return (
     <div className={cx("dk-tabs", className)}>
-      <div role="tablist" aria-label={label} className="dk-tabs__list">
+      <div ref={listRef} role="tablist" aria-label={label} className="dk-tabs__list" data-more={more}>
         {items.map((item, index) => (
           <button
             key={item.value}

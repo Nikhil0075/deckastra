@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { EDITOR_MODES, type EditorMode } from "../../lib/editor-layout";
 import type { EditorApi } from "../../lib/useEditor";
 import { Button, Icon, IconButton, Menu, Popover, Segmented, StatusChip, type MenuItem } from "../../ui";
 import { AccountMenu, type AccountMenuProps } from "./AccountMenu";
+import { DeckTitleInput } from "./DeckTitle";
+import { renameOperations } from "../../lib/deck-title";
 import { TaskCentre } from "./TaskCentre";
 import { ExportPanel } from "../ExportPanel";
 import { SharePanel } from "../SharePanel";
@@ -110,6 +112,12 @@ export function ModeSwitch({ mode, onMode }: { mode: EditorMode; onMode: (mode: 
  */
 export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit, extras, account, onHistory, onManageLanguages, onAssistant, assistantOpen, layout, review }: AppBarProps) {
   const title = editor.document.metadata.title || "Untitled deck";
+  const [renaming, setRenaming] = useState(false);
+  const rename = (next: string) => {
+    setRenaming(false);
+    const operations = renameOperations(editor.document.metadata.title, next);
+    if (operations.length) editor.apply(operations, { label: "Rename deck" });
+  };
 
   return (
     <header className="dk-appbar" data-region="app bar">
@@ -124,9 +132,27 @@ export function AppBar({ editor, presentationId, mode, onMode, onPresent, onExit
         <h1 className="dk-appbar__title" title={title}>
           <span className="dk-appbar__product">Deckastra</span>
           <span className="dk-appbar__sep" aria-hidden="true">/</span>
-          <span className="dk-appbar__deck" dir="auto">
-            {title}
-          </span>
+          {renaming ? (
+            <DeckTitleInput
+              value={editor.document.metadata.title ?? ""}
+              onCommit={rename}
+              onCancel={() => setRenaming(false)}
+              data-testid="deck-title-input"
+            />
+          ) : (
+            // The name is the way to rename it, as in most editors: one click
+            // and type. Agents name decks too; the person always can.
+            <button
+              type="button"
+              className="dk-appbar__deck"
+              dir="auto"
+              title="Rename this deck"
+              onClick={() => setRenaming(true)}
+              data-testid="deck-title"
+            >
+              {title}
+            </button>
+          )}
         </h1>
         <span className="dk-appbar__group">
           <IconButton

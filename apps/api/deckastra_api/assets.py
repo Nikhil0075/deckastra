@@ -399,6 +399,42 @@ def representative_frame(data: bytes) -> bytes | None:
         return None
 
 
+#: The decks a "where is this used" answer reads. Each is a head replay, so the
+#: answer is bounded rather than every deck in a large workspace.
+USES_DECK_LIMIT = 200
+
+
+def current_uses(session: Session, workspace_id: str, asset_id: str) -> dict[str, Any]:
+    """The decks whose *current* version cites an asset, and on which slides.
+
+    Different from `reference_count`, which counts every retained version so the
+    sweeper never takes bytes an undo still needs. A person asking "where is this
+    picture" means the decks as they stand, and a deck in the trash is listed
+    with that said, because restoring it brings the picture back into use
+    (2026-10-17).
+    """
+    rows = session.execute(
+        select(Presentation.id, Presentation.deleted_at)
+        .join(Project, Project.id == Presentation.project_id)
+        .where(Project.workspace_id == workspace_id)
+        .order_by(Presentation.id)
+        .limit(USES_DECK_LIMIT + 1)
+    ).all()
+    decks: list[dict[str, Any]] = []
+    for presentation_id, deleted_at in rows[:USES_DECK_LIMIT]:
+        document = store.load_presentation(session, presentation_id).document
+        if asset_id not in referenced_ids(document):
+            continue
+        slides = [slide.get("id") for slide in document.get("slides") or [] if asset_id in referenced_ids(slide)]
+        decks.append({
+            "presentation_id": presentation_id,
+            "title": (document.get("metadata") or {}).get("title") or "Untitled deck",
+            "slide_ids": [slide for slide in slides if slide],
+            "deleted": deleted_at is not None,
+        })
+    return {"asset_id": asset_id, "decks": decks, "partial": len(rows) > USES_DECK_LIMIT}
+
+
 def recount_references(session: Session, workspace_id: str) -> int:
     """Count references in every retained version, including operation-only history.
 

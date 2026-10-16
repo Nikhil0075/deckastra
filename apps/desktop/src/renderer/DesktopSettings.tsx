@@ -5,6 +5,7 @@ import {
   AgentSetupGuide,
   AppearanceSettings,
   CreditsMeter,
+  StorageUsage,
   LanguageVoiceSettings,
   SettingsAdvanced,
   SettingsShell,
@@ -284,6 +285,8 @@ function Plans({ onSignIn }: { onSignIn: () => void }) {
       <h3 className="dk-settings__heading">AI credits</h3>
       <CreditsMeter variant="card" onOpenSettings={onSignIn} />
       <p className="dk-muted">Credits pay for AI help only. Editing, checks and exports never use them.</p>
+      <h3 className="dk-settings__heading">Storage</h3>
+      <StorageUsage />
     </div>
   );
 }

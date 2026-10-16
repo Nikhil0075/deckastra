@@ -70,6 +70,7 @@ export function CanvasStage({ editor, zoom, onZoom, overlay }: CanvasStageProps)
         {frames ? (
           <span
             className={cx("dk-canvasbar__frames", !frames.verdict.withinBudget && "dk-canvasbar__frames--over")}
+            aria-label={`Last drag: ${frames.verdict.summary}`}
             title={`Last drag: ${frames.verdict.summary}. The budget (doc 04 §31.1) is met when the work fits inside frames the compositor was going to paint anyway.`}
           >
             <span>{frames.stats.p95}ms</span>

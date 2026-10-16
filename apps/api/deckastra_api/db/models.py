@@ -443,6 +443,10 @@ class AgentRequest(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")
     created_by: Mapped[str] = mapped_column(String(64), nullable=False)
     answer_proposal_ids_json: Mapped[list[str] | None] = mapped_column(JsonColumn)
+    #: Findings an agent returned in words, for a request that asked for no
+    #: change ("review this deck and change nothing").
+    answer_text: Mapped[str | None] = mapped_column(Text)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     presentation: Mapped[Presentation | None] = relationship(back_populates="agent_requests")
@@ -474,6 +478,7 @@ class Draft(Base, TimestampMixin):
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     built_version_id: Mapped[str | None] = mapped_column(String(64))
     built_revision: Mapped[int | None] = mapped_column(Integer)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     project: Mapped[Project] = relationship(back_populates="drafts")
     presentation: Mapped[Presentation | None] = relationship(back_populates="drafts")

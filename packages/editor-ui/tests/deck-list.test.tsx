@@ -118,6 +118,8 @@ describe("DeckList", () => {
         });
       }
       if (path.endsWith("/v1/presets")) return reply(CATALOG);
+      if (method === "GET" && path.includes("/agent-tasks")) return reply([]);
+      if (method === "GET" && path.includes("/drafts")) return reply([]);
       if (path.includes("/projects/prj_1/presentations")) {
         return reply({ presentations: decks.filter((deck) => !deleted.has(deck.id)) });
       }
@@ -132,6 +134,12 @@ describe("DeckList", () => {
       if (path.endsWith("/v1/presentations/doc_a/duplicate")) {
         decks.push({ id: "doc_copy", title: "Migration Control Tower (copy)", version_id: "v", updated_at: ago(0), slide_count: 12 });
         return reply({ presentation_id: "doc_copy", version_id: "v", title: "Migration Control Tower (copy)" });
+      }
+      if (path.endsWith("/v1/presentations/doc_b/head")) return reply({ presentation_id: "doc_b", version_id: "ver_b" });
+      if (method === "POST" && path.endsWith("/v1/presentations/doc_b/transactions")) {
+        const body = JSON.parse(String(init?.body));
+        decks = decks.map((deck) => (deck.id === "doc_b" ? { ...deck, title: body.operations[0].value } : deck));
+        return reply({ version_id: "ver_b2", transaction_id: "txn_1" });
       }
       return { ok: false, status: 404, json: async () => ({ detail: "Not found." }) };
     });
@@ -181,7 +189,7 @@ describe("DeckList", () => {
     let restored = false;
     fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
       const path = String(url);
-      if (path.includes("deleted=true")) {
+      if (path.includes("/presentations") && path.includes("deleted=true")) {
         return reply({
           presentations:
             path.includes("prj_1") && !restored
@@ -195,6 +203,78 @@ describe("DeckList", () => {
       if (path.endsWith("/v1/presentations/doc_gone/restore")) {
         restored = true;
         return reply({ presentation_id: "doc_gone", restored: true });
+      }
+      return original(url, init);
+    });
+  }
+
+  function withRoughCanvas() {
+    const original = fetcher.getMockImplementation()!;
+    const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+    const draft = {
+      id: "drf_1",
+      project_id: "prj_1",
+      presentation_id: null,
+      title: "Launch narrative",
+      body: { cards: [{ id: "crd_1", layout: "title", blocks: [{ role: "headline", text: "Launch" }] }] },
+      revision: 2,
+      built_version_id: null,
+      built_revision: null,
+      changed_since_build: false,
+      created_by: "usr_1",
+      created_at: ago(DAY),
+      updated_at: ago(HOUR),
+      deleted_at: null as string | null,
+      density_warnings: {},
+    };
+    let deleted = false;
+    fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      const method = init?.method ?? "GET";
+      if (method === "DELETE" && path.endsWith("/v1/drafts/drf_1")) {
+        deleted = true;
+        draft.deleted_at = ago(0);
+        return reply({ draft_id: draft.id, deleted_at: draft.deleted_at });
+      }
+      if (method === "POST" && path.endsWith("/v1/drafts/drf_1/restore")) {
+        deleted = false;
+        draft.deleted_at = null;
+        return reply(draft);
+      }
+      if (path.includes("/projects/prj_1/drafts")) {
+        const wantsTrash = path.includes("deleted=true");
+        return reply(wantsTrash === deleted ? [draft] : []);
+      }
+      if (path.includes("/projects/prj_2/drafts")) return reply([]);
+      return original(url, init);
+    });
+  }
+
+  function withAgentTasks() {
+    const original = fetcher.getMockImplementation()!;
+    const reply = (body: unknown) => ({ ok: true, status: 200, json: async () => body });
+    const tasks = [
+      {
+        id: "req_pending", project_id: "prj_1", resource_type: "deck", resource_id: "doc_a",
+        resource_title: "Migration Control Tower", resource_deleted: false, kind: "layout",
+        message: "Make the opening simpler.", status: "open", created_at: ago(HOUR), completed_at: null,
+        target_summary: { slides: 1, objects: 0, cards: 0 }, proposal_ids: [],
+      },
+      {
+        id: "req_answered", project_id: "prj_1", resource_type: "draft", resource_id: "drf_1",
+        resource_title: "Launch narrative", resource_deleted: false, kind: "content",
+        message: "Tighten the middle section.", status: "answered", created_at: ago(DAY), completed_at: ago(HOUR),
+        target_summary: { slides: 0, objects: 0, cards: 2 }, proposal_ids: [],
+      },
+    ];
+    fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      const method = init?.method ?? "GET";
+      if (method === "GET" && path.includes("/projects/prj_1/agent-tasks")) return reply(tasks);
+      if (method === "GET" && path.includes("/projects/prj_2/agent-tasks")) return reply([]);
+      if (method === "POST" && path.endsWith("/v1/requests/req_pending/close")) {
+        tasks[0] = { ...tasks[0]!, status: "closed", completed_at: ago(0) };
+        return reply(tasks[0]);
       }
       return original(url, init);
     });
@@ -227,6 +307,55 @@ describe("DeckList", () => {
     expect(screen.getByText(/Nothing in the trash/)).toBeTruthy();
   });
 
+  it("manages rough canvases separately and restores them from the shared trash", async () => {
+    withRoughCanvas();
+    renderList();
+    await screen.findAllByTestId("deck-card");
+
+    fireEvent.click(screen.getByTestId("view-drafts"));
+    const card = await screen.findByTestId("draft-card");
+    expect(within(card).getByText("Launch narrative")).toBeTruthy();
+    expect(within(card).getByText(/Migration · edited/)).toBeTruthy();
+    expect(screen.queryAllByTestId("deck-card")).toHaveLength(0);
+
+    fireEvent.click(within(card).getByRole("button", { name: "Launch narrative actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to Trash" }));
+    await waitFor(() => expect(calls()).toContain("DELETE /v1/drafts/drf_1"));
+    await waitFor(() => expect(screen.queryByTestId("draft-card")).toBeNull());
+
+    fireEvent.click(screen.getByTestId("view-trash"));
+    const trashed = await screen.findByTestId("draft-trash-card");
+    fireEvent.click(within(trashed).getByTestId("restore-draft"));
+    await waitFor(() => expect(calls()).toContain("POST /v1/drafts/drf_1/restore"));
+    await waitFor(() => expect(screen.queryByTestId("draft-trash-card")).toBeNull());
+  });
+
+  it("tracks pending and completed agent work across projects", async () => {
+    withAgentTasks();
+    const onOpen = renderList();
+    await screen.findAllByTestId("deck-card");
+
+    fireEvent.click(screen.getByTestId("view-agent-tasks"));
+    const pending = await screen.findByTestId("agent-task-card");
+    expect(within(pending).getByText("Make the opening simpler.")).toBeTruthy();
+    expect(within(pending).getByText("Waiting for agent")).toBeTruthy();
+    expect(screen.getByText("Pending 1")).toBeTruthy();
+    expect(screen.getByText("Completed 1")).toBeTruthy();
+    expect(screen.getByTestId("agent-tasks-pending").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("agent-tasks-completed").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(within(pending).getByRole("button", { name: "Open deck" }));
+    expect(onOpen).toHaveBeenCalledWith("doc_a");
+    fireEvent.click(within(pending).getByTestId("cancel-agent-task"));
+    await waitFor(() => expect(calls()).toContain("POST /v1/requests/req_pending/close"));
+    await waitFor(() => expect(screen.queryByTestId("agent-task-card")).toBeNull());
+
+    fireEvent.click(screen.getByTestId("agent-tasks-completed"));
+    expect(screen.getByTestId("agent-tasks-completed").getAttribute("aria-pressed")).toBe("true");
+    expect(await screen.findAllByTestId("agent-task-card")).toHaveLength(2);
+    expect(screen.getByText("Tighten the middle section.")).toBeTruthy();
+  });
+
   it("opens a deck by handing its id to the shell", async () => {
     const onOpen = renderList();
     fireEvent.click(await screen.findByRole("button", { name: "Open Security Review" }));
@@ -256,6 +385,35 @@ describe("DeckList", () => {
 
     expect(await screen.findByText("Migration Control Tower (copy)")).toBeTruthy();
     expect(calls()).toContain("POST /v1/presentations/doc_a/duplicate");
+  });
+
+  it("renames a deck from its menu as one change against the head", async () => {
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByRole("button", { name: "Security Review actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    const field = await screen.findByTestId("deck-card-title-input");
+    fireEvent.change(field, { target: { value: "  Security   Review 2027 " } });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    expect(await screen.findByText("Security Review 2027")).toBeTruthy();
+    const commit = fetcher.mock.calls.find(([url, init]) => String(url).endsWith("/doc_b/transactions") && (init as RequestInit)?.method === "POST");
+    const body = JSON.parse(String((commit![1] as RequestInit).body));
+    expect(body.operations).toEqual([{ op: "replace", path: "/metadata/title", value: "Security Review 2027" }]);
+    expect(body.expected_version_id).toBe("ver_b");
+  });
+
+  it("puts the old name back on Escape and sends nothing", async () => {
+    renderList();
+    await screen.findAllByTestId("deck-card");
+    fireEvent.click(screen.getByRole("button", { name: "Security Review actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Rename…" }));
+    const field = await screen.findByTestId("deck-card-title-input");
+    fireEvent.change(field, { target: { value: "Something else" } });
+    fireEvent.keyDown(field, { key: "Escape" });
+    expect(screen.queryByTestId("deck-card-title-input")).toBeNull();
+    expect(screen.getByText("Security Review")).toBeTruthy();
+    expect(calls().some((call) => call.endsWith("/transactions"))).toBe(false);
   });
 
   it("filters by search without asking the server again", async () => {

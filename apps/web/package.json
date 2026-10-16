@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude \"tests/**/*.e2e.test.ts\"",
     "test:watch": "vitest",
-    "test:e2e": "vitest run tests/drag-budget.e2e.test.ts tests/recovery.e2e.test.ts"
+    "test:e2e": "vitest run tests/drag-budget.e2e.test.ts tests/recovery.e2e.test.ts tests/release-hardening.e2e.test.ts"
   },
   "dependencies": {
     "@deckastra/editor-ui": "*",

@@ -136,3 +136,20 @@ export interface HealthReport {
   database: string;
   migrations: string;
 }
+
+/** One limit: how much is used, the allowance (null = unlimited), and the share. */
+export interface UsageMeasure {
+  used: number;
+  allowed: number | null;
+  fraction: number | null;
+}
+
+/** `GET /v1/workspace/usage`: a workspace's use against its plan. */
+export interface WorkspaceUsage {
+  plan: string;
+  generations: UsageMeasure;
+  tokens: UsageMeasure;
+  storage_bytes: UsageMeasure;
+  speech_characters: UsageMeasure;
+  resets_at: string;
+}

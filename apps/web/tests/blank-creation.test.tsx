@@ -58,6 +58,9 @@ function route(url: string) {
   if (url.includes("/v1/projects/prj_test/presentations")) return ok({ presentations: [] });
   // The home lists the project's draft boards on arrival (A2, 2026-10-14).
   if (url.includes("/v1/projects/prj_test/drafts")) return ok([]);
+  // Agent Tasks is another home destination and loads its count in the shell;
+  // it is not a blank-deck creation attempt.
+  if (url.includes("/v1/projects/prj_test/agent-tasks")) return ok([]);
   if (url.endsWith("/v1/presets")) return ok({
     description: "reviewed",
     purposeGroups: ["business"],

@@ -32,7 +32,13 @@ export function TransitionPreview({
 }) {
   const to = scene.slides[slideIndex];
   const from = slideIndex > 0 ? scene.slides[slideIndex - 1] : undefined;
-  const [motion, setMotion] = useState<"full" | "reduced">("full");
+  // Starts as the system asks (release E2E step 11): someone who turned on
+  // reduced motion in Windows previews what their own present mode will play.
+  const [motion, setMotion] = useState<"full" | "reduced">(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "reduced"
+      : "full",
+  );
   const [timeMs, setTimeMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const frame = useRef(0);

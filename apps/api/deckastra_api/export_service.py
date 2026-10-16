@@ -23,12 +23,15 @@ streamed past.
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
 import time
 import subprocess
 import sys
 import tempfile
+import threading
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -677,6 +680,64 @@ CANCEL_POLL_SECONDS = 0.25
 PREVIEW_TIMEOUT_SECONDS = 90
 MOTION_PREVIEW_WIDTH = 1536
 
+# Preview calls are synchronous and historically launched a fresh browser even
+# when Review, MCP, and the editor asked for the same immutable deck version in
+# succession. Keep a small process-local pixel cache. The key includes the full
+# document, inline assets, and render options, so it cannot return pixels from a
+# different tenant, asset revision, proposal, or animation sample.
+PREVIEW_CACHE_MAX_ITEMS = 24
+PREVIEW_CACHE_MAX_BYTES = 96 * 1024 * 1024
+_preview_cache: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
+_preview_cache_bytes = 0
+_preview_cache_lock = threading.Lock()
+
+
+def _preview_key(kind: str, document: dict[str, Any], options: dict[str, Any], assets: list[dict[str, Any]] | None) -> str:
+    encoded = json.dumps(
+        {"kind": kind, "document": document, "options": options, "assets": assets or []},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _preview_cached(key: str) -> dict[str, Any] | None:
+    with _preview_cache_lock:
+        found = _preview_cache.get(key)
+        if found is None:
+            return None
+        _preview_cache.move_to_end(key)
+        return {**found, "warnings": list(found.get("warnings") or []), "cache_hit": True}
+
+
+def _remember_preview(key: str, rendered: dict[str, Any]) -> dict[str, Any]:
+    global _preview_cache_bytes
+    stored = {**rendered, "warnings": list(rendered.get("warnings") or []), "cache_hit": False}
+    size = len(stored.get("bytes") or b"")
+    # A single unusually large contact sheet must not evict the whole cache only
+    # to occupy it by itself.
+    if size > PREVIEW_CACHE_MAX_BYTES:
+        return stored
+    with _preview_cache_lock:
+        previous = _preview_cache.pop(key, None)
+        if previous is not None:
+            _preview_cache_bytes -= len(previous.get("bytes") or b"")
+        _preview_cache[key] = stored
+        _preview_cache_bytes += size
+        while len(_preview_cache) > PREVIEW_CACHE_MAX_ITEMS or _preview_cache_bytes > PREVIEW_CACHE_MAX_BYTES:
+            _old_key, old = _preview_cache.popitem(last=False)
+            _preview_cache_bytes -= len(old.get("bytes") or b"")
+    return stored
+
+
+def clear_preview_cache() -> None:
+    """Tests and supervised restarts can explicitly discard cached pixels."""
+    global _preview_cache_bytes
+    with _preview_cache_lock:
+        _preview_cache.clear()
+        _preview_cache_bytes = 0
+
 
 #: The eight bytes every PNG starts with, written as numbers so no escape
 #: sequence can be mangled on its way into this file.
@@ -715,6 +776,11 @@ def render_slide_png(
     viewport = document.get("viewport") or {}
     width = float(viewport.get("width") or 1920)
     scale = max(0.1, min(3.0, PREVIEW_WIDTH / width)) if width else 1.0
+    options = {"slideIds": [slide_id], "scale": scale, "atTime": at_time}
+    cache_key = _preview_key("png", document, options, assets)
+    cached = _preview_cached(cache_key)
+    if cached is not None:
+        return cached
 
     root = export_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -726,13 +792,13 @@ def render_slide_png(
             "png",
             document,
             output,
-            {"slideIds": [slide_id], "scale": scale, "atTime": at_time},
+            options,
             timeout=PREVIEW_TIMEOUT_SECONDS,
             assets=assets,
         )
         image = output.read_bytes()
         pixels = _png_size(image)
-        return {
+        return _remember_preview(cache_key, {
             "bytes": image,
             # The image's own pixels, not the slide's logical size. The worker
             # reports the latter — 1920x1080 whatever the scale — and a caller
@@ -745,7 +811,7 @@ def render_slide_png(
             # An agent looking at its own change has to be able to tell a picture
             # it could not load from a picture that is not there.
             "warnings": answer.get("warnings") or [],
-        }
+        })
     finally:
         # A preview is not an artifact anyone downloads later; the bytes go back
         # in the response and the file has no reason to outlive the request.
@@ -764,6 +830,11 @@ def render_motion_strip_png(
     slide_width = float(viewport.get("width") or 1920)
     logical_width = slide_width
     scale = max(0.1, min(3.0, MOTION_PREVIEW_WIDTH / logical_width)) if logical_width else 1.0
+    options = {"slideIds": [slide_id], "scale": scale, "frameCount": frame_count}
+    cache_key = _preview_key("motion-strip", document, options, assets)
+    cached = _preview_cached(cache_key)
+    if cached is not None:
+        return cached
 
     root = export_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -775,13 +846,13 @@ def render_motion_strip_png(
             "motion-strip",
             document,
             output,
-            {"slideIds": [slide_id], "scale": scale, "frameCount": frame_count},
+            options,
             timeout=PREVIEW_TIMEOUT_SECONDS,
             assets=assets,
         )
         image = output.read_bytes()
         pixels = _png_size(image)
-        return {
+        return _remember_preview(cache_key, {
             "bytes": image,
             "width": pixels[0],
             "height": pixels[1],
@@ -789,7 +860,7 @@ def render_motion_strip_png(
             "frame_times_ms": [int(value) for value in answer.get("frameTimesMs") or []],
             "metrics_estimated": bool(answer.get("metricsEstimated")),
             "warnings": answer.get("warnings") or [],
-        }
+        })
     finally:
         output.unlink(missing_ok=True)
 

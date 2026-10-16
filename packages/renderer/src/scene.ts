@@ -682,6 +682,7 @@ function buildNode(
   };
 
   const order = ctx.counter.value++;
+  const explicitA11yOrder = element.metadata?.a11yOrder;
 
   const node: SceneNode = {
     id: element.id,
@@ -707,7 +708,14 @@ function buildNode(
       return {
         role: a11yRole(element.type, element.semanticRole, element.layerRole),
         label: alt ?? element.name,
-        order: a11yOrder(element.semanticRole, order),
+        // An author may choose a reading order without changing paint order.
+        // Keep it in metadata so the operation is reversible and every output
+        // surface reads the same value. Invalid legacy values fall back to the
+        // semantic-role order rather than destabilising the DOM sort.
+        order:
+          typeof explicitA11yOrder === "number" && Number.isFinite(explicitA11yOrder)
+            ? explicitA11yOrder
+            : a11yOrder(element.semanticRole, order),
         described: Boolean(alt && alt.trim()),
       };
     })(),

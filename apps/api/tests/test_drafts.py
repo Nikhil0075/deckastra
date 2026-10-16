@@ -72,6 +72,68 @@ def test_stale_revision_is_a_conflict_and_does_not_overwrite(client, session):
     assert client.get(f"/v1/drafts/{draft['id']}", headers=auth).json()["body"]["cards"][0]["id"] == "crd_case"
 
 
+def test_draft_moves_to_trash_and_restores_without_losing_work(client, session):
+    draft, auth = create(client, session)
+    project_id = draft["project_id"]
+
+    deleted = client.delete(f"/v1/drafts/{draft['id']}", headers=auth)
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted_at"]
+    assert client.get(f"/v1/drafts/{draft['id']}", headers=auth).status_code == 404
+    assert client.get(f"/v1/projects/{project_id}/drafts", headers=auth).json() == []
+
+    trash = client.get(f"/v1/projects/{project_id}/drafts?deleted=true", headers=auth).json()
+    assert [item["id"] for item in trash] == [draft["id"]]
+    assert trash[0]["body"] == draft["body"]
+
+    restored = client.post(f"/v1/drafts/{draft['id']}/restore", headers=auth)
+    assert restored.status_code == 200
+    assert restored.json()["deleted_at"] is None
+    assert restored.json()["body"] == draft["body"]
+    assert client.get(f"/v1/drafts/{draft['id']}", headers=auth).status_code == 200
+
+
+def test_draft_lifecycle_requires_manage_scope():
+    assert grants.required_scope("DELETE", "/v1/drafts/drf_1") == "manage"
+    assert grants.required_scope("POST", "/v1/drafts/drf_1/restore") == "manage"
+
+
+def test_layout_change_converts_blocks_and_keeps_the_previous_content():
+    card = drafts.DraftCard(id="crd_convert", layout="statement", blocks=[
+        drafts.DraftBlock(role="headline", text="Customer trust"),
+        drafts.DraftBlock(role="body", text="Trust is earned in the recovery."),
+    ])
+    quote = drafts._convert_layout(card, "quote")
+    assert quote.layout == "quote"
+    assert [(block.role, block.text) for block in quote.blocks] == [
+        ("headline", "Customer trust"), ("quote", "Trust is earned in the recovery."),
+    ]
+    assert quote.alternatives[-1] == card.blocks
+
+    image = drafts._convert_layout(quote, "image")
+    assert image.layout == "image"
+    picture = next(block for block in image.blocks if block.role == "image")
+    assert picture.image.subject == "Trust is earned in the recovery."
+    assert image.alternatives[-1] == quote.blocks
+
+    timeline = drafts._convert_layout(card, "timeline")
+    stages = next(block.data for block in timeline.blocks if block.role == "timeline")
+    assert len(stages) == 2
+    assert stages[0]["detail"] == "Trust is earned in the recovery."
+
+
+def test_set_layout_operation_is_semantic(client, session):
+    draft, auth = create(client, session)
+    changed = client.patch(f"/v1/drafts/{draft['id']}", headers=auth, json={"revision": 1, "operations": [
+        {"op": "set_layout", "card_id": "crd_case", "layout": "quote"},
+    ]})
+    assert changed.status_code == 200, changed.text
+    card = next(card for card in changed.json()["body"]["cards"] if card["id"] == "crd_case")
+    assert card["layout"] == "quote"
+    assert [block["role"] for block in card["blocks"]] == ["headline", "quote"]
+    assert card["alternatives"][0][1]["role"] == "bullet"
+
+
 def test_agent_cannot_change_a_locked_card_but_can_change_another(client, session):
     draft, _auth = create(client, session)
     with db_session.session_scope() as db:
@@ -115,6 +177,78 @@ def test_linked_build_is_one_pending_proposal(client, session):
         assert len(rows) == 1
         assert rows[0].status == "pending"
         assert rows[0].operations_json[0]["path"] == "/slides"
+
+
+def test_second_build_waits_for_the_first_review_decision(client, session):
+    deck, seeded, auth = _linked_deck(client, session, count=2)
+    card = seeded["body"]["cards"][0]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": card["id"], "blocks": [{"role": "headline", "text": "One proposal at a time"}]},
+    ]}).json()
+    first = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"]})
+    assert first.status_code == 200, first.text
+    second = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"]})
+    assert second.status_code == 409
+    assert second.json()["detail"]["code"] == "E_DRAFT_BUILD_PENDING"
+    assert second.json()["detail"]["proposal_id"] == first.json()["transaction_id"]
+
+
+def test_build_reports_card_specific_semantic_problem(client, session):
+    account, auth = session
+    made = client.post(f"/v1/projects/{account['project_id']}/drafts", headers=auth, json={
+        "title": "Incomplete", "body": {"cards": [
+            {"id": "crd_quote", "layout": "quote", "blocks": [{"role": "headline", "text": "No quotation yet"}]},
+        ]},
+    }).json()
+    built = client.post(f"/v1/drafts/{made['id']}/build", headers=auth, json={"revision": made["revision"]})
+    assert built.status_code == 422
+    assert built.json()["detail"] == {
+        "message": "Fix these cards before building.",
+        "issues": [{"card_id": "crd_quote", "layout": "quote", "message": "Add quote text before building."}],
+    }
+
+
+def test_linked_draft_is_marked_built_only_after_approval(client, session):
+    deck, seeded, auth = _linked_deck(client, session, count=2)
+    card = seeded["body"]["cards"][0]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": card["id"], "blocks": [{"role": "headline", "text": "Approved, not merely proposed"}]},
+    ]}).json()
+
+    proposed = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"]})
+    assert proposed.status_code == 200, proposed.text
+    while_pending = client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()
+    assert while_pending["built_revision"] == seeded["revision"]
+    assert while_pending["changed_since_build"] is True
+
+    approved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{proposed.json()['transaction_id']}/approve",
+        headers=auth,
+        json={"expected_version_id": deck["version_id"]},
+    )
+    assert approved.status_code == 200, approved.text
+    after = client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()
+    assert after["built_revision"] == edited["revision"]
+    assert after["built_version_id"] == approved.json()["version_id"]
+    assert after["changed_since_build"] is False
+
+
+def test_partial_build_does_not_claim_the_whole_board_matches(client, session):
+    deck, seeded, auth = _linked_deck(client, session, count=2)
+    card = seeded["body"]["cards"][0]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": card["id"], "blocks": [{"role": "headline", "text": "Only this card"}]},
+    ]}).json()
+    proposed = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"], "card_ids": [card["id"]]}).json()
+    approved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{proposed['transaction_id']}/approve",
+        headers=auth,
+        json={"expected_version_id": deck["version_id"]},
+    )
+    assert approved.status_code == 200, approved.text
+    after = client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()
+    assert after["built_revision"] == seeded["revision"]
+    assert after["changed_since_build"] is True
 
 
 
@@ -229,3 +363,161 @@ def test_drafting_changes_to_a_real_deck_seeds_its_words(client, session):
     # Seeded cards are the deck as it is: building them all changes nothing.
     built = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": seeded["revision"]})
     assert built.status_code == 422
+
+
+def test_opening_draft_changes_reuses_the_latest_board(client, session):
+    deck, seeded, auth = _linked_deck(client, session, count=2)
+    card = seeded["body"]["cards"][0]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": card["id"], "blocks": [{"role": "headline", "text": "Keep this board"}]},
+    ]}).json()
+    # Simulate the stale revision-1 board created by the old open-on-every-click
+    # route. Revision wins before creation time, so this ghost cannot take over.
+    account, _auth = session
+    ghost = client.post(f"/v1/projects/{account['project_id']}/drafts", headers=auth, json={
+        "title": "Draft changes — ghost", "presentation_id": deck["presentation_id"], "body": body(),
+    })
+    assert ghost.status_code == 200, ghost.text
+    reopened = client.post(f"/v1/presentations/{deck['presentation_id']}/drafts", headers=auth)
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["id"] == seeded["id"]
+    assert reopened.json()["revision"] == edited["revision"]
+    assert reopened.json()["body"]["cards"][0]["blocks"][0]["text"] == "Keep this board"
+
+
+def test_seed_preserves_chart_diagram_timeline_and_image_data():
+    def text(role, words, x=0, y=0, width=100):
+        return {"type": "text", "semanticRole": role, "transform": {"x": x, "y": y, "width": width, "height": 40},
+                "content": {"blocks": [{"type": "paragraph", "spans": [{"text": words}]}]}}
+
+    document = {"slides": [
+        {"id": "s_chart", "layout": {"styleLabel": "chart"}, "elements": [
+            text("headline", "Revenue"),
+            {"type": "chart", "chartType": "bar", "data": {"type": "inline", "rows": [{"category": "A", "Sales": 10}, {"category": "B", "Sales": 20}]},
+             "encoding": {"category": "category", "value": "Sales"}, "chartStyle": {"numberFormat": {"suffix": "%"}}},
+        ]},
+        {"id": "s_diagram", "layout": {"styleLabel": "diagram"}, "elements": [
+            text("headline", "Flow"),
+            {"type": "diagram", "diagramType": "flow", "layoutHint": {"direction": "LR", "mode": "managed"},
+             "nodes": [{"id": "a", "label": "Start"}, {"id": "b", "label": "Finish"}],
+             "edges": [{"id": "e", "from": "a", "to": "b", "label": "then"}]},
+        ]},
+        {"id": "s_timeline", "layout": {"styleLabel": "timeline"}, "elements": [
+            text("headline", "Roadmap"),
+            {"type": "shape", "name": "Milestone 1", "transform": {"x": 100, "y": 500, "width": 20, "height": 20}},
+            {"type": "shape", "name": "Milestone 2", "transform": {"x": 500, "y": 500, "width": 20, "height": 20}},
+            text("label", "Q1", 50, 420, 120), text("body", "Pilot", 50, 550, 120), text("body", "Learn", 50, 620, 120),
+            text("label", "Q2", 450, 420, 120), text("body", "Scale", 450, 550, 120), text("body", "Grow", 450, 620, 120),
+        ]},
+        {"id": "s_image", "layout": {"styleLabel": "image"}, "background": {"assetId": "ast_existing"}, "elements": [text("headline", "A real image")]},
+    ]}
+
+    seeded = drafts._seed_body(document)
+    chart = next(block for block in seeded.cards[0].blocks if block.role == "chart")
+    assert chart.data["categories"] == ["A", "B"]
+    assert chart.data["series"][0] == {"name": "Sales", "values": [10.0, 20.0]}
+    diagram = next(block for block in seeded.cards[1].blocks if block.role == "diagram")
+    assert diagram.data["nodes"][0]["label"] == "Start"
+    assert diagram.data["edges"][0]["label"] == "then"
+    timeline = next(block for block in seeded.cards[2].blocks if block.role == "timeline")
+    assert timeline.data == [
+        {"when": "Q1", "label": "Pilot", "detail": "Learn"},
+        {"when": "Q2", "label": "Scale", "detail": "Grow"},
+    ]
+    image = next(block for block in seeded.cards[3].blocks if block.role == "image")
+    assert image.image.asset_id == "ast_existing"
+
+
+def test_existing_untouched_board_is_enriched_without_overwriting_edited_cards():
+    chart_slide = {
+        "id": "s_chart", "layout": {"styleLabel": "chart"}, "elements": [
+            {"type": "text", "semanticRole": "headline", "content": {"blocks": [{"type": "paragraph", "spans": [{"text": "Revenue"}]}]}},
+            {"type": "chart", "chartType": "bar", "data": {"type": "inline", "rows": [{"category": "A", "Sales": 10}, {"category": "B", "Sales": 20}]},
+             "encoding": {"category": "category", "value": "Sales"}},
+        ],
+    }
+    untouched = drafts.DraftCard(id="c1", layout="chart", blocks=[drafts.DraftBlock(role="headline", text="Revenue")], source_slide_id="s_chart")
+    untouched = untouched.model_copy(update={"source_fingerprint": drafts._fingerprint(untouched)})
+    edited = drafts.DraftCard(id="c2", layout="chart", blocks=[drafts.DraftBlock(role="headline", text="Authored change")], source_slide_id="s_chart", source_fingerprint="old")
+    row = Draft(
+        id="drf_legacy", project_id="prj_legacy", presentation_id="prs_legacy", title="Legacy",
+        body_json=drafts.DraftBody(cards=[untouched, edited]).model_dump(mode="json", exclude_none=True),
+        created_by="usr_legacy", revision=5,
+    )
+
+    assert drafts._upgrade_seeded_structure(row, {"slides": [chart_slide]}) is True
+    upgraded = drafts.DraftBody.model_validate(row.body_json)
+    assert row.revision == 6
+    assert any(block.role == "chart" for block in upgraded.cards[0].blocks)
+    assert upgraded.cards[1].blocks[0].text == "Authored change"
+    assert not any(block.role == "chart" for block in upgraded.cards[1].blocks)
+
+
+def test_structured_cards_survive_a_linked_edit_and_rebuild(client, session):
+    account, auth = session
+    deck = client.post("/v1/decks/compose", headers=auth, json={"project_id": account["project_id"], "story_plan": {
+        "title": "Structured", "audience": "", "objective": "", "narrative_arc": "",
+        "slides": [
+            {"layout": "chart", "purpose": "Evidence", "key_message": "Revenue", "headline": "Revenue",
+             "chart": {"type": "bar", "categories": ["A", "B"], "series": [{"name": "Sales", "values": [10, 20]}]}},
+            {"layout": "diagram", "purpose": "Flow", "key_message": "System", "headline": "System",
+             "diagram": {"kind": "flow", "nodes": [{"key": "a", "label": "Start"}, {"key": "b", "label": "Finish"}],
+                         "edges": [{"source": "a", "target": "b", "label": "then"}]}},
+            {"layout": "timeline", "purpose": "Roadmap", "key_message": "Roadmap", "headline": "Roadmap",
+             "timeline": [{"when": "Q1", "label": "Pilot", "detail": "Learn"}, {"when": "Q2", "label": "Scale", "detail": "Grow"}]},
+        ],
+    }})
+    assert deck.status_code == 200, deck.text
+    deck = deck.json()
+    seeded = client.post(f"/v1/presentations/{deck['presentation_id']}/drafts", headers=auth).json()
+    roles = [{block["role"] for block in card["blocks"]} for card in seeded["body"]["cards"]]
+    assert "chart" in roles[0]
+    assert "diagram" in roles[1]
+    assert "timeline" in roles[2]
+
+    first = seeded["body"]["cards"][0]
+    blocks = [{**block, "text": "Revenue is accelerating"} if block["role"] == "headline" else block for block in first["blocks"]]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": first["id"], "blocks": blocks},
+    ]}).json()
+    proposed = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"]})
+    assert proposed.status_code == 200, proposed.text
+    slides = _proposed_slides(deck["presentation_id"], proposed.json()["transaction_id"])
+    assert any(element.get("type") == "chart" for element in slides[0]["elements"])
+    assert any(element.get("type") == "diagram" for element in slides[1]["elements"])
+    assert len([element for element in slides[2]["elements"] if str(element.get("name") or "").startswith("Milestone ")]) == 2
+
+
+def test_a_build_that_would_lose_a_deck_edit_is_refused_and_the_card_can_be_synced(client, session):
+    # Release E2E step 7 (2026-10-17): the deck changed after the board took
+    # its slides. A card the board left alone keeps the deck's edit; a card
+    # changed on both sides is refused by name until the person chooses.
+    deck, seeded, auth = _linked_deck(client, session, count=3)
+    cards = seeded["body"]["cards"]
+    slides = deck["document"]["slides"]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": cards[1]["id"], "blocks": [{"role": "headline", "text": "Board words"}]},
+    ]}).json()
+    head = client.get(f"/v1/presentations/{deck['presentation_id']}/head", headers=auth).json()["version_id"]
+    for slide in slides[:2]:
+        moved = client.post(f"/v1/presentations/{deck['presentation_id']}/transactions", headers=auth, json={
+            "operations": [{"op": "add", "path": f"/slides/id:{slide['id']}/speakerNotes", "value": "Deck note"}],
+            "intent": "Note", "expected_version_id": head, "client_id": "web-editor",
+        })
+        assert moved.status_code == 200, moved.text
+        head = moved.json()["version_id"]
+
+    read = client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()
+    assert read["deck_changed_card_ids"] == sorted([cards[0]["id"], cards[1]["id"]])
+    assert read["deck_conflict_card_ids"] == [cards[1]["id"]]
+
+    refused = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"]})
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["detail"]["code"] == "E_DRAFT_DECK_MOVED"
+    assert refused.json()["detail"]["card_ids"] == [cards[1]["id"]]
+
+    synced = client.post(f"/v1/drafts/{seeded['id']}/sync", headers=auth, json={"revision": edited["revision"], "card_ids": [cards[1]["id"]]})
+    assert synced.status_code == 200, synced.text
+    card = next(item for item in synced.json()["body"]["cards"] if item["id"] == cards[1]["id"])
+    assert card["notes"] == "Deck note"
+    assert client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()["deck_conflict_card_ids"] == []

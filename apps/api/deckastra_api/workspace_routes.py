@@ -20,11 +20,12 @@ import logging
 import os
 import time
 from typing import Any, Literal
+from urllib.parse import quote
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -572,7 +573,14 @@ UPLOAD_TOKEN_TTL = 15 * 60
 
 
 class BeginAssetUpload(BaseModel):
-    workspace_id: str
+    workspace_id: str | None = None
+    #: Agent media imports bind an upload to one deck version and slide. The
+    #: ordinary editor upload continues to identify its workspace directly.
+    presentation_id: str | None = None
+    expected_version_id: str | None = Field(default=None, max_length=64)
+    slide_id: str | None = Field(default=None, max_length=64)
+    prompt: str | None = Field(default=None, min_length=1, max_length=4_000)
+    style_source: Literal["deck", "prompt"] | None = None
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=128)
     size_bytes: int = Field(gt=0, le=MAX_ASSET_BYTES)
@@ -585,6 +593,17 @@ class BeginAssetUpload(BaseModel):
     duration_ms: int | None = Field(default=None, gt=0, le=6 * 60 * 60 * 1000)
     #: Audio only: 256 peaks, 0..1, for the timeline's waveform. Checked, never trusted.
     waveform_peaks: list[float] | None = Field(default=None, min_length=256, max_length=256)
+
+    @model_validator(mode="after")
+    def one_owner(self) -> "BeginAssetUpload":
+        if bool(self.workspace_id) == bool(self.presentation_id):
+            raise ValueError("Give a workspace_id or a presentation_id, not both.")
+        bound = (self.expected_version_id, self.slide_id, self.prompt, self.style_source)
+        if self.presentation_id and not all(bound):
+            raise ValueError("A presentation upload must name its version, slide, prompt hash and style source.")
+        if not self.presentation_id and any(bound):
+            raise ValueError("Media-import fields require a presentation_id.")
+        return self
 
 
 class CompleteAssetUpload(BaseModel):
@@ -612,9 +631,24 @@ def begin_asset_upload(
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    workspace_id = _selected_workspace(
-        session, principal.user_id, request.workspace_id, Role.EDITOR
-    )
+    if request.presentation_id:
+        if request.kind != "image" or request.content_type.split(";", 1)[0].strip().lower() not in {"image/png", "image/jpeg", "image/webp"}:
+            raise HTTPException(status_code=422, detail="Agent media imports currently accept PNG, JPEG or WebP images.")
+        if request.size_bytes > 20 * 1024 * 1024 or not request.width or not request.height or request.width * request.height > 16_000_000:
+            raise HTTPException(status_code=422, detail="An imported generated image must be at most 20 MB and 16 megapixels.")
+        access = resolve_presentation_access(
+            session, user_id=principal.user_id, presentation_id=request.presentation_id, require=Role.EDITOR
+        )
+        loaded = store.load_presentation(session, request.presentation_id)
+        if loaded.version_id != request.expected_version_id:
+            raise HTTPException(status_code=409, detail={"message": "The deck changed before this media upload was prepared.", "code": "E310", "current_version_id": loaded.version_id})
+        if not any(slide.get("id") == request.slide_id for slide in loaded.document.get("slides") or []):
+            raise HTTPException(status_code=404, detail="No such slide in this deck.")
+        workspace_id = access.workspace_id
+    else:
+        workspace_id = _selected_workspace(
+            session, principal.user_id, request.workspace_id, Role.EDITOR
+        )
     if not _content_type_allowed(request.kind, request.content_type):
         raise HTTPException(
             status_code=422,
@@ -644,18 +678,47 @@ def begin_asset_upload(
         "height": request.height,
         "duration_ms": request.duration_ms if request.kind == "audio" else None,
         "waveform_peaks": audio.valid_peaks(request.waveform_peaks) if request.kind == "audio" and request.waveform_peaks else None,
+        **({
+            "media_import": {
+                "presentation_id": request.presentation_id,
+                "expected_version_id": request.expected_version_id,
+                "slide_id": request.slide_id,
+                "prompt_sha256": hashlib.sha256((request.prompt or "").encode("utf-8")).hexdigest(),
+                "style_source": request.style_source,
+            }
+        } if request.presentation_id else {}),
     }
     try:
         url = object_storage.presigned_put(key, claims["content_type"], expires_seconds=UPLOAD_TOKEN_TTL)
     except object_storage.ObjectStorageError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    upload_token = jwt.encode(claims, _upload_secret(), algorithm="HS256")
+    # Object stores already return a signed absolute URL. A local desktop route
+    # normally relies on the app's bearer, which an external image tool should
+    # never receive, so media imports get a narrow one-upload capability URL.
+    if request.presentation_id and object_storage.local_root() is not None:
+        url = f"/v1/workspace/assets/signed-blob/{quote(key)}?upload_token={quote(upload_token, safe='')}"
     return {
         "method": "PUT",
         "upload_url": url,
         "headers": {"Content-Type": claims["content_type"]},
-        "upload_token": jwt.encode(claims, _upload_secret(), algorithm="HS256"),
+        "upload_token": upload_token,
         "expires_at": now + UPLOAD_TOKEN_TTL,
     }
+
+
+def decode_upload_token(token: str) -> dict[str, Any]:
+    try:
+        return jwt.decode(
+            token,
+            _upload_secret(),
+            algorithms=["HS256"],
+            audience="deckastra-upload",
+            issuer="deckastra-upload",
+            options={"require": ["exp", "iat", "iss", "aud", "sub"]},
+        )
+    except jwt.PyJWTError as error:
+        raise HTTPException(status_code=400, detail="This upload token is invalid or expired.") from error
 
 
 def _require_local_blob_store() -> None:
@@ -713,6 +776,26 @@ def put_asset_blob(
     return {"bytes": meta.bytes, "etag": meta.etag}
 
 
+@router.put("/workspace/assets/signed-blob/{key:path}")
+def put_signed_asset_blob(key: str, upload_token: str, request: Request) -> dict[str, Any]:
+    """Receive one local media-import upload without exposing the app bearer."""
+    _require_local_blob_store()
+    claims = decode_upload_token(upload_token)
+    if claims.get("key") != key or not claims.get("media_import"):
+        raise HTTPException(status_code=404, detail="No such upload.")
+    content_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+    if content_type != claims.get("content_type"):
+        raise HTTPException(status_code=422, detail="The upload content type does not match its reservation.")
+    body = _read_body(request)
+    if len(body) != int(claims.get("size_bytes") or 0):
+        raise HTTPException(status_code=422, detail="The upload size does not match its reservation.")
+    try:
+        meta = object_storage.put_local(key, body, content_type)
+    except object_storage.ObjectStorageError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return {"bytes": meta.bytes, "etag": meta.etag}
+
+
 @router.get("/workspace/assets/blob/{key:path}")
 def get_asset_blob(
     key: str,
@@ -738,17 +821,7 @@ def complete_asset_upload(
     principal: Principal = Depends(current_principal),
     session: Session = Depends(get_session),
 ) -> dict[str, Any]:
-    try:
-        claims = jwt.decode(
-            request.upload_token,
-            _upload_secret(),
-            algorithms=["HS256"],
-            audience="deckastra-upload",
-            issuer="deckastra-upload",
-            options={"require": ["exp", "iat", "iss", "aud", "sub"]},
-        )
-    except jwt.PyJWTError as error:
-        raise HTTPException(status_code=400, detail="This upload token is invalid or expired.") from error
+    claims = decode_upload_token(request.upload_token)
     if claims.get("sub") != principal.user_id:
         raise HTTPException(status_code=404, detail="No such upload.")
 
@@ -867,6 +940,17 @@ def delete_asset(
     asset = session.get(Asset, asset_id)
     if asset is None or asset.workspace_id != selected:
         raise HTTPException(status_code=404, detail="No such asset.")
+    # A file a deck shows now is not removed from under it: the deck would draw
+    # a gap where the picture was, with nothing to say why. Removing it from the
+    # slides is the person's act; this refuses and names the decks (2026-10-17).
+    uses = asset_service.current_uses(session, selected, asset.id)
+    live = [deck for deck in uses["decks"] if not deck["deleted"]]
+    if live:
+        names = ", ".join(f"“{deck['title']}”" for deck in live[:3]) + (f" and {len(live) - 3} more" if len(live) > 3 else "")
+        raise HTTPException(
+            status_code=409,
+            detail={"message": f"This file is still used in {names}. Remove it from those slides first.", "code": "E_ASSET_IN_USE", "decks": live},
+        )
     return asset_service.describe(asset_service.soft_delete(session, asset))
 
 
@@ -903,6 +987,33 @@ def download_asset(
         return {"url": object_storage.presigned_get(asset.storage_key), "expires_in": 900}
     except object_storage.ObjectStorageError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@router.post("/presentations/{presentation_id}/assets/{asset_id}/cite")
+def cite_asset(
+    presentation_id: str,
+    asset_id: str,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """What a deck needs to place a picture this workspace already holds.
+
+    The storage key, which `describe` withholds from lists, for the same reason
+    completing an upload returns it: the caller is about to cite the file from
+    a document. Scoped to the *deck's* workspace and to an editor of that deck,
+    because a picture from another workspace would be unreadable to everyone
+    the deck is rendered for (D5.5, D5.7), and a stranger's asset gets the same
+    404 as one that does not exist (2026-10-17).
+    """
+    access = resolve_presentation_access(
+        session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR
+    )
+    asset = session.get(Asset, asset_id)
+    if asset is None or asset.workspace_id != access.workspace_id or asset.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="No such asset.")
+    if asset.kind != "image":
+        raise HTTPException(status_code=422, detail="Only a picture can be placed on a slide this way.")
+    return {**asset_service.describe(asset), "storage_key": asset.storage_key}
 
 
 @router.post("/workspace/assets/sweep")

@@ -7,7 +7,7 @@ export interface DraftBlock {
   role: DraftBlockRole;
   text?: string;
   data?: unknown;
-  image?: { subject: string; style_source: "deck" | "prompt" };
+  image?: { subject: string; style_source: "deck" | "prompt"; asset_id?: string };
 }
 
 export interface DraftCard {
@@ -44,7 +44,16 @@ export interface DraftBoard {
   created_by: string;
   created_at: string;
   updated_at: string;
+  /** Present only after the rough canvas has been moved to Trash. */
+  deleted_at?: string | null;
   density_warnings: Record<string, string[]>;
+  /**
+   * Linked boards: cards whose slide changed in the deck after the board took
+   * it, and those of them the board changed too. Building a conflicting card
+   * is refused (`E_DRAFT_DECK_MOVED`) until it is synced or left out.
+   */
+  deck_changed_card_ids?: string[];
+  deck_conflict_card_ids?: string[];
 }
 
 export type DraftOperation =
@@ -52,6 +61,7 @@ export type DraftOperation =
   | { op: "remove"; card_id: string }
   | { op: "move"; card_id: string; index: number }
   | { op: "set_blocks"; card_id: string; blocks: DraftBlock[] }
+  | { op: "set_layout"; card_id: string; layout: string }
   | { op: "add_alternative"; card_id: string; alternative: DraftBlock[] }
   | { op: "choose_alternative"; card_id: string; alternative_index: number }
   | { op: "set_locked"; card_id: string; locked: boolean };

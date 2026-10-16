@@ -6,6 +6,7 @@ import {
   checkAccessibility,
   checkLayout,
   readableColor,
+  visualReadingOrder,
   type DocumentScene,
   type SceneNode,
   type TextMeasurer,
@@ -276,7 +277,18 @@ export function designCheck(document: PresentationDocument, scene: DocumentScene
     }
     for (const issue of checkAccessibility(slide)) {
       if (issue.code !== "A103") continue;
-      push({ code: "A103", severity: "warning", slideId: slide.slideId, elementId: issue.elementId, message: issue.message });
+      const visual = visualReadingOrder(slide);
+      push({
+        code: "A103",
+        severity: "warning",
+        slideId: slide.slideId,
+        elementId: issue.elementId,
+        message: issue.message,
+        fix: {
+          label: "Match the visual order",
+          changes: visual.map((node, index) => ({ elementId: node.id, property: "metadata.a11yOrder", value: index })),
+        },
+      });
     }
 
     // Narration on a click step the slide no longer has (W323, plan 01 §3.3):

@@ -34,7 +34,7 @@ from .auth import (
 )
 from .compose import blank_document, compose_slide
 from .models import StoryPlan
-from .db.models import Asset, Presentation, PresentationVersion, TransactionRow, Workspace
+from .db.models import AgentRequest, Asset, Presentation, PresentationVersion, TransactionRow, Workspace
 from .db.session import get_session
 from .patch import PatchError, apply_patch, disturbs
 from .risk import assess_risk
@@ -276,6 +276,18 @@ def _slides_touched(operations: list[dict[str, Any]]) -> list[str]:
 #: element may carry any semantic role, and these are the ones the Motion Agent
 #: is taught and the ones a deck this product composes actually uses.
 MOTION_ROLES = ["eyebrow", "headline", "subtitle", "body", "metric", "quote", "caption"]
+
+
+@router.get("/local/agent-activity")
+def agent_activity(principal: Principal = Depends(current_principal)) -> dict[str, Any]:
+    """When a connected agent last reached this install, for the window's chip.
+
+    Seconds since the epoch, or null when no agent has used a grant since the
+    service started. Local mode only, like the grants it describes.
+    """
+    if not local_mode.enabled():
+        raise HTTPException(status_code=404, detail="Not found.")
+    return local_mode.agent_activity()
 
 
 @router.post("/local/agent-access/revoke")
@@ -1028,6 +1040,10 @@ def preview_slide(
         "version_id": loaded.version_id,
         "changed_slide_ids": changed,
         "metrics_estimated": rendered["metrics_estimated"],
+        # Missing/undecodable assets must reach the caller. A clean-looking
+        # placeholder is not evidence that the real slide rendered correctly.
+        "warnings": rendered.get("warnings") or [],
+        "cache_hit": bool(rendered.get("cache_hit")),
         "proposal_base_version_id": proposal_base,
         "rebased": rebased,
     }
@@ -1086,6 +1102,8 @@ def preview_slide_motion(
         "frame_times_ms": rendered["frame_times_ms"],
         "frame_count": len(rendered["frame_times_ms"]),
         "metrics_estimated": rendered["metrics_estimated"],
+        "warnings": rendered.get("warnings") or [],
+        "cache_hit": bool(rendered.get("cache_hit")),
     }
 
 
@@ -1216,7 +1234,12 @@ def delete_presentation(
     )
     _refuse_if_syncing(session, access.workspace_id, "deleting")
     presentation = access.presentation
-    presentation.deleted_at = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    presentation.deleted_at = now
+    for question in presentation.agent_requests:
+        if question.status == "open":
+            question.status = "closed"
+            question.closed_at = now
     session.flush()
     return {"presentation_id": presentation.id, "deleted_at": presentation.deleted_at.isoformat()}
 

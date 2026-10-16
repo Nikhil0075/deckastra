@@ -200,6 +200,21 @@ it("lists findings, fixes one on press, and goes to the object", () => {
   expect(screen.getByRole("list", { name: "Current slide reading order" })).toBeTruthy();
 });
 
+it("fixes reading order without changing the visual layer order", () => {
+  const lower = text(200, 600, 400, 60, {}, "Read second");
+  const upper = text(200, 100, 400, 60, {}, "Read first");
+  const document = deck([lower, upper]);
+  const finding = check(document).find((item) => item.code === "A103")!;
+  expect(finding.fix?.label).toBe("Match the visual order");
+
+  const beforeLayers = document.slides[0]!.elements.map((element) => element.id);
+  const after = applyPatch(document, fixOperations(document, [finding.fix!])).document;
+  expect(after.slides[0]!.elements.map((element) => element.id)).toEqual(beforeLayers);
+  expect((after.slides[0]!.elements[0]!.metadata as Record<string, unknown>).a11yOrder).toBe(1);
+  expect((after.slides[0]!.elements[1]!.metadata as Record<string, unknown>).a11yOrder).toBe(0);
+  expect(check(after).filter((item) => item.code === "A103")).toEqual([]);
+});
+
 it("names narration on a click the slide no longer has (W323), and keeps it", () => {
   const document = deck([text(200, 200, 600, 100)]);
   document.slides[0]!.narration = {

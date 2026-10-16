@@ -63,6 +63,43 @@ def test_request_resolves_current_target_text_and_motion(client, auth, deck):
     assert [item["id"] for item in listed.json()] == [body["id"]]
 
 
+def test_project_agent_tasks_track_pending_and_completed_work(client, auth, deck):
+    slide = deck["document"]["slides"][0]
+    request = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/requests", headers=auth,
+        json={
+            "target": {"slide_ids": [slide["id"]], "element_ids": []},
+            "kind": "layout", "message": "Simplify this opening.",
+            "based_on_version_id": deck["version_id"],
+        },
+    ).json()
+    account = client.get("/v1/account", headers=auth).json()
+    project_id = account["workspaces"][0]["projects"][0]["id"]
+
+    pending = client.get(f"/v1/projects/{project_id}/agent-tasks?status=pending", headers=auth)
+    assert pending.status_code == 200, pending.text
+    assert len(pending.json()) == 1
+    task = pending.json()[0]
+    assert task | {"created_at": "timestamp"} == {
+        "id": request["id"], "project_id": project_id,
+        "resource_type": "deck", "resource_id": deck["presentation_id"],
+        "resource_title": "Requests", "resource_deleted": False,
+        "kind": "layout", "message": "Simplify this opening.", "status": "open",
+        "created_at": "timestamp", "completed_at": None,
+        "target_summary": {"slides": 1, "objects": 0, "cards": 0},
+        "proposal_ids": [],
+        "findings": None,
+    }
+    assert task["created_at"]
+
+    closed = client.post(f"/v1/requests/{request['id']}/close", headers=auth)
+    assert closed.status_code == 200
+    completed = client.get(f"/v1/projects/{project_id}/agent-tasks?status=completed", headers=auth).json()
+    assert [item["id"] for item in completed] == [request["id"]]
+    assert completed[0]["status"] == "closed"
+    assert completed[0]["completed_at"]
+
+
 def test_accepting_one_reply_closes_request_and_withdraws_siblings(client, auth, deck):
     presentation_id = deck["presentation_id"]
     slide = deck["document"]["slides"][0]
@@ -96,6 +133,8 @@ def test_accepting_one_reply_closes_request_and_withdraws_siblings(client, auth,
     )
     assert answered.status_code == 200, answered.text
     assert answered.json()["status"] == "answered"
+    with db_session.session_scope() as session:
+        assert session.get(AgentRequest, request["id"]).answered_at is not None
 
     accepted = client.post(
         f"/v1/presentations/{presentation_id}/proposals/{proposal_ids[0]}/approve",
@@ -188,3 +227,37 @@ def test_a_closed_request_takes_no_replies_on_any_route(client, auth, deck):
               "entrance": "fade", "in_reply_to": request["id"]},
     )
     assert motion.status_code == 409
+
+
+def test_a_review_of_the_whole_deck_is_answered_in_words(client, auth, deck):
+    """Release E2E step 9: "review this deck, change nothing, return findings"."""
+    asked = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/requests", headers=auth,
+        json={"target": {}, "kind": "review", "message": "Review for clarity. Change nothing.",
+              "based_on_version_id": deck["version_id"]},
+    )
+    assert asked.status_code == 200, asked.text
+    assert asked.json()["target"]["slide_ids"] == [slide["id"] for slide in deck["document"]["slides"]]
+
+    nothing = client.post(f"/v1/requests/{asked.json()['id']}/answer", headers=auth, json={})
+    assert nothing.status_code == 422
+
+    answered = client.post(
+        f"/v1/requests/{asked.json()['id']}/answer", headers=auth,
+        json={"findings": "1. Slide 3 repeats slide 2's layout.\n2. The chart has no source."},
+    )
+    assert answered.status_code == 200, answered.text
+    assert answered.json()["status"] == "answered"
+    assert answered.json()["findings"].startswith("1. Slide 3")
+
+    project_id = client.get("/v1/account", headers=auth).json()["workspaces"][0]["projects"][0]["id"]
+    done = client.get(f"/v1/projects/{project_id}/agent-tasks?status=completed", headers=auth).json()
+    assert [(task["id"], task["findings"][:2]) for task in done] == [(asked.json()["id"], "1.")]
+
+
+def test_only_a_review_may_name_no_target(client, auth, deck):
+    refused = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/requests", headers=auth,
+        json={"target": {}, "kind": "layout", "message": "Fix it", "based_on_version_id": deck["version_id"]},
+    )
+    assert refused.status_code == 422

@@ -237,3 +237,113 @@ async function runAgentsInner(window: BrowserWindow, dir: string, record: Record
     window.webContents.reload();
   }
 }
+
+/**
+ * `media-signed-in`: the composed-prompt preview on screen, which only a
+ * signed-in desktop can draw (generation goes through the account gateway).
+ * It needs a person: it opens Settings › Profile and waits up to fifteen
+ * minutes for someone to sign in, then draws the Generate panel's preview in
+ * both modes and captures each. It never asks a price and never generates, so
+ * no credit is spent; the deck it makes is deleted afterwards. Not a CI step.
+ */
+export async function runMediaSignedIn(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
+  try {
+    await runMediaSignedInInner(window, dir, record);
+  } catch (error) {
+    await capture(window, join(dir, "media-signed-in-failure.png")).catch(() => undefined);
+    throw error;
+  }
+}
+
+async function runMediaSignedInInner(window: BrowserWindow, dir: string, record: Record<string, unknown>): Promise<void> {
+  const page = <T = unknown>(js: string) => window.webContents.executeJavaScript(js) as Promise<T>;
+  const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+  const need = async (what: string, expression: string, timeoutMs = 15_000) => {
+    if (!(await until(window, expression, timeoutMs))) throw new Error(`media-signed-in: ${what}`);
+  };
+  const press = (testId: string) => trustedClick(window, `[data-testid="${testId}"]`);
+  const api = <T = any>(path: string, method = "GET", body?: unknown) =>
+    page<{ status: number; json: T }>(`fetch("/__api${path}", {
+      method: ${JSON.stringify(method)},
+      headers: { "Content-Type": "application/json" },
+      ${body === undefined ? "" : `body: ${JSON.stringify(JSON.stringify(body))},`}
+    }).then(async (r) => ({ status: r.status, json: await r.json().catch(() => null) }))`);
+
+  await need("the editor never opened", `document.querySelector("[data-editor-canvas]")`, 30_000);
+  const original = (await page<{ presentationId: string }>(`window.deckastra.currentPresentation()`)).presentationId;
+
+  // ---- Wait for a person to sign in. Settings opens on the profile so the
+  // button is in front of them; the step only watches.
+  const imageAvailable = async () => {
+    const answer = await api<any>(`/v1/assistant/capabilities`);
+    return Boolean(answer.json?.tasks?.image?.available);
+  };
+  if (!(await imageAvailable())) {
+    await page(`document.querySelector('[data-testid="account-menu"]')?.click()`);
+    await sleep(400);
+    await page(`[...document.querySelectorAll('[role="menuitem"]')].find((item) => /Settings/.test(item.textContent || ""))?.click()`);
+    record.waitedForSignIn = true;
+    const started = Date.now();
+    while (!(await imageAvailable())) {
+      if (Date.now() - started > 15 * 60_000) throw new Error("media-signed-in: nobody signed in within fifteen minutes");
+      await sleep(3_000);
+    }
+    record.signInMs = Date.now() - started;
+    // Close Settings the way a person does, so nothing modal covers the editor.
+    for (let i = 0; i < 2; i += 1) {
+      window.focus();
+      window.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
+      window.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
+      await sleep(400);
+    }
+    await need("Settings did not close after signing in", `![...document.querySelectorAll('[aria-modal="true"], [role="dialog"]')].some((node) => node.getBoundingClientRect().width > 0)`, 20_000);
+  }
+  record.generationAvailable = true;
+
+  const account = (await api<any>("/v1/account")).json;
+  const projectId = account.workspaces.flatMap((workspace: any) => workspace.projects ?? [])[0]?.id;
+  const made = await api<{ presentation_id: string }>("/v1/decks/from-template", "POST", {
+    project_id: projectId, template_id: "technical-architecture", title: "Smoke: composed prompt",
+  });
+  if (made.status !== 200) throw new Error(`media-signed-in: the template deck was refused: ${JSON.stringify(made.json)}`);
+  const created = made.json.presentation_id;
+  record.created = created;
+  await page(`window.deckastra.openPresentation({ presentationId: ${JSON.stringify(created)} })`);
+  window.webContents.reload();
+  await need("the template deck never opened", `document.querySelector('[data-presentation-id="${created}"] [data-editor-canvas]')`, 30_000);
+
+  try {
+    await press("mode-more");
+    await press("mode-media");
+    if (!(await until(window, `document.querySelector('[data-testid="generate-prompt"]')`, 30_000))) {
+      // Say what the panel said instead, and show it, before the deck goes.
+      record.generatePanel = await page<string>(`document.querySelector('[data-testid="generate-media"]')?.innerText ?? "no Generate panel"`);
+      record.scopedCapabilities = (await api<any>(`/v1/assistant/capabilities?presentation_id=${created}&slide_id=${(await api<any>(`/v1/presentations/${created}`)).json.document.slides[0].id}`)).json?.tasks?.image ?? null;
+      await capture(window, join(dir, "media-signed-in-panel.png")).catch(() => undefined);
+      throw new Error(`media-signed-in: the Generate panel offered no description box: ${String(record.generatePanel).slice(0, 300)}`);
+    }
+    await trustedClick(window, '[data-testid="generate-prompt"]');
+    await window.webContents.insertText("A server room at dusk, rows of quiet machines");
+    for (const mode of ["deck", "prompt"] as const) {
+      await press(`generate-style-${mode}`);
+      await need(`the ${mode} preview never drew`, `document.querySelector('[data-testid="generate-composed-prompt"]') && document.querySelector('[data-testid="generate-style-${mode}"]').getAttribute("aria-checked") === "true"`, 15_000);
+      await sleep(900);
+      const shown = await page<{ labels: string[]; prompt: string }>(`({
+        labels: [...document.querySelectorAll('[data-testid="generate-composed-prompt"] .dk-generate__part strong')].map((node) => node.textContent),
+        prompt: document.querySelector('[data-testid="generate-final-prompt"]').value,
+      })`);
+      record[`preview_${mode}`] = shown;
+      await page(`document.querySelector('[data-testid="generate-composed-prompt"]').scrollIntoView({ block: "center" })`);
+      await sleep(300);
+      await capture(window, join(dir, `media-signed-in-${mode}.png`));
+    }
+    const deckLabels = (record.preview_deck as { labels: string[] }).labels.join(" | ");
+    const promptLabels = (record.preview_prompt as { labels: string[] }).labels.join(" | ");
+    if (!/palette/.test(deckLabels)) throw new Error(`media-signed-in: Match the deck showed no palette: ${deckLabels}`);
+    if (/palette/.test(promptLabels)) throw new Error(`media-signed-in: Follow my prompt showed the deck's palette: ${promptLabels}`);
+  } finally {
+    await api(`/v1/presentations/${created}`, "DELETE").catch(() => undefined);
+    await page(`window.deckastra.openPresentation({ presentationId: ${JSON.stringify(original)} })`).catch(() => undefined);
+    window.webContents.reload();
+  }
+}

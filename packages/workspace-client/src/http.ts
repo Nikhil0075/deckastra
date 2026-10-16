@@ -10,8 +10,11 @@ import type {
   DeckImport,
   AccountProject,
   AgentRequest,
+  AgentTask,
   AppliedChange,
   CreateAgentRequest,
+  ImageImportPrepareResult,
+  ImageImportResult,
   CreatePresentationRequest,
   CreatePresentationResult,
   CreateShareRequest,
@@ -64,6 +67,7 @@ import type {
   RestoreVersionResult,
   WorkspaceClient,
   UploadedAsset,
+  WorkspaceUsage,
   LanguagesStatus,
   PaidServiceQuote,
   SynthesizeResult,
@@ -315,6 +319,7 @@ const q = encodeURIComponent;
         if (crop) for (const [key, value] of Object.entries(crop)) params.set(key, String(value));
         return json(`/v1/assets/${q(id)}/view?${params}`, { ...o });
       },
+      assetUses: (id, o) => json(`/v1/assets/${q(id)}/uses`, { ...o }),
       assetUpdate: (id, body, o) => json<AssistantAsset>(`/v1/assets/${q(id)}`, { ...o, method: "PATCH", body }),
       assetRevert: (id, change, o) => json<AssistantAsset>(`/v1/assets/${q(id)}/changes/${q(change)}/revert`, { ...o, body: {} }),
       assetDuplicates: (workspace, cursor, o) => {
@@ -331,6 +336,8 @@ const q = encodeURIComponent;
       ensure: ensureSession,
       clear: () => store.clear(),
       account: (request) => json<AccountContext>("/v1/account", { ...request }),
+      usage: (request) => json<WorkspaceUsage>("/v1/workspace/usage", { ...request }),
+      agentActivity: (request) => json<{ last_request_at: number | null }>("/v1/local/agent-activity", { fresh: true, ...request }),
       credits: (request) => json<CreditBalance>("/v1/account/credits", { ...request }),
       capabilities: (request) => json<AccountCapabilities>("/v1/account/capabilities", { ...request }),
       deleteAccount: (request) =>
@@ -522,10 +529,17 @@ const q = encodeURIComponent;
           `/v1/presentations/${q(presentationId)}/requests${status ? `?status=${encodeURIComponent(status)}` : ""}`,
           { fresh: true, ...request },
         ),
+      tasks: (projectId, status = "all", request) =>
+        json<AgentTask[]>(`/v1/projects/${q(projectId)}/agent-tasks?status=${encodeURIComponent(status)}`, { fresh: true, ...request }),
       createRequest: (presentationId, body: CreateAgentRequest, request) =>
         json<AgentRequest>(`/v1/presentations/${q(presentationId)}/requests`, { body, ...request }),
-      answerRequest: (requestId, proposalIds, request) =>
-        json<AgentRequest>(`/v1/requests/${q(requestId)}/answer`, { body: { proposal_ids: proposalIds }, ...request }),
+      answerRequest: (requestId, proposalIds, request) => {
+        const { findings, ...rest } = request ?? {};
+        return json<AgentRequest>(`/v1/requests/${q(requestId)}/answer`, {
+          body: { proposal_ids: proposalIds, ...(findings ? { findings } : {}) },
+          ...rest,
+        });
+      },
       closeRequest: (requestId, request) =>
         json<AgentRequest>(`/v1/requests/${q(requestId)}/close`, { method: "POST", ...request }),
       styleOptions: (presentationId, status = "open", request) =>
@@ -536,6 +550,25 @@ const q = encodeURIComponent;
         json<AppliedChange & { option_id: string; set_id: string }>(`/v1/style-options/${q(setId)}/choose`, {
           body: { option_id: optionId, expected_version_id: expectedVersionId }, ...request,
         }),
+      prepareImageImport: (presentationId, body, request) =>
+        json<ImageImportPrepareResult>(`/v1/workspace/assets/uploads`, {
+          body: {
+            presentation_id: presentationId,
+            expected_version_id: body.expected_version_id,
+            slide_id: body.slide_id,
+            filename: body.filename,
+            content_type: body.content_type,
+            size_bytes: body.size_bytes,
+            kind: "image",
+            width: body.width,
+            height: body.height,
+            prompt: body.prompt,
+            style_source: body.style_source ?? "deck",
+          },
+          ...request,
+        }),
+      completeImageImport: (presentationId, body, request) =>
+        json<ImageImportResult>(`/v1/presentations/${q(presentationId)}/media-imports/complete`, { body, ...request }),
       approve: (presentationId, proposalId, expectedVersionId, request) =>
         json<AppliedChange>(
           `/v1/presentations/${q(presentationId)}/proposals/${q(proposalId)}/approve`,
@@ -559,11 +592,15 @@ const q = encodeURIComponent;
 
     drafts: {
       list: (projectId, request) => json<DraftBoard[]>(`/v1/projects/${q(projectId)}/drafts`, { fresh: true, ...request }),
+      trash: (projectId, request) => json<DraftBoard[]>(`/v1/projects/${q(projectId)}/drafts?deleted=true`, { fresh: true, ...request }),
       read: (draftId, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { fresh: true, ...request }),
       create: (projectId, body = {}, request) => json<DraftBoard>(`/v1/projects/${q(projectId)}/drafts`, { body, ...request }),
       seed: (presentationId, request) => json<DraftBoard>(`/v1/presentations/${q(presentationId)}/drafts`, { method: "POST", ...request }),
       replace: (draftId, revision, body: DraftBody, title, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { method: "PUT", body: { revision, body, ...(title ? { title } : {}) }, ...request }),
       update: (draftId, revision, operations: DraftOperation[], request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}`, { method: "PATCH", body: { revision, operations }, ...request }),
+      delete: (draftId, request) => json<{ draft_id: string; deleted_at: string }>(`/v1/drafts/${q(draftId)}`, { method: "DELETE", ...request }),
+      restore: (draftId, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}/restore`, { method: "POST", ...request }),
+      sync: (draftId, revision, cardIds, request) => json<DraftBoard>(`/v1/drafts/${q(draftId)}/sync`, { body: { revision, card_ids: cardIds }, ...request }),
       build: (draftId, revision, cardIds, request) => json<DraftBuildResult>(`/v1/drafts/${q(draftId)}/build`, { body: { revision, ...(cardIds ? { card_ids: cardIds } : {}) }, ...request }),
       requests: (draftId, status = "open", request) => json<DraftAgentRequest[]>(`/v1/drafts/${q(draftId)}/requests?status=${encodeURIComponent(status)}`, { fresh: true, ...request }),
       createRequest: (draftId, body, request) => json<DraftAgentRequest>(`/v1/drafts/${q(draftId)}/requests`, { body, ...request }),
@@ -760,6 +797,26 @@ const q = encodeURIComponent;
         }
         return response.blob();
       },
+      remove: async (assetId, workspaceId, request) => {
+        await json(`/v1/workspace/assets/${q(assetId)}${workspaceId ? `?workspace_id=${q(workspaceId)}` : ""}`, {
+          method: "DELETE",
+          fallback: "That file could not be removed.",
+          ...request,
+        });
+      },
+      restore: async (assetId, workspaceId, request) => {
+        await json(`/v1/workspace/assets/${q(assetId)}/restore${workspaceId ? `?workspace_id=${q(workspaceId)}` : ""}`, {
+          method: "POST",
+          fallback: "That file could not be restored.",
+          ...request,
+        });
+      },
+      cite: (presentationId, assetId, request) =>
+        json<UploadedAsset>(`/v1/presentations/${q(presentationId)}/assets/${q(assetId)}/cite`, {
+          method: "POST",
+          fallback: "That picture could not be placed.",
+          ...request,
+        }),
     },
 
     shares: {

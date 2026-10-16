@@ -239,6 +239,35 @@ body:has(.dk-root) {
 .dk-input--invalid {
   border-color: var(--dk-red);
 }
+/* A multi-line field grows with what is typed, up to a limit, then scrolls.
+   `.dk-input`'s fixed height used to win over `rows`, so most text boxes
+   showed one cramped line with the platform's resize grip in the corner
+   (2026-10-17). Where `field-sizing` is not understood, `rows` and the
+   minimum decide the height and the person can still drag it taller. */
+textarea.dk-input,
+.dk-textarea {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: calc(3 * 1.45em + 2 * var(--dk-space-2));
+  max-height: 18em;
+  padding: var(--dk-space-2) var(--dk-space-3);
+  line-height: 1.45;
+  resize: vertical;
+  overflow-y: auto;
+}
+@supports (field-sizing: content) {
+  textarea.dk-input,
+  .dk-textarea {
+    field-sizing: content;
+    resize: none;
+  }
+}
+textarea.dk-input::placeholder,
+.dk-input::placeholder {
+  color: var(--dk-ink-muted);
+  opacity: 1;
+}
 .dk-field__hint {
   margin-top: var(--dk-space-1);
   font-size: var(--dk-text-xs);
@@ -479,10 +508,24 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
      the whole panel wider, so the Add library and the theme gallery scrolled
      sideways and cut off their first column (2026-10-12). */
   overflow-x: auto;
-  /* Thin rather than hidden, so a tab past the edge is visibly there. */
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-rule) transparent;
+  overflow-y: hidden;
+  /* No bar under a row of tabs: a bar there read as broken. A tab past the
+     edge is shown by the fade on that side (`data-more`, set by Tabs) and is
+     brought into view when chosen or reached with the arrow keys. */
+  scrollbar-width: none;
   border-bottom: var(--dk-line) solid var(--dk-rule);
+}
+.dk-tabs__list::-webkit-scrollbar {
+  display: none;
+}
+.dk-tabs__list[data-more="end"] {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+}
+.dk-tabs__list[data-more="start"] {
+  mask-image: linear-gradient(to left, black calc(100% - 28px), transparent);
+}
+.dk-tabs__list[data-more="both"] {
+  mask-image: linear-gradient(to right, transparent, black 28px, black calc(100% - 28px), transparent);
 }
 .dk-tabs__tab {
   display: inline-flex;
@@ -753,18 +796,41 @@ button.dk-menu__item:hover:not([aria-disabled="true"]) {
 .dk-scroll {
   min-height: 0;
   overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--dk-ink) transparent;
 }
-.dk-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+
+/* --- Scrollbars ------------------------------------------------------------ */
+
+/* One scrollbar everywhere in the chrome: thin, square, the soft rule colour,
+   no arrow buttons. They used to be set container by container, some black,
+   some the platform's own with arrows, and a tab row grew both a horizontal
+   and a vertical bar (2026-10-17). Chromium ignores the ::-webkit pseudos
+   once the standard properties are set, so those are given only where the
+   pseudos are not understood (Firefox on the web). */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-.dk-scroll::-webkit-scrollbar-thumb {
-  background: var(--dk-ink);
-}
-.dk-scroll::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--dk-rule-soft);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--dk-ink-muted);
+}
+@supports not selector(::-webkit-scrollbar) {
+  :root,
+  :root * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--dk-rule-soft) transparent;
+  }
 }
 
 /* The mark on a chosen menu radio (the chrome theme). */

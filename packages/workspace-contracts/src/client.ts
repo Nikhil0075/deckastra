@@ -1,7 +1,7 @@
 import type { PresentationDocument } from "@deckastra/presentation-schema";
 import type { AssistantRequest, AssistantRun, AssistantEvent, AssistantCapabilities, AssistantAsset, AssetMetadataUpdate, DesignCheckResult, ImageQuoteRequest, MediaPromptRequest, MediaPromptResponse, VideoQuote, VideoQuoteRequest } from "./assistant";
 
-import type { AgentRequest, AppliedChange, CreateAgentRequest, PendingProposal, ProposalDetail, StyleOptionSet, StyleSuggestionRequest } from "./agent";
+import type { AgentRequest, AgentTask, AppliedChange, CreateAgentRequest, ImageImportPrepareRequest, ImageImportPrepareResult, ImageImportResult, PendingProposal, ProposalDetail, StyleOptionSet, StyleSuggestionRequest } from "./agent";
 import type {
   CreatePresentationRequest,
   CreatePresentationResult,
@@ -106,7 +106,9 @@ export interface WorkspaceClient {
     cancel(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     resume(runId: string, options?: RequestOptions): Promise<AssistantRun>;
     designCheck(presentationId: string, slideId?: string, options?: RequestOptions): Promise<DesignCheckResult>;
-    assetList(request: { workspace_id?: string; filter?: "all" | "unused" | "untagged"; order?: "oldest" | "newest"; cursor?: string; q?: string; limit?: number }, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
+    assetList(request: import("./assistant").AssetListRequest, options?: RequestOptions): Promise<{ assets: AssistantAsset[]; next_cursor: string | null }>;
+    /** Which decks show a file now. Optional: an older service has no answer. */
+    assetUses?(assetId: string, options?: RequestOptions): Promise<import("./assistant").AssetUses>;
     assetView(assetId: string, maxPx?: number, options?: RequestOptions, crop?: { x: number; y: number; width: number; height: number }): Promise<{ asset_id: string; base64: string; mime_type: string; width: number; height: number }>;
     assetUpdate(assetId: string, request: AssetMetadataUpdate, options?: RequestOptions): Promise<AssistantAsset>;
     assetRevert(assetId: string, changeId: string, options?: RequestOptions): Promise<AssistantAsset>;
@@ -129,6 +131,16 @@ export interface WorkspaceClient {
      * older one, or a stand-in) offers none, and the meter is then absent.
      */
     credits?(options?: RequestOptions): Promise<import("./session").CreditBalance>;
+    /**
+     * What the selected workspace has used against its limits: storage above
+     * all, which uploads and generated media fill. Optional, like credits.
+     */
+    usage?(options?: RequestOptions): Promise<import("./session").WorkspaceUsage>;
+    /**
+     * When a connected agent last reached this install (seconds since the
+     * epoch, null if none since the service started). Desktop only.
+     */
+    agentActivity?(options?: RequestOptions): Promise<{ last_request_at: number | null }>;
     /** Which hosted AI tasks are available, and why not. Optional, like credits. */
     capabilities?(options?: RequestOptions): Promise<import("./session").AccountCapabilities>;
     /**
@@ -299,12 +311,18 @@ export interface WorkspaceClient {
     /** One pending proposal with its operations. */
     proposal(presentationId: string, proposalId: string, options?: RequestOptions): Promise<ProposalDetail>;
     requests(presentationId: string, status?: "open" | "answered" | "closed", options?: RequestOptions): Promise<AgentRequest[]>;
+    tasks(projectId: string, status?: "all" | "pending" | "completed", options?: RequestOptions): Promise<AgentTask[]>;
     createRequest(presentationId: string, body: CreateAgentRequest, options?: RequestOptions): Promise<AgentRequest>;
-    answerRequest(requestId: string, proposalIds: string[], options?: RequestOptions): Promise<AgentRequest>;
+    /** Answer with up to three proposals, written findings, or both. A review that changes nothing answers in findings. */
+    answerRequest(requestId: string, proposalIds: string[], options?: RequestOptions & { findings?: string }): Promise<AgentRequest>;
     closeRequest(requestId: string, options?: RequestOptions): Promise<AgentRequest>;
     styleOptions(presentationId: string, status?: "open" | "chosen" | "expired", options?: RequestOptions): Promise<StyleOptionSet[]>;
     suggestStyles(presentationId: string, body: StyleSuggestionRequest, options?: RequestOptions): Promise<StyleOptionSet>;
     chooseStyle(setId: string, optionId: string, expectedVersionId: string, options?: RequestOptions): Promise<AppliedChange & { option_id: string; set_id: string }>;
+    /** Reserve a signed direct upload; no Deckastra generation provider is called. */
+    prepareImageImport(presentationId: string, body: ImageImportPrepareRequest, options?: RequestOptions): Promise<ImageImportPrepareResult>;
+    /** Register the uploaded bytes and create a human-reviewed placement proposal. */
+    completeImageImport(presentationId: string, body: { upload_token: string; prompt: string; provider?: string; client_label?: string }, options?: RequestOptions): Promise<ImageImportResult>;
     /**
      * Approve a pending proposal.
      *
@@ -343,12 +361,17 @@ export interface WorkspaceClient {
   /** Rough, geometry-free boards stored beside decks. */
   readonly drafts: {
     list(projectId: string, options?: RequestOptions): Promise<DraftBoard[]>;
+    trash(projectId: string, options?: RequestOptions): Promise<DraftBoard[]>;
     read(draftId: string, options?: RequestOptions): Promise<DraftBoard>;
     create(projectId: string, body?: { title?: string; body?: DraftBody; presentation_id?: string }, options?: RequestOptions): Promise<DraftBoard>;
     seed(presentationId: string, options?: RequestOptions): Promise<DraftBoard>;
     replace(draftId: string, revision: number, body: DraftBody, title?: string, options?: RequestOptions): Promise<DraftBoard>;
     update(draftId: string, revision: number, operations: DraftOperation[], options?: RequestOptions): Promise<DraftBoard>;
+    delete(draftId: string, options?: RequestOptions): Promise<{ draft_id: string; deleted_at: string }>;
+    restore(draftId: string, options?: RequestOptions): Promise<DraftBoard>;
     build(draftId: string, revision: number, cardIds?: string[], options?: RequestOptions): Promise<DraftBuildResult>;
+    /** Take the deck's current version of these cards' slides back into the board. Optional for older services. */
+    sync?(draftId: string, revision: number, cardIds: string[], options?: RequestOptions): Promise<DraftBoard>;
     requests(draftId: string, status?: "open" | "answered" | "closed", options?: RequestOptions): Promise<DraftAgentRequest[]>;
     createRequest(draftId: string, body: { card_ids: string[]; block_ids?: string[]; kind: DraftAgentRequest["kind"]; message: string; revision: number }, options?: RequestOptions): Promise<DraftAgentRequest>;
     answerRequest(requestId: string, revision: number, options?: RequestOptions): Promise<DraftAgentRequest>;
@@ -434,6 +457,18 @@ export interface WorkspaceClient {
     /** The bytes, with whatever credential this client holds. */
     fetchBlob(storageKey: string, options?: RequestOptions): Promise<Blob>;
     /**
+     * What a deck needs to place a picture its workspace already holds (Recent
+     * media). Scoped to the deck: a picture from another workspace is refused.
+     * Optional, so a surface without the route offers no Insert.
+     */
+    cite?(presentationId: string, assetId: string, options?: RequestOptions): Promise<UploadedAsset>;
+    /**
+     * Move a file to the Media page's trash. Refused (409) while a deck shows
+     * it; the bytes stay until the sweeper, so `restore` brings it back.
+     */
+    remove?(assetId: string, workspaceId?: string, options?: RequestOptions): Promise<void>;
+    restore?(assetId: string, workspaceId?: string, options?: RequestOptions): Promise<void>;
+    /**
      * Put a file in the workspace and answer what a document needs to cite it.
      *
      * Three requests behind one call — ask where to put it, PUT the bytes,
@@ -453,7 +488,7 @@ export interface WorkspaceClient {
         width?: number;
         height?: number;
         /** Defaults to an image. A font is `"font"` with its `font/*` type. */
-        kind?: "image" | "font" | "audio" | "document";
+        kind?: "image" | "video" | "font" | "audio" | "document";
         /**
          * Audio: what the browser decoded, used only when the service cannot
          * read the container itself, and 256 peaks for the timeline's waveform.

@@ -82,10 +82,26 @@ as words.
 ## 4. Media
 
 For a media pattern, write `picture` as what the photograph shows in plain
-words: it is both alt text and generation direction. Use `image_quote` then
-`image_generate` for a still, or `media_quote` then `media_generate` for a
-clip. Do not generate until the exact quote is accepted. The result remains a
-proposal for the person to approve.
+words: it is both alt text and generation direction. Inspect the whole deck,
+not only the selected slide, and identify the frames where photography would
+carry information or improve the composition. Do not add a decorative image
+to a slide whose chart, diagram, timeline, table or number treatment already
+does that job.
+
+When the person asks you not to spend Deckastra credits, or asks you to use
+your own image tool, generate the image with that external tool. Then call
+`image_import_prepare`, upload the exact file bytes with HTTP PUT to its
+signed URL, and call `image_import_propose` with the same prompt. Never put
+image bytes in a prompt and never use mouse, keyboard or system control to
+place the image. The imported image appears in Media and its placement arrives
+as a side-by-side pending proposal for the person to review; importing never
+applies the proposal or spends Deckastra credits.
+
+Otherwise use `image_quote` then `image_generate` for a still, or
+`media_quote` then `media_generate` for a clip. Do not generate until the
+exact quote is accepted. Tell the person the quoted credits before you
+generate. Every generated placement remains a proposal for the person to
+approve.
 
 Each slide in the outline lists its picture frames as `mediaSlots`: what the
 frame needs (a scene, a cut-out, a product render, a texture or a close-up),
@@ -94,13 +110,16 @@ at what shape, whether a picture already fills it, a `brief` and the
 the picture should show in front of it: it keeps hands, feet and product
 edges inside the picture and the words' side of the frame calm. A slot with
 `transparentRequired` needs a cut-out the person adds; a generated picture is
-opaque. Tell the person the quoted credits before you generate.
+opaque unless the chosen external image tool explicitly produces transparency.
 
 ## 5. Check before you answer
 
 1. `slide_preview` every slide you made or changed and look at it: clipped
-   words, a chart whose labels collide, a picture covering text.
-2. `design_check`, and fix what it names.
+   words, a chart whose labels collide, a picture covering text. Pass the
+   version you read in the expected-version field; if the render reports a warning,
+   the preview is degraded and is not proof that the slide is ready.
+2. `design_check`, and fix what it names. A reading-order fix changes only
+   what assistive technology announces; it does not move or restack objects.
 3. Re-read the deck: adjacent families differ, claims agree with evidence, and
    numbers agree with labels and speaker notes.
 4. Narration runs about 130 words a minute: a 10-minute talk is about 1,300

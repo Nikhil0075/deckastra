@@ -189,6 +189,32 @@ def test_previewing_a_proposal_does_not_apply_it(client, auth, deck):
     assert [row["id"] for row in listed] == [proposal], "the proposal must still be pending"
 
 
+def test_preview_reports_renderer_degradation_and_cache_state(client, auth, deck, monkeypatch):
+    """MCP must not mistake a placeholder or fallback for a clean render."""
+    from deckastra_api import routes
+
+    monkeypatch.setattr(
+        routes.export_service,
+        "render_slide_png",
+        lambda *_args, **_kwargs: {
+            "bytes": b"png",
+            "width": 1024,
+            "height": 576,
+            "metrics_estimated": False,
+            "warnings": ["ast_missing could not be decoded"],
+            "cache_hit": True,
+        },
+    )
+    response = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/preview",
+        headers=auth,
+        json={"slide_id": deck["document"]["slides"][0]["id"], "expected_version_id": deck["version_id"]},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["warnings"] == ["ast_missing could not be decoded"]
+    assert response.json()["cache_hit"] is True
+
+
 # ------------------------------------------------------------------- the image
 
 
