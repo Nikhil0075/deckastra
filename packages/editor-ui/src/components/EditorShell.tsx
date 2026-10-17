@@ -437,6 +437,11 @@ export function EditorShell(props: EditorShellProps) {
       case "redo":
         editor.redo();
         break;
+      case "select-all":
+        // The macOS menu's Select All with no field focused: what Cmd+A does
+        // on the canvas, and nothing while presenting.
+        if (!presentingRef.current) setSelection((current) => selectAllElements(current, index, order));
+        break;
       case "present":
         setPresenting(true);
         break;

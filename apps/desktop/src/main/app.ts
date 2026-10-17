@@ -14,6 +14,7 @@ import {
   type OpenPresenterRequest,
   type SaveFileRequest,
   type SaveFileResult,
+  type EditCommand,
   type MenuCommand,
   type ServiceStatus,
 } from "../shared/ipc";
@@ -546,6 +547,14 @@ async function restartService(): Promise<void> {
   await refreshAttachment();
 }
 
+/** The macOS Edit menu's Undo, Redo and Select All, to the same window a menu command goes to. */
+function sendEditCommand(command: EditCommand): void {
+  const editors = editorWindows();
+  const focused = BrowserWindow.getFocusedWindow();
+  const target = focused && editors.includes(focused) ? focused : editors[0];
+  target?.webContents.send(IPC.menuEdit, command);
+}
+
 function sendMenuCommand(command: MenuCommand): void {
   // Editors only: not a presenter window, and not the notices window, which has
   // no page to answer (a command sent there was lost).
@@ -562,7 +571,12 @@ async function startup(): Promise<void> {
     service: () => (sidecar ? { port: sidecar.port, secret: sidecar.secret } : null),
   });
   registerHandlers();
-  installMenu(sendMenuCommand, { exportDiagnostics, backUp: backUpNow, restore: restoreNow, showNotices, openDeckFile: () => openDeckFile() });
+  installMenu(
+    sendMenuCommand,
+    { exportDiagnostics, backUp: backUpNow, restore: restoreNow, showNotices, openDeckFile: () => openDeckFile() },
+    process.platform,
+    sendEditCommand,
+  );
 
   const smoke = smokeDir();
   // `?smoke=1` is what lets the harness reach the renderer's scene builder. Set
