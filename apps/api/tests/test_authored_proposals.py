@@ -93,7 +93,9 @@ def test_an_authored_change_reaches_the_proposal_boundary_directly(client, auth,
     )
 
     assert response.status_code == 200, response.text
-    assert response.json()["outcome"] == "applied"
+    # Pending, not applied: since release 8 (2026-10-17) every change from a
+    # connected agent waits for the person, however low its risk.
+    assert response.json()["outcome"] == "pending"
     # No run row either. A trace of a generation that did not happen would make
     # the run list unreadable and the cost accounting wrong.
     assert response.json()["run_id"] == ""
@@ -247,8 +249,16 @@ def test_an_applied_change_undoes_like_any_other_edit(client, auth, deck):
         intent="Retitle the deck",
         expected_version_id=head_version(client, auth, presentation_id),
     )
-    assert applied.json()["outcome"] == "applied"
-    transaction_id = applied.json()["transaction_id"]
+    # Agent changes wait (release 8); the person approves, and the approved
+    # change is what undoes.
+    assert applied.json()["outcome"] == "pending"
+    approved = client.post(
+        f"/v1/presentations/{presentation_id}/proposals/{applied.json()['transaction_id']}/approve",
+        headers=auth,
+        json={"expected_version_id": head_version(client, auth, presentation_id)},
+    )
+    assert approved.status_code == 200, approved.text
+    transaction_id = approved.json()["transaction_id"]
 
     reverted = client.post(
         f"/v1/presentations/{presentation_id}/transactions/{transaction_id}/revert",

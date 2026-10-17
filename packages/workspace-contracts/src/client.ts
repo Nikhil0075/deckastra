@@ -298,6 +298,18 @@ export interface WorkspaceClient {
       body: TransitionRequest,
       request?: RequestOptions,
     ): Promise<TransitionResult>;
+    /** Motion on named objects, including real loops (release 8). Optional for older services. */
+    proposeObject?(
+      presentationId: string,
+      body: import("./motion").ObjectMotionRequest,
+      request?: RequestOptions,
+    ): Promise<import("./motion").ObjectMotionResult>;
+    /** Subtle looping accents across slides, chosen by kind (release 8). */
+    proposeAmbient?(
+      presentationId: string,
+      body: import("./motion").AmbientMotionRequest,
+      request?: RequestOptions,
+    ): Promise<import("./motion").ObjectMotionResult>;
     /** Apply one reviewed motion style across the deck. */
     proposeStyle(
       presentationId: string,
@@ -323,6 +335,12 @@ export interface WorkspaceClient {
     prepareImageImport(presentationId: string, body: ImageImportPrepareRequest, options?: RequestOptions): Promise<ImageImportPrepareResult>;
     /** Register the uploaded bytes and create a human-reviewed placement proposal. */
     completeImageImport(presentationId: string, body: { upload_token: string; prompt: string; provider?: string; client_label?: string }, options?: RequestOptions): Promise<ImageImportResult>;
+    /**
+     * Put a picture the workspace already holds on a slide: its manifest
+     * entry and the element in one pending proposal (release 8). Optional for
+     * older services.
+     */
+    placeMedia?(presentationId: string, body: { asset_id: string; slide_id: string; expected_version_id: string; client_label: string; alt_text: string; placement?: "frame" | "center" | "background" | "replace"; replace_element_id?: string; intent?: string }, options?: RequestOptions): Promise<{ proposal_id: string; status: string; risk_tier: string; asset_id: string; slide_id: string; awaiting: string }>;
     /**
      * Approve a pending proposal.
      *

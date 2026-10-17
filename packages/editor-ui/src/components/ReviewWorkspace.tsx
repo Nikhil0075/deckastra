@@ -484,6 +484,9 @@ function ProposalReview({
   const [compare, setCompare] = useState<Compare>("side");
   const [wipe, setWipe] = useState(50);
   const [stageRef, stage] = useStageSize();
+  // A motion change is judged playing, not as its final frame (release 8).
+  const [playing, setPlaying] = useState(false);
+  const changesMotion = Boolean(detail?.operations.some((operation) => /\/animations(\/|$)|\/transition(\/|$)/.test(operation.path)));
 
   useEffect(() => {
     let cancelled = false;
@@ -611,6 +614,14 @@ function ProposalReview({
           <strong>{proposal.intent}</strong>
           {preview?.groundedIn.length ? <span className="dk-muted"> · Grounded in {groundingLabel(preview.groundedIn)}</span> : null}
         </p>
+        {changesMotion ? (
+          <p className="dk-review__note">
+            This change adds or alters motion.{" "}
+            <Button size="sm" variant="secondary" icon={playing ? "pause" : "play"} onClick={() => setPlaying((value) => !value)} data-testid="review-play-motion">
+              {playing ? "Show final frame" : "Play motion"}
+            </Button>
+          </p>
+        ) : null}
         {stalePlaces ? (
           <p className="dk-proposal__warning" role="status">
             Written before you edited {stalePlaces}. Approving it would put the agent’s older version back over your edit, so it
@@ -644,7 +655,7 @@ function ProposalReview({
               <figure className="dk-review__figure" data-testid="review-after">
                 <figcaption>After</figcaption>
                 {after && sideWidth > 0 ? (
-                  <FinalFrameSlide scene={after} width={sideWidth} resolveAssetUrl={resolveAfter} />
+                  <FinalFrameSlide scene={after} width={sideWidth} resolveAssetUrl={resolveAfter} play={playing} />
                 ) : (
                   <span className="dk-review__gap" style={{ width: sideWidth, height: sideWidth / aspect }}>
                     Removed
@@ -662,7 +673,7 @@ function ProposalReview({
                 {before && wipeWidth > 0 ? <FinalFrameSlide scene={before} width={wipeWidth} resolveAssetUrl={resolveBefore} /> : null}
                 {/* After over Before, cut back to the right of the handle. */}
                 <span className="dk-review__wipe-after" style={{ clipPath: `inset(0 0 0 ${wipe}%)` }}>
-                  {after && wipeWidth > 0 ? <FinalFrameSlide scene={after} width={wipeWidth} resolveAssetUrl={resolveAfter} /> : null}
+                  {after && wipeWidth > 0 ? <FinalFrameSlide scene={after} width={wipeWidth} resolveAssetUrl={resolveAfter} play={playing} /> : null}
                 </span>
                 <span className="dk-review__wipe-line" style={{ left: `${wipe}%` }} aria-hidden="true" />
               </span>

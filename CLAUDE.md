@@ -153,8 +153,11 @@ Translation share account billing; it is not a model-routing decision.
 ### The proposal lifecycle
 
 An agent change becomes a *pending* transaction unless the risk tier says it can
-apply now. Low risk applies immediately on purpose: making someone approve a typo
-fix trains them to approve without reading, which is worse than not asking.
+apply now. **A connected agent's change (`mcp:` label) always waits**, however low
+its risk (release 8, 2026-10-17): every agent change is a side-by-side proposal
+until the person approves it. The low-risk rule still covers other callers, on
+the reasoning it started from: making someone approve a typo fix trains them to
+approve without reading.
 
 A proposal expires after 24 hours and is **re-validated on approval** against the
 document as it stands.
@@ -4559,6 +4562,50 @@ that are easy to undo:
   one line per feature and slide, and it used to fold into another picture's.
 - The `polish` step adds a 1024×640 window and zooms of 75%, 125% and 150%.
   Windows scaling on a 1920×1080 screen gives the page what a zoom does.
+
+### Media, motion, presentation and cloud reliability (release 8, 2026-10-17)
+
+Rules that are easy to undo:
+
+- **Every picture an agent change cites resolves** (`media_integrity.py`, run in
+  `create_proposal`). A newly cited `assetId` must be in the deck's manifest and
+  be a file of the deck's workspace, at the storage key the registry holds;
+  otherwise the change is refused with `E_MEDIA_UNRESOLVED`, naming the file and
+  slide. Only what a change introduces is checked, so a deck already citing a
+  missing file still takes other changes. `POST …/media/place` (MCP
+  `media_place`) registers and places a Media picture in one proposal; the
+  placement is chosen here (frame, centre, background, replace), never by the
+  caller.
+- **Object motion and real loops** (`motion.object_motion_operations`,
+  `ambient_operations`; routes `object-motion` and `ambient-motion`; MCP
+  `object_motion_propose`, `ambient_motion_propose`). Loops and emphasis may
+  name a bounded duration, delay, repeat, direction and easing; entrances and
+  exits still take only a pacing word, so the entrance budget stays enforced and
+  the no-milliseconds tests on `motion_propose` still hold. Loops never go on
+  text, charts, tables, diagrams, code or equations, a new loop replaces the
+  object's old one, and the ambient pass adds at most two loops a slide (the
+  engine warns past two). The Python preset lists are held to `presets.ts` by
+  `test_object_motion.py`. `motion_preview` takes a `proposal_id`, and Review's
+  "Play motion" plays the pending After slide (`FinalFrameSlide` `play`).
+- **Both presenter windows resolve assets** (desktop `App.tsx` `Presenter`, web
+  `WebPresenter`). They passed no `resolveAssetUrl`, so the presenter's own
+  window drew a gap for every picture, poster and voice.
+- **A cloud failure is always JSON with its cause.** The hosted routes classify
+  provider failures (`gateway_errors.py`: code, hint, `request_id` also sent as
+  `X-Request-ID`); the desktop bridge (`gateway-reply.ts`) keeps a success's
+  content type and turns any failure body (text, HTML, empty, broken JSON) into
+  JSON; the Python client (`gateway_client.error_message`) never parses blindly.
+  "Sign in" is said only for a missing or refused sign-in, never for a network
+  failure. This replaced `JSONDecodeError` on every signed-in cloud feature.
+- **The budget stop is the usual reason cloud AI is off.** On 2026-10-17
+  production had Vertex AI, Translation and Text-to-Speech disabled by
+  `deckastra-budget-stop` (the project passed its ₹5,000 monthly budget, which
+  counts all of the project's spend). The hint for a disabled API says so.
+  Re-enabling is a spending decision for the owner.
+- **The deploy smoke checks each cloud capability** (`smoke_cloud.check_ai_services`):
+  translation and speech are called for real with a word or two on the disposable
+  account, pictures and video are priced but never generated, and a budget-stop
+  pause is reported rather than failed.
 
 ### Agents suggest; the person chooses (plan 10, 2026-10-15)
 

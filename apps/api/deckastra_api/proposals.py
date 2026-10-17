@@ -128,6 +128,13 @@ def create_proposal(
     # A reply to a person's request is one of up to three options for them to
     # choose between. Applying a low-risk one at once would make the choice for
     # them, and leave a request that nothing can answer (2026-10-15).
+    # Every change a connected agent makes waits for the person, however low
+    # its risk (release 8, 2026-10-17): it arrives as a side-by-side proposal
+    # and nothing an agent does reaches the deck until someone approves it.
+    # This reverses the earlier "low risk applies at once" rule for agents only;
+    # the person's own edits never pass through here.
+    if agent_id and agent_id.startswith("mcp:") and not assessment.requires_approval:
+        assessment = RiskAssessment(tier=assessment.tier, reasons=[*assessment.reasons, "Agent changes wait for the person"], behavior="pendingPreview")
     if in_reply_to_request_id and not assessment.requires_approval:
         assessment = RiskAssessment(tier="medium", reasons=[*assessment.reasons, "Replies to a request are chosen by the person who asked"], behavior="pendingPreview")
 
@@ -149,6 +156,18 @@ def create_proposal(
     premature = premature_reviews(loaded.document, preview)
     if premature:
         raise ProposalError("; ".join(premature), code="E_LOCALE_INCOMPLETE")
+
+    # Every picture, clip, sound and font the change cites must resolve: an
+    # element whose file is not in the manifest draws as a gap everywhere
+    # (release 8, `media_integrity`).
+    from . import media_integrity
+    from .db.models import Presentation as PresentationRow
+
+    row = session.get(PresentationRow, presentation_id)
+    if row is not None and row.project is not None:
+        unresolved = media_integrity.problems(session, row.project.workspace_id, loaded.document, preview)
+        if unresolved:
+            raise ProposalError(" ".join(unresolved[:4]), code="E_MEDIA_UNRESOLVED")
 
     if not assessment.requires_approval:
         result = store.commit_transaction(

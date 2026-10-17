@@ -521,3 +521,19 @@ def test_a_build_that_would_lose_a_deck_edit_is_refused_and_the_card_can_be_sync
     card = next(item for item in synced.json()["body"]["cards"] if item["id"] == cards[1]["id"])
     assert card["notes"] == "Deck note"
     assert client.get(f"/v1/drafts/{seeded['id']}", headers=auth).json()["deck_conflict_card_ids"] == []
+
+
+def test_rows_drawn_one_element_each_seed_as_the_points_of_a_bullets_card(client, session):
+    # 2026-10-17: System Terminal draws a list as one text element per row, so
+    # a bullets card seeded body blocks and could never be built.
+    account, auth = session
+    deck = client.post("/v1/decks/from-template", headers=auth, json={"project_id": account["project_id"], "template_id": "technical-architecture", "title": "Rows"}).json()
+    seeded = client.post(f"/v1/presentations/{deck['presentation_id']}/drafts", headers=auth).json()
+    bullets_cards = [card for card in seeded["body"]["cards"] if card["layout"] == "bullets"]
+    assert bullets_cards and all(any(block["role"] == "bullet" for block in card["blocks"]) for card in bullets_cards)
+    card = bullets_cards[0]
+    blocks = [dict(block, text="A sharper headline") if block["role"] == "headline" else block for block in card["blocks"]]
+    edited = client.patch(f"/v1/drafts/{seeded['id']}", headers=auth, json={"revision": seeded["revision"], "operations": [
+        {"op": "set_blocks", "card_id": card["id"], "blocks": blocks}]}).json()
+    built = client.post(f"/v1/drafts/{seeded['id']}/build", headers=auth, json={"revision": edited["revision"], "card_ids": [card["id"]]})
+    assert built.status_code == 200, built.text

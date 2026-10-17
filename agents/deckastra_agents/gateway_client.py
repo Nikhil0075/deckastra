@@ -20,15 +20,22 @@ class GatewayClient:
         self._video_capability = None
 
     def _call(self, path, body=None):
-        with httpx.Client(timeout=600 if path == "/video" else 210, trust_env=False) as client:
-            reply = client.request("POST" if body is not None else "GET", self.url + path,
-                headers={"Authorization": f"Bearer {self.secret}"}, json=body)
-        if reply.status_code in (401, 403):
-            raise ModelUnavailable("Sign in to use Deckastra AI credits.")
+        try:
+            with httpx.Client(timeout=600 if path == "/video" else 210, trust_env=False) as client:
+                reply = client.request("POST" if body is not None else "GET", self.url + path,
+                    headers={"Authorization": f"Bearer {self.secret}"}, json=body)
+        except httpx.TimeoutException as error:
+            raise ModelUnavailable("Deckastra's cloud service did not answer in time. Try again.") from error
+        except httpx.HTTPError as error:
+            raise ModelUnavailable("The desktop could not reach its cloud bridge. Restart Deckastra and try again.") from error
         if reply.status_code != 200:
-            detail = reply.json().get("detail", "The hosted AI task is unavailable.")
-            raise ModelUnavailable(str(detail)[:500])
-        return reply.json()
+            raise ModelUnavailable(error_message(reply))
+        try:
+            return reply.json()
+        except ValueError as error:
+            raise ModelUnavailable(
+                f"Deckastra's cloud service answered something that is not data{_reference(reply)}."
+            ) from error
 
     def credits(self):
         """The signed-in account's balance, from the hosted ledger.
@@ -115,3 +122,59 @@ class GatewayClient:
 
     def stream(self, request, budget):
         yield self.complete(request, budget)
+
+
+def _reference(reply) -> str:
+    """The id that finds this failure in the cloud logs, when there is one."""
+    request_id = reply.headers.get("x-request-id")
+    if not request_id:
+        try:
+            request_id = (reply.json() or {}).get("request_id")
+        except (ValueError, AttributeError):
+            request_id = None
+    return f" (reference {str(request_id)[:40]})" if request_id else ""
+
+
+def error_message(reply) -> str:
+    """What a failed hosted request says, whatever shape its body has.
+
+    The body may be JSON (`{"detail": "..."}`, a detail object with `message`,
+    or the hosted classifier's `code`/`hint`), plain text, an HTML error page,
+    or nothing. A parse failure must never become the message: that is how
+    `JSONDecodeError` reached the person (release 8, 2026-10-17). And only a
+    missing or refused sign-in says "sign in": a network failure, a provider
+    refusal and a quota are not fixed by signing in again.
+    """
+    status = reply.status_code
+    detail = None
+    code = None
+    try:
+        payload = reply.json()
+    except ValueError:
+        payload = None
+    if isinstance(payload, dict):
+        code = payload.get("code")
+        detail = payload.get("detail")
+        if isinstance(detail, dict):
+            code = code or detail.get("code")
+            detail = detail.get("message") or detail.get("detail")
+        if isinstance(detail, list):  # FastAPI validation errors
+            detail = "; ".join(str(item.get("msg", item)) if isinstance(item, dict) else str(item) for item in detail[:3])
+    labelled_json = "json" in (reply.headers.get("content-type") or "").lower()
+    if not detail and payload is None and not labelled_json:
+        text = (reply.text or "").strip()
+        if text and not text.startswith("<"):
+            detail = text
+    if detail:
+        message = str(detail)
+    elif status == 401 or code == "E_SIGN_IN":
+        message = "Sign in to use Deckastra AI credits."
+    elif status == 403:
+        message = "Your account is not allowed to use this AI service."
+    elif status == 429:
+        message = "An AI usage limit was reached. Try again later."
+    elif status in (502, 503, 504):
+        message = f"Deckastra's cloud service could not complete this right now (HTTP {status})."
+    else:
+        message = f"Deckastra's cloud service failed (HTTP {status})."
+    return (message[:480] + _reference(reply))[:540]

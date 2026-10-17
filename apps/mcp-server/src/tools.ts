@@ -203,6 +203,26 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
     }),
   )));
 
+  server.registerTool("media_place", {
+    title: "Place a picture from Media on a slide",
+    description:
+      "The only safe way to put an existing workspace picture (an upload or a generated image listed by asset_list) on a slide. " +
+      "Deckastra adds the picture to the deck's asset list and places it in the same change, so it can never draw as a gap. " +
+      "Do not write an image element with an assetId by hand: a change citing a file that is not in the deck's asset list is refused (E_MEDIA_UNRESOLVED). " +
+      "placement: frame (into the slide's picture frame, the default), center, background (full-bleed, behind everything), or replace (swap the picture in replace_element_id, keeping its box). " +
+      "The result is a pending proposal the person approves; this tool cannot approve it and spends no credits.",
+    inputSchema: {
+      presentation_id: z.string().min(1), expected_version_id: z.string().min(1), slide_id: z.string().min(1),
+      asset_id: z.string().min(1).max(64), alt_text: z.string().min(1).max(900),
+      placement: z.enum(["frame", "center", "background", "replace"]).default("frame"),
+      replace_element_id: z.string().min(1).max(64).optional(),
+      intent: z.string().min(1).max(200).optional(),
+    },
+  }, async ({ presentation_id, ...request }) => guard(async () => {
+    if (!client.agent.placeMedia) throw new Error("This workspace service cannot place media yet.");
+    return json(await client.agent.placeMedia(presentation_id, { ...request, client_label: client.clientId.replace(/^mcp:/, "") }));
+  }));
+
   // -------------------------------------------------------- deterministic creation
 
   server.registerTool(
@@ -868,20 +888,22 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
       description:
         "Render one slide at six evenly spaced points on its animation timeline. The result is " +
         "one time-labelled 3×2 contact sheet produced by the same browser and animation engine " +
-        "as export. Use it after motion_propose to inspect sequence and pacing without playing video.",
+        "as export. Use it after motion_propose, object_motion_propose or ambient_motion_propose — with " +
+        "proposal_id, to see the pending change itself — to inspect sequence and pacing without playing video.",
       annotations: { readOnlyHint: true },
       inputSchema: {
         presentation_id: z.string().min(1),
         slide_id: z.string().min(1),
         expected_version_id: z.string().min(1).optional().describe("The version returned by deck_outline or document_read."),
         frame_count: z.number().int().min(3).max(8).default(6),
+        proposal_id: z.string().min(1).max(64).optional().describe("Preview the motion as this pending proposal would leave the slide."),
       },
     },
-    async ({ presentation_id, slide_id, expected_version_id, frame_count }) =>
+    async ({ presentation_id, slide_id, expected_version_id, frame_count, proposal_id }) =>
       guard(async () => {
         const preview = await client.documents.motionPreview(
           presentation_id,
-          { slide_id, frame_count, ...(expected_version_id ? { expected_version_id } : {}) },
+          { slide_id, frame_count, ...(expected_version_id ? { expected_version_id } : {}), ...(proposal_id ? { proposal_id } : {}) },
           { fresh: true },
         );
         return image(
@@ -966,6 +988,71 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
           }),
         ),
       ),
+  );
+
+  server.registerTool(
+    "object_motion_propose",
+    {
+      title: "Animate named objects, including real loops",
+      description:
+        "Give named objects motion of one category: entrance, emphasis, loop or exit, with a preset from " +
+        "motion_capabilities' categories (loops: float, breathe, spin, glow, shimmer, orbit, kenBurns, gradientDrift, marquee). " +
+        "Name objects by element_ids (from document_read) or roles. " +
+        "Loops and emphasis take a speed word (slow, medium, fast) or bounded duration_ms, delay_ms, repeat (-1 = forever for loops), " +
+        "direction and easing; entrances and exits take only a pacing word, so the slide stays inside its entrance budget. " +
+        "Use a loop for ongoing motion — never a repeated entrance. Loops are refused on text, charts, tables, diagrams, code and equations. " +
+        "A new loop replaces the object's old loop. The change is a pending proposal; check it with motion_preview and its proposal_id.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_id: z.string().min(1),
+        expected_version_id: z.string().min(1),
+        element_ids: z.array(z.string().min(1)).max(20).default([]),
+        roles: z.array(z.string().min(1)).max(8).default([]),
+        category: z.enum(["entrance", "emphasis", "loop", "exit"]),
+        preset: z.string().min(1).max(40),
+        pacing: z.enum(["tight", "measured", "deliberate"]).optional(),
+        speed: z.enum(["slow", "medium", "fast"]).optional(),
+        duration_ms: z.number().int().min(250).max(12_000).optional(),
+        delay_ms: z.number().int().min(0).max(4_000).optional(),
+        repeat: z.number().int().min(-1).max(20).optional(),
+        direction: z.enum(["normal", "reverse", "alternate"]).optional(),
+        easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut", "emphasized"]).optional(),
+        trigger: z.enum(["slideEnter", "withPrevious", "afterPrevious", "click"]).optional(),
+        stagger_ms: z.number().int().min(0).max(1_000).optional(),
+        intent: z.string().min(1).max(500).optional(),
+        in_reply_to: z.string().min(1).max(64).optional(),
+      },
+    },
+    async ({ presentation_id, ...plan }) =>
+      guard(async () => {
+        if (!client.motion.proposeObject) throw new Error("This workspace service cannot plan object motion yet.");
+        return json(await client.motion.proposeObject(presentation_id, { ...plan, client_label: client.clientId.replace(/^mcp:/, "") }));
+      }),
+  );
+
+  server.registerTool(
+    "ambient_motion_propose",
+    {
+      title: "Add subtle ambient motion",
+      description:
+        "The simple way to answer \"add subtle looping accents to these slides\": Deckastra chooses restrained native loops by kind " +
+        "(a slow Ken Burns drift on a picture, float or breathe on up to two small decorations or icons, offset so they never move in step) " +
+        "and leaves text, charts, tables, diagrams and code still. A slide that already loops is left alone. " +
+        "One pending proposal for all the slides; preview each with motion_preview and the returned transaction_id.",
+      inputSchema: {
+        presentation_id: z.string().min(1),
+        slide_ids: z.array(z.string().min(1)).min(1).max(40),
+        expected_version_id: z.string().min(1),
+        intensity: z.enum(["subtle", "noticeable"]).default("subtle"),
+        intent: z.string().min(1).max(500).optional(),
+        in_reply_to: z.string().min(1).max(64).optional(),
+      },
+    },
+    async ({ presentation_id, ...plan }) =>
+      guard(async () => {
+        if (!client.motion.proposeAmbient) throw new Error("This workspace service cannot plan ambient motion yet.");
+        return json(await client.motion.proposeAmbient(presentation_id, { ...plan, client_label: client.clientId.replace(/^mcp:/, "") }));
+      }),
   );
 
   server.registerTool(

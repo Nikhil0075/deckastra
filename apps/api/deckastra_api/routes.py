@@ -255,6 +255,9 @@ class MotionPreviewRequest(BaseModel):
     slide_id: str = Field(min_length=1, max_length=64)
     frame_count: int = Field(default=6, ge=3, le=8)
     expected_version_id: str | None = Field(default=None, max_length=64)
+    #: The motion as this pending proposal would leave the slide (release 8):
+    #: an agent sees the loop it proposed before the person decides.
+    proposal_id: str | None = Field(default=None, max_length=64)
 
 
 #: `/slides/id:sld_x/...` — the only way an operation names a slide (doc 02 §31.3).
@@ -381,9 +384,23 @@ def motion_capabilities(
         "roles": MOTION_ROLES,
         "entrance_budget_ms": motion.ENTRANCE_BUDGET_MS,
         "read_immediately_words": motion.READ_IMMEDIATELY_WORDS,
+        # Release 8: motion on named objects (object_motion_propose) and a
+        # high-level ambient pass (ambient_motion_propose).
+        "categories": {name: list(names) for name, names in motion.PRESETS_BY_CATEGORY.items()},
+        "loop_and_emphasis_timing": {
+            "speeds": motion.SPEEDS,
+            "duration_ms": {name: list(bounds) for name, bounds in motion.DURATION_LIMITS.items()},
+            "max_delay_ms": motion.MAX_DELAY_MS,
+            "repeat": {"loop": "-1 (forever) or 1-20", "emphasis": "0-5"},
+            "directions": ["normal", "reverse", "alternate"],
+            "easings": list(motion.NAMED_EASINGS),
+            "triggers": list(motion.TRIGGERS),
+        },
         "notes": [
             "Sequence by role. Roles you leave out are on screen from the first frame.",
-            "Durations, delays and easing are computed here; a plan cannot name them.",
+            "Entrance and exit durations are computed from a pacing word; a plan cannot name them.",
+            "Loops and emphasis may name a bounded duration, delay, repeat, direction and easing.",
+            "Loops never go on text, charts, tables, diagrams, code or equations.",
             "A sequence that would over-run the entrance budget is compressed, not refused.",
             "Body text past the word limit is left in place — the audience has to read it.",
         ],
@@ -1077,16 +1094,34 @@ def preview_slide_motion(
                 "current_version_id": loaded.version_id,
             },
         )
-    if not any(slide.get("id") == request.slide_id for slide in loaded.document.get("slides", [])):
+    document = loaded.document
+    rebased = False
+    if request.proposal_id:
+        transaction = session.get(TransactionRow, request.proposal_id)
+        if transaction is None or transaction.presentation_id != presentation_id:
+            raise HTTPException(status_code=404, detail="No such proposal.")
+        if transaction.status != "pending":
+            raise HTTPException(status_code=409, detail={"message": f"This proposal is {transaction.status}, not pending.", "code": "E409"})
+        try:
+            # Onto a copy, and nothing is committed.
+            document, _inverse = apply_patch(loaded.document, transaction.operations_json or [])
+        except PatchError as error:
+            raise HTTPException(status_code=409, detail={
+                "message": f"This change no longer applies — the deck moved since it was proposed. ({error})",
+                "code": error.code,
+            }) from error
+        rebased = bool(transaction.parent_version_id and transaction.parent_version_id != loaded.version_id)
+
+    if not any(slide.get("id") == request.slide_id for slide in document.get("slides", [])):
         raise HTTPException(status_code=404, detail=f"No slide {request.slide_id} in this deck.")
 
     try:
         rendered = export_service.render_motion_strip_png(
-            loaded.document,
+            document,
             request.slide_id,
             frame_count=request.frame_count,
             assets=asset_service.inline_for_render(
-                session, presentation_id=presentation_id, document=loaded.document
+                session, presentation_id=presentation_id, document=document
             ),
         )
     except export_service.ExportError as error:
@@ -1104,6 +1139,8 @@ def preview_slide_motion(
         "metrics_estimated": rendered["metrics_estimated"],
         "warnings": rendered.get("warnings") or [],
         "cache_hit": bool(rendered.get("cache_hit")),
+        "proposal_id": request.proposal_id,
+        "rebased": rebased,
     }
 
 
@@ -1992,3 +2029,135 @@ def restore_version(
         risk_tier=risk.tier,
         snapshotted=result.snapshotted,
     )
+
+
+# ---------------------------------------------------------- object motion
+#
+# Release 8 (2026-10-17): object-level motion and real loops for agents. The
+# entrance planner above stays the way to sequence a slide's reveal; these add
+# what it never offered: emphasis, loops and exits on named objects, and a
+# high-level "subtle ambient motion" that chooses restrained loops itself.
+
+
+class ObjectMotionRequest(BaseModel):
+    slide_id: str = Field(min_length=1, max_length=64)
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    #: The objects, by element id, by semantic role, or both.
+    element_ids: list[str] = Field(default_factory=list, max_length=20)
+    roles: list[str] = Field(default_factory=list, max_length=8)
+    category: Literal["entrance", "emphasis", "loop", "exit"]
+    preset: str = Field(min_length=1, max_length=40)
+    #: Entrances and exits: a pacing word, and nothing else.
+    pacing: Literal["tight", "measured", "deliberate"] | None = None
+    #: Loops and emphasis: a speed word, or bounded explicit timing.
+    speed: Literal["slow", "medium", "fast"] | None = None
+    duration_ms: int | None = Field(default=None, ge=0, le=60_000)
+    delay_ms: int | None = Field(default=None, ge=0, le=60_000)
+    repeat: int | None = Field(default=None, ge=-1, le=100)
+    direction: Literal["normal", "reverse", "alternate"] | None = None
+    easing: str | None = Field(default=None, max_length=40)
+    trigger: Literal["slideEnter", "withPrevious", "afterPrevious", "click"] | None = None
+    stagger_ms: int = Field(default=0, ge=0, le=1_000)
+    intent: str = Field(default="Add motion", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+    dry_run: bool = False
+    in_reply_to: str | None = Field(default=None, max_length=64)
+
+
+class AmbientMotionRequest(BaseModel):
+    slide_ids: list[str] = Field(min_length=1, max_length=40)
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    intensity: Literal["subtle", "noticeable"] = "subtle"
+    intent: str = Field(default="Add subtle ambient motion", min_length=1, max_length=500)
+    client_label: str = Field(default="external", max_length=60)
+    dry_run: bool = False
+    in_reply_to: str | None = Field(default=None, max_length=64)
+
+
+def _motion_head(session: Session, principal: Principal, presentation_id: str, expected_version_id: str):
+    resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    head = store.load_presentation(session, presentation_id)
+    if head.version_id != expected_version_id:
+        raise HTTPException(status_code=409, detail={
+            "message": "This deck has changed since you read it. Read it again and re-plan the motion against the current version.",
+            "code": "E310", "current_version_id": head.version_id,
+        })
+    return head
+
+
+def _motion_outcome(session, principal, presentation_id, operations, warnings, *, intent, client_label,
+                    expected_version_id, in_reply_to, dry_run, version_id):
+    if not operations:
+        return {"outcome": "none", "warnings": warnings, "version_id": version_id,
+                "refusal": "Nothing on those slides was given motion. The warnings say why."}
+    if dry_run:
+        return {"outcome": "planned", "operations": operations, "version_id": version_id, "warnings": warnings}
+    try:
+        outcome = proposals.create_proposal(
+            session, presentation_id=presentation_id, operations=operations, intent=intent,
+            created_by=principal.user_id, agent_id=f"mcp:{client_label}"[:120],
+            reason="; ".join(warnings)[:1000] or None, expected_version_id=expected_version_id,
+            in_reply_to_request_id=in_reply_to,
+            review_reason="Motion is reviewed playing before it is applied.",
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(status_code=409, detail={"message": str(error), "code": error.code}) from error
+    return {
+        "outcome": outcome["status"], "risk_tier": outcome["risk_tier"], "reasons": outcome.get("reasons") or [],
+        "transaction_id": outcome["transaction_id"], "warnings": warnings,
+        "next": "Use motion_preview with this transaction_id as proposal_id to see the motion before the person decides.",
+    }
+
+
+@router.post("/presentations/{presentation_id}/object-motion")
+def propose_object_motion(
+    presentation_id: str,
+    request: ObjectMotionRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Motion on named objects: an entrance, an emphasis, a loop or an exit."""
+    head = _motion_head(session, principal, presentation_id, request.expected_version_id)
+    slide = next((one for one in head.document.get("slides", []) if one.get("id") == request.slide_id), None)
+    if slide is None:
+        raise HTTPException(status_code=404, detail=f"No slide {request.slide_id} in this deck.")
+    try:
+        operations, warnings = motion.object_motion_operations(
+            slide, element_ids=request.element_ids, roles=request.roles, category=request.category,
+            preset=request.preset, speed=request.speed, pacing=request.pacing, duration_ms=request.duration_ms,
+            delay_ms=request.delay_ms, repeat=request.repeat, direction=request.direction,
+            easing=request.easing, trigger=request.trigger, stagger_ms=request.stagger_ms,
+        )
+    except motion.MotionPlanError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return _motion_outcome(session, principal, presentation_id, operations, warnings, intent=request.intent,
+                           client_label=request.client_label, expected_version_id=request.expected_version_id,
+                           in_reply_to=request.in_reply_to, dry_run=request.dry_run, version_id=head.version_id)
+
+
+@router.post("/presentations/{presentation_id}/ambient-motion")
+def propose_ambient_motion(
+    presentation_id: str,
+    request: AmbientMotionRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Add subtle looping accents to these slides, as one reviewable change."""
+    head = _motion_head(session, principal, presentation_id, request.expected_version_id)
+    slides = {one.get("id"): one for one in head.document.get("slides", [])}
+    operations: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for position, slide_id in enumerate(dict.fromkeys(request.slide_ids)):
+        slide = slides.get(slide_id)
+        if slide is None:
+            raise HTTPException(status_code=404, detail=f"No slide {slide_id} in this deck.")
+        try:
+            ops, notes = motion.ambient_operations(slide, head.document.get("viewport") or {}, intensity=request.intensity)
+        except motion.MotionPlanError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        number = [one.get("id") for one in head.document.get("slides", [])].index(slide_id) + 1
+        operations += ops
+        warnings += [f"Slide {number}: {note}" for note in notes]
+    return _motion_outcome(session, principal, presentation_id, operations, warnings, intent=request.intent,
+                           client_label=request.client_label, expected_version_id=request.expected_version_id,
+                           in_reply_to=request.in_reply_to, dry_run=request.dry_run, version_id=head.version_id)

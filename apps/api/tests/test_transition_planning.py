@@ -203,7 +203,15 @@ def test_the_route_commits_no_version_for_a_transition_already_there(client, dec
         },
     )
     assert first.status_code == 200, first.text
-    assert first.json()["outcome"] in {"applied", "pending"}
+    # Agent changes wait for the person (release 8); approve it, so the second
+    # plan meets a transition that is really there.
+    assert first.json()["outcome"] == "pending"
+    approved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{first.json()['transaction_id']}/approve",
+        headers=bearer(),
+        json={"expected_version_id": document["version_id"]},
+    )
+    assert approved.status_code == 200, approved.text
 
     head = client.get(f"/v1/presentations/{deck['presentation_id']}", headers=bearer()).json()
     again = client.post(
@@ -246,7 +254,14 @@ def test_the_route_attributes_the_change_to_the_client(client, deck):
     )
 
     assert answer.status_code == 200, answer.text
-    stored = client.get(
-        f"/v1/presentations/{deck['presentation_id']}", headers=bearer()
-    ).json()["document"]
-    assert stored["slides"][0]["transition"]["type"] == "zoom"
+    # Waits for the person, attributed to the client that proposed it.
+    assert answer.json()["outcome"] == "pending"
+    waiting = client.get(f"/v1/presentations/{deck['presentation_id']}/proposals", headers=bearer()).json()
+    assert [row["agent_id"] for row in waiting] == ["mcp:acceptance"]
+    approved = client.post(
+        f"/v1/presentations/{deck['presentation_id']}/proposals/{answer.json()['transaction_id']}/approve",
+        headers=bearer(),
+        json={"expected_version_id": document["version_id"]},
+    )
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["document"]["slides"][0]["transition"]["type"] == "zoom"

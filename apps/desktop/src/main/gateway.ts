@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { app } from "electron";
 import { accountToken } from "./account";
 import { cloudConfig } from "./cloud";
+import { isSignInFailure, networkReply, signInReply, upstreamReply, type BridgeReply } from "./gateway-reply";
 
 let environment: NodeJS.ProcessEnv | null = null;
 
@@ -34,8 +35,20 @@ export async function gatewayEnvironment(): Promise<NodeJS.ProcessEnv> {
     if (!path || request.method !== (["/infer", "/video", "/quote", "/translate", "/speech"].includes(request.url ?? "") ? "POST" : "GET")) {
       response.writeHead(404); response.end(); return;
     }
+    const send = (reply: BridgeReply) => {
+      response.writeHead(reply.status, reply.headers);
+      response.end(reply.body);
+    };
+    let token: string;
     try {
-      const token = await accountToken();
+      token = await accountToken();
+    } catch (error) {
+      // Only a missing or refused sign-in says "sign in"; a renewal that could
+      // not reach Google is a network failure (release 8, 2026-10-17).
+      send(isSignInFailure(error) ? signInReply(error instanceof Error ? error.message : "") : networkReply(error));
+      return;
+    }
+    try {
       const chunks: Buffer[] = [];
       let bytes = 0;
       for await (const chunk of request) {
@@ -47,11 +60,10 @@ export async function gatewayEnvironment(): Promise<NodeJS.ProcessEnv> {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "X-Deckastra-Device": deviceId },
         ...(request.method === "POST" ? { body: Buffer.concat(chunks) } : {}),
         redirect: "error", signal: AbortSignal.timeout(request.url === "/video" ? 600_000 : 210_000) });
-      response.writeHead(upstream.status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-      response.end(Buffer.from(await upstream.arrayBuffer()));
-    } catch {
-      response.writeHead(401, { "Content-Type": "application/json" });
-      response.end(JSON.stringify({ detail: "Sign in to use Deckastra AI credits." }));
+      send(upstreamReply(upstream.status, upstream.headers.get("content-type"), Buffer.from(await upstream.arrayBuffer()),
+        upstream.headers.get("x-request-id")));
+    } catch (error) {
+      send(networkReply(error));
     }
   });
   server.requestTimeout = 240_000;

@@ -238,6 +238,97 @@ class ImportedImageComplete(BaseModel):
     client_label: str = Field(default="external", min_length=1, max_length=60)
 
 
+def _picture_operations(
+    document: dict[str, Any],
+    slide: dict[str, Any],
+    asset: Asset,
+    *,
+    alt_text: str,
+    style_source: str = "prompt",
+    generation: dict[str, Any] | None = None,
+    placement: str = "frame",
+    replace_element_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Register a workspace picture in the deck and place it, as one patch.
+
+    The manifest entry is written from the asset row, never from a caller, and
+    only when the deck does not already list the file. Placement is decided
+    here: into the slide's picture frame when it has one (the frame's box, its
+    corners and the deck's treatment), centred at a readable size otherwise,
+    across the whole slide for `background`, or into an existing picture's box
+    for `replace`. The caller names intent, not pixels.
+    """
+    slide_id = str(slide.get("id"))
+    operations: list[dict[str, Any]] = []
+    if not any(isinstance(entry, dict) and entry.get("id") == asset.id for entry in document.get("assets") or []):
+        manifest: dict[str, Any] = {
+            "id": asset.id,
+            "type": "image",
+            "storageKey": asset.storage_key,
+            "fileName": asset.filename,
+            "mimeType": asset.content_type,
+            "byteSize": asset.bytes,
+            "width": asset.width,
+            "height": asset.height,
+        }
+        if generation is not None:
+            manifest["createdBy"] = "generated"
+            manifest["metadata"] = {"generation": generation}
+        if "assets" not in document:
+            operations.append({"op": "add", "path": "/assets", "value": []})
+        operations.append({"op": "add", "path": "/assets/-", "value": {key: value for key, value in manifest.items() if value is not None}})
+
+    if placement == "replace":
+        target = next((element for element in slide.get("elements") or [] if element.get("id") == replace_element_id), None)
+        if target is None or target.get("type") != "image":
+            raise HTTPException(status_code=422, detail="replace_element_id must name a picture on that slide.")
+        operations.append({"op": "replace", "path": f"/slides/id:{slide_id}/elements/id:{target['id']}/assetId", "value": asset.id})
+        return operations
+
+    view = document["viewport"]
+    if placement == "background":
+        element: dict[str, Any] = {
+            "id": new_id("el"), "type": "image", "assetId": asset.id, "fit": "cover", "layerRole": "background",
+            "transform": {"x": 0, "y": 0, "width": view["width"], "height": view["height"]},
+            "altText": alt_text, "name": "Background picture",
+        }
+        operations.append({"op": "add", "path": f"/slides/id:{slide_id}/elements/0", "value": element})
+        return operations
+
+    factor = min(view["width"] * .7 / asset.width, view["height"] * .65 / asset.height)
+    width, height = asset.width * factor, asset.height * factor
+    element = {
+        "id": new_id("el"), "type": "image", "assetId": asset.id, "fit": "contain",
+        "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height},
+        "altText": alt_text,
+        "name": "Generated picture" if generation is not None else (asset.filename or "Picture"),
+    }
+    frame = media_style.target_frame(slide) if placement == "frame" else None
+    if frame is not None:
+        frame_index, frame_element = frame
+        element["transform"], element["fit"] = dict(frame_element["transform"]), "cover"
+        element["semanticRole"] = str(frame_element.get("semanticRole") or "supportingVisual")
+        if frame_element.get("altText") and generation is not None:
+            element["altText"] = str(frame_element["altText"])[:900]
+        radius = (frame_element.get("style") or {}).get("cornerRadius") or 0
+        if frame_element.get("shape") == "pill":
+            radius = min(element["transform"]["width"], element["transform"]["height"]) / 2
+        if radius:
+            element["style"] = {"cornerRadius": radius}
+        if style_source == "deck":
+            treatment = media_style.deck_treatment(document, slide_id, (frame_element.get("mediaSlot") or {}).get("treatmentPreset"))
+            if treatment:
+                element["treatment"] = treatment
+        elements = slide.get("elements") or []
+        at = frame_index + 1
+        while at < len(elements) and elements[at].get("type") == "image" and elements[at].get("transform") == frame_element["transform"]:
+            at += 1
+        operations.append({"op": "add", "path": f"/slides/id:{slide_id}/elements/{at}", "value": element})
+    else:
+        operations.append({"op": "add", "path": f"/slides/id:{slide_id}/elements/-", "value": element})
+    return operations
+
+
 @router.post("/presentations/{presentation_id}/media-imports/complete")
 def complete_imported_image(
     presentation_id: str,
@@ -296,55 +387,12 @@ def complete_imported_image(
     asset.tags = ["generated", "external-tool", style_source]
     asset.description = f"Generated by {request.provider} to {'match the deck' if style_source == 'deck' else 'follow the prompt'}"
 
-    manifest = {
-        "id": asset.id,
-        "type": "image",
-        "storageKey": asset.storage_key,
-        "fileName": asset.filename,
-        "mimeType": asset.content_type,
-        "byteSize": asset.bytes,
-        "width": asset.width,
-        "height": asset.height,
-        "createdBy": "generated",
-        "metadata": {"generation": {"styleSource": style_source, "prompt": request.prompt, "model": request.provider, "at": datetime.now(timezone.utc).isoformat()}},
-    }
-    operations: list[dict[str, Any]] = []
-    if "assets" not in loaded.document:
-        operations.append({"op": "add", "path": "/assets", "value": []})
-    operations.append({"op": "add", "path": "/assets/-", "value": manifest})
-
-    view = loaded.document["viewport"]
-    factor = min(view["width"] * .7 / asset.width, view["height"] * .65 / asset.height)
-    width, height = asset.width * factor, asset.height * factor
-    element: dict[str, Any] = {
-        "id": new_id("el"), "type": "image", "assetId": asset.id, "fit": "contain",
-        "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height},
-        "altText": "Generated illustration requested as: " + request.prompt[:400],
-        "name": "Generated picture",
-    }
-    frame = media_style.target_frame(slide)
-    if frame is not None:
-        frame_index, frame_element = frame
-        element["transform"], element["fit"] = dict(frame_element["transform"]), "cover"
-        element["semanticRole"] = str(frame_element.get("semanticRole") or "supportingVisual")
-        if frame_element.get("altText"):
-            element["altText"] = str(frame_element["altText"])[:900]
-        radius = (frame_element.get("style") or {}).get("cornerRadius") or 0
-        if frame_element.get("shape") == "pill":
-            radius = min(element["transform"]["width"], element["transform"]["height"]) / 2
-        if radius:
-            element["style"] = {"cornerRadius": radius}
-        if style_source == "deck":
-            treatment = media_style.deck_treatment(loaded.document, slide_id, (frame_element.get("mediaSlot") or {}).get("treatmentPreset"))
-            if treatment:
-                element["treatment"] = treatment
-        elements = slide.get("elements") or []
-        at = frame_index + 1
-        while at < len(elements) and elements[at].get("type") == "image" and elements[at].get("transform") == frame_element["transform"]:
-            at += 1
-        operations.append({"op": "add", "path": f"/slides/id:{slide_id}/elements/{at}", "value": element})
-    else:
-        operations.append({"op": "add", "path": f"/slides/id:{slide_id}/elements/-", "value": element})
+    operations = _picture_operations(
+        loaded.document, slide, asset,
+        alt_text="Generated illustration requested as: " + request.prompt[:400],
+        style_source=style_source,
+        generation={"styleSource": style_source, "prompt": request.prompt, "model": request.provider, "at": datetime.now(timezone.utc).isoformat()},
+    )
 
     candidate, _ = apply_patch(loaded.document, operations)
     errors = author_service.check(loaded.document, operations)
@@ -952,3 +1000,69 @@ def list_runs(
         }
         for run in agent_store.recent_runs(session, presentation_id)
     ]
+
+
+class MediaPlaceRequest(BaseModel):
+    """Put a picture the workspace already holds on a slide (release 8)."""
+    asset_id: str = Field(min_length=1, max_length=64)
+    slide_id: str = Field(min_length=1, max_length=64)
+    expected_version_id: str = Field(min_length=1, max_length=64)
+    client_label: str = Field(min_length=1, max_length=60)
+    placement: Literal["frame", "center", "background", "replace"] = "frame"
+    replace_element_id: str | None = Field(default=None, max_length=64)
+    alt_text: str = Field(min_length=1, max_length=900)
+    intent: str = Field(default="Place a picture", min_length=1, max_length=200)
+
+
+@router.post("/presentations/{presentation_id}/media/place")
+def place_media(
+    presentation_id: str,
+    request: MediaPlaceRequest,
+    principal: Principal = Depends(current_principal),
+    session: Session = Depends(get_session),
+) -> dict[str, Any]:
+    """Register a workspace picture in the deck and place it, as one proposal.
+
+    The safe way for an agent to put an existing upload or generated picture
+    on a slide: the manifest entry comes from the asset row, so the element can
+    never cite a file the deck cannot find (release 8, 2026-10-17). It waits
+    for the person, like every agent change that adds media.
+    """
+    access = resolve_presentation_access(session, user_id=principal.user_id, presentation_id=presentation_id, require=Role.EDITOR)
+    asset = session.get(Asset, request.asset_id)
+    if asset is None or asset.workspace_id != access.workspace_id or asset.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="No such picture in this workspace's Media.")
+    if asset.kind != "image" or not asset.width or not asset.height:
+        raise HTTPException(status_code=422, detail="Only a picture with known dimensions can be placed this way.")
+    loaded = store.load_presentation(session, presentation_id)
+    if loaded.version_id != request.expected_version_id:
+        raise HTTPException(status_code=409, detail={"message": "The deck changed. Read it again and place the picture against the current version.", "code": "E310", "current_version_id": loaded.version_id})
+    slide = next((item for item in loaded.document.get("slides") or [] if item.get("id") == request.slide_id), None)
+    if slide is None:
+        raise HTTPException(status_code=404, detail="No such slide in this deck.")
+    operations = _picture_operations(
+        loaded.document, slide, asset, alt_text=request.alt_text,
+        placement=request.placement, replace_element_id=request.replace_element_id,
+    )
+    try:
+        outcome = proposals.create_proposal(
+            session,
+            presentation_id=presentation_id,
+            operations=operations,
+            intent=request.intent,
+            created_by=principal.user_id,
+            agent_id=f"mcp:{request.client_label}"[:120],
+            source_ids=[asset.id],
+            expected_version_id=request.expected_version_id,
+            review_reason="A picture and its placement need visual review.",
+        )
+    except proposals.ProposalError as error:
+        raise HTTPException(status_code=409, detail={"message": str(error), "code": error.code}) from error
+    return {
+        "proposal_id": outcome["transaction_id"],
+        "status": outcome["status"],
+        "risk_tier": outcome["risk_tier"],
+        "asset_id": asset.id,
+        "slide_id": request.slide_id,
+        "awaiting": "The person reviews the picture beside the current slide in Review.",
+    }

@@ -8,6 +8,7 @@ import {
   prepareToClose,
   settleWork,
   writeRecoveryEntries,
+  useAssetUrls,
   useBrowserMeasurer,
   type DeckListCommand,
   type SubscribeHostCommands,
@@ -362,6 +363,10 @@ function Presenter({ deck, channelName }: { deck: Opened; channelName: string })
     () => buildDocumentScene(deck.document, { measurer }),
     [deck.document, measurer],
   );
+  // The same resolver the editor's present mode uses. Without it this window
+  // drew text and shapes and a labelled gap for every picture, video poster
+  // and voice in the deck (release 8, 2026-10-17).
+  const resolveAssetUrl = useAssetUrls(deck.document);
 
   return (
     <PresentMode
@@ -369,6 +374,7 @@ function Presenter({ deck, channelName }: { deck: Opened; channelName: string })
       onExit={() => window.close()}
       presenterOnly
       channelName={channelName}
+      resolveAssetUrl={resolveAssetUrl}
     />
   );
 }

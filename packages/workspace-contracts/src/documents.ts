@@ -139,6 +139,8 @@ export interface MotionPreviewRequest {
   /** Deliberately bounded: enough to inspect timing without returning a filmstrip. */
   frame_count?: number;
   expected_version_id?: string;
+  /** Preview the motion as this pending proposal would leave the slide. */
+  proposal_id?: string;
 }
 
 export interface MotionPreviewResult {

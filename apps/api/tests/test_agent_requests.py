@@ -186,13 +186,14 @@ def test_a_low_risk_reply_waits_for_the_person_and_can_answer(client, auth, deck
                            json={"proposal_ids": [proposed.json()["transaction_id"]]})
     assert answered.status_code == 200, answered.text
 
-    # Without in_reply_to the same change still applies at once: only replies wait.
+    # Without in_reply_to it waits too: since release 8 (2026-10-17) every
+    # change from a connected agent does.
     plain = client.post(
         f"/v1/presentations/{deck['presentation_id']}/proposals", headers=auth,
         json={"operations": [{"op": "add", "path": f"/slides/id:{slide['id']}/elements/id:{element['id']}/transform/rotation", "value": 1}],
               "intent": "Tilt it slightly", "expected_version_id": deck["version_id"]},
     )
-    assert plain.json()["outcome"] == "applied"
+    assert plain.json()["outcome"] == "pending"
 
 
 def test_motion_and_transition_plans_can_reply(client, auth, deck):
