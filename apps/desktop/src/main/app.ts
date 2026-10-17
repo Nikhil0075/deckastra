@@ -1,3 +1,4 @@
+import { tmpdir } from "node:os";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app, BrowserWindow, clipboard, dialog } from "electron";
@@ -57,6 +58,7 @@ import { classifyFailure, serviceCommand, startSidecar, type Sidecar } from "./s
 import { dataDir, ensurePresentation, rememberPresentation } from "./workspace-state";
 import { createWindow } from "./windows";
 import { importDeckFile } from "./deck-file";
+import { sweepAbandonedProfiles } from "./render-profiles";
 
 /**
  * The desktop shell (milestone D1).
@@ -565,6 +567,9 @@ function sendMenuCommand(command: MenuCommand): void {
 }
 
 async function startup(): Promise<void> {
+  // Render profiles a cancelled export left in the temp directory
+  // (`render-profiles.ts`); only those whose host is no longer running.
+  sweepAbandonedProfiles(tmpdir());
   // The proxy reads this each request rather than capturing a port, because a
   // restarted service comes back on a different one.
   serveRenderer(join(import.meta.dirname, "renderer"), {
