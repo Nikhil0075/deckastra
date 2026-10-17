@@ -1,13 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { app } from "electron";
 import type { ServiceFailureKind } from "../shared/ipc";
 import { logEvent, logRaw } from "./logs";
 import { buildManifest, mismatchedMigrations } from "./build-manifest";
 import { logMirror } from "./log-mirror";
 import { gatewayEnvironment } from "./gateway";
+import { serviceLocale } from "./service-locale";
 
 const mirrorStderr = logMirror(process.stderr, (error) => logEvent("service.log-mirror-closed", { detail: error.message }));
 
@@ -143,7 +144,7 @@ function command(dataDir: string): ServiceCommand {
       // reads as "the service is not installed" — and the data directory does not
       // exist yet on a first launch, because the service is what creates it.
       cwd: dirname(binary),
-      env: { ...process.env, ...exporterEnvironment() },
+      env: { ...process.env, ...serviceLocale(process.env), ...exporterEnvironment() },
     };
   }
 
@@ -161,10 +162,13 @@ function command(dataDir: string): ServiceCommand {
     cwd: root,
     // Prepended rather than replaced: a developer's own PYTHONPATH is not ours
     // to discard, and `agents/` is resolved by the API's own path bootstrap.
+    // `delimiter` is `;` on Windows and `:` elsewhere; a literal `;` fused the
+    // two into one path that does not exist on macOS.
     env: {
       ...process.env,
+      ...serviceLocale(process.env),
       ...exporterEnvironment(),
-      PYTHONPATH: [apiDir, process.env.PYTHONPATH].filter(Boolean).join(";"),
+      PYTHONPATH: [apiDir, process.env.PYTHONPATH].filter(Boolean).join(delimiter),
     },
   };
 }
