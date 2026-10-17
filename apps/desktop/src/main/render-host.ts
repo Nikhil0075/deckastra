@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { app, BrowserWindow, session } from "electron";
 import type { RenderHostMessage, RenderHostRequest } from "@deckastra/workspace-contracts";
 
+import { PROFILE_PREFIX, recordHost, sweepAbandonedProfiles } from "./render-profiles";
+
 /**
  * The desktop app's Chromium, lent to the exporter.
  *
@@ -55,8 +57,13 @@ export function runRenderHost(): void {
   }
   const send = (message: RenderHostMessage) => process.send?.(message);
 
+  // Profiles a cancelled export left behind (its exporter was killed before it
+  // could delete them; `render-profiles.ts`). Only those whose host is gone.
+  sweepAbandonedProfiles(tmpdir());
+
   // Before `ready`, or Chromium has already opened the default profile.
-  const profile = mkdtempSync(join(tmpdir(), "deckastra-render-"));
+  const profile = mkdtempSync(join(tmpdir(), PROFILE_PREFIX));
+  recordHost(profile);
   app.setPath("userData", profile);
   app.setPath("sessionData", profile);
 

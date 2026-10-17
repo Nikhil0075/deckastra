@@ -1,6 +1,6 @@
 import { Menu, type MenuItemConstructorOptions } from "electron";
 
-import type { MenuCommand } from "../shared/ipc";
+import type { EditCommand, MenuCommand } from "../shared/ipc";
 
 /**
  * The application menu (editor Phase 8).
@@ -16,8 +16,19 @@ import type { MenuCommand } from "../shared/ipc";
  * accelerator would take the key before the page saw it and undo the deck from
  * inside a text box. So those items *show* their shortcut and do not register it
  * (`registerAccelerator: false`, honoured on Windows and Linux). macOS always
- * registers menu accelerators, so there the items carry no accelerator at all
- * until someone can measure the Mac build — which nobody here can.
+ * registers menu accelerators, so there the page-owned items carry none.
+ *
+ * **macOS's Edit menu is where a text field's keys live** (measured on the
+ * first Mac build, 2026-10-17). On a Mac, Cmd+Z, Cmd+X, Cmd+C, Cmd+V and Cmd+A
+ * in a field are menu key equivalents, not something the page does by itself:
+ * with no Edit items carrying them, a real Cmd+Z in the notes field did nothing
+ * while a real Cmd+1 switched mode. So the Mac menu has them. Cut, Copy and
+ * Paste are Electron's roles, which raise the browser's own `cut`, `copy` and
+ * `paste` events — exactly what the editor's clipboard handling listens to.
+ * Undo, Redo and Select All go to the page on their own channel
+ * (`IPC.menuEdit`), and the page decides: in a text field they are the field's,
+ * anywhere else the editor's, which keeps Phase 9's rule that Cmd+Z in a field
+ * is the field's own. Windows and Linux keep the menu above, unchanged.
  *
  * The keys the menu does register (Ctrl+N, Ctrl+1…4, …) are ones the page has
  * no binding for, so there is exactly one handler for every key either way.
@@ -38,8 +49,9 @@ export function installMenu(
   send: (command: MenuCommand) => void,
   actions: MenuActions,
   platform = process.platform,
+  edit?: (command: EditCommand) => void,
 ): Menu {
-  const menu = Menu.buildFromTemplate(menuTemplate(send, platform, actions));
+  const menu = Menu.buildFromTemplate(menuTemplate(send, platform, actions, edit));
   Menu.setApplicationMenu(menu);
   return menu;
 }
@@ -48,6 +60,7 @@ export function menuTemplate(
   send: (command: MenuCommand) => void,
   platform: string,
   actions?: MenuActions,
+  edit?: (command: EditCommand) => void,
 ): MenuItemConstructorOptions[] {
   const mac = platform === "darwin";
   // The id is the command, so the acceptance harness can press the real item
@@ -86,8 +99,17 @@ export function menuTemplate(
     {
       label: "&Edit",
       submenu: [
-        pageOwned("Undo", "undo", "CmdOrCtrl+Z"),
-        pageOwned("Redo", "redo", "CmdOrCtrl+Shift+Z"),
+        ...(mac
+          ? ([
+              { id: "undo", label: "Undo", accelerator: "Cmd+Z", click: () => edit?.("undo") },
+              { id: "redo", label: "Redo", accelerator: "Shift+Cmd+Z", click: () => edit?.("redo") },
+              { type: "separator" },
+              { role: "cut" },
+              { role: "copy" },
+              { role: "paste" },
+              { id: "select-all", label: "Select All", accelerator: "Cmd+A", click: () => edit?.("select-all") },
+            ] satisfies MenuItemConstructorOptions[])
+          : [pageOwned("Undo", "undo", "CmdOrCtrl+Z"), pageOwned("Redo", "redo", "CmdOrCtrl+Shift+Z")]),
         { type: "separator" },
         item("Version history", "version-history", "CmdOrCtrl+Alt+H"),
         item("Colours…", "colors"),

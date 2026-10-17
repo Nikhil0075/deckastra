@@ -51,6 +51,7 @@ function bridge(overrides: Partial<DesktopBridge> = {}): DesktopBridge {
     }),
     onAgentAccess: () => () => {},
     onMenuCommand: () => () => {},
+    onMenuEdit: () => () => {},
     onPrepareToClose: () => () => {},
     cloudKey: async () => ({ set: false, updatedAt: null, storable: true }),
     setCloudKey: async () => ({ set: false, updatedAt: null, storable: true }),

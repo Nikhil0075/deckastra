@@ -91,7 +91,13 @@ export type HostCommand =
   | "panels-focus"
   | "panels-all"
   /** Every pane back, at its default size (UI audit unit 3). */
-  | "layout-reset";
+  | "layout-reset"
+  /**
+   * Select every object on the slide. Sent only by the macOS Edit menu's Select
+   * All when no text field has focus (a field selects its own text instead);
+   * elsewhere Ctrl+A reaches the editor as a key.
+   */
+  | "select-all";
 
 /** Subscribe to host commands; returns the unsubscribe function. */
 export type SubscribeHostCommands = (listener: (command: HostCommand) => void) => () => void;

@@ -10,7 +10,9 @@ contextBridge.exposeInMainWorld("deckastraAccount", accountBridge);
 
 import {
   IPC,
+  isEditCommand,
   isMenuCommand,
+  type EditCommand,
   type CloudKeyRequest,
   type CloudKeyState,
   type ClipboardTextRequest,
@@ -116,6 +118,14 @@ const bridge: DesktopBridge = {
     };
     ipcRenderer.on(IPC.menuCommand, wrapped);
     return () => ipcRenderer.off(IPC.menuCommand, wrapped);
+  },
+
+  onMenuEdit: (listener: (command: EditCommand) => void) => {
+    const wrapped = (_event: unknown, command: unknown): void => {
+      if (isEditCommand(command)) listener(command);
+    };
+    ipcRenderer.on(IPC.menuEdit, wrapped);
+    return () => ipcRenderer.off(IPC.menuEdit, wrapped);
   },
 
   restartService: () => ipcRenderer.invoke(IPC.restartService) as Promise<ServiceStatus>,

@@ -6,12 +6,23 @@
 # commit install the same bytes, and a compromised or merely different version
 # of a dependency cannot walk in through a developer's global site-packages.
 #
-#   python -m piptools compile --generate-hashes --strip-extras \
+#   python -m piptools compile --generate-hashes --strip-extras --allow-unsafe \
 #     --output-file apps/desktop/sidecar-requirements.lock \
 #     apps/desktop/sidecar-requirements.in
 #
-# The lock is resolved for the platform it is compiled on. This release is
-# Windows x64 / CPython 3.13, which is what it therefore pins.
+# A lock is resolved for the platform it is compiled on, so there is one per
+# platform and `scripts/sidecar-lock.mjs` says which a build uses. The release
+# is Windows x64 / CPython 3.13: `sidecar-requirements.lock`. macOS arm64 is
+# compiled on a Mac, *constrained to the Windows lock* so the two freeze the
+# same versions and differ only where the platforms do (macholib and uvloop in,
+# pefile, pywin32-ctypes, greenlet and tzdata out):
+#
+#   python -m piptools compile --generate-hashes --strip-extras --allow-unsafe \
+#     -c apps/desktop/sidecar-requirements.lock \
+#     --output-file apps/desktop/sidecar-requirements.macos-arm64.lock \
+#     apps/desktop/sidecar-requirements.in
+#
+# Recompile the macOS lock whenever the Windows one changes.
 
 -r ../api/requirements.txt
 

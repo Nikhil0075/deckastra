@@ -25,6 +25,10 @@ fileAssociations:
     name: Deckastra presentation
     mimeType: application/vnd.deckastra.mydeck+zip
     role: Editor
+    # Named once, as the Windows file. electron-builder swaps the extension per
+    # platform (`getPlatformIconFileName`): NSIS registers `build/icon.ico`, and
+    # the macOS Info.plist gets `build/icon.icns` beside it. Absent the .icns the
+    # Mac build would fall back to the app icon without saying so.
     icon: build/icon.ico
 directories:
   output: release
@@ -104,11 +108,25 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 mac:
+  # Generated from the same 1024px PNG as `icon.ico`, with `iconutil` from an
+  # iconset at every size macOS asks for (16 to 512, each at 1x and 2x).
+  icon: build/icon.icns
   target:
     - target: dmg
       arch:
         - arm64
   category: public.app-category.productivity
+  # Electron's licence and Chromium's notices. On Windows electron-builder lays
+  # them beside Deckastra.exe; on macOS they stay beside Electron.app in the
+  # download and never reach the bundle, so a Mac build shipped Chromium with
+  # none of its notices. Added to the top-level `extraResources`, not instead of
+  # them. The path is the hoisted workspace copy, the same pinned version
+  # `electronVersion` names.
+  extraResources:
+    - from: ../../node_modules/electron/dist/LICENSE
+      to: LICENSE.electron.txt
+    - from: ../../node_modules/electron/dist/LICENSES.chromium.html
+      to: LICENSES.chromium.html
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
   # Notarization requires the hardened runtime, and the hardened runtime breaks
   # Electron and the PyInstaller sidecar without the entitlements beside this

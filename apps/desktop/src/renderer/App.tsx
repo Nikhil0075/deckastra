@@ -25,6 +25,7 @@ import type { HostBridge, WorkspaceClient } from "@deckastra/workspace-contracts
 
 import type { AgentAccess, DesktopBridge, ServiceStatus } from "../shared/ipc";
 import { createDesktopClient } from "./client";
+import { routeEditCommand } from "./field-edit";
 import { desktopHost } from "./host";
 import { desktopMotionAuthoring } from "./motion/DesktopMotionStudio";
 
@@ -71,7 +72,23 @@ export function App({ bridge }: { bridge: DesktopBridge }) {
   const [listStart, setListStart] = useState<DeckListCommand | null>(null);
   // The application menu, as the editor's `commands` prop wants it. Stable, so
   // the editor and the list subscribe once rather than on every render.
-  const menuCommands = useMemo<SubscribeHostCommands>(() => (listener) => bridge.onMenuCommand(listener), [bridge]);
+  // The macOS Edit menu's Undo, Redo and Select All join it here: a focused
+  // text field answers them itself (`routeEditCommand`), and only what is left
+  // reaches the editor or the list as an ordinary command.
+  const menuCommands = useMemo<SubscribeHostCommands>(
+    () => (listener) => {
+      const stopMenu = bridge.onMenuCommand(listener);
+      const stopEdit = bridge.onMenuEdit((command) => {
+        const forward = routeEditCommand(command, document);
+        if (forward) listener(forward);
+      });
+      return () => {
+        stopMenu();
+        stopEdit();
+      };
+    },
+    [bridge],
+  );
   // Settings (roadmap 08 §1.3), which replaced the Intelligence drawer. Held
   // here rather than in either screen, because both reach it and it outlives
   // both.

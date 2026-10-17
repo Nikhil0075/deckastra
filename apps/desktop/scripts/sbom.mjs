@@ -3,13 +3,15 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { sidecarLockName } from "./sidecar-lock.mjs";
+
 /**
  * What actually ships, listed (final package review, item 09).
  *
  * CycloneDX, because it is the format the notices work (item 33) and any later
  * vulnerability check will expect. Two sources, and neither is a guess:
  *
- * - **Python**, from `sidecar-requirements.lock` — the same file the build
+ * - **Python**, from this platform's lock (`sidecar-lock.mjs`) — the same file the build
  *   installs from, so the list is what was installed rather than what someone
  *   meant to install, and it carries the hashes pip verified.
  * - **npm**, from the installed tree's production dependencies. The app bundles
@@ -38,7 +40,8 @@ export function parseLock(text) {
 }
 
 function pythonComponents() {
-  const lock = join(desktop, "sidecar-requirements.lock");
+  const name = sidecarLockName();
+  const lock = join(desktop, name);
   if (!existsSync(lock)) return [];
   return parseLock(readFileSync(lock, "utf8")).map((entry) => ({
     type: "library",
@@ -48,7 +51,7 @@ function pythonComponents() {
     // Every distribution pip was allowed to install for this one: a package
     // publishes a wheel per platform, and the lock pins all of their bytes.
     hashes: entry.hashes.map((hash) => ({ alg: "SHA-256", content: hash })),
-    properties: [{ name: "deckastra:source", value: "sidecar-requirements.lock" }],
+    properties: [{ name: "deckastra:source", value: name }],
   }));
 }
 

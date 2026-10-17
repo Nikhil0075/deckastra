@@ -10,6 +10,7 @@ import { buildManifest } from "./build-manifest";
 
 import { ATTACHMENT_VERSION, type Attachment } from "./attachment";
 import { buildLargeDeck, type PerfAsset } from "./large-deck";
+import { IPC } from "../shared/ipc";
 // From `/perf` rather than the package root: the root pulls in the scene
 // builder and the schema, and the schema pulls in `ulid`, whose PRNG
 // detection throws at import time in Electron's main process. That took the
@@ -109,6 +110,48 @@ export interface SmokeControls {
 
 export function smokeDir(): string | undefined {
   return process.env.DECKASTRA_SMOKE_DIR || undefined;
+}
+
+/**
+ * A step's "control" is the platform's shortcut key: Command on macOS, where
+ * Ctrl+A in a field moves the caret instead of selecting and Ctrl+V does not
+ * paste. Windows and Linux keep exactly the modifiers they were given.
+ */
+function shortcutModifiers(requested: string[]): string[] {
+  return process.platform === "darwin" ? requested.map((name) => (name === "control" ? "meta" : name)) : requested;
+}
+
+/**
+ * On macOS, Cmd+A/Z/X/C/V are menu key equivalents, and a synthetic key event
+ * never reaches the menu — the first Mac run sent Cmd+A and Cmd+V this way and
+ * nothing happened, exactly as a person's keys did before the Mac Edit menu
+ * existed. So the harness takes the menu's own route: Undo, Redo and Select All
+ * on the edit channel the menu item uses, and cut, copy and paste through the
+ * `webContents` calls Electron's roles make. Returns false for any other key,
+ * which is then sent as a key event. Never used on Windows.
+ */
+function pressMacMenuKey(window: BrowserWindow, keyCode: string, requested: string[]): boolean {
+  if (process.platform !== "darwin" || !requested.includes("control") || requested.includes("alt")) return false;
+  const contents = window.webContents;
+  switch (keyCode.toUpperCase()) {
+    case "A":
+      contents.send(IPC.menuEdit, "select-all");
+      return true;
+    case "Z":
+      contents.send(IPC.menuEdit, requested.includes("shift") ? "redo" : "undo");
+      return true;
+    case "X":
+      contents.cut();
+      return true;
+    case "C":
+      contents.copy();
+      return true;
+    case "V":
+      contents.paste();
+      return true;
+    default:
+      return false;
+  }
 }
 
 function step(): SmokeStep {
@@ -3736,6 +3779,12 @@ async function runClose(
     if (decided) return;
     record.windowClosedAt = new Date().toISOString();
     save();
+    // On macOS closing the last window does not quit (`window-all-closed`
+    // leaves the app in the Dock), so `will-quit` never follows and the step
+    // used to time out after a close that had finished. There the window
+    // closing *is* the close; quit the way the person would, with Cmd+Q, so
+    // the shutdown handlers still run and the record says what happened.
+    if (process.platform === "darwin" && mode === "window" && !block) app.quit();
   });
   app.once("will-quit", () => {
     if (decided) return;
@@ -4271,8 +4320,17 @@ async function runAuthoring(window: BrowserWindow, dir: string, record: Record<s
     window.focus();
     window.webContents.focus();
   };
-  const key = async (keyCode: string, modifiers: string[] = []) => {
+  const key = async (keyCode: string, requested: string[] = []) => {
+    // "control" here means the platform's shortcut key. On macOS that is
+    // Command: a field's select-all and paste answer only to it (Ctrl+A moves
+    // the caret to the start of the line), and the editor's own shortcuts
+    // accept either key.
     focus();
+    if (pressMacMenuKey(window, keyCode, requested)) {
+      await sleep(150);
+      return;
+    }
+    const modifiers = shortcutModifiers(requested);
     window.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers } as Electron.KeyboardInputEvent);
     if (keyCode.length === 1) window.webContents.sendInputEvent({ type: "char", keyCode, modifiers } as Electron.KeyboardInputEvent);
     window.webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers } as Electron.KeyboardInputEvent);
@@ -4600,9 +4658,16 @@ async function runDesign(window: BrowserWindow, dir: string, record: Record<stri
       quiet = status === "saved" ? quiet + 1 : 0;
     }
   };
-  const key = async (keyCode: string, modifiers: string[] = []) => {
+  const key = async (keyCode: string, requested: string[] = []) => {
     window.focus();
     window.webContents.focus();
+    // "control" is the platform's shortcut key (`shortcutModifiers`), and on
+    // macOS the field keys go the way the Edit menu sends them.
+    if (pressMacMenuKey(window, keyCode, requested)) {
+      await sleep(150);
+      return;
+    }
+    const modifiers = shortcutModifiers(requested);
     window.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers } as Electron.KeyboardInputEvent);
     if (keyCode.length === 1) window.webContents.sendInputEvent({ type: "char", keyCode, modifiers } as Electron.KeyboardInputEvent);
     window.webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers } as Electron.KeyboardInputEvent);
@@ -4997,8 +5062,17 @@ async function runHandoff(window: BrowserWindow, dir: string, record: Record<str
     window.focus();
     window.webContents.focus();
   };
-  const key = async (keyCode: string, modifiers: string[] = []) => {
+  const key = async (keyCode: string, requested: string[] = []) => {
+    // "control" here means the platform's shortcut key. On macOS that is
+    // Command: a field's select-all and paste answer only to it (Ctrl+A moves
+    // the caret to the start of the line), and the editor's own shortcuts
+    // accept either key.
     focus();
+    if (pressMacMenuKey(window, keyCode, requested)) {
+      await sleep(150);
+      return;
+    }
+    const modifiers = shortcutModifiers(requested);
     window.webContents.sendInputEvent({ type: "keyDown", keyCode, modifiers } as Electron.KeyboardInputEvent);
     window.webContents.sendInputEvent({ type: "keyUp", keyCode, modifiers } as Electron.KeyboardInputEvent);
     await sleep(200);

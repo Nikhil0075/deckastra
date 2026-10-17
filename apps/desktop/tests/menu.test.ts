@@ -70,9 +70,38 @@ describe("the application menu", () => {
     }
     expect(byId.get("new-deck")?.registerAccelerator).toBeUndefined();
 
-    // macOS registers every menu accelerator regardless, so there they are absent.
+    // macOS registers every menu accelerator regardless, so a page-owned item
+    // carries none there.
     const mac = new Map(items(menuTemplate(() => {}, "darwin", actions())).map((item) => [item.id, item]));
-    for (const id of ["undo", "redo", "present"]) expect(mac.get(id)?.accelerator).toBeUndefined();
+    expect(mac.get("present")?.accelerator).toBeUndefined();
+  });
+
+  it("gives macOS the Edit keys a text field needs, and decides nothing about the deck there", () => {
+    // On a Mac, Cmd+Z/X/C/V/A in a field are menu key equivalents: with no item
+    // carrying them, a real Cmd+Z in the notes field did nothing (2026-10-17).
+    const sent: string[] = [];
+    const edited: string[] = [];
+    const template = menuTemplate((command) => sent.push(command), "darwin", actions(), (command) => edited.push(command));
+    const edit = template.find((item) => item.label === "&Edit")!.submenu as MenuItemConstructorOptions[];
+
+    expect(edit.filter((item) => item.role).map((item) => item.role)).toEqual(["cut", "copy", "paste"]);
+    const byId = new Map(edit.map((item) => [item.id, item]));
+    expect(byId.get("undo")?.accelerator).toBe("Cmd+Z");
+    expect(byId.get("redo")?.accelerator).toBe("Shift+Cmd+Z");
+    expect(byId.get("select-all")?.accelerator).toBe("Cmd+A");
+
+    // They go to the page's edit channel, which lets a focused field answer
+    // first (renderer/field-edit.ts) — never straight to the deck's undo.
+    for (const id of ["undo", "redo", "select-all"]) (byId.get(id)!.click as () => void)();
+    expect(edited).toEqual(["undo", "redo", "select-all"]);
+    expect(sent).toEqual([]);
+  });
+
+  it("leaves the Windows Edit menu exactly as it was", () => {
+    const template = menuTemplate(() => {}, "win32", actions(), () => {});
+    const edit = template.find((item) => item.label === "&Edit")!.submenu as MenuItemConstructorOptions[];
+    expect(edit.map((item) => item.id ?? item.type ?? item.role)).toEqual(["undo", "redo", "separator", "version-history", "colors"]);
+    expect(edit.some((item) => item.role)).toBe(false);
   });
 
   it("registers no key the editor already binds", () => {

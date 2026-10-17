@@ -80,6 +80,13 @@ export const IPC = {
    */
   menuCommand: "deckastra:menu:command",
   /**
+   * Main → renderer, macOS only: Edit › Undo, Redo or Select All, carrying one
+   * name from `EDIT_COMMANDS`. Separate from `menuCommand` because the page
+   * answers it differently: in a text field it is the field's own undo or
+   * select-all, and only otherwise the editor's (see `menu.ts`).
+   */
+  menuEdit: "deckastra:menu:edit",
+  /**
    * Main → renderer: this window is about to close; put the work somewhere safe
    * and answer on `closeReady` with the same id (final package review, item 01).
    */
@@ -204,6 +211,20 @@ export interface HostActionRequest {
 
 export function isMenuCommand(value: unknown): value is MenuCommand {
   return typeof value === "string" && (MENU_COMMANDS as readonly string[]).includes(value);
+}
+
+/**
+ * What the macOS Edit menu's own items send (`IPC.menuEdit`). On a Mac the keys
+ * a text field needs — Cmd+Z, Cmd+A — are menu key equivalents, so these items
+ * must register them; the page then decides whether the field or the editor
+ * answers. Windows never sends these: its Edit menu is unchanged.
+ */
+export const EDIT_COMMANDS = ["undo", "redo", "select-all"] as const;
+
+export type EditCommand = (typeof EDIT_COMMANDS)[number];
+
+export function isEditCommand(value: unknown): value is EditCommand {
+  return typeof value === "string" && (EDIT_COMMANDS as readonly string[]).includes(value);
 }
 
 /**
@@ -375,6 +396,8 @@ export interface DesktopBridge {
   restartService(): Promise<ServiceStatus>;
   /** Application-menu choices for this window. Returns an unsubscribe function. */
   onMenuCommand(listener: (command: MenuCommand) => void): () => void;
+  /** The macOS Edit menu's Undo, Redo and Select All (`IPC.menuEdit`). Returns an unsubscribe function. */
+  onMenuEdit(listener: (command: EditCommand) => void): () => void;
   /**
    * Answer the main process before this window closes. `prepare` does the work
    * and says how it went; the bridge sends the answer. Returns an unsubscribe.

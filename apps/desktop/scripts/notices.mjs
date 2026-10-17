@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { parseLock } from "./sbom.mjs";
+import { sidecarLockFile } from "./sidecar-lock.mjs";
 
 /**
  * Third-party notices for what actually ships (register item 33).
@@ -153,7 +154,10 @@ for dist in md.distributions():
     out.append({"name": name, "version": dist.version, "license": lic or ", ".join(classifiers), "texts": texts})
 base = sys.base_prefix
 cpython = ""
-for candidate in ("LICENSE.txt", "LICENSE"):
+# Windows keeps it at the root of the install; macOS and Linux beside the
+# standard library (lib/python3.13/LICENSE.txt), which is asked second.
+stdlib = os.path.join("lib", "python%d.%d" % sys.version_info[:2])
+for candidate in ("LICENSE.txt", "LICENSE", os.path.join(stdlib, "LICENSE.txt")):
     p = os.path.join(base, candidate)
     if os.path.exists(p):
         cpython = open(p, encoding="utf-8", errors="replace").read().strip()
@@ -167,9 +171,9 @@ function normal(name) {
 
 function pythonComponents() {
   const problems = [];
-  const lockFile = join(desktop, "sidecar-requirements.lock");
+  const lockFile = sidecarLockFile(desktop);
   const python = join(dist, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-  if (!existsSync(lockFile)) return { components: [], cpython: null, problems: ["sidecar-requirements.lock is missing."] };
+  if (!existsSync(lockFile)) return { components: [], cpython: null, problems: [`${lockFile.slice(desktop.length + 1)} is missing.`] };
   if (!existsSync(python)) {
     return { components: [], cpython: null, problems: ["The service's build environment (dist/.venv) is missing; run build:sidecar first."] };
   }
@@ -208,7 +212,7 @@ export function buildNotices() {
     "",
     "Deckastra includes software written by others. Their licences and notices",
     "follow, grouped by where the software runs. Electron and Chromium's notices",
-    "are in LICENSE.electron.txt and LICENSES.chromium.html beside Deckastra.exe.",
+    `are in LICENSE.electron.txt and LICENSES.chromium.html ${process.platform === "darwin" ? "in Deckastra.app/Contents/Resources" : "beside Deckastra.exe"}.`,
     "No machine-learning model is included in this release.",
     "",
   ];

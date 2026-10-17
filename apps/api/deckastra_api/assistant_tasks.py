@@ -4,6 +4,7 @@ import base64
 import copy
 import io
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -130,16 +131,27 @@ def _compute(request, snapshot, client, budget, emit):
             image.convert("RGB").save(output, "PNG")
             return {"media": [{"base64": base64.b64encode(output.getvalue()).decode(), "kind": "image", "content_type": "image/png", "extension": "png", "width": image.width, "height": image.height, "provider": answer.model}]}
     if task == "video":
+        # Asked before the paid generation, not after it: a clip is never bought
+        # only to be thrown away for want of a frame cutter.
+        cutter = poster_tool()
         emit({"status": "working", "provider": "vertex", "message": "Generating one bounded video clip"})
         result = client.generate(request["instruction"], duration_seconds=request["video_duration_seconds"],
                                  aspect_ratio=request["video_aspect_ratio"], budget=budget)
         if len(result.data) > 32 * 1024 * 1024:
             raise UserFacingError("Generated video exceeds the 32MB clip limit.")
-        poster = video_poster(result.data)
+        clip = {"base64": base64.b64encode(result.data).decode(), "kind": "video", "content_type": "video/mp4",
+                "extension": "mp4", "width": result.width, "height": result.height,
+                "duration_ms": result.duration_ms, "provider": result.model}
+        if cutter is None:
+            # No ffmpeg in this install (a macOS package, until an audited build
+            # is pinned for it). The schema's poster is optional and the clip
+            # plays without one; PowerPoint export refuses a video with no
+            # poster (`export-pptx` `placeVideo`), and the run says so.
+            return {"media": [clip], "summary": "Generated one muted video clip.",
+                    "warnings": ["This install has no ffmpeg, so the clip has no poster frame. It plays in the deck; a PowerPoint export leaves it out, because a video there needs a poster."]}
+        poster = video_poster(result.data, cutter)
         return {"media": [
-            {"base64": base64.b64encode(result.data).decode(), "kind": "video", "content_type": "video/mp4",
-             "extension": "mp4", "width": result.width, "height": result.height,
-             "duration_ms": result.duration_ms, "provider": result.model},
+            clip,
             {"base64": base64.b64encode(poster).decode(), "kind": "image", "content_type": "image/png",
              "extension": "png", "width": result.width, "height": result.height,
              "provider": "poster-frame"},
@@ -218,15 +230,25 @@ def _compute(request, snapshot, client, budget, emit):
     raise UserFacingError("This assistant job is no longer available.")
 
 
-def video_poster(data: bytes) -> bytes:
+def poster_tool() -> str | None:
+    """The ffmpeg that cuts poster frames, or None when this install has none.
+
+    `DECKASTRA_FFMPEG` is the audited build a package ships (`sidecar.ts` sets it
+    only when the file is there); otherwise whatever `ffmpeg` the PATH holds.
+    """
+    configured = os.environ.get("DECKASTRA_FFMPEG", "ffmpeg").strip() or "ffmpeg"
+    return shutil.which(configured)
+
+
+def video_poster(data: bytes, executable: str | None = None) -> bytes:
     """Extract the first useful frame with the same audited ffmpeg used by MP4 export."""
-    executable = os.environ.get("DECKASTRA_FFMPEG", "ffmpeg").strip() or "ffmpeg"
+    executable = executable or os.environ.get("DECKASTRA_FFMPEG", "ffmpeg").strip() or "ffmpeg"
     with tempfile.TemporaryDirectory(prefix="deckastra-poster-") as folder:
         source, target = Path(folder) / "clip.mp4", Path(folder) / "poster.png"
         source.write_bytes(data)
         command = [executable, "-y", "-loglevel", "error", "-ss", "0.25", "-i", str(source),
                    "-frames:v", "1", "-vf", "scale='min(1920,iw)':-2", str(target)]
-        completed = subprocess.run(command, capture_output=True, timeout=60, windows_startupinfo=(
+        completed = subprocess.run(command, capture_output=True, timeout=60, startupinfo=(
             (lambda info: (setattr(info, "dwFlags", info.dwFlags | subprocess.STARTF_USESHOWWINDOW),
                            setattr(info, "wShowWindow", subprocess.SW_HIDE), info)[2])(subprocess.STARTUPINFO())
             if os.name == "nt" else None))

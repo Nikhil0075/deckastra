@@ -443,3 +443,93 @@ jobs:
             apps/desktop/dist/sbom.json
             apps/desktop/release/*.exe
           if-no-files-found: warn
+
+  # The same sequence on Apple silicon (macOS build, 2026-10-17). The first Mac
+  # build found three failures no Windows run could: the service's lock would
+  # not install there, the frozen service died with no locale, and the Edit
+  # menu had no keys for a text field. Each is a darwin branch now, and this job
+  # is what keeps a change made on Windows from quietly breaking them again.
+  #
+  # `macos-14` is Apple silicon, which is the only Mac the lock is compiled for
+  # (`sidecar-requirements.macos-arm64.lock`). Unsigned: `package:mac:dev` signs
+  # ad hoc, which is enough for macOS to run it and nothing more.
+  desktop-macos:
+    name: Desktop (macOS)
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: npm ci
+
+      - name: Typecheck the desktop app
+        run: npm run typecheck --workspace @deckastra/desktop
+
+      - name: Desktop unit tests
+        run: npm test --workspace @deckastra/desktop
+
+      - name: Build the desktop bundles
+        run: npm run build --workspace @deckastra/desktop
+
+      # From the macOS lock (`scripts/sidecar-lock.mjs`). A Windows-side change
+      # to the API's requirements that was not recompiled here fails at this
+      # step, by name, rather than on someone's Mac.
+      - name: Freeze the workspace service
+        run: npm run build:sidecar --workspace @deckastra/desktop
+
+      - name: Inventory and build identity
+        run: |
+          npm run sbom --workspace @deckastra/desktop
+          npm run manifest --workspace @deckastra/desktop
+
+      # The Windows job's steps. The service is started with no LANG at all,
+      # as launchd starts it from the Finder, so the locale fix stays tested.
+      - name: Acceptance steps
+        env:
+          DECKASTRA_SMOKE_DIR: ${{ github.workspace }}/.artifacts/desktop
+          DECKASTRA_SMOKE_PROFILE: ${{ github.workspace }}/.artifacts/desktop-profile
+          DECKASTRA_SMOKE_FIXTURES: ${{ github.workspace }}/packages/presentation-schema/fixtures
+          DECKASTRA_SMOKE_BASELINES: ${{ github.workspace }}/packages/renderer/baselines
+          DECKASTRA_SIDECAR: ${{ github.workspace }}/apps/desktop/dist/sidecar/deckastra-service/deckastra-service
+        run: |
+          unset LANG LC_ALL LC_CTYPE
+          mkdir -p "$DECKASTRA_SMOKE_DIR" "$DECKASTRA_SMOKE_PROFILE"
+          cd apps/desktop
+          for step in open edit verify digest close close-verify; do
+            echo "--- $step"
+            DECKASTRA_SMOKE_STEP=$step npx electron . || true
+            node -e "
+              const record = require(process.env.DECKASTRA_SMOKE_DIR + '/$step.json');
+              const ok = record.ok === true || (record.step === 'close' && record.ok === 'pending');
+              if (!ok) {
+                console.error('$step failed:', record.error ?? record.ok);
+                process.exit(1);
+              }
+              console.log('$step', record.ok);
+            "
+          done
+
+      - name: Build an unsigned (ad-hoc) package
+        if: inputs.package
+        run: npm run package:mac:dev --workspace @deckastra/desktop
+
+      - name: Upload what the run produced
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-candidate-macos
+          path: |
+            .artifacts/desktop
+            apps/desktop/dist/build-manifest.json
+            apps/desktop/dist/sbom.json
+            apps/desktop/release/*.dmg
+          if-no-files-found: warn
