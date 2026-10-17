@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { sidecarLockFile } from "./sidecar-lock.mjs";
+
 /**
  * What this build is, written down (final package review, item 07).
  *
@@ -153,7 +155,7 @@ export function buildManifest() {
   // from the files it is actually running, so a new window paired with an old
   // service is caught rather than trusted.
   // The dependency lock and the SBOM are part of what this build is.
-  const lockFile = join(desktop, "sidecar-requirements.lock");
+  const lockFile = sidecarLockFile(desktop);
   const sbomFile = join(dist, "sbom.json");
   const migrations = hashTree(join(root, "infrastructure", "database", "migrations"), {
     exclude: (file) => file.endsWith(".pyc"),

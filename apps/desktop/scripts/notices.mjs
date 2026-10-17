@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { parseLock } from "./sbom.mjs";
+import { sidecarLockFile } from "./sidecar-lock.mjs";
 
 /**
  * Third-party notices for what actually ships (register item 33).
@@ -167,9 +168,9 @@ function normal(name) {
 
 function pythonComponents() {
   const problems = [];
-  const lockFile = join(desktop, "sidecar-requirements.lock");
+  const lockFile = sidecarLockFile(desktop);
   const python = join(dist, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-  if (!existsSync(lockFile)) return { components: [], cpython: null, problems: ["sidecar-requirements.lock is missing."] };
+  if (!existsSync(lockFile)) return { components: [], cpython: null, problems: [`${lockFile.slice(desktop.length + 1)} is missing.`] };
   if (!existsSync(python)) {
     return { components: [], cpython: null, problems: ["The service's build environment (dist/.venv) is missing; run build:sidecar first."] };
   }

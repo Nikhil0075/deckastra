@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { dataEntries, missingData } from "./sidecar-data.mjs";
+import { sidecarLockFile } from "./sidecar-lock.mjs";
 
 /**
  * Package the workspace service as a self-contained binary (milestone D1.4).
@@ -106,7 +107,8 @@ rmSync(out, { recursive: true, force: true });
 /**
  * The environment the service is frozen from (final package review, item 09).
  *
- * A clean virtual environment installed from `sidecar-requirements.lock` with
+ * A clean virtual environment installed from this platform's lock
+ * (`sidecar-lock.mjs`: `sidecar-requirements.lock` on Windows) with
  * `--require-hashes`, so the binary is built from bytes that are written down
  * rather than from whatever a developer's global site-packages happens to hold.
  * Two builders of the same commit then install the same dependencies, and a
@@ -130,11 +132,18 @@ function frozenPython() {
     return process.env.DECKASTRA_PYTHON || "python";
   }
 
-  const lock = join(desktop, "sidecar-requirements.lock");
+  let lock;
+  try {
+    lock = sidecarLockFile(desktop);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
   if (!existsSync(lock)) {
+    const name = lock.slice(desktop.length + 1);
     console.error(`No dependency lock at ${lock}. Compile it first:`);
     console.error("  python -m piptools compile --generate-hashes --strip-extras --allow-unsafe \\");
-    console.error("    --output-file apps/desktop/sidecar-requirements.lock apps/desktop/sidecar-requirements.in");
+    console.error(`    --output-file apps/desktop/${name} apps/desktop/sidecar-requirements.in`);
     process.exit(1);
   }
 
