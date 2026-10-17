@@ -78,6 +78,19 @@ export function fetchPinned({ lock, destination, copy }) {
   return results;
 }
 
+/**
+ * The pinned files for this platform, or null when none is audited for it.
+ *
+ * `ffmpeg.lock.json` pins one build, BtbN's win64 LGPL `ffmpeg.exe`, and the
+ * file says to change it only with a new audit — so it is not reshaped here.
+ * Elsewhere (macOS, today) there is nothing audited to fetch, and fetching the
+ * Windows executable into a Mac package would ship a file that cannot run
+ * under a name `sidecar.ts` does not look for.
+ */
+export function pinsFor(lock, platform = process.platform) {
+  return platform === "win32" ? lock.files : null;
+}
+
 export function copierFor({ from, gcloud = "gcloud" } = {}) {
   if (from) return (name, _pin, target) => copyFileSync(join(from, name), target);
   return (_name, pin, target) => gcloudCopy(gcloud, `${pin.object}#${pin.generation}`, target);
@@ -87,6 +100,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const release = process.env.DECKASTRA_RELEASE === "1";
   const lock = JSON.parse(readFileSync(join(DESKTOP, "ffmpeg.lock.json"), "utf8"));
   const destination = join(DESKTOP, "dist", "ffmpeg");
+  if (!pinsFor(lock)) {
+    rmSync(destination, { recursive: true, force: true });
+    mkdirSync(destination, { recursive: true }); // empty: the package ships no ffmpeg
+    const message = `ffmpeg.lock.json pins no audited build for ${process.platform}-${process.arch}; packaging an empty dist/ffmpeg.`;
+    if (release) {
+      console.error(`[ffmpeg] ${message}`);
+      console.error("[ffmpeg] A release ships the audited ffmpeg. Audit and pin a build for this platform first (docs/evaluations/FFMPEG_AUDIT_2026-10-09.md).");
+      process.exit(1);
+    }
+    console.warn(`[ffmpeg] ${message}`);
+    console.warn("[ffmpeg] Generated clips in this package will have no poster frame (a PowerPoint export leaves them out).");
+    process.exit(0);
+  }
   try {
     const results = fetchPinned({ lock, destination, copy: copierFor({ from: process.env.DECKASTRA_FFMPEG_FROM, gcloud: process.env.DECKASTRA_GCLOUD }) });
     // The pinned bytes were audited once; the licence and capability check is

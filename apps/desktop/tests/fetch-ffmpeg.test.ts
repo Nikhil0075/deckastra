@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 // @ts-expect-error — plain JavaScript build script, checked by these tests.
-import { fetchPinned, verifyPinned } from "../scripts/fetch-ffmpeg.mjs";
+import { fetchPinned, pinsFor, verifyPinned } from "../scripts/fetch-ffmpeg.mjs";
 // @ts-expect-error — plain JavaScript build script, checked by these tests.
 import { ffmpegComponent } from "../scripts/notices.mjs";
 // @ts-expect-error — plain JavaScript build script, checked by these tests.
@@ -58,6 +58,19 @@ describe("fetching the pinned ffmpeg", () => {
     const lock = { files: { "ffmpeg.exe": pin("MZ audited") } };
     fetchPinned({ lock, destination: dir, copy: (_n: string, _p: unknown, target: string) => writeFileSync(target, "MZ audited") });
     expect(verifyPinned(join(dir, "ffmpeg.exe"), lock.files["ffmpeg.exe"])).toBeNull();
+  });
+});
+
+describe("which platform the pinned ffmpeg is for", () => {
+  const lock = JSON.parse(readFileSync(join(import.meta.dirname, "..", "ffmpeg.lock.json"), "utf8"));
+
+  it("is the audited Windows build on Windows, unchanged", () => {
+    expect(pinsFor(lock, "win32")).toBe(lock.files);
+    expect(Object.keys(pinsFor(lock, "win32"))).toContain("ffmpeg.exe");
+  });
+
+  it.each(["darwin", "linux"])("is nothing on %s, where no build is audited", (platform) => {
+    expect(pinsFor(lock, platform)).toBeNull();
   });
 });
 
