@@ -4597,11 +4597,19 @@ Rules that are easy to undo:
   JSON; the Python client (`gateway_client.error_message`) never parses blindly.
   "Sign in" is said only for a missing or refused sign-in, never for a network
   failure. This replaced `JSONDecodeError` on every signed-in cloud feature.
-- **The budget stop is the usual reason cloud AI is off.** On 2026-10-17
-  production had Vertex AI, Translation and Text-to-Speech disabled by
-  `deckastra-budget-stop` (the project passed its ₹5,000 monthly budget, which
-  counts all of the project's spend). The hint for a disabled API says so.
-  Re-enabling is a spending decision for the owner.
+- **The budget counts AI spend only** (2026-10-17). It used to count the whole
+  project, and always-on Cloud Run and Cloud SQL crossed ₹5,000 mid-month by
+  themselves (October: ₹5,852, of which AI was ₹3), so `deckastra-budget-stop`
+  switched Vertex AI, Translation and Text-to-Speech off every month. The budget
+  filter is now those three billing services (`AI_SERVICES` in
+  `configure_budget_stop.py`, which also enforces it on a rerun). The hint for a
+  disabled API still names the budget stop, which is the usual reason.
+- **No uptime check keeps the API awake** (`monitoring.py`). A `/ready` ping from
+  several regions every few minutes kept one instance alive around the clock,
+  billed every second because the API runs with CPU always allocated (its
+  assistant dispatcher works between requests). The API now scales to zero when
+  idle; outages are caught on real traffic by the server-error alert, and each
+  deploy checks readiness.
 - **The deploy smoke checks each cloud capability** (`smoke_cloud.check_ai_services`):
   translation and speech are called for real with a word or two on the disposable
   account, pictures and video are priced but never generated, and a budget-stop
