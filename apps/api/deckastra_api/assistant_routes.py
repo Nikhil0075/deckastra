@@ -858,10 +858,11 @@ def _execute(run_id):
                             element = None
                     else:
                         clip = next(item for item in final["assets"] if item["kind"] == "video")
-                        poster = next(item for item in final["assets"] if item["kind"] == "image")
+                        # Absent when the install had no ffmpeg to cut one (`poster_tool`).
+                        poster = next((item for item in final["assets"] if item["kind"] == "image"), None)
                         factor = min(view["width"] * .82 / clip["width"], view["height"] * .78 / clip["height"])
                         width, height = clip["width"] * factor, clip["height"] * factor
-                        element = {"id": new_id("el"), "type": "video", "assetId": clip["id"], "posterAssetId": poster["id"], "fit": "cover", "autoplay": True, "loop": True, "muted": True, "controls": False, "startTimeMs": 0, "endTimeMs": clip["duration_ms"], "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "name": "Generated video: " + request["instruction"][:180]}
+                        element = {"id": new_id("el"), "type": "video", "assetId": clip["id"], **({"posterAssetId": poster["id"]} if poster else {}), "fit": "cover", "autoplay": True, "loop": True, "muted": True, "controls": False, "startTimeMs": 0, "endTimeMs": clip["duration_ms"], "transform": {"x": (view["width"] - width) / 2, "y": (view["height"] - height) / 2, "width": width, "height": height}, "name": "Generated video: " + request["instruction"][:180]}
                     if element is not None:
                         media_operations.append({"op": "add", "path": f"/slides/id:{chosen[0]['id']}/elements/-", "value": element})
                     final["warnings"] = [*final.get("warnings", []), f"Review the generated {request['task']} and placement before applying."]

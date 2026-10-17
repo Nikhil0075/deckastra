@@ -529,6 +529,96 @@ def test_quoted_video_becomes_bounded_assets_and_a_pending_proposal(client, auth
     assert changed.status_code == 409
 
 
+def test_video_poster_passes_only_arguments_popen_accepts(monkeypatch, tmp_path):
+    # It passed `windows_startupinfo=`, which no Python has: every poster raised
+    # TypeError, after the clip it was cutting had already been paid for.
+    import inspect
+    import subprocess
+
+    def run(command, *, capture_output, timeout, **kwargs):
+        inspect.signature(subprocess.Popen).bind(command, **kwargs)
+        Path(command[-1]).write_bytes(b"png")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(assistant_tasks.subprocess, "run", run)
+    assert assistant_tasks.video_poster(b"mp4", "ffmpeg") == b"png"
+
+
+def _video_request():
+    return {"task": "video", "instruction": "A calm blue dashboard", "video_duration_seconds": 4,
+            "video_aspect_ratio": "16:9", "scope": {"kind": "deck", "slide_ids": [], "element_ids": []}}
+
+
+def _video_client(calls):
+    from types import SimpleNamespace
+
+    def generate(*args, **kwargs):
+        calls.append("generate")
+        return SimpleNamespace(data=b"mp4", width=1280, height=720, duration_ms=4000, model="fixture-veo")
+    return SimpleNamespace(generate=generate)
+
+
+def test_video_without_ffmpeg_is_a_clip_with_no_poster_and_says_so(monkeypatch):
+    calls = []
+    monkeypatch.setattr(assistant_tasks, "poster_tool", lambda: calls.append("poster_tool"))
+    monkeypatch.setattr(assistant_tasks, "video_poster", lambda *args: pytest.fail("no ffmpeg to cut a poster with"))
+    answer = assistant_tasks.compute(_video_request(), {"document": {}}, _video_client(calls), None, lambda event: None)
+    # The cutter is asked for before the paid generation, never after it.
+    assert calls == ["poster_tool", "generate"]
+    assert [media["kind"] for media in answer["media"]] == ["video"]
+    assert any("no poster frame" in warning for warning in answer["warnings"])
+
+
+def test_video_with_ffmpeg_still_requires_its_poster(monkeypatch):
+    calls = []
+    monkeypatch.setattr(assistant_tasks, "poster_tool", lambda: "/opt/ffmpeg")
+    monkeypatch.setattr(assistant_tasks, "video_poster", lambda data, cutter: calls.append(cutter) or b"png")
+    answer = assistant_tasks.compute(_video_request(), {"document": {}}, _video_client([]), None, lambda event: None)
+    assert calls == ["/opt/ffmpeg"]
+    assert [media["kind"] for media in answer["media"]] == ["video", "image"]
+    assert "warnings" not in answer
+
+
+def test_video_with_no_poster_is_placed_without_one(client, auth, deck, monkeypatch):
+    import base64
+    from types import SimpleNamespace
+    from deckastra_api import media_quotes
+
+    monkeypatch.setattr(media_quotes, "configured_video_client", lambda: SimpleNamespace(
+        model="veo-3.1-fast-generate-001", estimate_reservation=lambda duration: duration * .15))
+    brief = "A calm blue product dashboard with no frame cutter"
+    quoted = client.post("/v1/media/quotes/video", headers=auth, json={
+        "presentation_id": deck["presentation_id"], "prompt": brief,
+        "duration_seconds": 4, "aspect_ratio": "16:9", "generate_audio": False,
+    })
+    assert quoted.status_code == 200, quoted.text
+    body = {**payload(deck), "task": "video", "instruction": brief,
+        "scope": {"kind": "slide", "slide_ids": [deck["document"]["slides"][0]["id"]], "element_ids": []},
+        "video_duration_seconds": 4, "video_aspect_ratio": "16:9",
+        "video_quote_token": quoted.json()["quote_token"]}
+    created = client.post("/v1/assistant/runs", headers=auth, json=body)
+    assert created.status_code == 202, created.text
+    run_id = created.json()["id"]
+
+    monkeypatch.setattr(assistant_tasks, "compute", lambda *args: {"media": [
+        {"base64": base64.b64encode(b"fixture-mp4").decode(), "kind": "video", "extension": "mp4", "content_type": "video/mp4", "width": 1280, "height": 720, "duration_ms": 4000, "provider": "fixture-veo"},
+    ], "warnings": ["This install has no ffmpeg, so the clip has no poster frame."]})
+    monkeypatch.setattr(assistant_routes, "configured_video_client", lambda: object())
+    monkeypatch.setattr(assistant_routes.object_storage, "put", lambda *args: None)
+    assistant_routes.execute(run_id)
+
+    result = client.get(f"/v1/assistant/runs/{run_id}", headers=auth).json()
+    assert result["status"] == "completed", result
+    assert [item["kind"] for item in result["result"]["assets"]] == ["video"]
+    assert any("no poster frame" in warning for warning in result["result"]["warnings"])
+    with db_session.session_scope() as session:
+        from deckastra_api.db.models import TransactionRow
+        proposal = session.get(TransactionRow, result["result"]["transaction_id"])
+        placed = [op["value"] for op in proposal.operations_json if op["path"].endswith("/elements/-")]
+        assert len(placed) == 1
+        assert placed[0]["type"] == "video" and "posterAssetId" not in placed[0]
+
+
 def test_speech_clip_cache_reuses_completed_calls(monkeypatch):
     from deckastra_agents.budgets import RunBudget
     from deckastra_api import speech
