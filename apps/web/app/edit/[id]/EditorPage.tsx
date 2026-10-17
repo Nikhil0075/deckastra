@@ -5,7 +5,7 @@ import type { PresentationDocument } from "@deckastra/presentation-schema";
 
 import { buildDocumentScene } from "@deckastra/renderer";
 
-import { EditorShell, PresentMode, isSettingsSection, useBrowserMeasurer, type SettingsSectionId } from "@deckastra/editor-ui";
+import { EditorShell, PresentMode, isSettingsSection, useAssetUrls, useBrowserMeasurer, type SettingsSectionId } from "@deckastra/editor-ui";
 import { useWorkspaceClient } from "@deckastra/workspace-client/react";
 import { isWorkspaceError } from "@deckastra/workspace-contracts";
 
@@ -89,10 +89,9 @@ export function EditorPage({ presentationId }: { presentationId: string }) {
   const params = new URLSearchParams(window.location.search);
   if (params.get("presenter") === "1") {
     return (
-      <PresentMode
-        scene={buildDocumentScene(state.document, { measurer })}
-        onExit={() => window.close()}
-        presenterOnly
+      <WebPresenter
+        document={state.document}
+        measurer={measurer}
         channelName={params.get("channel") ?? `deckastra-present-${presentationId}`}
       />
     );
@@ -137,5 +136,31 @@ function Centered({ children }: { children: React.ReactNode }) {
     <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--dk-ink-muted)", background: "var(--dk-ground)" }}>
       {children}
     </div>
+  );
+}
+
+/**
+ * The presenter's own window. It resolves the deck's pictures, posters and
+ * voices the way the audience window does: without the resolver it drew a
+ * labelled gap for every one of them (release 8, 2026-10-17).
+ */
+function WebPresenter({
+  document,
+  measurer,
+  channelName,
+}: {
+  document: PresentationDocument;
+  measurer: ReturnType<typeof useBrowserMeasurer>;
+  channelName: string;
+}) {
+  const resolveAssetUrl = useAssetUrls(document);
+  return (
+    <PresentMode
+      scene={buildDocumentScene(document, { measurer })}
+      onExit={() => window.close()}
+      presenterOnly
+      channelName={channelName}
+      resolveAssetUrl={resolveAssetUrl}
+    />
   );
 }

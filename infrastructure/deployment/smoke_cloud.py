@@ -12,6 +12,55 @@ import httpx
 from bootstrap import Cloud
 
 
+def _paused(reply):
+    """Switched off by the monthly budget stop: deliberate, so reported, not failed."""
+    try:
+        body = reply.json()
+    except ValueError:
+        return False
+    return reply.status_code in (502, 503) and "budget stop" in str(body.get("detail", ""))
+
+
+def check_ai_services(http, url, headers):
+    """One bounded check per cloud capability (release 8, 2026-10-17).
+
+    Translation and speech are called for real with a word or two, which costs
+    a fraction of a US cent of the disposable account's credits and proves the
+    API is enabled, the service account may call it and the credits are
+    charged. Pictures and video are priced but never generated: a generation
+    would pay for media on every deploy. Every failure must be JSON with a
+    reason; a body the desktop could not parse fails the check outright.
+    """
+    results = {}
+
+    def outcome(name, reply, ok):
+        assert reply.headers.get("content-type", "").startswith("application/json"),             f"{name}: answered {reply.status_code} with {reply.headers.get('content-type')!r}, which the desktop cannot read"
+        if ok(reply):
+            results[name] = "ok"
+        elif _paused(reply):
+            results[name] = "paused by the budget stop"
+        else:
+            raise AssertionError(f"{name}: {reply.status_code} {reply.text[:300]}")
+
+    outcome("translation", http.post(url + "/v1/assistant/translate", headers=headers,
+            json={"items": [{"id": "t", "text": "Hello"}], "source": "en", "target": "hi"}),
+            lambda r: r.status_code == 200 and r.json()["translations"].get("t"))
+    outcome("voices", http.get(url + "/v1/speech/voices?locale=en-US", headers=headers),
+            lambda r: r.status_code == 200 and r.json().get("voices"))
+    outcome("speech", http.post(url + "/v1/assistant/speech", headers=headers,
+            json={"text": "Deck check.", "locale": "en-US"}),
+            lambda r: r.status_code == 200 and r.json()["audio"]["data"])
+    for task in ("image", "translation"):
+        outcome(f"{task} quote", http.post(url + "/v1/assistant/quote", headers=headers,
+                json={"task": task, "units": 10, "prompt": "A blue square"}),
+                lambda r: r.status_code == 200 and r.json()["credit_cost"] >= 0)
+    capabilities = http.get(url + "/v1/account/capabilities", headers=headers).json()["tasks"]
+    results["video price"] = "ok" if capabilities["video"].get("usd_per_second") else "missing"
+    assert results["video price"] == "ok", f"Video has no per-second price: {capabilities['video']}"
+    print("AI services: " + ", ".join(f"{name} {state}" for name, state in results.items()))
+    return results
+
+
 def run_smoke(cloud, url=None):
     url = url or cloud.run("run", "services", "describe", "deckastra-api", f"--region={cloud.region}", "--format=value(status.url)").stdout.strip()
     config = cloud.rest("GET", f"https://identitytoolkit.googleapis.com/v2/projects/{cloud.project}/config")
@@ -98,13 +147,14 @@ def run_smoke(cloud, url=None):
             assert offered.status_code == 200, f"Capabilities status {offered.status_code}"
             tasks = offered.json()["tasks"]
             assert tasks["image"]["available"] and tasks["video"]["available"], f"Media not configured: {tasks}"
+            check_ai_services(http, url, {**headers, "X-Deckastra-Device": str(uuid.uuid4())})
             deletion = http.request("DELETE", url + "/v1/account", headers=headers, json={"confirm": "DELETE"})
             assert deletion.status_code == 202, f"Deletion status {deletion.status_code}"
             receipt = deletion.json()["id"]
             state.write_text(json.dumps({"uid": uid, "email": email, "presentation_id": deck["presentation_id"], "deletion_receipt": receipt}))
             assert http.get(url + "/v1/account/credits", headers=headers).status_code == 401
             assert http.get(url + f"/v1/account/deletions/{receipt}").json()["status"] == "queued"
-            print("PASS: verified identity, auth, monthly credits, deterministic Design Check, queued PDF and .mydeck export/import copy, private GCS downloads, CJK pack links, AI gate, account deletion queue and immediate bearer-token denial.")
+            print("PASS: verified identity, auth, monthly credits, deterministic Design Check, queued PDF and .mydeck export/import copy, private GCS downloads, CJK pack links, AI gate and per-service checks, account deletion queue and immediate bearer-token denial.")
     finally:
         cloud.rest("POST", f"https://identitytoolkit.googleapis.com/v1/projects/{cloud.project}/accounts:delete", {"localId": uid})
         print("Disposable Identity Platform user removed; database cleanup ids saved in ignored state.")

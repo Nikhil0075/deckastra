@@ -13,6 +13,13 @@ from bootstrap import Cloud
 
 SOURCE = Path(__file__).parent / "budget-stop"
 
+#: What the budget counts (2026-10-17): the three AI services the stop switches
+#: off, and nothing else. It counted the whole project, so always-on Cloud Run
+#: and Cloud SQL crossed INR 5000 mid-month by themselves (October: INR 5,852
+#: of which AI was INR 3) and the stop switched AI off every month whether or
+#: not anyone used it. Billing catalog ids: Vertex AI, Translate, Text-to-Speech.
+AI_SERVICES = ["services/C7E2-9256-1C43", "services/1DB1-3CD3-35A3", "services/02DA-B362-D983"]
+
 
 def list_budgets(cloud, root):
     budgets, token = [], ""
@@ -29,9 +36,13 @@ def configure(cloud, billing_account, configure_native_cap=False):
     number = cloud.run("projects", "describe", cloud.project, "--format=value(projectNumber)").stdout.strip()
     root = f"https://billingbudgets.googleapis.com/v1/billingAccounts/{billing_account}/budgets"
     budgets = list_budgets(cloud, root)
+    # The monthly budget, whether it still counts the whole project (as first
+    # created) or already counts only the AI services; the native Vertex cap is
+    # the one with a spendCap and is never this.
     matching = [b for b in budgets if b.get("budgetFilter", {}).get("projects") == [f"projects/{number}"]
                 and b.get("budgetFilter", {}).get("calendarPeriod") == "MONTH"
-                and not b.get("spendCap") and not b.get("budgetFilter", {}).get("services")]
+                and not b.get("spendCap")
+                and sorted(b.get("budgetFilter", {}).get("services") or []) in ([], sorted(AI_SERVICES))]
     if len(matching) != 1:
         raise RuntimeError("Expected exactly one existing project-scoped monthly budget.")
     budget = matching[0]
@@ -39,6 +50,11 @@ def configure(cloud, billing_account, configure_native_cap=False):
     if amount["currencyCode"] != "INR" or amount["units"] != "5000" or amount.get("nanos", 0):
         raise RuntimeError("Expected the existing INR 5000 monthly budget; no amount is changed.")
     budget_id = budget["name"].split("/")[-1]
+    if sorted(budget.get("budgetFilter", {}).get("services") or []) != sorted(AI_SERVICES):
+        budget = cloud.rest("PATCH", "https://billingbudgets.googleapis.com/v1/" + budget["name"] + "?updateMask=budgetFilter.services",
+                            {"name": budget["name"], "etag": budget["etag"],
+                             "budgetFilter": {**budget["budgetFilter"], "services": AI_SERVICES}})
+        print(f"{cloud.project}: the monthly budget now counts only Vertex AI, Translate and Text-to-Speech", flush=True)
     # The evaluated model lacks fixed quota. Google's native spend cap is a
     # separate provider-enforced stop on gross Vertex usage (Preview).
     vertex_service = "services/C7E2-9256-1C43"
@@ -128,7 +144,7 @@ def configure(cloud, billing_account, configure_native_cap=False):
             continue
         cloud.run("services", "api-keys", "update", key["name"],
                   "--api-target=service=identitytoolkit.googleapis.com", "--api-target=service=securetoken.googleapis.com")
-    print(f"{cloud.project}: private budget subscriber ready; reported INR 5000 breach disables Vertex, Translation and TTS.", flush=True)
+    print(f"{cloud.project}: private budget subscriber ready; INR 5000 of reported AI spend disables Vertex, Translation and TTS.", flush=True)
     return {"project": cloud.project, "budget": budget["name"], "vertex_spend_cap": cap["name"] if cap else None, "image": image, "url": url}
 
 

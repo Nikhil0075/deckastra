@@ -54,7 +54,10 @@ from .style_options import router as style_options_router
 from .drafts import router as drafts_router
 from .routes import router as v1_router
 from .schema import SchemaUnavailable, validate_document
-from deckastra_agents.router import ModelUnavailable
+from deckastra_agents.router import ModelError, ModelUnavailable
+from . import gateway_errors
+from .speech import SpeechError
+from .translation import TranslationError
 
 logger = logging.getLogger("deckastra")
 
@@ -89,10 +92,26 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(ModelUnavailable)
-async def _model_unavailable(_request, exc: ModelUnavailable):
-    """A paid media or Google service that is not configured answers 503."""
-    return JSONResponse(status_code=503, content={"detail": str(exc)})
+def _provider_failure(_request, exc: Exception):
+    """A paid service failure, in words a person can act on (`gateway_errors`).
+
+    Always JSON with a code, the provider's reason and a request id, so the
+    desktop bridge never relays a plain-text 500 its client cannot parse.
+    """
+    classified = gateway_errors.classify(exc)
+    request_id = gateway_errors.new_request_id()
+    gateway_errors.log(request_id, exc, classified)
+    return JSONResponse(
+        status_code=classified.status,
+        content=classified.body(request_id),
+        headers={"X-Request-ID": request_id},
+    )
+
+
+# A paid media or Google service that is not configured answers 503; one that
+# failed answers 502 or 504; anything unexpected answers JSON rather than text.
+for _failure in (ModelUnavailable, ModelError, TranslationError, SpeechError, Exception):
+    app.add_exception_handler(_failure, _provider_failure)
 
 # Providers start/flush with application lifespan. The manual middleware records
 # only fixed operation names, HTTP method/status; no headers, URLs or bodies.

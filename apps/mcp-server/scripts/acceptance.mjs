@@ -82,10 +82,24 @@ async function main() {
   );
 
   // --- its own deck, so nothing here touches the user's work
+  // Composed with two headlined slides: since release 8 (2026-10-17) every
+  // agent change waits for the person, so what the later steps work on has to
+  // exist from creation rather than from an applied change.
   const created = payload(
     await client.callTool({
-      name: "document_create",
-      arguments: { title: `MCP acceptance ${new Date().toISOString()}` },
+      name: "deck_compose",
+      arguments: {
+        story_plan: {
+          title: `MCP acceptance ${new Date().toISOString()}`,
+          audience: "",
+          objective: "",
+          narrative_arc: "",
+          slides: [
+            { layout: "statement", purpose: "Open", key_message: "Written by an agent", headline: "Written by an agent" },
+            { layout: "statement", purpose: "Move", key_message: "Written by an agent", headline: "Written by an agent" },
+          ],
+        },
+      },
     }),
   );
   const deck = created.presentation_id;
@@ -131,14 +145,14 @@ async function main() {
       },
     }),
   );
-  check("a low-risk change applies immediately", applied.outcome === "applied", applied.risk_tier);
+  check("an agent's change waits for the person, however low its risk", applied.outcome === "pending", applied.risk_tier);
 
   // --- the stale refusal, against the version it has already superseded
   const stale = await client.callTool({
     name: "document_propose",
     arguments: {
       presentation_id: deck,
-      expected_version_id: outline.versionId,
+      expected_version_id: "ver_00000000000000000000000000",
       intent: "Retitle from a stale read",
       operations: [{ op: "replace", path: "/metadata/title", value: "Should never land" }],
     },
@@ -162,48 +176,15 @@ async function main() {
     }),
   );
   check(
-    "motion is planned in roles and timed by the app",
-    animated.outcome === "applied" && animated.track_count >= 1,
+    "motion is planned in roles and timed by the app, and waits for the person",
+    animated.outcome === "pending",
     `${animated.track_count} track(s), budget ${capabilities.entrance_budget_ms}ms`,
   );
 
   // --- a transition, planned in roles across two slides
   outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
-  const secondSlideId = newId("sld");
-  const secondHeadlineId = newId("el");
-  const added = payload(
-    await client.callTool({
-      name: "document_propose",
-      arguments: {
-        presentation_id: deck,
-        expected_version_id: outline.versionId,
-        intent: "Add a second slide to morph into",
-        operations: [
-          {
-            op: "add",
-            path: "/slides/-",
-            value: {
-              id: secondSlideId,
-              elements: [
-                {
-                  id: secondHeadlineId,
-                  type: "text",
-                  semanticRole: "headline",
-                  transform: { x: 200, y: 120, width: 1500, height: 300 },
-                  content: {
-                    version: 1,
-                    blocks: [{ id: newId("blk"), type: "paragraph", spans: [{ text: "Written by an agent" }] }],
-                  },
-                  typography: { fontFamily: "token:typography.display.fontFamily", fontSize: 120 },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    }),
-  );
-  check("adds a second slide to move between", Boolean(added.outcome), added.outcome);
+  const secondSlideId = outline.slides[1]?.id;
+  check("composed two slides to move between", Boolean(secondSlideId), `${outline.slides.length} slides`);
 
   outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
   const morphed = payload(
@@ -254,6 +235,30 @@ async function main() {
   });
   const image = picture(preview);
   check("renders a picture of its own work", Boolean(image?.data), preview.content[0].text.slice(0, 70));
+
+  // --- object motion, seen through its own pending proposal (release 8)
+  outline = payload(await client.callTool({ name: "document_read", arguments: { presentation_id: deck } }));
+  const emphasis = payload(
+    await client.callTool({
+      name: "object_motion_propose",
+      arguments: {
+        presentation_id: deck,
+        slide_id: slide.id,
+        expected_version_id: outline.versionId,
+        roles: ["headline"],
+        category: "emphasis",
+        preset: "pulse",
+        speed: "medium",
+        intent: "Pulse the headline once",
+      },
+    }),
+  );
+  check("object motion waits for the person", emphasis.outcome === "pending", emphasis.outcome);
+  const moving = await client.callTool({
+    name: "motion_preview",
+    arguments: { presentation_id: deck, slide_id: slide.id, proposal_id: emphasis.transaction_id },
+  });
+  check("and can be seen moving before anyone approves it", Boolean(picture(moving)?.data), moving.content[0].text.slice(0, 70));
 
   // --- a change the user has to approve
   const destructive = payload(

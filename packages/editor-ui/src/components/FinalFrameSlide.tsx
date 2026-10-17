@@ -50,10 +50,17 @@ export function FinalFrameSlide({
   scene,
   width,
   resolveAssetUrl,
+  play = false,
 }: {
   scene: SlideScene;
   width: number;
   resolveAssetUrl?: (assetId: string, storageKey?: string) => string | undefined;
+  /**
+   * Play the slide's motion instead of resting at its final frame: Review
+   * plays a pending motion change so it is judged moving (release 8). The
+   * viewer's reduced-motion setting still decides, as in present mode.
+   */
+  play?: boolean;
 }) {
   // useId output contains ":" — safe inside a quoted attribute selector.
   const root = useId();
@@ -71,10 +78,11 @@ export function FinalFrameSlide({
       />
       {hasMotion ? (
         <SlideMotion
+          key={play ? "playing" : "resting"}
           scene={scene}
           rootSelector={`[data-final-frame="${root}"]`}
-          reducedMotion={false}
-          autoPlay={false}
+          reducedMotion={play && typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)}
+          autoPlay={play}
         />
       ) : null}
     </span>

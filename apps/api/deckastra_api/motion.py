@@ -388,3 +388,252 @@ def _preset_for(element: dict[str, Any], preset: str) -> str:
     if preset == "wordCascade" and element.get("type") != "text":
         return "springIn"
     return preset
+
+
+# ------------------------------------------------------------- object motion
+#
+# Release 8 (2026-10-17). `animate_slide` plans entrances by role and computes
+# every millisecond, which is what keeps doc 04 §24.2's entrance budget
+# enforceable. An agent asked for "subtle looping accents" had nothing else to
+# reach for and repeated a scale entrance, which reads as stuttering. The
+# engine has always had real loops and emphases; these builders write them.
+#
+# The line on timing moves only where the budget does not apply: a loop or an
+# emphasis may name a bounded duration, delay, repeat, direction and easing.
+# Entrances and exits still take a pacing word and nothing else.
+
+#: The engine's presets by category (`animation-engine/src/presets.ts`), held
+#: to it by `test_object_motion.py`.
+ENTRANCE_PRESETS = tuple(sorted(KNOWN_PRESETS))
+EMPHASIS_PRESETS = ("pulse", "wiggle", "pop", "colorShift", "underlineDraw", "highlightSweep", "shake", "rotatingWord")
+LOOP_PRESETS = ("float", "breathe", "spin", "glow", "shimmer", "orbit", "kenBurns", "gradientDrift", "marquee")
+EXIT_PRESETS = ("fadeOut", "slideOut", "scaleOut", "blurOut", "maskOut", "wipeOut")
+PRESETS_BY_CATEGORY = {
+    "entrance": ENTRANCE_PRESETS,
+    "emphasis": EMPHASIS_PRESETS,
+    "loop": LOOP_PRESETS,
+    "exit": EXIT_PRESETS,
+}
+
+#: One word of speed for what may run longer than an entrance.
+SPEEDS = {
+    "loop": {"slow": 9_000, "medium": 6_000, "fast": 3_500},
+    "emphasis": {"slow": 900, "medium": 600, "fast": 400},
+}
+#: What an explicit duration may be, by category. A loop faster than 1.5s reads
+#: as agitation; one slower than 12s reads as nothing moving.
+DURATION_LIMITS = {"loop": (1_500, 12_000), "emphasis": (250, 2_000)}
+MAX_DELAY_MS = 4_000
+NAMED_EASINGS = ("linear", "easeIn", "easeOut", "easeInOut", "emphasized")
+TRIGGERS = ("slideEnter", "withPrevious", "afterPrevious", "click")
+
+#: Element kinds a loop never goes on: words the audience is reading and data
+#: they are comparing. A moving chart is one nobody can read.
+_NEVER_LOOPED = {"text", "chart", "table", "diagram", "code", "equation"}
+
+
+class MotionPlanError(ValueError):
+    """A plan this app will not write, said in words an agent can act on."""
+
+
+def _walk(elements: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
+    for element in elements:
+        if isinstance(element, dict):
+            yield element
+            yield from _walk(element.get("children") or [])
+
+
+def _is_motion_preset(clip: dict[str, Any], category: str) -> bool:
+    return str(clip.get("preset") or "") in PRESETS_BY_CATEGORY[category]
+
+
+def object_motion_operations(
+    slide: dict[str, Any],
+    *,
+    element_ids: list[str],
+    roles: list[str],
+    category: str,
+    preset: str,
+    speed: str | None = None,
+    pacing: str | None = None,
+    duration_ms: int | None = None,
+    delay_ms: int | None = None,
+    repeat: int | None = None,
+    direction: str | None = None,
+    easing: str | None = None,
+    trigger: str | None = None,
+    stagger_ms: int = 0,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Animation tracks for named objects, as patch operations, and warnings.
+
+    One track per object. A new loop replaces a loop already on that object,
+    and a new entrance replaces its entrance, so asking twice never stacks two
+    tracks fighting over one property.
+    """
+    if category not in PRESETS_BY_CATEGORY:
+        raise MotionPlanError(f"category must be one of {', '.join(PRESETS_BY_CATEGORY)}.")
+    if preset not in PRESETS_BY_CATEGORY[category]:
+        raise MotionPlanError(f"{preset!r} is not a {category} preset. Use one of: {', '.join(PRESETS_BY_CATEGORY[category])}.")
+    timed = category in DURATION_LIMITS
+    if not timed and any(value is not None for value in (speed, duration_ms, delay_ms, repeat, direction, easing)):
+        raise MotionPlanError(
+            f"An {category} takes a pacing word only (tight, measured, deliberate): its duration is computed so the slide stays inside its entrance budget."
+        )
+    if easing is not None and easing not in NAMED_EASINGS:
+        raise MotionPlanError(f"easing must be one of {', '.join(NAMED_EASINGS)}.")
+    if trigger is not None and trigger not in TRIGGERS:
+        raise MotionPlanError(f"trigger must be one of {', '.join(TRIGGERS)}.")
+    if direction is not None and direction not in ("normal", "reverse", "alternate"):
+        raise MotionPlanError("direction must be normal, reverse or alternate.")
+
+    warnings: list[str] = []
+    every = {str(element.get("id")): element for element in _walk(slide.get("elements") or [])}
+    targets: list[dict[str, Any]] = []
+    for element_id in element_ids:
+        if element_id not in every:
+            raise MotionPlanError(f"No object {element_id} on this slide.")
+        if every[element_id] not in targets:
+            targets.append(every[element_id])
+    for role in roles:
+        matched = [element for element in every.values() if element.get("semanticRole") == role]
+        if not matched:
+            warnings.append(f'No object on this slide has the role "{role}".')
+        targets.extend(element for element in matched if element not in targets)
+    if not targets:
+        raise MotionPlanError("Name at least one object, by element id or role, that is on this slide.")
+    if category == "loop":
+        kept = []
+        for element in targets:
+            if element.get("type") in _NEVER_LOOPED:
+                warnings.append(f"{element.get('name') or element.get('id')} is {element.get('type')} the audience reads, so it was not given a loop.")
+            else:
+                kept.append(element)
+        targets = kept
+        if not targets:
+            raise MotionPlanError("None of those objects can loop: text, charts, tables, diagrams, code and equations stay still while people read them.")
+
+    if timed:
+        low, high = DURATION_LIMITS[category]
+        if speed is not None and speed not in SPEEDS[category]:
+            raise MotionPlanError(f"speed must be one of {', '.join(SPEEDS[category])}.")
+        duration = duration_ms if duration_ms is not None else SPEEDS[category][speed or "medium"]
+        if not low <= duration <= high:
+            raise MotionPlanError(f"A {category} lasts between {low} and {high} ms.")
+        delay = delay_ms or 0
+        if not 0 <= delay <= MAX_DELAY_MS:
+            raise MotionPlanError(f"delay_ms must be between 0 and {MAX_DELAY_MS}.")
+        if category == "loop":
+            loops = -1 if repeat is None else repeat
+            if loops != -1 and not 1 <= loops <= 20:
+                raise MotionPlanError("A loop repeats forever (-1) or 1 to 20 times.")
+        else:
+            loops = 0 if repeat is None else repeat
+            if not 0 <= loops <= 5:
+                raise MotionPlanError("An emphasis repeats 0 to 5 times.")
+    else:
+        pace = PACING.get(pacing or "measured")
+        if pace is None:
+            raise MotionPlanError(f"pacing must be one of {', '.join(PACING)}.")
+        duration, delay, loops = pace["durationMs"], 0, 0
+
+    default_trigger = {"loop": "slideEnter", "emphasis": "afterPrevious", "entrance": "afterPrevious", "exit": "click"}[category]
+    chosen_trigger = trigger or default_trigger
+    tracks = list(slide.get("animations") or [])
+    slide_path = f"/slides/id:{slide['id']}"
+    operations: list[dict[str, Any]] = []
+    if "animations" not in slide:
+        operations.append({"op": "add", "path": f"{slide_path}/animations", "value": []})
+    replaced: set[str] = set()
+    for element in targets:
+        for track in tracks:
+            if (track.get("targetId") == element.get("id") and track.get("id") not in replaced
+                    and any(_is_motion_preset(clip, category) for clip in track.get("clips") or [])):
+                operations.append({"op": "remove", "path": f"{slide_path}/animations/id:{track['id']}"})
+                replaced.add(str(track["id"]))
+    for index, element in enumerate(targets):
+        clip: dict[str, Any] = {"id": new_id("clp"), "preset": preset, "startMs": 0, "durationMs": int(duration)}
+        offset = int(delay) + index * max(0, int(stagger_ms))
+        if offset:
+            clip["delayMs"] = offset
+        if easing or category == "loop":
+            clip["easing"] = easing or "easeInOut"
+        if loops:
+            clip["repeat"] = loops
+        if direction or category == "loop":
+            clip["direction"] = direction or ("alternate" if preset in ("kenBurns", "gradientDrift") else "normal")
+        if category == "loop":
+            # Reduced motion, a PDF and a thumbnail show the object at rest.
+            clip["restOffset"] = 0
+        track = {
+            "id": new_id("anm"),
+            "targetId": element["id"],
+            "trigger": {"type": "withPrevious" if index and chosen_trigger in ("afterPrevious", "click") else chosen_trigger},
+            "clips": [clip],
+            "label": f"{preset} on {element.get('name') or element.get('type')}",
+        }
+        operations.append({"op": "add", "path": f"{slide_path}/animations/-", "value": track})
+    if category == "loop":
+        remaining = sum(
+            1 for track in tracks if str(track.get("id")) not in replaced
+            and any(_is_motion_preset(clip, "loop") for clip in track.get("clips") or [])
+        )
+        if remaining + len(targets) > 2:
+            warnings.append(f"This slide would run {remaining + len(targets)} loops; keep at most two so the motion has a clear focus.")
+    if replaced:
+        count = len(replaced)
+        warnings.append(f"Replaced {count} existing {category} track{'s' if count != 1 else ''} on the same object.")
+    return operations, warnings
+
+
+def _area(element: dict[str, Any]) -> float:
+    transform = element.get("transform") or {}
+    return float(transform.get("width") or 0) * float(transform.get("height") or 0)
+
+
+def ambient_operations(slide: dict[str, Any], viewport: dict[str, Any], *, intensity: str = "subtle") -> tuple[list[dict[str, Any]], list[str]]:
+    """Add subtle ambient motion: a few restrained loops chosen by kind.
+
+    A picture gets a slow Ken Burns drift; at most two small decorations or
+    icons float or breathe (two loops a slide at most), offset so they never
+    move in step. Text, charts,
+    tables, diagrams and code never loop. A slide that already loops is left
+    alone, so asking again does not pile motion on motion.
+    """
+    if intensity not in ("subtle", "noticeable"):
+        raise MotionPlanError("intensity must be subtle or noticeable.")
+    if any(_is_motion_preset(clip, "loop") for track in slide.get("animations") or [] for clip in track.get("clips") or []):
+        return [], ["This slide already has looping motion, so nothing was added."]
+    slide_area = float(viewport.get("width") or 1920) * float(viewport.get("height") or 1080)
+    pictures: list[dict[str, Any]] = []
+    accents: list[dict[str, Any]] = []
+    for element in slide.get("elements") or []:
+        if not isinstance(element, dict) or element.get("locked") or element.get("type") in _NEVER_LOOPED:
+            continue
+        if element.get("type") == "image" and not pictures:
+            pictures.append(element)
+        elif element.get("type") in ("shape", "icon") and _area(element) <= slide_area * 0.12:
+            accents.append(element)
+    # At most two loops a slide, the engine's own limit (`compile.ts`): more
+    # and the motion has no focus.
+    accents = accents[: 2 - len(pictures)]
+    if not pictures and not accents:
+        return [], ["Nothing on this slide suits ambient motion: it has no picture and no small decoration or icon."]
+    slow = intensity == "subtle"
+    plan: list[tuple[dict[str, Any], str, int, int, str | None]] = []
+    if pictures:
+        plan.append((pictures[0], "kenBurns", 12_000 if slow else 9_000, 0, "alternate"))
+    for index, element in enumerate(accents):
+        plan.append((element, "float" if index % 2 == 0 else "breathe", (7_000 if slow else 5_000) + index * 900, 600 * (index + 1), None))
+    operations: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    working = dict(slide)
+    for element, preset, duration, delay, direction in plan:
+        ops, notes = object_motion_operations(
+            working, element_ids=[element["id"]], roles=[], category="loop", preset=preset,
+            duration_ms=duration, delay_ms=delay or None, direction=direction,
+        )
+        operations += ops
+        warnings += notes
+        # The array exists after the first batch; later batches append to it.
+        working = {**working, "animations": list(working.get("animations") or [])}
+    return operations, warnings

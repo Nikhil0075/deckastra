@@ -244,6 +244,24 @@ describe("the Review view", () => {
     expect(calls()).toContain("POST /v1/presentations/prs_1/proposals/txn_a/reject");
   });
 
+  it("plays a pending motion change rather than showing it still", async () => {
+    // Release 8: a loop judged as its final frame looks like nothing changed.
+    const saved = operations.splice(0, operations.length, {
+      op: "add",
+      path: `/slides/id:${first.id}/animations`,
+      value: [],
+    } as never);
+    try {
+      render(<ReviewWorkspace editor={editor()} presentationId="doc_1" onClose={vi.fn()} />, { wrapper: withWorkspaceClient() });
+      const play = await screen.findByTestId("review-play-motion");
+      expect(play.textContent).toMatch(/Play motion/);
+      fireEvent.click(play);
+      expect(screen.getByTestId("review-play-motion").textContent).toMatch(/Show final frame/);
+    } finally {
+      operations.splice(0, operations.length, ...saved);
+    }
+  });
+
   it("goes back to editing on Escape and from its button", async () => {
     const onClose = vi.fn();
     render(<ReviewWorkspace editor={editor()} presentationId="prs_1" onClose={onClose} />, { wrapper: withWorkspaceClient() });

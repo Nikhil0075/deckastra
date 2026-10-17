@@ -779,6 +779,12 @@ def _seed_body(document: dict[str, Any]) -> DraftBody:
                 break
         if layout not in patterns and layout not in {item.value for item in SlideLayout}:
             layout = "statement"
+        # A list a design language draws as one text element per row (System
+        # Terminal's rows, for one) seeds as body blocks, and a bullets card of
+        # body blocks could never be built: "Add at least one supporting point"
+        # (2026-10-17). On a bullets card those rows are the points.
+        if layout == "bullets" and not any(block.role == "bullet" for block in blocks):
+            blocks = [DraftBlock(role="bullet", text=block.text) if block.role == "body" and block.text else block for block in blocks]
         card = DraftCard(id=new_id("crd"), layout=layout, blocks=blocks, notes=_notes_text(slide.get("speakerNotes")), source_slide_id=str(slide.get("id") or "") or None)
         cards.append(card.model_copy(update={"source_fingerprint": _fingerprint(card)}))
     metadata = document.get("metadata") or {}

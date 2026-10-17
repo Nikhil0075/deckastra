@@ -20,6 +20,57 @@ export interface MotionCapabilities {
   entrance_budget_ms: number;
   read_immediately_words: number;
   notes: string[];
+  /** Release 8: every preset by category, for object motion. */
+  categories?: Record<"entrance" | "emphasis" | "loop" | "exit", string[]>;
+  loop_and_emphasis_timing?: Record<string, unknown>;
+}
+
+/** Motion on named objects: an entrance, an emphasis, a loop or an exit (release 8). */
+export interface ObjectMotionRequest {
+  slide_id: string;
+  expected_version_id: string;
+  element_ids?: string[];
+  roles?: string[];
+  category: "entrance" | "emphasis" | "loop" | "exit";
+  preset: string;
+  /** Entrances and exits only. */
+  pacing?: "tight" | "measured" | "deliberate";
+  /** Loops and emphasis only, like the timing fields below. */
+  speed?: "slow" | "medium" | "fast";
+  duration_ms?: number;
+  delay_ms?: number;
+  repeat?: number;
+  direction?: "normal" | "reverse" | "alternate";
+  easing?: string;
+  trigger?: "slideEnter" | "withPrevious" | "afterPrevious" | "click";
+  stagger_ms?: number;
+  intent?: string;
+  client_label?: string;
+  dry_run?: boolean;
+  in_reply_to?: string;
+}
+
+/** "Add subtle looping accents to these slides" (release 8). */
+export interface AmbientMotionRequest {
+  slide_ids: string[];
+  expected_version_id: string;
+  intensity?: "subtle" | "noticeable";
+  intent?: string;
+  client_label?: string;
+  dry_run?: boolean;
+  in_reply_to?: string;
+}
+
+export interface ObjectMotionResult {
+  outcome: string;
+  warnings: string[];
+  transaction_id?: string;
+  risk_tier?: string;
+  reasons?: string[];
+  operations?: unknown[];
+  version_id?: string;
+  refusal?: string;
+  next?: string;
 }
 
 export interface MotionRequest {
