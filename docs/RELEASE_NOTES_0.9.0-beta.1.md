@@ -1,4 +1,4 @@
-# Deckastra 0.9.0-beta.1 — Windows, local-only
+# Deckastra 0.9.0-beta.1 — Windows and macOS (Apple silicon), local-only
 
 A beta of the desktop app. Everything it does, it does on your computer.
 
@@ -34,11 +34,14 @@ Each of these is deliberate, not missing by accident:
 - **No models that run on your own machine.** The code for it exists and is not
   shipped here: it needs a runtime and a model pack this installer does not
   carry, and neither has been measured on the hardware this release supports.
-- **Windows only.** There is no macOS or Linux build.
+- **Windows and Apple-silicon Macs only.** There is no Linux build and no
+  Intel Mac build. The Mac build is not signed by Apple, so macOS asks you to
+  confirm it the first time: see [INSTALL_MACOS_BETA.md](INSTALL_MACOS_BETA.md).
 
 ## Where your data is
 
-`%APPDATA%\Deckastra` — the database, the images and the exports.
+`%APPDATA%\Deckastra` on Windows, `~/Library/Application Support/Deckastra` on
+a Mac — the database, the images and the exports.
 
 **Use File → Back up… rather than copying that folder.** Copying a database
 while the app is writing to it gives you a file that opens and is sometimes

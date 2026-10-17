@@ -2977,18 +2977,31 @@ an empty `DECKASTRA_SMOKE_PROFILE` and a launchd-like environment (no `LANG`,
 | Grants | the Windows table again: 200 for the account, 403 for approve, share, delete, backup and revoke; attachment `0600`; a second instance exits 0 in 167ms |
 | MCP | `acceptance.mjs` through the package's own `mcp/cli.mjs` and binary: 18/18 |
 | Quit | no app, helper, render host or service process within 1s; attachment withdrawn |
+| Parity | `digest`: the three fixtures' scene digests rebuilt in Electron's Chromium on the Mac equal the committed baselines |
+| By hand | sign-in (so the Keychain-backed `safeStorage` that holds it) and translation, against production, by the user |
+
+**A cancelled export left its render profile behind** (`main/render-profiles.ts`),
+on every platform: cancelling kills the exporter's process tree before it can
+delete the host's `deckastra-render-*` folder. A host now writes its pid into
+its profile, and every new host, and the app at startup, removes the profiles
+whose host has gone, never one a live host holds or one with no pid file. After
+the MCP run the temp directory now holds none.
+
+**CI builds it too**: `Desktop (macOS)` on `macos-14` runs the Windows job's
+sequence and its acceptance steps with no `LANG`. Testers' install steps are
+`docs/INSTALL_MACOS_BETA.md`.
 
 **Not verified, or still open:** Developer ID signing and notarization (no
-certificate); `verify:signing` assesses only the `.dmg`, which electron-builder
-does not sign unless `dmg.sign` is set, so a correctly signed release would still
-fail it there; Keychain-backed `safeStorage` (it writes to the login Keychain, and
-an ad-hoc signature changes on every build, so expect a Keychain prompt per
-rebuild); sign-in and cloud features; Intel x64 (needs its own lock, compiled on
+certificate; the beta ships unsigned on purpose); `verify:signing` assesses only
+the `.dmg`, which electron-builder does not sign unless `dmg.sign` is set, so a
+correctly signed release would still fail it there; an ad-hoc signature changes
+on every build, so the Keychain may ask again after each update; voices and
+"See the price" in Import & generate; Intel x64 (needs its own lock, compiled on
 an Intel Mac); an audited macOS LGPL ffmpeg; darwin pixel baselines (not
-recorded); copy and paste by real keys; a cancelled export's render-host profile
-left in `$TMPDIR` (`deckastra-render-*`, seen once after the MCP run; not yet
-traced, and the cancel path is shared with Windows); and a stray process the
-runner counted three seconds after each step in one sweep and never again.
+recorded); copy and paste by real keys; the Gatekeeper steps in the install note
+on a downloaded copy; memory above Windows' (not investigated); and a stray
+process the runner counted three seconds after each step in one sweep and never
+again.
 
 ### A missing capability is absent, not broken
 
