@@ -154,7 +154,10 @@ for dist in md.distributions():
     out.append({"name": name, "version": dist.version, "license": lic or ", ".join(classifiers), "texts": texts})
 base = sys.base_prefix
 cpython = ""
-for candidate in ("LICENSE.txt", "LICENSE"):
+# Windows keeps it at the root of the install; macOS and Linux beside the
+# standard library (lib/python3.13/LICENSE.txt), which is asked second.
+stdlib = os.path.join("lib", "python%d.%d" % sys.version_info[:2])
+for candidate in ("LICENSE.txt", "LICENSE", os.path.join(stdlib, "LICENSE.txt")):
     p = os.path.join(base, candidate)
     if os.path.exists(p):
         cpython = open(p, encoding="utf-8", errors="replace").read().strip()
@@ -209,7 +212,7 @@ export function buildNotices() {
     "",
     "Deckastra includes software written by others. Their licences and notices",
     "follow, grouped by where the software runs. Electron and Chromium's notices",
-    "are in LICENSE.electron.txt and LICENSES.chromium.html beside Deckastra.exe.",
+    `are in LICENSE.electron.txt and LICENSES.chromium.html ${process.platform === "darwin" ? "in Deckastra.app/Contents/Resources" : "beside Deckastra.exe"}.`,
     "No machine-learning model is included in this release.",
     "",
   ];

@@ -116,6 +116,17 @@ mac:
       arch:
         - arm64
   category: public.app-category.productivity
+  # Electron's licence and Chromium's notices. On Windows electron-builder lays
+  # them beside Deckastra.exe; on macOS they stay beside Electron.app in the
+  # download and never reach the bundle, so a Mac build shipped Chromium with
+  # none of its notices. Added to the top-level `extraResources`, not instead of
+  # them. The path is the hoisted workspace copy, the same pinned version
+  # `electronVersion` names.
+  extraResources:
+    - from: ../../node_modules/electron/dist/LICENSE
+      to: LICENSE.electron.txt
+    - from: ../../node_modules/electron/dist/LICENSES.chromium.html
+      to: LICENSES.chromium.html
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
   # Notarization requires the hardened runtime, and the hardened runtime breaks
   # Electron and the PyInstaller sidecar without the entitlements beside this
