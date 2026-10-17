@@ -853,8 +853,9 @@ the byte count matching the export row. The dev app has to be
 closed for this run, because it and the installed app share one single-instance
 lock.
 
-macOS is **not** measured and cannot be from here: it needs real hardware, and a
-passing Windows run says nothing about it. Pixel parity inside Electron's Chromium
+macOS was **not** measured from here: it needs real hardware, and a passing
+Windows run says nothing about it. It has since been built and measured on a Mac;
+see "The macOS build (2026-10-17)". Pixel parity inside Electron's Chromium
 is also still open — the digest gate covers the scene, not the paint.
 
 
@@ -2877,6 +2878,117 @@ later naming a path rather than a cause.
 notarize on a machine with no Apple credentials produces an unnotarized build and
 a green log, and the first person to learn otherwise is a user. A release turns it
 on explicitly, with the credentials present, and then runs `verify:signing`.
+
+### The macOS build (2026-10-17)
+
+The first Mac build: Apple silicon (arm64), macOS 27, CPython 3.13.16 and Node
+22.23 from Homebrew, Electron 44.4.3. Unsigned (ad-hoc), not notarized, not
+Intel. `cd apps/desktop && npm run package:mac:dev` builds it; the output is
+`release/Deckastra-<version>-mac-arm64.dmg` (203MB) and
+`release/mac-arm64/Deckastra.app`. Every difference from Windows is a darwin
+branch; the Windows build is unchanged, and the tests that say so are named
+below.
+
+**The frozen service has a lock of its own** (`scripts/sidecar-lock.mjs`). The
+Windows lock carries `pefile` and `pywin32-ctypes` and has no `macholib`, so a
+`--require-hashes --no-deps` install of it fails the freeze on a Mac.
+`sidecar-requirements.macos-arm64.lock` is compiled from the same `.in` **with
+the Windows lock as a constraint** (`-c`), because an unconstrained compile moved
+about 25 shared packages (pydantic, starlette, uvicorn, SQLAlchemy …) to newer
+versions than the release runs. Constrained, the two differ only where the
+platforms do: `macholib` and `uvloop` in; `pefile`, `pywin32-ctypes`, `greenlet`
+and `tzdata` out. Recompile it whenever the Windows lock changes. The build, the
+SBOM, the notices and the manifest all ask `sidecarLockName()`; only darwin is
+split off, so Windows and Linux CI read the original file as before, and an
+Intel Mac is refused with the compile command. The frozen service is 84MB
+(Windows: 105MB).
+
+**A Finder-launched app has no locale, and the service died of it.** launchd
+sets no `LANG`, `LC_ALL` or `LC_CTYPE`, the frozen interpreter then runs in the C
+locale (US-ASCII), and Alembic reads `alembic.ini` with `encoding="locale"` —
+the C library's codeset, which Python's UTF-8 mode (`--python-option "X utf8"`,
+tried) does not change. The file's em dash and section sign failed the first
+migration on every launch. `serviceLocale` (`main/service-locale.ts`) gives the
+child `LC_CTYPE=UTF-8` on darwin when no locale is set, and leaves one the person
+set alone. Found by starting the binary under `env -i`, which is the only way a
+terminal launch shows what a Finder launch gets; this shell happened to set no
+`LANG` either.
+
+**macOS needs an Edit menu a text field can use** (`menu.ts`). On a Mac, Cmd+Z,
+X, C, V and A in a field are menu key equivalents, and this app's Edit menu had
+only Undo and Redo, with no accelerators on darwin. Measured with real
+keystrokes: Cmd+Z in the notes field did nothing while Cmd+1 switched mode. The
+darwin menu now has Undo, Redo, Cut, Copy, Paste and Select All. Cut, Copy and
+Paste are Electron's roles (the browser's own clipboard events, which the editor
+already handles). Undo, Redo and Select All go on `IPC.menuEdit`, where
+`routeEditCommand` (`renderer/field-edit.ts`) lets a focused field answer with
+its own undo or select-all, and otherwise passes `undo`, `redo` or the new
+`select-all` host command to the editor. Verified with real keys on the package:
+Cmd+Z in a field is the field's, Cmd+Z on the canvas is one deck step, Cmd+A on
+the canvas selects every object, Select All in a field selects its text. Copy and
+paste were not pressed as real keys (the tool refuses keys that touch the system
+clipboard). `menu.test.ts` holds the Windows Edit menu to what it was.
+
+**The bundle is signed ad hoc, deliberately.** Skipping signing left every one
+of the 127 Mach-O files with only a linker signature: the app, its helpers, the
+frameworks and the service's `Python.framework` failed `codesign --verify
+--strict` and the app called itself "Electron". `package:mac:dev` passes
+`--config.mac.identity=-`, so @electron/osx-sign seals the bundle inside out with
+the hardened runtime and `build/entitlements.mac.plist`; all 127 verify and the
+bundle satisfies its designated requirement as `com.deckastra.desktop`. It is a
+flag on the dev script and never `mac.identity` in the config, so a release with
+a real certificate cannot fall back to ad hoc. osx-sign signs every Mach-O it
+walks, including `sidecar/_internal`'s dylibs and `.so` files, so those need no
+entry in `mac.binaries`; the `.mjs` bundles are not Mach-O and are covered by the
+bundle's seal.
+
+**Smaller differences, each a darwin branch:**
+
+- The icon is `build/icon.icns`, made with `iconutil` from `icon.png`. The
+  `.mydeck` association needs no second entry: electron-builder swaps `.ico` for
+  `.icns` per platform (`getPlatformIconFileName`).
+- Electron's licence and Chromium's notices stay beside `Electron.app` in the
+  download and never reached the bundle; `mac.extraResources` copies them into
+  `Contents/Resources`. CPython's licence is beside the standard library on macOS,
+  and `notices.mjs` now looks there second.
+- `ffmpeg.lock.json` pins only the Windows build, so `fetch-ffmpeg.mjs` packages
+  an empty `dist/ffmpeg` elsewhere (a release still refuses). A generated clip is
+  then placed without a poster frame and says so (`poster_tool`), where it used
+  to fail the whole paid job. The same change fixed `video_poster`, which passed
+  `windows_startupinfo=` to `subprocess.run` and raised TypeError on every
+  platform after the clip had been paid for.
+- `sidecar.ts` joins `PYTHONPATH` with `path.delimiter`, not `;`.
+- The harness's "control" is Command on a Mac (`shortcutModifiers`), its
+  select-all, undo and clipboard keys go the menu's way (`pressMacMenuKey`),
+  because a synthetic key never reaches a menu, and its `close` step quits after
+  the window closes, because closing the last window does not quit on macOS.
+
+**Measured on the package, 2026-10-17**, MacBook (Apple silicon), each step on
+an empty `DECKASTRA_SMOKE_PROFILE` and a launchd-like environment (no `LANG`,
+`PATH=/usr/bin:/bin:/usr/sbin:/sbin`):
+
+| | |
+| --- | --- |
+| Acceptance steps | 19 green, `packaged: true`, no CSP violation but the offline probe: open, edit, verify, present, presenter, export, design, authoring, menu, consent, backup, agents, grants, windows, resilience, close + close-verify (window close and Cmd+Q); `a11y` skipped by name |
+| Cold start | ~820ms to window, ~1250ms to an editable deck on a fresh profile; 747/1001ms warm (`verify`). The first launch after a rebuild took 9.4s to window, consistent with macOS scanning a new binary |
+| Memory | ~490–660MB across 4 processes; ~670–730MB across 5 while presenting (Windows: ~375 / ~485MB) |
+| Export | PDF 4 pages at 1440×810pt and PPTX 4 slides at 13.33×7.5in with the typed speaker note, read by pypdf 6.21.1 and python-pptx 1.0.2 |
+| Retina | the render host's explicit scale wins: a preview is exactly 1024×576, an equation capture exactly 1× its box |
+| Grants | the Windows table again: 200 for the account, 403 for approve, share, delete, backup and revoke; attachment `0600`; a second instance exits 0 in 167ms |
+| MCP | `acceptance.mjs` through the package's own `mcp/cli.mjs` and binary: 18/18 |
+| Quit | no app, helper, render host or service process within 1s; attachment withdrawn |
+
+**Not verified, or still open:** Developer ID signing and notarization (no
+certificate); `verify:signing` assesses only the `.dmg`, which electron-builder
+does not sign unless `dmg.sign` is set, so a correctly signed release would still
+fail it there; Keychain-backed `safeStorage` (it writes to the login Keychain, and
+an ad-hoc signature changes on every build, so expect a Keychain prompt per
+rebuild); sign-in and cloud features; Intel x64 (needs its own lock, compiled on
+an Intel Mac); an audited macOS LGPL ffmpeg; darwin pixel baselines (not
+recorded); copy and paste by real keys; a cancelled export's render-host profile
+left in `$TMPDIR` (`deckastra-render-*`, seen once after the MCP run; not yet
+traced, and the cancel path is shared with Windows); and a stray process the
+runner counted three seconds after each step in one sweep and never again.
 
 ### A missing capability is absent, not broken
 
