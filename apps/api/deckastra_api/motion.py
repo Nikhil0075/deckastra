@@ -173,7 +173,7 @@ def animate_slide(
 #: anyway and degrading *here* means the stored document says what it will do.
 KNOWN_TRANSITIONS = {
     "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split",
-    "iris", "flip", "blurDissolve", "morph",
+    "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur", "morph",
 }
 
 

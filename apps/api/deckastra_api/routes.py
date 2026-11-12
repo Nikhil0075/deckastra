@@ -808,7 +808,7 @@ class TransitionRequest(BaseModel):
     #: What the deck does moving *into* this slide.
     kind: Literal[
         "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split",
-        "iris", "flip", "blurDissolve", "morph",
+        "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur", "morph",
     ] = "fade"
     pacing: Literal["tight", "measured", "deliberate"] = "measured"
     #: Semantic roles to carry across, for a morph. Roles, never ids: the agent

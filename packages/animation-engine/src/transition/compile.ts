@@ -13,11 +13,20 @@
  * would make the transition depend on when it was asked.
  */
 
-import { DEFAULT_EASING, round } from "../easing";
+import { DEFAULT_EASING, parseSpring, round, sampleSpring, type Spring } from "../easing";
 import { isMoving, pairDelta } from "./delta";
 import { resolvePairing, type PairingInput } from "./pairing";
 import { resolveTransitionKind, type TransitionDirection } from "./kinds";
-import type { CompiledTransition, MatchMode, PairDelta, TransitionNode, TransitionSlide } from "./types";
+import { interpolate } from "./sample";
+import type {
+  CompiledTransition,
+  MatchMode,
+  PairDelta,
+  TransitionKeyframe,
+  TransitionNode,
+  TransitionSlide,
+  TransitionTrack,
+} from "./types";
 
 export interface TransitionSpec {
   type?: string;
@@ -128,16 +137,85 @@ export function compileTransition(
   const planned = kind.plan({ direction: spec?.direction ?? "left", deltas, easing });
   if (planned.warning) warnings.push(planned.warning);
 
+  const spring = parseSpring(easing);
+  const tracks = spring ? springTracks(planned.tracks, easing, spring, durationMs, warnings) : planned.tracks;
+
   return {
     type: kind.name,
     requestedType,
     durationMs,
     easing,
-    tracks: planned.tracks,
+    tracks,
     pairing,
+    ...(kind.perspective ? { perspective: kind.perspective } : {}),
     degraded,
     warnings,
   };
+}
+
+/** Properties that may pass their end value and come back. */
+const OVERSHOOTS = new Set(["translateX", "translateY", "scaleX", "scaleY", "scale", "rotate", "rotateX", "rotateY"]);
+
+/**
+ * A spring named as the transition's easing, sampled into keyframes here.
+ *
+ * The same rule the clip compiler keeps: past this point nothing knows what a
+ * spring is. `easingAt` answers `linear` for a name it cannot resolve, so a
+ * spring left on a track would have been sampled as a straight line with
+ * nothing failing anywhere.
+ *
+ * Only movement overshoots. An opacity past 1, a negative blur or a clip swept
+ * past a full turn are values outside their own domain, so those follow the
+ * spring's progress held between its two ends. A track with more than two
+ * keyframes has no single journey for a spring to describe; it keeps its shape
+ * on the default easing, and says so.
+ */
+function springTracks(
+  tracks: TransitionTrack[],
+  easing: string,
+  spring: Spring,
+  durationMs: number,
+  warnings: string[],
+): TransitionTrack[] {
+  const samples = sampleSpring(spring, durationMs);
+  let reshaped = false;
+
+  const out = tracks.map((track): TransitionTrack => {
+    // A track on its own clock (a morph's crossfade, a swap's order) is not the
+    // transition's easing and is left exactly as the kind wrote it.
+    if (track.easing !== easing) return track;
+    if (track.keyframes.length !== 2) {
+      reshaped = true;
+      return { ...track, easing: DEFAULT_EASING };
+    }
+
+    const [from, to] = track.keyframes as [TransitionKeyframe, TransitionKeyframe];
+    const span = to.offset - from.offset;
+    const names = new Set([...Object.keys(from.properties), ...Object.keys(to.properties)]);
+    return {
+      ...track,
+      // Linear between samples: the curve is the samples, and easing between
+      // them would apply the shape twice.
+      easing: "linear",
+      keyframes: samples.map((sample) => {
+        const properties: Record<string, string | number> = {};
+        for (const name of names) {
+          const start = from.properties[name] ?? to.properties[name]!;
+          const end = to.properties[name] ?? from.properties[name]!;
+          const progress = OVERSHOOTS.has(name) ? sample.value : Math.min(1, Math.max(0, sample.value));
+          properties[name] = interpolate(start, end, progress);
+        }
+        return { offset: round(from.offset + sample.offset * span), properties };
+      }),
+    };
+  });
+
+  if (reshaped) {
+    warnings.push(
+      "This transition moves in more than one stage, so the spring was not applied to it. It uses the default easing.",
+    );
+  }
+  return out;
 }
 
 function insidePaired(

@@ -34,7 +34,7 @@ function numeric(value: string | number): { value: number; unit: string } | unde
  * inventing one produces motion nobody asked for; switching is at least
  * explicable.
  */
-function interpolate(from: string | number, to: string | number, progress: number): string | number {
+export function interpolate(from: string | number, to: string | number, progress: number): string | number {
   const start = numeric(from);
   const end = numeric(to);
   if (!start || !end || start.unit !== end.unit) return progress < 0.5 ? from : to;

@@ -603,6 +603,26 @@ export function transitionFor(
         message: "The iris transition uses PowerPoint's nearest circular reveal.",
       });
       return `<p:transition spd="med" advTm="${duration}"><p:circle/></p:transition>`;
+    case "clockWipe":
+      // One spoke turning clockwise is PowerPoint's Clock. `p:wheel` is in the
+      // base schema, so no vendor namespace is needed to say it.
+      ledger.record({
+        severity: "info",
+        slideId,
+        feature: "transition:clockWipe",
+        action: "approximated",
+        message: "The clock wipe becomes PowerPoint's Clock, which sweeps at its own speed.",
+      });
+      return `<p:transition spd="med" advTm="${duration}"><p:wheel spokes="1"/></p:transition>`;
+    case "cube":
+      ledger.record({
+        severity: "info",
+        slideId,
+        feature: "transition:cube",
+        action: "approximated",
+        message: "The cube turn becomes a push in PowerPoint: both slides travel together, without the turn in depth.",
+      });
+      return `<p:transition spd="med" advTm="${duration}"><p:push dir="l"/></p:transition>`;
     case "blurDissolve":
       ledger.record({
         severity: "info",

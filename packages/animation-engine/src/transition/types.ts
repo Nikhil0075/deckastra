@@ -141,6 +141,11 @@ export interface CompiledTransition {
   easing: string;
   tracks: TransitionTrack[];
   pairing: Pairing;
+  /**
+   * Viewing distance for a kind that turns in depth, as a multiple of the stage
+   * width. Absent for flat kinds, which must not pay for a 3D context.
+   */
+  perspective?: number;
   /** Stated whenever what is drawn is not what was asked for. */
   degraded?: string;
   warnings: string[];

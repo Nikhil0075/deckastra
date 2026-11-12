@@ -187,6 +187,10 @@ export const SLIDE_TRANSITION_TYPES = openEnum([
   "iris",
   "flip",
   "blurDissolve",
+  "clockWipe",
+  "cube",
+  "swap",
+  "zoomBlur",
   "custom",
 ]);
 

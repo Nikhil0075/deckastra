@@ -7,6 +7,7 @@ import type { MotionCapabilities, MotionStyleId, PresetCatalog } from "@deckastr
 
 import { budgetLine, carryableRoles, measurePlan, planFingerprint, slideRoles, type MeasuredPlan } from "../../lib/motion-plan";
 import {
+  DIRECTIONAL_KINDS,
   DIRECTIONS,
   EDITABLE_KINDS,
   TRANSITION_MS,
@@ -31,10 +32,30 @@ import { TransitionPreview } from "./TransitionPreview";
 const KIND_LABEL: Record<EditableKind, string> = {
   cut: "Cut", fade: "Fade", slide: "Slide", cover: "Cover", push: "Push", zoom: "Zoom",
   wipe: "Wipe", split: "Split", iris: "Iris", flip: "Flip", blurDissolve: "Blur dissolve", morph: "Morph",
+  clockWipe: "Clock wipe", cube: "Cube", swap: "Swap", zoomBlur: "Zoom blur",
 };
+/**
+ * A spring that settles inside the shortest transition the editor allows to
+ * feel like one (about 0.4s) and passes its end by roughly a twelfth. One, not
+ * a physics form: three numbers nobody can picture are not a choice.
+ */
+const TRANSITION_SPRING = "spring(260,20,1)";
+
+/** The named easings, the spring, and whatever the slide already carries. */
+function transitionEasingOptions(current: string | undefined): { value: string; label: string }[] {
+  const options = [
+    ...NAMED_EASING_VALUES.map((easing) => ({ value: easing as string, label: easing as string })),
+    { value: TRANSITION_SPRING, label: "spring" },
+  ];
+  // A curve written by an agent or a newer build is shown as it is, never
+  // replaced by the first option because the list did not have it.
+  if (current && !options.some((option) => option.value === current)) options.push({ value: current, label: current });
+  return options;
+}
+
 const PACING = ["tight", "measured", "deliberate"] as const;
 type Pacing = (typeof PACING)[number];
-const PLAN_KINDS = ["fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph", "cut"] as const;
+const PLAN_KINDS = ["fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur", "morph", "cut"] as const;
 type PlanKind = (typeof PLAN_KINDS)[number];
 
 /**
@@ -408,11 +429,11 @@ function TransitionEditor({
           <Select
             label="Easing"
             value={transition.easing ?? "easeInOut"}
-            options={NAMED_EASING_VALUES.map((easing) => ({ value: easing, label: easing }))}
+            options={transitionEasingOptions(transition.easing)}
             onChange={(easing) => run(setTransitionEasing(document, slide.id, easing), "Transition easing")}
             data-testid="transition-easing"
           />
-          {state.kind === "slide" ? (
+          {(DIRECTIONAL_KINDS as readonly string[]).includes(state.kind) ? (
             <Segmented
               label="Direction"
               value={transition.direction ?? "left"}

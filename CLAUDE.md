@@ -5368,6 +5368,52 @@ flight. Rotation in `full` match mode is exact only at the two ends — the
 midpoint can arc slightly, because a rotation about the slide origin is not
 linear in the angle.
 
+### Four more transitions, and what the stage writes (2026-11-12)
+
+`clockWipe`, `cube`, `swap` and `zoomBlur` join `TRANSITION_KINDS`, and a
+`spring(k,d,m)` easing now works on a transition as it does on a clip. Rules
+that are easy to undo:
+
+- **A kind is named in eight places**, and a missing one fails quietly: the
+  engine registry, the schema's known list, `EDITABLE_KINDS` and
+  `KIND_DEFAULT_MS`, the panel's labels and plan kinds, `TransitionRequest` in
+  the contracts, `KNOWN_TRANSITIONS` and the route's `Literal` in the API, the
+  MCP tool's enum, and `transitionFor` in the PowerPoint exporter.
+- **A cube's two tracks share one easing.** Each face turns about the edge they
+  share and travels with it, so the edge stays joined only while both progress
+  together. `cube` and `flip` name a `perspective` (stage widths, not pixels),
+  which the stage sets on both parents and only while the transition runs.
+- **`swap` changes which slide is in front on a clock of its own** (`behind`,
+  linear, switching at the midpoint). The stage root is `isolation: isolate`,
+  so a slide sent behind stays inside the stage.
+- **A spring is sampled at compile**, into linear keyframes. Only movement
+  overshoots; opacity, blur and clips follow the spring held between their two
+  ends. A track with more than two keyframes keeps the default easing and the
+  transition says so. Before this, a spring on a transition was drawn as a
+  straight line: `easingAt` answers `linear` for a name it cannot resolve.
+- **The stage writes CSS names** (`cssName` in `SlideTransition.tsx`).
+  `style.setProperty("clipPath", …)` does nothing and says nothing, so `wipe`
+  and `iris` showed the next slide at once from the day they were added. The
+  engine's own tests could not see it: its output was right.
+- **A frame is everything the transition says about a layer.** What an earlier
+  frame wrote and this one does not is removed, a layer with no track is
+  cleared, and an arrived slide carries none of it (`settle`). Without this a
+  cube's turn stayed under the kind chosen after it in the preview.
+- **A blur is written at zero** (`filter: none`). Skipping it left the last
+  frame's blur on the slide.
+- **The clock starts on the first frame**, not when the effect ran, so a late
+  first frame cannot swallow the transition.
+- PowerPoint: `clockWipe` is `p:wheel spokes="1"` (its Clock), `cube` is a
+  push, `swap` and `zoomBlur` are fades, each reported `approximated`. None has
+  been opened in PowerPoint itself.
+
+Checked in the web app on 2026-11-12, in the Motion panel's preview and in
+present mode: each kind carries only its own properties, a played cube keeps
+its faces joined and 90° apart, and the arrived stage holds no transition
+style. Frame timing from the embedded browser pane is not a performance
+measurement: a hidden pane throttles frames, and one run there read as a
+defect that was not one.
+
 ### Motion plans name roles; code computes milliseconds
 
 Connected agents and the editor send semantic roles, a preset name and one word

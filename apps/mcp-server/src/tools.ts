@@ -1074,7 +1074,7 @@ export function registerTools(server: McpServer, client: WorkspaceClient, attach
         presentation_id: z.string().min(1),
         slide_id: z.string().min(1).describe("The slide being entered; its transition is the one set."),
         expected_version_id: z.string().min(1),
-        kind: z.enum(["cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph"]).optional(),
+        kind: z.enum(["cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur", "morph"]).optional(),
         pacing: z.enum(["tight", "measured", "deliberate"]).optional(),
         carry: z
           .array(z.string().min(1))

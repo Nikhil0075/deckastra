@@ -108,6 +108,7 @@ export function SlideTransition({
   // re-render that changed nothing.
   const paint = (transition: CompiledTransition, t: number) => {
     const styles = transitionCss(transition, t);
+    const painted = new Set<HTMLElement>();
     for (const [targetId, declaration] of Object.entries(styles)) {
       const element =
         targetId === "slide:out"
@@ -120,10 +121,43 @@ export function SlideTransition({
               // ghost sliding in over a copy that never moved.
               flightRef.current?.querySelector<HTMLElement>(`[data-morph-target="${escapeAttribute(targetId)}"]`);
       if (!element) continue;
+      const before = written.current.get(element);
+      const now = new Set<string>();
       for (const [property, value] of Object.entries(declaration)) {
-        element.style.setProperty(property, value);
+        // `setProperty` takes the CSS name. Handed `clipPath` it does nothing
+        // and says nothing, which is how the wipe and the iris came to show
+        // the next slide at once instead of uncovering it.
+        const name = cssName(property);
+        element.style.setProperty(name, value);
+        now.add(name);
       }
+      // A frame is the whole of what the transition says about a layer. What
+      // an earlier frame wrote and this one does not is taken off: a kind
+      // writes only its own properties, so without this a cube's turn stayed
+      // on the stage under the clock wipe chosen after it.
+      if (before) for (const name of before) if (!now.has(name)) element.style.removeProperty(name);
+      written.current.set(element, now);
+      painted.add(element);
     }
+    // And a layer this frame says nothing about at all: a clock wipe has no
+    // track for the leaving slide, so a push before it would have left that
+    // slide halfway off the stage.
+    for (const [element, names] of written.current) {
+      if (painted.has(element)) continue;
+      for (const name of names) element.style.removeProperty(name);
+      written.current.delete(element);
+    }
+  };
+
+  // What the transition last wrote on each layer, so it can be taken off
+  // again. A slide that has arrived is the slide: no leftover clip, stacking
+  // order or turn for the next transition or an entrance to inherit.
+  const written = useRef(new Map<HTMLElement, Set<string>>());
+  const settle = () => {
+    const element = incomingRef.current;
+    const names = element ? written.current.get(element) : undefined;
+    if (element && names) for (const name of names) element.style.removeProperty(name);
+    written.current.clear();
   };
 
   // Controlled: sample at the time given, every time it changes. Before paint,
@@ -133,6 +167,7 @@ export function SlideTransition({
   useLayoutEffect(() => {
     if (!controlled) return;
     paint(plan.current, Math.max(0, timeMs!));
+    if (complete) settle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlled, timeMs, compiled, flights]);
 
@@ -178,9 +213,16 @@ export function SlideTransition({
     }
 
     let frame = 0;
-    const startedAt = performance.now();
+    // Zero is the first frame the browser is ready to show, not the moment
+    // this effect ran. Anything can sit between the two: two slides mounting,
+    // which is the heaviest thing present mode does, or a window coming back
+    // from the background. With the clock started here, a first frame that
+    // arrived later than the transition is long drew its end at once, and the
+    // room saw a freeze followed by a cut.
+    let startedAt: number | undefined;
 
     const apply = (now: number) => {
+      startedAt ??= now;
       // From the clock, not from a counter. A frame that arrives late — a
       // backgrounded tab, a slow paint — must land where the wall clock says,
       // not one step further along than the last one.
@@ -188,6 +230,7 @@ export function SlideTransition({
       paint(transition, t);
 
       if (isTransitionComplete(transition, t)) {
+        settle();
         setRunning(false);
         done.current?.();
         return;
@@ -229,11 +272,20 @@ export function SlideTransition({
 
   const fromMotion = (from?.animations?.length ?? 0) > 0;
 
+  // A kind that turns in depth names its viewing distance as a share of the
+  // stage, so a laptop and a projector see the same turn. `perspective` reaches
+  // only an element's own children, and the leaving stage sits one wrapper
+  // down, so both parents carry it. Only while the transition runs.
+  const perspective =
+    active && compiled.perspective ? `${Math.round(width * compiled.perspective)}px` : undefined;
+
   return (
-    <div style={{ width, height, position: "relative", overflow: "hidden" }}>
+    // Isolated, so a slide a kind sends behind the other stays inside this box
+    // rather than dropping behind whatever the box sits on.
+    <div style={{ width, height, position: "relative", overflow: "hidden", isolation: "isolate", perspective }}>
       {flights.hidden.length > 0 ? <style>{"[data-morph-hidden]{visibility:hidden !important}"}</style> : null}
       {active && from ? (
-        <div data-transition-out={uid} style={{ position: "absolute", inset: 0 }}>
+        <div data-transition-out={uid} style={{ position: "absolute", inset: 0, perspective }}>
           {stage(<SlideView scene={from} mode="present" resolveAssetUrl={resolveAssetUrl} />, outgoingRef, false)}
         </div>
       ) : null}
@@ -383,6 +435,11 @@ function findNode(nodes: readonly SceneNode[], id: string): SceneNode | undefine
 function collect(node: SceneNode, into: Set<string>): void {
   into.add(node.id);
   for (const child of node.children ?? []) collect(child, into);
+}
+
+/** `clipPath` → `clip-path`. The engine names properties as a style object does. */
+function cssName(property: string): string {
+  return property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
 /** `CSS.escape` where the environment has it; element ids are ULIDs, so quoting is enough elsewhere. */

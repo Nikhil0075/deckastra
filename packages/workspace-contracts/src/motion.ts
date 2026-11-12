@@ -141,7 +141,7 @@ export interface MotionStyleResult {
 export interface TransitionRequest {
   slide_id: string;
   expected_version_id: string;
-  kind?: "cut" | "fade" | "slide" | "cover" | "push" | "zoom" | "wipe" | "split" | "iris" | "flip" | "blurDissolve" | "morph";
+  kind?: "cut" | "fade" | "slide" | "cover" | "push" | "zoom" | "wipe" | "split" | "iris" | "flip" | "blurDissolve" | "clockWipe" | "cube" | "swap" | "zoomBlur" | "morph";
   pacing?: "tight" | "measured" | "deliberate";
   /** Semantic roles that travel across the boundary. Only a morph carries them. */
   carry?: string[];

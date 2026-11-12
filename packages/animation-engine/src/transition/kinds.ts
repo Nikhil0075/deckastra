@@ -42,6 +42,13 @@ export interface TransitionKindDefinition {
   description: string;
   /** Whether the outgoing slide is still visible while this runs. */
   showsBothSlides: boolean;
+  /**
+   * Viewing distance for a kind that turns a slide in depth, as a multiple of
+   * the stage's width. Without one a rotation about a vertical axis is drawn
+   * orthographically, which is a slide getting narrower rather than turning.
+   * A ratio, not pixels: the same deck is shown on a laptop and a projector.
+   */
+  perspective?: number;
   plan(context: TransitionKindContext): TransitionKindResult;
 }
 
@@ -208,6 +215,7 @@ const flip: TransitionKindDefinition = {
   name: "flip",
   description: "The outgoing and incoming slides rotate like opposite faces.",
   showsBothSlides: true,
+  perspective: 2,
   plan: ({ easing }) => ({
     tracks: [
       outgoing([
@@ -235,6 +243,145 @@ const blurDissolve: TransitionKindDefinition = {
       incoming([
         { offset: 0, properties: { blur: 18, opacity: 0 } },
         { offset: 1, properties: { blur: 0, opacity: 1 } },
+      ], easing),
+    ],
+  }),
+};
+
+/**
+ * A hand sweeping round a clock face, uncovering the next slide behind it.
+ *
+ * `clipSweep` is the angle swept so far, clockwise from twelve. The DOM boundary
+ * turns it into a polygon; here it is one number, so a test or an exporter can
+ * say how far round the hand is without parsing a shape.
+ */
+const clockWipe: TransitionKindDefinition = {
+  name: "clockWipe",
+  description: "A clock hand sweeps round, uncovering the next slide.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [incoming([
+      { offset: 0, properties: { clipSweep: 0 } },
+      { offset: 1, properties: { clipSweep: 360 } },
+    ], easing)],
+  }),
+};
+
+/**
+ * Two faces of one cube.
+ *
+ * Each slide turns about the edge the two share, and travels with it, so the
+ * edge stays joined for the whole turn: the leaving slide's hinge and the
+ * arriving slide's are at the same place on the stage at every instant. That
+ * only holds while both tracks carry the same easing, which is why neither is
+ * given its own. A cube whose faces separate reads as two cards, not one object.
+ *
+ * Both faces swing away from the viewer, hinge nearest: the outside of a cube,
+ * which is what an audience expects. The signs below are what make that true,
+ * and they differ between the two axes because a rotation about x and one about
+ * y turn opposite ways for the same sign.
+ */
+const cube: TransitionKindDefinition = {
+  name: "cube",
+  description: "The deck turns like a cube, the next slide on its neighbouring face.",
+  showsBothSlides: true,
+  perspective: 1.8,
+  plan: ({ direction, easing }) => {
+    const horizontal = direction === "left" || direction === "right";
+    // +1 when the arriving slide comes from the right or from below.
+    const sign = direction === "left" || direction === "up" ? 1 : -1;
+    const travel = horizontal ? "translateX" : "translateY";
+    const still = horizontal ? "translateY" : "translateX";
+    const turn = horizontal ? "rotateY" : "rotateX";
+    // About y, a negative angle swings the leaving face's far side away; about
+    // x it takes the opposite sign to do the same.
+    const away = horizontal ? -sign : sign;
+    const leavingHinge = sign > 0 ? "100%" : "0%";
+    const arrivingHinge = sign > 0 ? "0%" : "100%";
+    const origin = (hinge: string) => (horizontal ? `${hinge} 50%` : `50% ${hinge}`);
+
+    return {
+      tracks: [
+        outgoing([
+          { offset: 0, properties: { transformOrigin: origin(leavingHinge), [travel]: "0%", [still]: "0%", [turn]: 0 } },
+          { offset: 1, properties: { transformOrigin: origin(leavingHinge), [travel]: `${-sign * 100}%`, [still]: "0%", [turn]: away * 90 } },
+        ], easing),
+        incoming([
+          { offset: 0, properties: { transformOrigin: origin(arrivingHinge), [travel]: `${sign * 100}%`, [still]: "0%", [turn]: -away * 90 } },
+          { offset: 1, properties: { transformOrigin: origin(arrivingHinge), [travel]: "0%", [still]: "0%", [turn]: 0 } },
+        ], easing),
+      ],
+    };
+  },
+};
+
+/**
+ * Two cards changing places.
+ *
+ * The slides part sideways, shrink as if stepping back, and come together again
+ * with the other one in front. Which is in front is `behind`, on a clock of its
+ * own: it has to switch at the instant the cards are furthest apart, and a value
+ * eased with the movement would switch wherever the curve put it.
+ *
+ * Three keyframes on the movement are right here, though the morph avoids them:
+ * easing applies between each pair, so the cards slow as they part and again as
+ * they meet, which is what parting and meeting look like.
+ */
+const swap: TransitionKindDefinition = {
+  name: "swap",
+  description: "The slides part, change places in depth and come back together.",
+  showsBothSlides: true,
+  plan: ({ direction, easing }) => {
+    const apart = slideOffset(direction, 42);
+    const at = (x: number, y: number) => ({ translateX: `${x}%`, translateY: `${y}%` });
+    return {
+      tracks: [
+        outgoing([
+          { offset: 0, properties: { ...at(0, 0), scaleX: 1, scaleY: 1, opacity: 1 } },
+          { offset: 0.5, properties: { ...at(-apart.x, -apart.y), scaleX: 0.84, scaleY: 0.84, opacity: 1 } },
+          { offset: 1, properties: { ...at(0, 0), scaleX: 0.72, scaleY: 0.72, opacity: 0 } },
+        ], easing),
+        incoming([
+          { offset: 0, properties: { ...at(0, 0), scaleX: 0.72, scaleY: 0.72, opacity: 0 } },
+          { offset: 0.5, properties: { ...at(apart.x, apart.y), scaleX: 0.84, scaleY: 0.84, opacity: 1 } },
+          { offset: 1, properties: { ...at(0, 0), scaleX: 1, scaleY: 1, opacity: 1 } },
+        ], easing),
+        {
+          targetId: "slide:in",
+          kind: "incoming",
+          easing: "linear",
+          keyframes: [
+            { offset: 0, properties: { behind: 1 } },
+            { offset: 0.5, properties: { behind: 1 } },
+            { offset: 0.501, properties: { behind: 0 } },
+            { offset: 1, properties: { behind: 0 } },
+          ],
+        },
+      ],
+    };
+  },
+};
+
+/**
+ * A fast zoom through one slide into the next.
+ *
+ * The leaving slide rushes toward the viewer and loses focus; the arriving one
+ * comes up from a little way back and sharpens. Blur is what sells the speed:
+ * without it this is two slides changing size.
+ */
+const zoomBlur: TransitionKindDefinition = {
+  name: "zoomBlur",
+  description: "A fast zoom through this slide into the next, blurred by its speed.",
+  showsBothSlides: true,
+  plan: ({ easing }) => ({
+    tracks: [
+      outgoing([
+        { offset: 0, properties: { scaleX: 1, scaleY: 1, blur: 0, opacity: 1 } },
+        { offset: 1, properties: { scaleX: 1.6, scaleY: 1.6, blur: 18, opacity: 0 } },
+      ], easing),
+      incoming([
+        { offset: 0, properties: { scaleX: 0.72, scaleY: 0.72, blur: 18, opacity: 0 } },
+        { offset: 1, properties: { scaleX: 1, scaleY: 1, blur: 0, opacity: 1 } },
       ], easing),
     ],
   }),
@@ -391,6 +538,10 @@ export const TRANSITION_KINDS: Record<string, TransitionKindDefinition> = {
   iris,
   flip,
   blurDissolve,
+  clockWipe,
+  cube,
+  swap,
+  zoomBlur,
   morph,
 };
 
