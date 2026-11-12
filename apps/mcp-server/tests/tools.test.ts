@@ -607,7 +607,7 @@ describe("the tool surface", () => {
     expect(fields).toContain("pacing");
     expect(fields.filter((field) => /ms$|duration|delay|easing|element_id/i.test(field))).toEqual([]);
     const kindSchema = (propose.inputSchema.properties?.kind ?? {}) as { enum?: string[] };
-    expect(kindSchema.enum).toEqual(expect.arrayContaining(["cover", "wipe", "split", "iris", "flip", "blurDissolve"]));
+    expect(kindSchema.enum).toEqual(expect.arrayContaining(["cover", "wipe", "split", "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur"]));
 
     const result = JSON.parse(
       text(

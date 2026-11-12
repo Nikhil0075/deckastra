@@ -13,7 +13,7 @@
  * away rather than moved.
  */
 
-import { easingToCss } from "../easing";
+import { easingToCss, round } from "../easing";
 import type { CompiledTransition } from "./types";
 import { sampleTransition } from "./sample";
 
@@ -56,12 +56,30 @@ export function transitionCss(
         declaration.clipPath = `circle(${value}% at 50% 50%)`;
         continue;
       }
+      if (name === "clipSweep") {
+        declaration.clipPath = sweepPolygon(Number(value));
+        continue;
+      }
       if (name === "rotateY") {
         declaration.rotate = `y ${value}deg`;
         continue;
       }
+      if (name === "rotateX") {
+        declaration.rotate = `x ${value}deg`;
+        continue;
+      }
+      if (name === "behind") {
+        // Which slide is in front, as a whole number: a fractional z-index is
+        // not a value a browser accepts, and one it ignores leaves the last
+        // frame's order in place.
+        declaration.zIndex = Number(value) >= 0.5 ? "-1" : "0";
+        continue;
+      }
       if (name === "blur") {
-        if (Number(value) > 0) declaration.filter = `blur(${value}px)`;
+        // Written at zero too. Skipping it left the previous frame's blur on
+        // the element, so a slide that had resolved into focus stayed a
+        // fraction of a pixel soft.
+        declaration.filter = Number(value) > 0 ? `blur(${value}px)` : "none";
         continue;
       }
       declaration[name] = String(value);
@@ -71,6 +89,41 @@ export function transitionCss(
   }
 
   return out;
+}
+
+/** Where the sweep passes each corner of the box, clockwise from twelve. */
+const SWEEP_CORNERS: readonly (readonly [number, string])[] = [
+  [45, "100% 0%"],
+  [135, "100% 100%"],
+  [225, "0% 100%"],
+  [315, "0% 0%"],
+];
+
+/**
+ * The part of a box a clock hand has swept, as a `clip-path`.
+ *
+ * Measured in the box's own proportions, so the hand passes each corner at an
+ * eighth of a turn whatever the slide's aspect ratio: a true angle on a 16:9
+ * slide would spend most of the sweep on the two short sides. The vertex count
+ * changes as corners are passed, which a browser could not interpolate; nothing
+ * asks it to, because every frame is sampled and written whole.
+ */
+export function sweepPolygon(degrees: number): string {
+  const angle = Number.isFinite(degrees) ? Math.max(0, Math.min(360, degrees)) : 0;
+  if (angle >= 360) return "none";
+  // An empty shape, not `none`: nothing has been uncovered yet.
+  if (angle <= 0) return "polygon(50% 50%, 50% 50%, 50% 50%)";
+
+  const points = ["50% 50%", "50% 0%"];
+  for (const [at, corner] of SWEEP_CORNERS) {
+    if (angle > at) points.push(corner);
+  }
+  const radians = (angle * Math.PI) / 180;
+  const x = Math.sin(radians);
+  const y = -Math.cos(radians);
+  const reach = 50 / Math.max(Math.abs(x), Math.abs(y));
+  points.push(`${round(50 + x * reach)}% ${round(50 + y * reach)}%`);
+  return `polygon(${points.join(", ")})`;
 }
 
 /** The easing, as a browser wants it. The compiled form carries the name. */

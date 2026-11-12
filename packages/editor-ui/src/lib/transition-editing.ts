@@ -33,7 +33,7 @@ import { labelFor } from "../components/inspector/labels";
 
 /** Every transition the current engine draws, in a compact authoring order. */
 export const EDITABLE_KINDS = [
-  "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "morph",
+  "cut", "fade", "slide", "cover", "push", "zoom", "wipe", "split", "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur", "morph",
 ] as const;
 export type EditableKind = (typeof EDITABLE_KINDS)[number];
 
@@ -49,6 +49,10 @@ export const KIND_DEFAULT_MS: Record<Exclude<EditableKind, "cut">, number> = {
   iris: 500,
   flip: 600,
   blurDissolve: 450,
+  clockWipe: 600,
+  cube: 700,
+  swap: 700,
+  zoomBlur: 500,
   morph: 600,
 };
 
@@ -56,6 +60,9 @@ export const KIND_DEFAULT_MS: Record<Exclude<EditableKind, "cut">, number> = {
 export const TRANSITION_MS = { min: 50, max: 3000 } as const;
 
 export const DIRECTIONS = ["left", "right", "up", "down"] as const;
+
+/** The kinds a direction means something to. Every other kind drops it. */
+export const DIRECTIONAL_KINDS = ["slide", "cover", "push", "cube", "swap"] as const;
 
 export interface TransitionState {
   /** Null when the slide carries a kind this editor does not offer. */
@@ -120,7 +127,7 @@ export function setTransitionKind(document: PresentationDocument, slideId: strin
     type: kind,
     durationMs: base.durationMs && base.durationMs > 0 ? base.durationMs : KIND_DEFAULT_MS[kind],
   };
-  if (["slide", "cover", "push"].includes(kind)) next.direction = base.direction ?? "left";
+  if ((DIRECTIONAL_KINDS as readonly string[]).includes(kind)) next.direction = base.direction ?? "left";
   else delete next.direction;
   let notice: string | undefined;
   if (kind !== "morph" && next.sharedElements?.length) {

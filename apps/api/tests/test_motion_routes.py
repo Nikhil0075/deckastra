@@ -424,7 +424,7 @@ def test_a_dry_run_transition_plans_without_writing(client, auth, deck):
     assert head_version(client, auth, presentation_id) == before
 
 
-@pytest.mark.parametrize("kind", ["cover", "wipe", "split", "iris", "flip", "blurDissolve"])
+@pytest.mark.parametrize("kind", ["cover", "wipe", "split", "iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur"])
 def test_every_engine_transition_is_available_through_the_api(client, auth, deck, kind):
     presentation_id = deck["presentation_id"]
     response = client.post(

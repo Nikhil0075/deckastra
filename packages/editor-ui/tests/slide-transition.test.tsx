@@ -127,6 +127,41 @@ describe("mounting both slides", () => {
     vi.unstubAllGlobals();
   });
 
+  it("starts its clock on the first frame, however late that frame is", () => {
+    // Mounting two slides is the heaviest thing present mode does. With the
+    // clock started when the effect ran, a first frame that arrived after the
+    // transition's whole duration drew the end at once: a freeze, then a cut.
+    const frames = frameDriver();
+    const onDone = vi.fn();
+    const view = render(
+      <SlideTransition
+        compiled={compiled({ type: "push", durationMs: 400, easing: "linear" })}
+        to={scene("s2")}
+        from={scene("s1")}
+        width={960}
+        height={540}
+        scale={0.5}
+        onDone={onDone}
+      />,
+    );
+    const arriving = view.container.querySelector("[data-present-stage]") as HTMLElement;
+
+    // The first frame comes two seconds after the mount began.
+    const first = performance.now() + 2_000;
+    frames.advance(first);
+    expect(onDone).not.toHaveBeenCalled();
+    expect(arriving.style.getPropertyValue("translate")).toBe("100% 0%");
+
+    // From there it is the wall clock, as before: a quarter of the way in.
+    frames.advance(first + 100);
+    expect(arriving.style.getPropertyValue("translate")).toBe("75% 0%");
+    expect(screen.getByTestId("s1")).toBeTruthy();
+
+    frames.advance(first + 400);
+    expect(onDone).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it("mounts one stage for a cut and never starts a loop", async () => {
     const frames = frameDriver();
     const onDone = vi.fn();

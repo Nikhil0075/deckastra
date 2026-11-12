@@ -676,10 +676,14 @@ describe("Phase 4 transition mapping", () => {
     ["iris", "<p:circle"],
     ["flip", "<p:fade"],
     ["blurDissolve", "<p:dissolve"],
+    ["clockWipe", "<p:wheel spokes=\"1\""],
+    ["cube", "<p:push"],
+    ["swap", "<p:fade"],
+    ["zoomBlur", "<p:fade"],
   ] as const)("maps %s to the nearest PowerPoint transition", (type, marker) => {
     const ledger = new DegradationLedger();
     expect(transitionFor(type, 500, "sld_phase4", ledger)).toContain(marker);
-    if (["iris", "flip", "blurDissolve"].includes(type)) {
+    if (["iris", "flip", "blurDissolve", "clockWipe", "cube", "swap", "zoomBlur"].includes(type)) {
       expect(
         ledger.report(1, 0).warnings.some((warning) =>
           warning.feature === `transition:${type}` && warning.action === "approximated",
