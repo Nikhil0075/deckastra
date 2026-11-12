@@ -29,9 +29,14 @@ def users(tmp_path, monkeypatch, request):
     db.reset_engine()
 
 
-def balance(user):
+def balance(user, at=None):
+    """The account as it reads at `at`, or now.
+
+    A test that places an account at a fixed date must read it at that date
+    too. Reading it at the real time renews it once that date is a month old.
+    """
     with db.session_scope() as session:
-        return credits.describe(credits.account(session, user))
+        return credits.describe(credits.account(session, user, at))
 
 
 def test_monthly_reset_preserves_calendar_anchor_after_february(users):
@@ -119,7 +124,9 @@ def test_raising_the_free_allowance_tops_up_existing_accounts_once(users, monkey
         with db.session_scope() as session:
             row = credits.account(session, users[0], at)
     assert row.monthly_allowance == 300
-    assert balance(users[0])["remaining_credits"] == 260
+    # Read at the same date. Read at the real time, this was 260 until
+    # 2026-11-12, a month after `at`, and 300 from then on: the account renewed.
+    assert balance(users[0], at)["remaining_credits"] == 260
     with db.session_scope() as session:
         raises = session.scalars(select(CreditEntry).where(CreditEntry.user_id == users[0], CreditEntry.operation_id.like("%:allowance:300"))).all()
     assert len(raises) == 1 and raises[0].amount_micros == 240 * credits.MICROS_PER_CREDIT
